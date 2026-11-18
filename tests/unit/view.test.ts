@@ -280,6 +280,11 @@ describe("the page's own words", () => {
     expect(MESSAGES.fr.agentRestoredBoard("Sprint 12")).toBe("Claude a restauré le tableau « Sprint 12 ».");
   });
 
+  test("a tab left open across an update says so, beside the offer to reload", () => {
+    expect([MESSAGES.en.updated, MESSAGES.en.reload]).toEqual(["Vico was updated.", "Reload"]);
+    expect([MESSAGES.fr.updated, MESSAGES.fr.reload]).toEqual(["Vico a été mis à jour.", "Recharger"]);
+  });
+
   test("the language is the reader's choice, then the companion's, then English", () => {
     expect(pickLocale("fr", "en")).toBe("fr");
     expect(pickLocale("en", "fr")).toBe("en");

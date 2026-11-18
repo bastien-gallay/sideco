@@ -31,6 +31,8 @@ export interface State {
   /** Agent sessions blocked on `vico wait` right now. */
   listening: number;
   connected: boolean;
+  /** The build of the page the companion serves now; null until it has said. */
+  served: string | null;
   /** Elements that changed moments ago, to draw the eye. */
   fresh: Set<string>;
   error: string | null;
@@ -49,6 +51,7 @@ export const state: State = {
   listening: 0,
   // Assumed until the stream says otherwise, so the first paint does not cry wolf.
   connected: true,
+  served: null,
   fresh: new Set(),
   error: null,
   notice: null,
@@ -102,6 +105,7 @@ function follow(): void {
     }
     run = presence.run;
     state.listening = presence.listening;
+    state.served = presence.build;
     if (!caughtUp) leaveMissingBoard();
     caughtUp = true;
     changed();

@@ -44,6 +44,8 @@ claude plugin install vico@vico
 
 Claude Code copie alors le plugin dans son cache : après une modification du dépôt, monte la version dans `.claude-plugin/` puis lance `claude plugin marketplace update vico` et `claude plugin update vico@vico`. Pendant que tu développes Vico, `--plugin-dir` reste le plus direct.
 
+Une page restée ouverte suit la mise à jour : quand le compagnon redémarre avec une autre page que celle de l'onglet, l'onglet se recharge de lui-même. Si tu es en train d'écrire (réponse non envoyée, champ rempli, dialogue ouvert), il attend : il affiche « Vico was updated. » avec le bouton `Reload`, et se recharge de lui-même dès que plus rien n'est à perdre, par exemple une fois la réponse envoyée.
+
 Pour taper `vico` sans son chemin dans ton propre terminal, pose un lien : `ln -s /chemin/vers/visual-companion/bin/vico ~/.local/bin/vico`. Dans la session Claude Code, le plugin le met déjà sur le `PATH`.
 
 ## La boucle

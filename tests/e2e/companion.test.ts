@@ -13,6 +13,7 @@ import { type Browser, chromium, type Page } from "playwright-core";
 import { parseBatch } from "../../src/cli/argv.ts";
 import { initRoot } from "../../src/cli/client.ts";
 import { runHook } from "../../src/cli/hook.ts";
+import type { Locale } from "../../src/domain/i18n.ts";
 import type { Workspace } from "../../src/domain/workspace.ts";
 import { type Running, start } from "../../src/server/start.ts";
 
@@ -819,6 +820,25 @@ describe("tidying up", () => {
       .locator(".board-picker option")
       .evaluateAll((options) => options.map((o) => (o as HTMLOptionElement).value));
 
+  /** Stops the companion and starts it again on the same port, as an update of Vico does. */
+  const restart = async (locale?: Locale): Promise<void> => {
+    const port = running.port;
+    running.stop();
+    running = await start(root, port, { locale });
+  };
+  /** Chrome logs the stream a restart cut; anything else it logged since `before` stays a problem. */
+  const forgiveTheCut = (before: number): void => {
+    const cut = /net::ERR_(INCOMPLETE_CHUNKED_ENCODING|CONNECTION_REFUSED)/;
+    problems.splice(before, problems.length - before, ...problems.slice(before).filter((p) => !cut.test(p)));
+  };
+  /** A mark only a reload takes away: it lives on the document's `window`. */
+  const mark = (): Promise<void> =>
+    page.evaluate(() => {
+      (window as { sameDocument?: true }).sameDocument = true;
+    });
+  const marked = (): Promise<boolean> =>
+    page.evaluate(() => (window as { sameDocument?: true }).sameDocument === true);
+
   test("a board Claude removes leaves the picker; the page moves to one that exists and says so", async () => {
     await agent('board new "Brouillon" --format retro --id brouillon\nadd point "À jeter" --lane keep');
     await page.locator(".board-picker select").selectOption("brouillon");
@@ -878,9 +898,103 @@ describe("tidying up", () => {
     expect(await page.locator("g.card").count()).toBe(1);
     expect(page.url()).toEndWith("#/b/flux-vico");
     expect(await status().textContent()).not.toContain("disconnected");
-    // Chrome logs the stream this test cut; anything else it logged stays a problem.
-    const cut = /net::ERR_(INCOMPLETE_CHUNKED_ENCODING|CONNECTION_REFUSED)/;
-    problems.splice(before, problems.length - before, ...problems.slice(before).filter((p) => !cut.test(p)));
+    forgiveTheCut(before);
+  });
+
+  test("a companion restarted with the same page leaves the open tab as it is", async () => {
+    const before = problems.length;
+    await mark();
+    await restart();
+    // Once the tab follows the new run, its presence frame is sent: a card added then comes after it.
+    for (let attempt = 0; attempt < 200 && running.hub.watching === 0; attempt++) await Bun.sleep(50);
+    await agent('add event "Session reprise" --col 2', "flux-vico");
+    await card("E2").waitFor();
+    expect(await marked()).toBe(true);
+    forgiveTheCut(before);
+  });
+
+  test("a companion restarted with another page: the open tab reloads itself, once", async () => {
+    const before = problems.length;
+    await mark();
+    const reloaded = page.waitForEvent("load", { timeout: 15_000 });
+    // The language a page opens in is part of it: started in French, the companion serves another build.
+    await restart("fr");
+    await reloaded;
+    await card("E2").waitFor();
+    expect(await marked()).toBe(false);
+
+    // The page it got is the page served: it stays.
+    await mark();
+    await agent('add event "Session rechargée" --col 3', "flux-vico");
+    await card("E3").waitFor();
+    expect(await marked()).toBe(true);
+    forgiveTheCut(before);
+  });
+
+  test("a reply typed and not sent keeps the tab from reloading: it offers to, and the reply stays", async () => {
+    const before = problems.length;
+    await agent('note "Et ensuite ?"', "flux-vico");
+    const reply = page.locator(".notes .thread-reply input");
+    await reply.fill("Je cherche encore");
+    await mark();
+    // Back to the page that opens in English: another build again.
+    await restart("en");
+
+    const toast = page.locator(".toast", { hasText: "Vico was updated." });
+    await toast.waitFor({ timeout: 15_000 });
+    expect(await marked()).toBe(true);
+    expect(await reply.inputValue()).toBe("Je cherche encore");
+
+    // Reloading is theirs to choose, words included.
+    const reloaded = page.waitForEvent("load");
+    await toast.locator("button", { hasText: "Reload" }).click();
+    await reloaded;
+    await card("E3").waitFor();
+    expect(await marked()).toBe(false);
+    forgiveTheCut(before);
+  });
+
+  test("the reply once sent, the tab reloads without being asked: nothing is left to lose", async () => {
+    const before = problems.length;
+    const reply = page.locator(".notes .thread-reply input");
+    await reply.fill("Trouvé");
+    await mark();
+    await restart("fr");
+    await page.locator(".toast", { hasText: "Vico was updated." }).waitFor({ timeout: 15_000 });
+    expect(await marked()).toBe(true);
+
+    // The offer may be gone by then: the tab must not stay the old page for that.
+    const reloaded = page.waitForEvent("load", { timeout: 5_000 });
+    await reply.press("Enter");
+    await reloaded;
+    await page.locator(".notes", { hasText: "Trouvé" }).waitFor();
+    expect(await marked()).toBe(false);
+    forgiveTheCut(before);
+  });
+
+  test("a reload that does not bring the page served is not tried twice: the tab offers instead", async () => {
+    // A copy of another build answers in place of the companion, as a cache in the way would.
+    const stale = (await (await fetch(running.url)).text()).replace(
+      /(name="vico-build" content=")[^"]+/,
+      "$1stale",
+    );
+    const thePage = (url: URL): boolean => url.pathname === "/";
+    await page.route(thePage, (route) => route.fulfill({ contentType: "text/html", body: stale }));
+    let loads = 0;
+    const count = (): void => void loads++;
+    page.on("load", count);
+    await page.reload();
+    const toast = page.locator(".toast", { hasText: "Vico was updated." });
+    await toast.waitFor();
+    // The reload asked for above, then the one the tab tried by itself.
+    expect(loads).toBe(2);
+    page.off("load", count);
+
+    await page.unroute(thePage);
+    const reloaded = page.waitForEvent("load");
+    await toast.locator("button", { hasText: "Reload" }).click();
+    await reloaded;
+    await card("E3").waitFor();
   });
 
   test("the last board removed brings back the first screen", async () => {

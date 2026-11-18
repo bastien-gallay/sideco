@@ -135,6 +135,10 @@ export interface Messages {
   /** Said to the reader who just removed a board, beside the offer to undo. */
   boardRemoved: (title: string) => string;
 
+  /** Said in a tab left open across an update of Vico, when reloading it would lose words; and the offer. */
+  updated: string;
+  reload: string;
+
   /** Between a label and what follows it: French puts a space before the colon. */
   colon: string;
 }
@@ -260,6 +264,9 @@ const en: Messages = {
   boardRemoved: (title) => `Board “${title}” removed.`,
   agentCreatedBoard: (title) => `Claude created the board “${title}”: it is in the board list, at the top.`,
 
+  updated: "Vico was updated.",
+  reload: "Reload",
+
   colon: ":",
 };
 
@@ -383,6 +390,9 @@ const fr: Messages = {
   boardRemoved: (title) => `Tableau « ${title} » supprimé.`,
   agentCreatedBoard: (title) =>
     `Claude a créé le tableau « ${title} » : il est dans la liste des tableaux, en haut.`,
+
+  updated: "Vico a été mis à jour.",
+  reload: "Recharger",
 
   colon: " :",
 };

@@ -673,6 +673,64 @@ function say(text: string, offer?: { label: string; run: () => void }): void {
   toastTimer = setTimeout(hide, offer ? 10000 : 5000);
 }
 
+/** The build this page is, as the companion signed it into the document. */
+const BUILD = document.querySelector<HTMLMetaElement>('meta[name="vico-build"]')?.content;
+const RELOADED_FOR = "vico.reloadedFor";
+/** The served build this page has offered to reload for: it says so once. */
+let offered: string | null = null;
+
+/**
+ * True while a reload would lose words: a reply kept as a draft, a field with
+ * text in it, a question being asked.
+ */
+function holdsWords(): boolean {
+  if (document.querySelector("dialog[open]")) return true;
+  if ([...drafts.values()].some((text) => text !== "")) return true;
+  const fields = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+    'input[type="text"], textarea',
+  );
+  return [...fields].some((field) => field.value !== "" && field.checkVisibility());
+}
+
+/**
+ * Notes, across the reload, that this tab reloads by itself for `served`. False when
+ * it already did, or cannot keep the note: one reload per build served, never a loop.
+ */
+function firstReloadFor(served: string): boolean {
+  try {
+    if (sessionStorage.getItem(RELOADED_FOR) === served) return false;
+    sessionStorage.setItem(RELOADED_FOR, served);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The page is the one served: the next update gets a reload of its own. */
+function forgetReload(): void {
+  try {
+    sessionStorage.removeItem(RELOADED_FOR);
+  } catch {
+    // Nothing could be kept, so nothing is left behind.
+  }
+}
+
+/**
+ * The companion came back serving another page than this one: Vico was updated.
+ * The tab reloads to become that page as soon as no words would be lost. Until
+ * then, or when a reload already failed to bring it, it says so once, and
+ * reloading is the reader's to choose.
+ */
+function meet(served: string | null): void {
+  if (served === null) return;
+  if (served === BUILD) forgetReload();
+  else if (!holdsWords() && firstReloadFor(served)) location.reload();
+  else if (offered !== served) {
+    offered = served;
+    say(t.updated, { label: t.reload, run: () => location.reload() });
+  }
+}
+
 function openNewBoard(formatId = "event-storming"): void {
   const title = h("input", {
     type: "text",
@@ -845,6 +903,7 @@ function render(): void {
     say(state.notice);
     state.notice = null;
   }
+  meet(state.served);
   document.title = board ? `${board.title} · Vico` : "Vico";
 }
 

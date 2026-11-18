@@ -89,7 +89,7 @@ describe("every registered event leaves a trace in the journal", () => {
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "vico-plugin-"));
     hub = new Hub(openJournal(dir));
-    const handle = handler({ hub, page: "", root: "/repo", siteDir: join(dir, "site") });
+    const handle = handler({ hub, page: { html: "", build: "" }, root: "/repo", siteDir: join(dir, "site") });
     server = {
       url: "http://127.0.0.1:4747",
       fetch: (url, init) =>

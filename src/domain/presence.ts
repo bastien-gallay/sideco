@@ -7,4 +7,6 @@ export interface Presence {
   listening: number;
   /** This run of the companion. A page that meets another run starts over from the journal. */
   run: string;
+  /** The page this run serves, by its fingerprint. A page of another build reloads to become it. */
+  build: string;
 }

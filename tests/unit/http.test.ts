@@ -9,6 +9,7 @@ import { memoryJournal } from "../../src/server/journal.ts";
 import { ORDERING, T0 } from "../support.ts";
 
 const BASE = "http://127.0.0.1:4747";
+const BUILD = "0123456789abcdef";
 let dir: string;
 let hub: Hub;
 let handle: Handler;
@@ -18,7 +19,7 @@ beforeEach(() => {
   hub = new Hub(memoryJournal(), () => new Date(T0));
   handle = handler({
     hub,
-    page: "<!doctype html><title>Vico</title>",
+    page: { html: "<!doctype html><title>Vico</title>", build: BUILD },
     root: "/repo",
     siteDir: join(dir, "site"),
   });
@@ -184,11 +185,11 @@ describe("the event stream", () => {
     expect(response.headers.get("content-type")).toBe("text/event-stream");
     const stream = frames(response);
     expect(await stream.next()).toMatchObject({ id: "1", data: { event: "BoardCreated", board: "b" } });
-    // The presence frame closes the replay and names this run of the companion.
+    // The presence frame closes the replay, names this run of the companion and the page it serves.
     expect(await stream.next()).toEqual({
       id: undefined,
       event: "presence",
-      data: { listening: 0, run: hub.run },
+      data: { listening: 0, run: hub.run, build: BUILD },
     });
     expect((await say('add event "Payé" --board b', "agent")).status).toBe(200);
     expect(await stream.next()).toMatchObject({
@@ -211,7 +212,7 @@ describe("the event stream", () => {
     const stream = frames(await get("/api/events"));
     expect(await stream.next()).toMatchObject({ event: "presence", data: { listening: 0 } });
     const waiting = get("/api/wait?session=s1&timeout=5000");
-    expect(await stream.next()).toMatchObject({ event: "presence", data: { listening: 1 } });
+    expect(await stream.next()).toMatchObject({ event: "presence", data: { listening: 1, build: BUILD } });
     hub.abandon("s1");
     await waiting;
     await stream.close();
@@ -340,7 +341,7 @@ describe("showing the page", () => {
   const able = (answer: boolean): Handler =>
     handler({
       hub,
-      page: "",
+      page: { html: "", build: BUILD },
       root: "/repo",
       siteDir: join(dir, "site"),
       show: async (address) => {

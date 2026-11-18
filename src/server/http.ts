@@ -14,10 +14,11 @@ import { type Command, parseCommand } from "../domain/commands.ts";
 import { ACTORS, type Actor } from "../domain/events.ts";
 import type { Presence } from "../domain/presence.ts";
 import { atCommand, BatchError, type Hub } from "./hub.ts";
+import type { Page } from "./page.ts";
 
 export interface Site {
   hub: Hub;
-  page: string;
+  page: Page;
   /** The workspace this server speaks for; callers check it before writing. */
   root: string;
   /** Where `vico publish` writes; served read-only under /pub/. */
@@ -51,7 +52,7 @@ export function handler(site: Site): Handler {
     if (request.method === "GET") {
       switch (url.pathname) {
         case "/":
-          return new Response(page, {
+          return new Response(page.html, {
             headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
           });
         case "/health":
@@ -67,7 +68,7 @@ export function handler(site: Site): Handler {
           return json(hub.workspace);
         case "/api/events":
           keepOpen();
-          return stream(hub, request, url);
+          return stream(hub, page.build, request, url);
         case "/api/changes":
           return changes(hub, url);
         case "/api/wait":
@@ -137,7 +138,7 @@ async function commands(hub: Hub, request: Request): Promise<Response> {
   }
 }
 
-function stream(hub: Hub, request: Request, url: URL): Response {
+function stream(hub: Hub, build: string, request: Request, url: URL): Response {
   const after = Number(request.headers.get("last-event-id") ?? url.searchParams.get("after") ?? 0) || 0;
   const encoder = new TextEncoder();
   let close = (): void => {};
@@ -152,7 +153,7 @@ function stream(hub: Hub, request: Request, url: URL): Response {
         }
       };
       const presence = (listening: number): void => {
-        const said: Presence = { listening, run: hub.run };
+        const said: Presence = { listening, run: hub.run, build };
         send(`event: presence\ndata: ${JSON.stringify(said)}\n\n`);
       };
       for (const event of hub.eventsAfter(after)) send(frame(event.seq, event));

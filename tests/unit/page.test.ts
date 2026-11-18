@@ -1,22 +1,34 @@
 /**
  * The page the companion serves: one document, in the companion's language
- * until the reader picks another.
+ * until the reader picks another, signed with the fingerprint of what it is.
  */
 import { expect, test } from "bun:test";
 import { buildPage } from "../../src/server/page.ts";
 
 test("the page is one self-contained document, in English by default", async () => {
-  const page = await buildPage();
-  expect(page).toStartWith('<!doctype html>\n<html lang="en">');
-  expect(page).not.toContain("/*__SCRIPT__*/");
-  expect(page).not.toContain("/*__STYLES__*/");
-  expect(page).not.toMatch(/<script[^>]+src=/);
+  const { html } = await buildPage();
+  expect(html).toStartWith('<!doctype html>\n<html lang="en">');
+  expect(html).not.toContain("/*__SCRIPT__*/");
+  expect(html).not.toContain("/*__STYLES__*/");
+  expect(html).not.toMatch(/<script[^>]+src=/);
 });
 
 test("the page is served in the companion's language, both languages on board", async () => {
-  const page = await buildPage("fr");
-  expect(page).toStartWith('<!doctype html>\n<html lang="fr">');
+  const { html } = await buildPage("fr");
+  expect(html).toStartWith('<!doctype html>\n<html lang="fr">');
   // The reader can still switch: both catalogues travel with the page.
-  expect(page).toContain("Hand over to Claude");
-  expect(page).toContain("Passer la main à Claude");
+  expect(html).toContain("Hand over to Claude");
+  expect(html).toContain("Passer la main à Claude");
+});
+
+test("the page carries its build, and the same sources give the same build", async () => {
+  const page = await buildPage();
+  expect(page.build).toMatch(/^[0-9a-f]{16}$/);
+  expect(page.html).toContain(`<meta name="vico-build" content="${page.build}">`);
+  expect(await buildPage()).toEqual(page);
+});
+
+test("a page that opens in another language is another build", async () => {
+  // An open tab must fetch it: what it runs is no longer what the companion serves.
+  expect((await buildPage("fr")).build).not.toBe((await buildPage("en")).build);
 });
