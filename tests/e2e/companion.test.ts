@@ -692,6 +692,15 @@ describe("talking it through, note by note", () => {
     expect(await page.locator(".notes h2").textContent()).toBe("Open notes (1)");
     expect(await pending()).toContain("✓ note N1 resolved");
   });
+
+  test("closing a thread with an answer typed but not sent says it first: nothing typed is lost", async () => {
+    await replyField("N2").fill("Réponse de dernière minute");
+    await thread("N2").locator(".thread-resolve").click();
+    await thread("N2").waitFor({ state: "detached" });
+    const told = await pending();
+    expect(told).toContain("to N2: Réponse de dernière minute");
+    expect(told).toContain("✓ note N2 resolved");
+  });
 });
 
 describe("adding where the pointer is", () => {

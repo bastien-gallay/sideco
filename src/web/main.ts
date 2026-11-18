@@ -3,7 +3,7 @@
  * what Claude is doing on the right, time and the hand-over at the bottom.
  * Everything shown is a function of the journal; every gesture sends a command.
  */
-import { slugify } from "../domain/commands.ts";
+import { type Command, slugify } from "../domain/commands.ts";
 import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../domain/export/index.ts";
 import { toMermaid } from "../domain/export/mermaid.ts";
 import { FORMATS, findFormat } from "../domain/formats.ts";
@@ -352,13 +352,20 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel): HTMLEle
     value: drafts.get(key) ?? "",
     oninput: () => drafts.set(key, field.value),
   });
-  const reply = (event: Event): void => {
-    event.preventDefault();
+  /** The answer being typed, taken out of the field: said once, by whoever asks for it. */
+  const typed = (): Command[] => {
     const text = field.value.trim();
-    if (text) void send({ kind: "reply", board: boardId, to: thread.id, text });
     field.value = "";
     drafts.delete(key);
+    return text ? [{ kind: "reply", board: boardId, to: thread.id, text }] : [];
   };
+  const reply = (event: Event): void => {
+    event.preventDefault();
+    const saying = typed();
+    if (saying.length > 0) void send(...saying);
+  };
+  // Closing with an answer still in the field says it first: nothing typed is lost.
+  const resolve = (): void => void send(...typed(), { kind: "resolve", board: boardId, id: thread.id });
   return h(
     "li",
     {
@@ -410,7 +417,7 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel): HTMLEle
           {
             type: "button",
             class: "quiet thread-resolve",
-            onclick: () => void send({ kind: "resolve", board: boardId, id: thread.id }),
+            onclick: resolve,
           },
           t.resolve,
         ),
