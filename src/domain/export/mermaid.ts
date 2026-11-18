@@ -43,7 +43,7 @@ function flowchart(board: Board, format: Format): string {
 }
 
 function node(e: Element, format: Format): string {
-  const label = `"${text(e.label)}"`;
+  const label = `"${text(labelSaid(e))}"`;
   const shape = format.types.find((t) => t.id === e.type)?.shape;
   if (shape === "diamond") return `${e.id}{${label}}`;
   if (shape === "pill") return `${e.id}([${label}])`;
@@ -57,9 +57,14 @@ function kanban(board: Board, format: Format, locale: Locale): string {
   for (const lane of format.lanes) {
     lines.push(`  ${lane.id}[${plain(lane.label[locale])}]`);
     for (const e of board.elements)
-      if (e.lane === lane.id) lines.push(`    ${e.id}[${plain(`${e.id} ${e.label}`)}]`);
+      if (e.lane === lane.id) lines.push(`    ${e.id}[${plain(`${e.id} ${labelSaid(e)}`)}]`);
   }
   return lines.join("\n");
+}
+
+/** A card's label as a text export says it: a card marked done wears the sign, since nothing is struck through there. */
+export function labelSaid(e: { label: string; done?: boolean }): string {
+  return e.done ? `✓ ${e.label}` : e.label;
 }
 
 /** Inside a quoted Mermaid label. */

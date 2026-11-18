@@ -263,3 +263,15 @@ test("elements without an id get one above the ids the file names, whatever thei
   }).board();
   expect(board.elements.map((e) => `${e.id}:${e.col}`)).toEqual(["E2:1", "E1:2", "E3:3"]);
 });
+
+describe("a card marked done", () => {
+  test("wears its sign in every export a human reads", () => {
+    const board = table(KANBAN).script("done T1").board();
+    expect(toMermaid(board)).toContain("T1[T1 ✓ Écrire le PRD]");
+    expect(toMermaid(board)).toContain("T2[T2 Brancher les hooks]");
+    expect(toMarkdown(board, META)).toContain("| T1 | Task | ✓ Écrire le PRD |");
+    expect(toHtml(board, META)).toContain("<td>✓ Écrire le PRD</td>");
+    const timeline = table(ORDERING).script("done E1").board();
+    expect(toMermaid(timeline)).toContain('"✓ Commande passée"');
+  });
+});

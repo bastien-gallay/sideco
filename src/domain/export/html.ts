@@ -8,6 +8,7 @@ import { layoutBoard } from "../layout/index.ts";
 import { esc, sceneToSvg } from "../render/svg.ts";
 import { type Board, threads } from "../workspace.ts";
 import type { ExportMeta } from "./markdown.ts";
+import { labelSaid } from "./mermaid.ts";
 
 export const PAGE_STYLE = `
 :root { --vico-bg: #FFFFFF; --vico-ink: #1F2328; --vico-muted: #59636E; --vico-faint: #8C959F; --vico-rule: #E3E6EA; --vico-lane: #F3F4F6; --vico-conn: #6E7781; }
@@ -50,7 +51,7 @@ export function toHtml(board: Board, meta: ExportMeta): string {
           : layout === "columns"
             ? `<td>${esc(lane(e.lane))}</td>`
             : "";
-      return `<tr><td class="id">${esc(e.id)}</td><td><span class="swatch" style="background:${esc(t?.fill ?? "#E8EEF4")}"></span>${esc(t?.label[locale] ?? e.type)}</td><td>${esc(e.label)}</td>${place}<td>${esc(e.detail ?? "")}</td><td>${w.who[e.by]}</td></tr>`;
+      return `<tr><td class="id">${esc(e.id)}</td><td><span class="swatch" style="background:${esc(t?.fill ?? "#E8EEF4")}"></span>${esc(t?.label[locale] ?? e.type)}</td><td>${esc(labelSaid(e))}</td>${place}<td>${esc(e.detail ?? "")}</td><td>${w.who[e.by]}</td></tr>`;
     })
     .join("\n");
 

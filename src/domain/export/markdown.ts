@@ -6,7 +6,7 @@
 import { findFormat } from "../formats.ts";
 import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
 import { type Board, type Thread, threads } from "../workspace.ts";
-import { toMermaid } from "./mermaid.ts";
+import { labelSaid, toMermaid } from "./mermaid.ts";
 
 export interface ExportMeta {
   /** ISO date-time of the export. */
@@ -37,7 +37,7 @@ export function toMarkdown(board: Board, meta: ExportMeta): string {
     const sorted = [...board.elements].sort((a, b) => a.col - b.col);
     for (const e of sorted) {
       const place = layout === "timeline" ? [String(e.col)] : layout === "columns" ? [laneLabel(e.lane)] : [];
-      out.push(row([e.id, typeLabel(e.type), e.label, ...place, e.detail ?? "", w.who[e.by]]));
+      out.push(row([e.id, typeLabel(e.type), labelSaid(e), ...place, e.detail ?? "", w.who[e.by]]));
     }
     out.push("");
   }
