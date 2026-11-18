@@ -38,7 +38,7 @@ import {
   historyStep,
   historyStopAt,
   historyStops,
-  pendingCount,
+  pendingChanges,
   recentTurns,
   redoTarget,
   undoTarget,
@@ -952,7 +952,7 @@ function render(): void {
   paintTurn({
     board: board?.id,
     live,
-    pending: pendingCount(state.events, liveSession),
+    pending: pendingChanges(state.events, liveSession).count,
     hint: handOverHint(liveSession?.status, state.listening, locale),
     theirs: turn?.to === "human" ? (turn.message ?? "") : undefined,
   });

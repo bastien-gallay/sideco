@@ -4,7 +4,7 @@
  * event there.
  * No DOM here, so the wording is tested like any other rule.
  */
-import { describeChanges } from "../domain/digest.ts";
+import { type Changes, describeChanges } from "../domain/digest.ts";
 import type { Actor, Recorded } from "../domain/events.ts";
 import { findFormat, findType } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
@@ -58,9 +58,9 @@ export function handOverHint(
   return m.hintIdle;
 }
 
-/** The number of lines the agent would be told now: the same digest it will read. */
-export function pendingCount(events: readonly Recorded[], session: Session | undefined): number {
-  return describeChanges(events, session?.deliveredUpTo ?? 0).count;
+/** What the agent would be told now: the same digest it will read. Without a session, nothing was read yet. */
+export function pendingChanges(events: readonly Recorded[], session: Session | undefined): Changes {
+  return describeChanges(events, session?.deliveredUpTo ?? 0);
 }
 
 export function recentTurns(session: Session | undefined, max: number): SessionTurn[] {

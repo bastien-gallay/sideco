@@ -14,7 +14,7 @@ import {
   historyStep,
   historyStopAt,
   historyStops,
-  pendingCount,
+  pendingChanges,
   recentTurns,
   redoTarget,
   undoTarget,
@@ -120,19 +120,19 @@ describe("handOverNotice says, right after a hand-over, why nothing moves in the
   });
 });
 
-describe("pendingCount is what Claude has not been told, net of back-and-forth", () => {
+describe("pendingChanges is what Claude has not been told, net of back-and-forth", () => {
   test("counts the human's net changes after the session's cursor", () => {
     const t = withSession();
-    expect(pendingCount(t.events, session(t))).toBe(0);
+    expect(pendingChanges(t.events, session(t)).count).toBe(0);
     t.script('rename E1 "Essai"\nrename E1 "Validée"\nrm H1', "human");
-    expect(pendingCount(t.events, session(t))).toBe(2);
+    expect(pendingChanges(t.events, session(t)).count).toBe(2);
     t.do({ kind: "delivered", upTo: t.seq }, "system", "s1");
-    expect(pendingCount(t.events, session(t))).toBe(0);
+    expect(pendingChanges(t.events, session(t)).count).toBe(0);
   });
 
   test("with no session, everything the human did is pending", () => {
     const t = table(ORDERING).script('rename E1 "Validée"', "human");
-    expect(pendingCount(t.events, undefined)).toBe(1);
+    expect(pendingChanges(t.events, undefined).count).toBe(1);
   });
 });
 

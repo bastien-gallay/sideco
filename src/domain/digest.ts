@@ -79,14 +79,63 @@ export interface Changes {
   passed: boolean;
 }
 
+/** What `by` changed on the boards in events after `after`. */
+export function describeChanges(events: readonly Recorded[], after: number, by: Actor = "human"): Changes {
+  const net = netChanges(events, after, by);
+  const told = net.entries.flatMap(({ board, change }) => {
+    const line = word(net.ws, board, change);
+    return line === undefined ? [] : [{ board, line }];
+  });
+  return { text: render(net, told), count: told.length, upTo: net.ws.seq, passed: net.passed };
+}
+
+/** One thing to tell, as data: netted while the journal is read, worded once it is read. */
+type Change =
+  | { kind: "board-created"; title: string; format: string }
+  | { kind: "board-retitled"; title: string }
+  | { kind: "board-removed" }
+  | { kind: "board-restored" }
+  | { kind: "added"; id: string; type: string; label: string; col: number; lane: string; restored?: true }
+  | { kind: "renamed"; id: string; from: string; to: string }
+  /** Judged at the end, against the final board: a later change can put the card back. */
+  | { kind: "moved"; id: string; from: Origin }
+  | { kind: "annotated"; id: string; detail: string }
+  | { kind: "removed"; id: string; type: string; label: string }
+  | { kind: "column-inserted"; at: number }
+  | { kind: "linked"; src: string; dst: string; label?: string }
+  | { kind: "unlinked"; src: string; dst: string }
+  | { kind: "focused"; ids: string[]; reason?: string }
+  | { kind: "noted"; id: string; text: string; target?: string; thread?: string }
+  | { kind: "resolved"; id: string };
+
 interface Entry {
   board: string;
-  line: string;
+  change: Change;
+}
+
+/** Where an element was, and what it said, when the reader last saw it. */
+interface Origin {
+  label: string;
+  col: number;
+  lane: string;
+  /** The element that followed it in its lane; position in a lane is meaning (priority). */
+  next: string | undefined;
+}
+
+/** What one actor changed in a span of the journal, net of back-and-forth, not worded yet. */
+interface Net {
+  /** The workspace at the end of the journal: the changes are worded against it. */
+  ws: Workspace;
+  entries: Entry[];
+  /** Boards the reader knew that the actor removed, with the title they had. */
+  gone: ReadonlyMap<string, string>;
+  passed: boolean;
+  /** Every word said while handing over, once each: a later hand-over does not erase an earlier word. */
+  words: string[];
 }
 
 interface Shelf {
   entries: [string, Entry][];
-  moves: [string, { board: string; id: string; from: Origin }][];
   origin: [string, Origin][];
   added: string[];
   made: boolean;
@@ -99,44 +148,29 @@ function take<V>(map: Map<string, V>, board: string): [string, V][] {
   return taken;
 }
 
-/** Where an element was, and what it said, when the reader last saw it. */
-interface Origin {
-  label: string;
-  col: number;
-  lane: string;
-  /** The element that followed it in its lane; position in a lane is meaning (priority). */
-  next: string | undefined;
-}
-
-/** What `by` changed on the boards in events after `after`. */
-export function describeChanges(events: readonly Recorded[], after: number, by: Actor = "human"): Changes {
+function netChanges(events: readonly Recorded[], after: number, by: Actor): Net {
   const ws = emptyWorkspace();
   const entries = new Map<string, Entry>();
   /** Per thread, the replies told in this span. */
   const replies = new Map<string, string[]>();
   const added = new Set<string>();
   const origin = new Map<string, Origin>();
-  /** Moves are worded at the end, against the final board: a later change can undo them. */
-  const moves = new Map<string, { board: string; id: string; from: Origin }>();
   /** Boards `by` made in this window: removing one of those is no news. */
   const made = new Set<string>();
-  /** Boards the reader knew that `by` removed, with the title they had. */
   const gone = new Map<string, string>();
   /** Boards that were already removed when the reader last looked. */
   const absent = new Set<string>();
   /** What was pending about a removed board, kept for the case it comes back. */
   const shelved = new Map<string, Shelf>();
   let passed = false;
-  /** Every word said while handing over, once each: a later hand-over does not erase an earlier word. */
   const words: string[] = [];
 
-  /** A removed board takes every pending line about it along, whoever removed it. */
+  /** A removed board takes every pending change about it along, whoever removed it. */
   const shelve = (board: string): void => {
     const mine = [...added].filter((key) => key.startsWith(`${board}/`));
     for (const key of mine) added.delete(key);
     shelved.set(board, {
       entries: take(entries, board),
-      moves: take(moves, board),
       origin: take(origin, board),
       added: mine,
       made: made.delete(board),
@@ -148,7 +182,6 @@ export function describeChanges(events: readonly Recorded[], after: number, by: 
     if (!shelf) return;
     shelved.delete(board);
     for (const [key, entry] of shelf.entries) entries.set(key, entry);
-    for (const [key, move] of shelf.moves) moves.set(key, move);
     for (const [key, first] of shelf.origin) origin.set(key, first);
     for (const key of shelf.added) added.add(key);
     if (shelf.made) made.add(board);
@@ -166,109 +199,92 @@ export function describeChanges(events: readonly Recorded[], after: number, by: 
       const news = !entries.delete(`${e.board}/restored/`) && !made.has(e.board);
       shelve(e.board);
       if (mine && news) gone.set(e.board, e.title);
-      if (gone.has(e.board)) entries.set(`${e.board}/removed/`, { board: e.board, line: "− board removed" });
+      if (gone.has(e.board))
+        entries.set(`${e.board}/removed/`, { board: e.board, change: { kind: "board-removed" } });
     } else if (e.event === "BoardRestored") {
       if (e.seq <= after) absent.delete(e.board);
       unshelve(e.board);
       entries.delete(`${e.board}/removed/`);
       gone.delete(e.board);
       if (mine && absent.has(e.board))
-        entries.set(`${e.board}/restored/`, { board: e.board, line: "+ board restored" });
+        entries.set(`${e.board}/restored/`, { board: e.board, change: { kind: "board-restored" } });
     } else if (mine && "board" in e) {
       const board = findBoard(ws, e.board);
       const k = (kind: string, id: string): string => `${e.board}/${kind}/${id}`;
-      const put = (kind: string, id: string, line: string): void => {
-        entries.set(k(kind, id), { board: e.board, line });
+      const put = (kind: string, id: string, change: Change): void => {
+        entries.set(k(kind, id), { board: e.board, change });
       };
       const el = "id" in e && board ? findElement(board, e.id) : undefined;
 
       switch (e.event) {
         case "BoardCreated":
           made.add(e.board);
-          put("board", "", `+ board created: ${quote(e.title)} (${e.format})`);
+          put("board", "", { kind: "board-created", title: e.title, format: e.format });
           break;
         case "BoardRetitled":
-          put("title", "", `~ board retitled ${quote(e.title)}`);
+          put("title", "", { kind: "board-retitled", title: e.title });
           break;
         case "ElementAdded":
           added.add(k("el", e.id));
-          put("add", e.id, addedLine(ws, e.board, e.id, e.type, e.label, e.col, e.lane));
+          put("add", e.id, asAdded(e));
           break;
         case "ElementRenamed":
           if (!el) break;
-          if (added.has(k("el", e.id)))
-            put("add", e.id, addedLine(ws, e.board, e.id, el.type, e.label, el.col, el.lane));
+          if (added.has(k("el", e.id))) put("add", e.id, { ...asAdded(el), label: e.label });
           else {
             const from = remember(origin, k("el", e.id), board, el);
             if (from.label === e.label) entries.delete(k("rename", e.id));
-            else put("rename", e.id, `~ ${e.id} renamed ${quote(from.label)} → ${quote(e.label)}`);
+            else put("rename", e.id, { kind: "renamed", id: e.id, from: from.label, to: e.label });
           }
           break;
         case "ElementMoved":
           if (!el) break;
-          if (added.has(k("el", e.id)))
-            put("add", e.id, addedLine(ws, e.board, e.id, el.type, el.label, e.col, e.lane));
+          if (added.has(k("el", e.id))) put("add", e.id, { ...asAdded(el), col: e.col, lane: e.lane });
           else {
-            moves.set(k("move", e.id), {
-              board: e.board,
-              id: e.id,
-              from: remember(origin, k("el", e.id), board, el),
-            });
-            if (!entries.has(k("move", e.id))) put("move", e.id, "");
+            // The first move keeps its place among the changes, and where the card was then.
+            const from = remember(origin, k("el", e.id), board, el);
+            if (!entries.has(k("move", e.id))) put("move", e.id, { kind: "moved", id: e.id, from });
           }
           break;
         case "ElementAnnotated":
-          put("detail", e.id, `~ ${e.id} detail: ${e.detail || "(cleared)"}`);
+          put("detail", e.id, { kind: "annotated", id: e.id, detail: e.detail });
           break;
         case "ElementRemoved":
           for (const kind of ["add", "rename", "move", "detail"]) entries.delete(k(kind, e.id));
-          moves.delete(k("move", e.id));
           if (added.delete(k("el", e.id)) || entries.delete(k("restore", e.id))) break;
-          if (el) put("remove", e.id, `− ${e.id} ${el.type} ${quote(el.label)} removed`);
+          if (el) put("remove", e.id, { kind: "removed", id: e.id, type: el.type, label: el.label });
           break;
         case "ElementRestored":
           // Removed and restored since the reader looked: no news. Otherwise it is back, and they are told where.
-          if (!entries.delete(k("remove", e.id)))
-            put("restore", e.id, `${addedLine(ws, e.board, e.id, e.type, e.label, e.col, e.lane)} restored`);
+          if (!entries.delete(k("remove", e.id))) put("restore", e.id, { ...asAdded(e), restored: true });
           break;
         case "ColumnInserted":
-          put(
-            "column",
-            String(e.seq),
-            `+ empty column inserted at ${e.at} (columns from ${e.at} shifted right)`,
-          );
+          put("column", String(e.seq), { kind: "column-inserted", at: e.at });
           break;
         case "EdgeAdded":
           entries.delete(k("unlink", `${e.src}>${e.dst}`));
-          put(
-            "link",
-            `${e.src}>${e.dst}`,
-            `+ link ${e.src} -> ${e.dst}${e.label ? ` ${quote(e.label)}` : ""}`,
-          );
+          put("link", `${e.src}>${e.dst}`, { kind: "linked", src: e.src, dst: e.dst, label: e.label });
           break;
         case "EdgeRemoved":
           if (!entries.delete(k("link", `${e.src}>${e.dst}`)))
-            put("unlink", `${e.src}>${e.dst}`, `− link ${e.src} -> ${e.dst}`);
+            put("unlink", `${e.src}>${e.dst}`, { kind: "unlinked", src: e.src, dst: e.dst });
           break;
         case "FocusSet":
-          put("focus", "", `focus on ${e.ids.join(", ")}${e.reason ? `: ${e.reason}` : ""}`);
+          put("focus", "", { kind: "focused", ids: e.ids, reason: e.reason });
           break;
         case "FocusCleared":
           entries.delete(k("focus", ""));
           break;
-        case "NoteAdded": {
-          const on = e.target ? ` on ${e.target}` : "";
-          if (e.thread) {
-            put("note", e.id, `reply ${e.id} to ${e.thread}${on}: ${e.text}`);
+        case "NoteAdded":
+          put("note", e.id, { kind: "noted", id: e.id, text: e.text, target: e.target, thread: e.thread });
+          if (e.thread)
             replies.set(k("thread", e.thread), [...(replies.get(k("thread", e.thread)) ?? []), e.id]);
-          } else put("note", e.id, `note ${e.id}${on}: ${e.text}`);
           break;
-        }
         case "NoteResolved":
           // A thread opened and closed before the reader looked never existed for them, replies included.
           if (entries.delete(k("note", e.id))) {
             for (const reply of replies.get(k("thread", e.id)) ?? []) entries.delete(k("note", reply));
-          } else put("resolve", e.id, `✓ note ${e.id} resolved`);
+          } else put("resolve", e.id, { kind: "resolved", id: e.id });
           break;
         case "TurnPassed":
           if (e.to === "agent") {
@@ -281,17 +297,14 @@ export function describeChanges(events: readonly Recorded[], after: number, by: 
     apply(ws, e);
   }
 
-  for (const [key, move] of moves) {
-    const line = movedLine(ws, move.board, move.id, move.from);
-    if (line) entries.set(key, { board: move.board, line });
-    else entries.delete(key);
-  }
-  return {
-    text: render(ws, gone, [...entries.values()], passed, words.join(" / ") || undefined),
-    count: entries.size,
-    upTo: ws.seq,
-    passed,
-  };
+  return { ws, entries: [...entries.values()], gone, passed, words };
+}
+
+type Added = Extract<Change, { kind: "added" }>;
+
+/** An element as an addition to tell: what it is and where it sits. */
+function asAdded(el: Pick<Element, "id" | "type" | "label" | "col" | "lane">): Added {
+  return { kind: "added", id: el.id, type: el.type, label: el.label, col: el.col, lane: el.lane };
 }
 
 function remember(origin: Map<string, Origin>, key: string, board: Board | undefined, el: Element): Origin {
@@ -312,15 +325,47 @@ function nextInLane(board: Board, el: Element): string | undefined {
   return lane[lane.indexOf(el) + 1]?.id;
 }
 
-function addedLine(
-  ws: Workspace,
-  boardId: string,
-  id: string,
-  type: string,
-  label: string,
-  col: number,
-  lane: string,
-): string {
+/** One change as a line for the reader; undefined for a move that ended where it started. */
+function word(ws: Workspace, boardId: string, change: Change): string | undefined {
+  switch (change.kind) {
+    case "board-created":
+      return `+ board created: ${quote(change.title)} (${change.format})`;
+    case "board-retitled":
+      return `~ board retitled ${quote(change.title)}`;
+    case "board-removed":
+      return "− board removed";
+    case "board-restored":
+      return "+ board restored";
+    case "added":
+      return `${addedLine(ws, boardId, change)}${change.restored ? " restored" : ""}`;
+    case "renamed":
+      return `~ ${change.id} renamed ${quote(change.from)} → ${quote(change.to)}`;
+    case "moved":
+      return movedLine(ws, boardId, change.id, change.from);
+    case "annotated":
+      return `~ ${change.id} detail: ${change.detail || "(cleared)"}`;
+    case "removed":
+      return `− ${change.id} ${change.type} ${quote(change.label)} removed`;
+    case "column-inserted":
+      return `+ empty column inserted at ${change.at} (columns from ${change.at} shifted right)`;
+    case "linked":
+      return `+ link ${change.src} -> ${change.dst}${change.label ? ` ${quote(change.label)}` : ""}`;
+    case "unlinked":
+      return `− link ${change.src} -> ${change.dst}`;
+    case "focused":
+      return `focus on ${change.ids.join(", ")}${change.reason ? `: ${change.reason}` : ""}`;
+    case "noted": {
+      const on = change.target ? ` on ${change.target}` : "";
+      return change.thread
+        ? `reply ${change.id} to ${change.thread}${on}: ${change.text}`
+        : `note ${change.id}${on}: ${change.text}`;
+    }
+    case "resolved":
+      return `✓ note ${change.id} resolved`;
+  }
+}
+
+function addedLine(ws: Workspace, boardId: string, { id, type, label, col, lane }: Added): string {
   const layout = findFormat(findBoard(ws, boardId)?.format ?? "")?.layout;
   const where = layout === "timeline" ? ` (col ${col})` : layout === "columns" ? ` (lane ${lane})` : "";
   return `+ ${id} ${type} ${quote(label)}${where}`;
@@ -343,19 +388,14 @@ function movedLine(ws: Workspace, boardId: string, id: string, from: Origin): st
     : `→ ${id} moved to the end of lane ${el.lane}`;
 }
 
-function render(
-  ws: Workspace,
-  gone: ReadonlyMap<string, string>,
-  entries: Entry[],
-  passed: boolean,
-  message: string | undefined,
-): string {
-  if (entries.length === 0 && !passed) return "";
+function render({ ws, gone, passed, words }: Net, told: { board: string; line: string }[]): string {
+  if (told.length === 0 && !passed) return "";
   const lines: string[] = [];
-  for (const board of new Set(entries.map((entry) => entry.board))) {
+  for (const board of new Set(told.map((entry) => entry.board))) {
     lines.push(`board ${board} ${quote(findBoard(ws, board)?.title ?? gone.get(board) ?? board)}`);
-    for (const entry of entries) if (entry.board === board) lines.push(`  ${entry.line}`);
+    for (const entry of told) if (entry.board === board) lines.push(`  ${entry.line}`);
   }
+  const message = words.join(" / ");
   if (passed)
     lines.push(message ? `The human passed you the turn: ${message}` : "The human passed you the turn.");
   return lines.join("\n");
