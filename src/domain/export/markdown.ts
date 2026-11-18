@@ -3,7 +3,7 @@
  * what is still open. Written to be committed next to the code it describes.
  */
 
-import { findFormat } from "../formats.ts";
+import { findFormat, laneName } from "../formats.ts";
 import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
 import { type Board, type Thread, threads } from "../workspace.ts";
 import { labelSaid, toMermaid } from "./mermaid.ts";
@@ -21,7 +21,7 @@ export function toMarkdown(board: Board, meta: ExportMeta): string {
   const locale = meta.locale ?? DEFAULT_LOCALE;
   const w = WORDS[locale];
   const typeLabel = (id: string): string => format?.types.find((t) => t.id === id)?.label[locale] ?? id;
-  const laneLabel = (id: string): string => format?.lanes.find((l) => l.id === id)?.label[locale] ?? id;
+  const laneLabel = (id: string): string => laneName(format, board, id, locale);
   const out: string[] = [`# ${board.title}`, ""];
 
   if (format) out.push(`> **${format.name[locale]}** — ${format.purpose[locale]}`, "");

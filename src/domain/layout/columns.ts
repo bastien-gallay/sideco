@@ -7,7 +7,7 @@
  * named beside it. The lanes and the order of their cards stay what they are.
  */
 
-import type { Format } from "../formats.ts";
+import { type Format, laneName } from "../formats.ts";
 import type { Locale } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
 import {
@@ -120,7 +120,7 @@ export function layoutColumns(
     bands.push({
       kind: "lane",
       id: lane.id,
-      label: said?.label[locale] ?? lane.id,
+      label: laneName(format, board, lane.id, locale),
       hint: said?.hint?.[locale],
       x: lane.x,
       y: lane.y,

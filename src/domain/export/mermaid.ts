@@ -3,7 +3,7 @@
  * Mermaid cannot say everything a board says; each export names what it drops in
  * a leading `%% lossy:` comment instead of dropping it silently.
  */
-import { type Format, findFormat } from "../formats.ts";
+import { type Format, findFormat, laneName } from "../formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
 
@@ -55,7 +55,7 @@ function kanban(board: Board, format: Format, locale: Locale): string {
   if (board.edges.length > 0) lines.push("%% lossy: links between cards are not kept");
   lines.push("kanban");
   for (const lane of format.lanes) {
-    lines.push(`  ${lane.id}[${plain(lane.label[locale])}]`);
+    lines.push(`  ${lane.id}[${plain(laneName(format, board, lane.id, locale))}]`);
     for (const e of board.elements)
       if (e.lane === lane.id) lines.push(`    ${e.id}[${plain(`${e.id} ${labelSaid(e)}`)}]`);
   }

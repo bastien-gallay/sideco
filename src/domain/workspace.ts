@@ -59,6 +59,8 @@ export interface Board {
   id: string;
   title: string;
   format: string;
+  /** The lanes this board calls its own way, by lane id; the others keep the name their workshop gives. */
+  lanes: Record<string, string>;
   /** In stacking order: within a cell, earlier elements sit first. */
   elements: Element[];
   edges: Edge[];
@@ -171,6 +173,7 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
       format: e.format,
       elements: [],
       edges: [],
+      lanes: {},
       notes: [],
       focus: null,
       turn: null,
@@ -207,6 +210,10 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
   switch (e.event) {
     case "BoardRetitled":
       board.title = e.title;
+      break;
+    case "LaneNamed":
+      if (e.label) board.lanes[e.lane] = e.label;
+      else delete board.lanes[e.lane];
       break;
     case "ElementAdded": {
       remember(board, e.id);

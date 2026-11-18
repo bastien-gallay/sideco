@@ -38,6 +38,8 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
   switch (e.event) {
     case "BoardRetitled":
       return [{ event: "BoardRetitled", board: b, title: board.title }];
+    case "LaneNamed":
+      return [{ event: "LaneNamed", board: b, lane: e.lane, label: board.lanes[e.lane] ?? "" }];
     case "BoardRemoved":
       return [{ event: "BoardRestored", board: b, title: board.title }];
     case "BoardRestored":
@@ -160,6 +162,8 @@ function writes(e: BoardEvent): string[] {
   switch (e.event) {
     case "BoardRetitled":
       return ["title"];
+    case "LaneNamed":
+      return [`lane:${e.lane}`];
     case "ElementRenamed":
       return [`${e.id}.label`];
     case "ElementAnnotated":

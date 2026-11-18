@@ -14,6 +14,7 @@ import type { Todo } from "./events.ts";
 export type Command =
   | { kind: "create-board"; board: string; title: string; format: string }
   | { kind: "retitle"; board: string; title: string }
+  | { kind: "name-lane"; board: string; lane: string; label: string }
   | { kind: "remove-board"; board: string }
   | {
       kind: "add";
@@ -121,6 +122,8 @@ export function parseCommand(input: unknown): Command {
       };
     case "retitle":
       return { kind, board: boardId(f), title: text(f, "title", LIMITS.title) };
+    case "name-lane":
+      return { kind, board: boardId(f), lane: text(f, "lane", 40), label: text(f, "label", LIMITS.title) };
     case "remove-board":
       return { kind, board: boardId(f) };
     case "add":

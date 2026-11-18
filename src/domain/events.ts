@@ -44,6 +44,8 @@ export type BoardEvent = Lineage & BoardFact;
 type BoardFact =
   | { event: "BoardCreated"; board: string; title: string; format: string }
   | { event: "BoardRetitled"; board: string; title: string }
+  /** The board calls a lane of its workshop its own way; an empty label gives the workshop's name back. */
+  | { event: "LaneNamed"; board: string; lane: string; label: string }
   /** The board leaves the workspace; the journal keeps its history. `title` is what it was called. */
   | { event: "BoardRemoved"; board: string; title: string }
   /** A removed board comes back as it was: only undoing its removal says this. */
@@ -123,6 +125,7 @@ export type Recorded = Envelope & VicoEvent;
 const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "BoardCreated",
   "BoardRetitled",
+  "LaneNamed",
   "BoardRemoved",
   "BoardRestored",
   "ElementAdded",

@@ -130,6 +130,10 @@ function english(e: Recorded): string {
       return `${does("create")} the board “${e.title}”`;
     case "BoardRetitled":
       return `${does("rename")} the board to “${e.title}”`;
+    case "LaneNamed":
+      return e.label
+        ? `${does("name")} the lane ${e.lane} “${e.label}”`
+        : `${does("give")} the lane ${e.lane} its workshop's name back`;
     case "BoardRemoved":
       return `${does("remove")} the board “${e.title}”`;
     case "BoardRestored":
@@ -201,6 +205,10 @@ function french(e: Recorded): string {
       return `${verb("crées", "crée")} le tableau « ${e.title} »`;
     case "BoardRetitled":
       return `${verb("renommes", "renomme")} le tableau en « ${e.title} »`;
+    case "LaneNamed":
+      return e.label
+        ? `${verb("nommes", "nomme")} la colonne ${e.lane} « ${e.label} »`
+        : `${verb("rends", "rend")} à la colonne ${e.lane} le nom de son atelier`;
     case "BoardRemoved":
       return `${verb("supprimes", "supprime")} le tableau « ${e.title} »`;
     case "BoardRestored":
@@ -488,8 +496,14 @@ export interface Waiting {
 }
 
 export function claudeWaits(ws: Workspace): Waiting | undefined {
+  // An answer ends every wait before it, wherever it was given: a turn handed back on any board, or words in the terminal.
+  const answered = Math.max(
+    0,
+    ...ws.boards.map((board) => (board.turn?.to === "agent" ? board.turn.seq : 0)),
+    ...ws.sessions.map((session) => session.turns.at(-1)?.startedSeq ?? 0),
+  );
   const handed = ws.boards
-    .filter((board) => board.turn?.to === "human")
+    .filter((board) => board.turn?.to === "human" && board.turn.seq > answered)
     .sort((a, b) => (b.turn?.seq ?? 0) - (a.turn?.seq ?? 0));
   const [latest] = handed;
   if (!latest) return undefined;

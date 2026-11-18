@@ -66,6 +66,13 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
     case "retitle":
       if (board.title === cmd.title) return unchanged();
       return { events: [{ event: "BoardRetitled", board: b, title: cmd.title }] };
+    case "name-lane": {
+      if (format.layout !== "columns")
+        throw new CommandError(`${format.name.en} boards have no lanes to name`);
+      const lane = requireLane(format, cmd.lane);
+      if ((board.lanes[lane] ?? "") === cmd.label) return unchanged();
+      return { events: [{ event: "LaneNamed", board: b, lane, label: cmd.label }] };
+    }
     case "remove-board":
       return { events: [{ event: "BoardRemoved", board: b, title: board.title }] };
     case "add":

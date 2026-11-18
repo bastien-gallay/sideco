@@ -120,6 +120,10 @@ export function boardAction(tokens: readonly string[], board: string | undefined
     }
     case "retitle":
       return { command: { kind: "retitle", board: target(), title: need(0, "a title") } };
+    case "lane":
+      return {
+        command: { kind: "name-lane", board: target(), lane: need(0, "a lane"), label: need(1, "a name") },
+      };
     case "add":
       return {
         command: {
@@ -210,6 +214,7 @@ export function boardAction(tokens: readonly string[], board: string | undefined
 export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "board",
   "retitle",
+  "lane",
   "add",
   "rename",
   "detail",

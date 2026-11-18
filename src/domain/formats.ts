@@ -3,7 +3,7 @@
  * board is laid out, and what to tell the agent about it. Adding a workshop means
  * adding an entry here, not writing a renderer.
  */
-import type { Text } from "./i18n.ts";
+import type { Locale, Text } from "./i18n.ts";
 
 /** How semantic positions become geometry. */
 export type LayoutKind =
@@ -360,6 +360,16 @@ export const NOTE_PREFIX = "N";
 
 export function findFormat(id: string): Format | undefined {
   return FORMATS.find((f) => f.id === id);
+}
+
+/** A lane's name on a board: the one the board gave it, else its workshop's in the reader's language. */
+export function laneName(
+  format: Format | undefined,
+  board: { lanes: Record<string, string> },
+  lane: string,
+  locale: Locale,
+): string {
+  return board.lanes[lane] ?? format?.lanes.find((l) => l.id === lane)?.label[locale] ?? lane;
 }
 
 export function findType(format: Format, typeId: string): ElementType | undefined {

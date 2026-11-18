@@ -21,6 +21,8 @@ export interface ModelElement {
 export interface Model {
   title: string;
   format: string;
+  /** The lanes the board calls its own way, by lane id. */
+  lanes?: Record<string, string>;
   elements: ModelElement[];
   edges: { src: string; dst: string; label?: string }[];
 }
@@ -33,6 +35,7 @@ export function toModel(board: Board): Model {
   return {
     title: board.title,
     format: board.format,
+    ...(Object.keys(board.lanes).length > 0 ? { lanes: { ...board.lanes } } : {}),
     elements: board.elements.map((e) => ({
       id: e.id,
       type: e.type,
@@ -65,6 +68,11 @@ export function fromModel(input: unknown, board: string): Command[] {
   const layout = format?.layout;
   const title = typeof model.title === "string" && model.title.trim() ? model.title : board;
   const commands: Command[] = [{ kind: "create-board", board, title, format: formatId }];
+  if (typeof model.lanes === "object" && model.lanes !== null) {
+    for (const [lane, label] of Object.entries(model.lanes)) {
+      if (typeof label === "string" && label) commands.push({ kind: "name-lane", board, lane, label });
+    }
+  }
 
   const elements = Array.isArray(model.elements) ? model.elements.map(readElement) : [];
   const idFor = idGiver(format, elements);

@@ -154,6 +154,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F26 | Insérer une colonne depuis la page : dans une frise, un « + » apparaît au survol de la frontière entre deux étapes, et les étapes suivantes se décalent (T41, S32) | ✅ ; ⚠️ ne s'annule pas encore, souris seulement |
 | F27 | Marquer une carte comme faite, depuis la page (barre de la carte, touche `d`) ou par Claude (`vico done`, `vico undone`) : coche et libellé barré, annulable, dit à l'agent, gardé par l'export en modèle (T27, S37) | ✅ ; ⚠️ les exports Markdown, Mermaid et HTML ne le montrent pas |
 | F28 | Impact / Effort en vrai plan 2 × 2 : les quatre couloirs deviennent quatre cases (impact fort en haut, effort faible à gauche), deux cartes de front par case, les deux axes nommés à côté ; les données ne changent pas (T47, S44) | ✅ ; ⚠️ pas de placement fin dans une case, et la grille n'est pas encore offerte aux autres ateliers |
+| F29 | Une colonne de kanban, de rétro ou d'Impact / Effort se renomme pour un tableau : `vico lane LANE "Nom"`. Le nom vaut pour ce tableau, dans toutes les langues et tous les exports ; il s'annule | Livré (commande) ; le geste dans la page reste à faire |
 
 ### 5.3 Exigences de qualité
 
@@ -219,7 +220,7 @@ Chaque ligne du journal porte `seq`, `ts`, `actor` (`human`, `agent`, `system`) 
 
 | Flux | Événements |
 | --- | --- |
-| Tableau | `BoardCreated`, `BoardRetitled`, `ElementAdded`, `ElementRenamed`, `ElementAnnotated`, `ElementMoved`, `ElementRemoved`, `ColumnInserted`, `EdgeAdded`, `EdgeRemoved`, `FocusSet`, `FocusCleared`, `NoteAdded`, `NoteResolved`, `TurnPassed` |
+| Tableau | `BoardCreated`, `BoardRetitled`, `LaneNamed`, `ElementAdded`, `ElementRenamed`, `ElementAnnotated`, `ElementMoved`, `ElementRemoved`, `ColumnInserted`, `EdgeAdded`, `EdgeRemoved`, `FocusSet`, `FocusCleared`, `NoteAdded`, `NoteResolved`, `TurnPassed` |
 | Session | `SessionStarted`, `PromptSubmitted`, `ToolStarted`, `ToolFinished`, `TodosUpdated`, `AgentNotified`, `TurnEnded`, `ChangesDelivered` |
 
 Une réponse est un `NoteAdded` qui porte `thread`, l'identifiant de la note qui a ouvert le fil ; sans ce champ, la note ouvre un fil. `NoteResolved` ferme le fil entier.

@@ -2,7 +2,7 @@
  * Board to one self-contained HTML file: the drawing as inline SVG, the facts as
  * tables, no script and no network. This is what `vico publish` serves.
  */
-import { findFormat } from "../formats.ts";
+import { findFormat, laneName } from "../formats.ts";
 import { DEFAULT_LOCALE, WORDS } from "../i18n.ts";
 import { layoutBoard } from "../layout/index.ts";
 import { esc, sceneToSvg } from "../render/svg.ts";
@@ -38,7 +38,7 @@ export function toHtml(board: Board, meta: ExportMeta): string {
   const type = (id: string) => format?.types.find((t) => t.id === id);
   const locale = meta.locale ?? DEFAULT_LOCALE;
   const w = WORDS[locale];
-  const lane = (id: string): string => format?.lanes.find((l) => l.id === id)?.label[locale] ?? id;
+  const lane = (id: string): string => laneName(format, board, id, locale);
   const where = layout === "timeline" ? w.step : layout === "columns" ? w.column : undefined;
 
   const rows = [...board.elements]
