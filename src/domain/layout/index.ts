@@ -4,7 +4,7 @@
  */
 import { type Format, findFormat, findType } from "../formats.ts";
 import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
-import type { Board, Element } from "../workspace.ts";
+import { type Board, type Element, threads } from "../workspace.ts";
 import { layoutColumns, locateInColumns } from "./columns.ts";
 import { layoutGraph, NODE_LINES } from "./graph.ts";
 import {
@@ -52,8 +52,9 @@ export function locate(board: Board, x: number, y: number, moving?: string): Tar
 
 function cardMaker(board: Board, format: Format, locale: Locale): (e: Element, x: number, y: number) => Card {
   const openNotes = new Map<string, number>();
-  for (const note of board.notes) {
-    if (note.target && !note.resolved) openNotes.set(note.target, (openNotes.get(note.target) ?? 0) + 1);
+  for (const thread of threads(board)) {
+    if (thread.target && !thread.resolved)
+      openNotes.set(thread.target, (openNotes.get(thread.target) ?? 0) + 1);
   }
   const maxLines = format.layout === "graph" ? NODE_LINES : WRAP_LINES;
   return (e, x, y) => {

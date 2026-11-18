@@ -219,6 +219,8 @@ test("a card carries what the painter needs: colours, author, detail and open no
   t.do({ kind: "note", board: "commande", text: "Qui ?", target: "P1" }, "human");
   t.do({ kind: "note", board: "commande", text: "Résolue", target: "P1" }, "human");
   t.script("resolve N2");
+  // A card counts its open discussions, not every message in them.
+  t.script('reply N1 "Toi"');
   t.do({ kind: "add", board: "commande", type: "hotspot", label: "Doute", col: 1 }, "human");
   const scene = layoutBoard(t.board());
   expect(card(scene, "P1")).toMatchObject({

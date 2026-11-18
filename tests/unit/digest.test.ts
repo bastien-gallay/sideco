@@ -11,6 +11,9 @@ describe("describeBoard", () => {
       .script('detail P1 "Règle de gestion n°4"')
       .script('focus H1 --why "à trancher"');
     t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
+    t.script('reply N1 "L\'entrepôt"');
+    t.do({ kind: "note", board: "commande", text: "Réglé", target: "E1" }, "human");
+    t.script("resolve N3");
     expect(describeBoard(t.board())).toBe(
       [
         `# commande — Passage de commande (event-storming, seq ${t.seq})`,
@@ -28,6 +31,7 @@ describe("describeBoard", () => {
         "  E1 -> P1",
         "open notes",
         "  N1 by human on P1: Qui réserve ?",
+        "    N2 by agent: L'entrepôt",
         "focus: H1 — à trancher",
       ].join("\n"),
     );
@@ -160,6 +164,29 @@ describe("describeChanges", () => {
       "  note N1 on P1: Qui réserve ?",
       "  focus on H1: on commence ici",
       "The human passed you the turn: à toi",
+    ]);
+  });
+
+  test("a reply names the note it answers and the card the thread is on", () => {
+    const t = table(ORDERING).script('note "Qui réserve ?" --on P1\nnote "Et le reste ?"');
+    const mark = t.seq;
+    human(t, 'reply N1 "L\'entrepôt"\nreply N2 "Plus tard"');
+    expect(changes(t, mark).split("\n")).toEqual([
+      'board commande "Passage de commande"',
+      "  reply N3 to N1 on P1: L'entrepôt",
+      "  reply N4 to N2: Plus tard",
+    ]);
+  });
+
+  test("a reply and the thread it closes are both told; a thread opened and closed unseen is not", () => {
+    const t = table(ORDERING).script('note "Qui réserve ?" --on P1');
+    const mark = t.seq;
+    human(t, 'reply N1 "L\'entrepôt"\nresolve N1');
+    human(t, 'note "Pour moi"\nreply N3 "Encore moi"\nresolve N3');
+    expect(changes(t, mark).split("\n")).toEqual([
+      'board commande "Passage de commande"',
+      "  reply N2 to N1 on P1: L'entrepôt",
+      "  ✓ note N1 resolved",
     ]);
   });
 

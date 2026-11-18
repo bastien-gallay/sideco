@@ -291,11 +291,9 @@ describe("the human edits, the agent is told", () => {
     await card("P1").click();
     await page.locator(".card-tools button", { hasText: "Note for Claude" }).click();
     await typeInEditor("L'entrepôt réserve, pas nous");
-    await page.locator(".notes .note-list li").waitFor();
+    await page.locator(".notes .thread").waitFor();
     expect(await page.locator(".notes h2").textContent()).toBe("Open notes (1)");
-    expect(await page.locator(".notes .note-list li").textContent()).toContain(
-      "L'entrepôt réserve, pas nous",
-    );
+    expect(await page.locator(".notes .thread").textContent()).toContain("L'entrepôt réserve, pas nous");
   });
 
   test("the keyboard does it too: select, link, delete", async () => {
@@ -599,6 +597,87 @@ describe("taking a gesture back", () => {
     expect(told).toContain('~ E1 renamed "Commande passée" → "Validée"');
     expect(told).not.toContain("removed");
     expect(told).not.toContain("restored");
+  });
+});
+
+describe("talking it through, note by note", () => {
+  const BOARD = "fil";
+  const thread = (id: string) => page.locator(`.notes .thread[data-thread="${id}"]`);
+  const said = (id: string) => thread(id).locator(".thread-notes > li");
+  const replyField = (id: string) => thread(id).locator(".thread-reply input");
+  const badge = (id: string) => card(id).locator(".card-notes text");
+
+  test("a note says which card it is about, who wrote it and who is waited for", async () => {
+    await agent(
+      `board new "Fil" --id ${BOARD}\nadd event "Commande passée" --col 1\nadd event "Stock réservé" --col 2\nnote "Qui réserve ?" --on E2\nnote "Et le reste ?"`,
+    );
+    await page.locator(".board-picker select").selectOption(BOARD);
+    await thread("N1").waitFor();
+    expect(await page.locator(".notes h2").textContent()).toBe("Open notes (2)");
+    expect(await thread("N1").locator(".thread-on").textContent()).toBe("E2 · Stock réservé");
+    expect(await thread("N2").locator(".thread-on").textContent()).toBe("Whole board");
+    expect(await said("N1").locator(".thread-author").textContent()).toBe("Claude");
+    // The id Claude uses in the terminal is on the message it names.
+    expect(await said("N1").locator(".thread-id").textContent()).toBe("N1");
+    expect(await said("N1").locator("p").textContent()).toBe("Qui réserve ?");
+    expect(await thread("N1").locator(".thread-waits").textContent()).toBe("Awaits your answer");
+    expect(await badge("E2").textContent()).toBe("1");
+  });
+
+  test("the human answers in the thread, and Claude is told which note the answer is to", async () => {
+    await replyField("N1").fill("L'entrepôt");
+    await replyField("N1").press("Enter");
+    await said("N1").nth(1).waitFor();
+    expect(await said("N1").nth(1).locator(".thread-author").textContent()).toBe("You");
+    expect(await said("N1").nth(1).locator("p").textContent()).toBe("L'entrepôt");
+    expect(await thread("N1").locator(".thread-waits").textContent()).toBe("Awaits Claude");
+    expect(await replyField("N1").inputValue()).toBe("");
+    // Still one discussion on the card, and two on the board.
+    expect(await badge("E2").textContent()).toBe("1");
+    expect(await page.locator(".notes h2").textContent()).toBe("Open notes (2)");
+    expect(await pending()).toContain("reply N3 to N1 on E2: L'entrepôt");
+  });
+
+  test("Claude's answer lands in the same thread, and a reply being typed elsewhere survives it", async () => {
+    await replyField("N2").fill("Brouillon en cours");
+    await agent('reply N1 "Toujours l\'entrepôt ?"', BOARD);
+    await said("N1").nth(2).waitFor();
+    expect(await said("N1").allTextContents()).toEqual([
+      "ClaudeN1Qui réserve ?",
+      "YouN3L'entrepôt",
+      "ClaudeN4Toujours l'entrepôt ?",
+    ]);
+    expect(await thread("N1").locator(".thread-waits").textContent()).toBe("Awaits your answer");
+    expect(await replyField("N2").inputValue()).toBe("Brouillon en cours");
+    expect(await replyField("N2").evaluate((field) => field === document.activeElement)).toBe(true);
+    await replyField("N2").fill("");
+  });
+
+  test("a card points to its discussions, and a discussion points back to its card", async () => {
+    const classes = async (locator: ReturnType<typeof card>): Promise<string[]> =>
+      ((await locator.getAttribute("class")) ?? "").split(" ");
+    await card("E2").click();
+    await until("the card's discussion is marked", async () =>
+      (await classes(thread("N1"))).includes("is-current"),
+    );
+    expect(await classes(thread("N2"))).not.toContain("is-current");
+    await shot("15-threads");
+
+    await page.keyboard.press("Escape");
+    await until("nothing is selected", async () => !(await classes(card("E2"))).includes("is-selected"));
+    await thread("N1").hover();
+    await until("the card is pointed at", async () => (await classes(card("E2"))).includes("is-pointed"));
+    await thread("N1").locator(".thread-on").click();
+    await until("the card is selected", async () => (await classes(card("E2"))).includes("is-selected"));
+    await page.keyboard.press("Escape");
+  });
+
+  test("resolving closes the whole thread", async () => {
+    await thread("N1").locator(".thread-resolve").click();
+    await thread("N1").waitFor({ state: "detached" });
+    await until("the card no longer counts it", async () => (await badge("E2").count()) === 0);
+    expect(await page.locator(".notes h2").textContent()).toBe("Open notes (1)");
+    expect(await pending()).toContain("✓ note N1 resolved");
   });
 });
 

@@ -233,6 +233,17 @@ describe("Claude Code hooks, through stdin as Claude Code calls them", () => {
     expect(output.hookSpecificOutput.additionalContext).toContain("Qui réserve ?");
   });
 
+  test("Claude answers a note in its thread, and reads the thread back", async () => {
+    const replied = await vico(["reply", "N1", "L'entrepôt", "--board", "passage-de-commande"]);
+    expect(replied.code).toBe(0);
+    expect(replied.out.trim()).toBe("N2");
+    const shown = await vico(["show", "passage-de-commande"]);
+    expect(shown.out).toContain("  N1 by human on P1: Qui réserve ?\n    N2 by agent: L'entrepôt");
+    const refused = await vico(["reply", "N9", "x", "--board", "passage-de-commande"]);
+    expect(refused.code).not.toBe(0);
+    expect(refused.err).toContain("no note N9");
+  });
+
   test("tool calls and the end of the turn land in the session, visible in status", async () => {
     await hook({
       hook_event_name: "PreToolUse",

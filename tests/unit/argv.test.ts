@@ -81,6 +81,7 @@ describe("boardAction", () => {
     ['focus E1 P1 --why "à revoir"', { kind: "focus", board: "b", ids: ["E1", "P1"], reason: "à revoir" }],
     ["focus", { kind: "focus", board: "b", ids: [] }],
     ['note "Qui ?" --on P1', { kind: "note", board: "b", text: "Qui ?", target: "P1" }],
+    ['reply N1 "L\'entrepôt"', { kind: "reply", board: "b", to: "N1", text: "L'entrepôt" }],
     ["resolve N1", { kind: "resolve", board: "b", id: "N1" }],
     ['pass "à toi"', { kind: "pass", board: "b", to: "human", message: "à toi" }],
     ["pass --to agent", { kind: "pass", board: "b", to: "agent" }],

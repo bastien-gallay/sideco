@@ -8,9 +8,12 @@ import type { Actor, Recorded } from "../domain/events.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
 import {
   type AgentStatus,
+  type Board,
   findBoard,
+  findElement,
   type Session,
   type SessionTurn,
+  threads,
   type Workspace,
 } from "../domain/workspace.ts";
 import { MESSAGES } from "./messages.ts";
@@ -116,8 +119,11 @@ function english(e: Recorded): string {
       return `${does("put")} the focus on ${e.ids.join(", ")}${e.reason ? `: ${e.reason}` : ""}`;
     case "FocusCleared":
       return `${does("clear")} the focus`;
-    case "NoteAdded":
-      return `${does("note")}${e.target ? ` on ${e.target}` : ""}: ${e.text}`;
+    case "NoteAdded": {
+      const on = e.target ? ` on ${e.target}` : "";
+      if (e.thread) return `${does("reply", "replies")} to ${e.thread}${on}: ${e.text}`;
+      return `${does("note")}${on}: ${e.text}`;
+    }
     case "NoteResolved":
       return `${does("resolve")} the note ${e.id}`;
     case "TurnPassed": {
@@ -180,8 +186,11 @@ function french(e: Recorded): string {
       return `${verb("mets", "met")} le focus sur ${e.ids.join(", ")}${e.reason ? ` : ${e.reason}` : ""}`;
     case "FocusCleared":
       return `${verb("retires", "retire")} le focus`;
-    case "NoteAdded":
-      return `${verb("notes", "note")}${e.target ? ` sur ${e.target}` : ""} : ${e.text}`;
+    case "NoteAdded": {
+      const on = e.target ? ` sur ${e.target}` : "";
+      if (e.thread) return `${verb("réponds", "répond")} à ${e.thread}${on} : ${e.text}`;
+      return `${verb("notes", "note")}${on} : ${e.text}`;
+    }
     case "NoteResolved":
       return `${verb("résous", "résout")} la note ${e.id}`;
     case "TurnPassed": {
@@ -243,4 +252,27 @@ export function redoTarget(
 ): string | undefined {
   const board = shown ? findBoard(ws, shown) : undefined;
   return board?.trails[by]?.redo.length ? board.id : undefined;
+}
+
+/** An open discussion, as the page shows it. */
+export interface Discussion {
+  /** The id of the note that opened it. */
+  id: string;
+  /** The card it is about; without a label, the card is gone. Undefined: the whole board. */
+  on: { id: string; label: string | undefined } | undefined;
+  /** Who is waited for: whoever did not speak last. */
+  waits: "you" | "claude";
+  notes: { id: string; by: Actor; text: string }[];
+}
+
+/** The board's open discussions, in the order they were opened. */
+export function discussions(board: Board): Discussion[] {
+  return threads(board)
+    .filter((thread) => !thread.resolved)
+    .map((thread) => ({
+      id: thread.id,
+      on: thread.target ? { id: thread.target, label: findElement(board, thread.target)?.label } : undefined,
+      waits: thread.notes.at(-1)?.by === "human" ? "claude" : "you",
+      notes: thread.notes.map(({ id, by, text }) => ({ id, by, text })),
+    }));
 }

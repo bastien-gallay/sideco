@@ -33,6 +33,9 @@ export type Command =
   | { kind: "unlink"; board: string; src: string; dst: string }
   | { kind: "focus"; board: string; ids: string[]; reason?: string }
   | { kind: "note"; board: string; text: string; target?: string }
+  /** Answers a note, in its thread. */
+  | { kind: "reply"; board: string; to: string; text: string }
+  /** Closes the thread the note belongs to. */
   | { kind: "resolve"; board: string; id: string }
   | { kind: "pass"; board: string; to: "agent" | "human"; message?: string }
   /** Takes back the caller's last gesture on the board; the board may be one they just removed. */
@@ -164,6 +167,8 @@ export function parseCommand(input: unknown): Command {
         text: text(f, "text", LIMITS.note),
         target: optional(f, "target", elementId),
       };
+    case "reply":
+      return { kind, board: boardId(f), to: elementId(f, "to"), text: text(f, "text", LIMITS.note) };
     case "resolve":
       return { kind, board: boardId(f), id: elementId(f, "id") };
     case "pass":

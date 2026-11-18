@@ -6,7 +6,7 @@ import { findFormat } from "../formats.ts";
 import { DEFAULT_LOCALE, WORDS } from "../i18n.ts";
 import { layoutBoard } from "../layout/index.ts";
 import { esc, sceneToSvg } from "../render/svg.ts";
-import type { Board } from "../workspace.ts";
+import { type Board, threads } from "../workspace.ts";
 import type { ExportMeta } from "./markdown.ts";
 
 export const PAGE_STYLE = `
@@ -61,12 +61,16 @@ export function toHtml(board: Board, meta: ExportMeta): string {
     )
     .join("\n");
 
-  const open = board.notes.filter((n) => !n.resolved);
-  const notes = open
-    .map(
-      (n) =>
-        `<li>❓ <strong>${esc(n.id)}</strong>${n.target ? ` (${esc(w.on(n.target))})` : ""}, ${w.who[n.by]}${w.colon} ${esc(n.text)}</li>`,
-    )
+  const notes = threads(board)
+    .filter((thread) => !thread.resolved)
+    .map((thread) => {
+      const [first, ...replies] = thread.notes.map((n, index) => {
+        const on = index === 0 && n.target ? ` (${esc(w.on(n.target))})` : "";
+        return `<strong>${esc(n.id)}</strong>${on}, ${w.who[n.by]}${w.colon} ${esc(n.text)}`;
+      });
+      const answers = replies.map((reply) => `<li>${reply}</li>`).join("");
+      return `<li>❓ ${first}${answers ? `<ul>${answers}</ul>` : ""}</li>`;
+    })
     .join("\n");
 
   return `<!doctype html>

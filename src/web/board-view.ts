@@ -24,6 +24,10 @@ export interface BoardView {
   /** Opens the label editor for a new element of this type. */
   beginAdd(typeId: string, place?: { col?: number; lane?: string; x: number; y: number }): void;
   zoomBy(step: -1 | 1): number;
+  /** Marks one card as the one being talked about, without selecting it; no id clears the mark. */
+  point(id: string | undefined): void;
+  /** Scrolls the board so that the card is in view. */
+  reveal(id: string): void;
 }
 
 export function mountBoard(host: HTMLElement): BoardView {
@@ -468,6 +472,12 @@ export function mountBoard(host: HTMLElement): BoardView {
   return {
     paint,
     beginAdd,
+    point(id) {
+      for (const [cardId, node] of nodes) node.g.classList.toggle("is-pointed", cardId === id);
+    },
+    reveal(id) {
+      nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" });
+    },
     zoomBy(step) {
       const index = Math.min(ZOOMS.length - 1, Math.max(0, ZOOMS.indexOf(zoom) + step));
       zoom = ZOOMS[index] ?? 1;

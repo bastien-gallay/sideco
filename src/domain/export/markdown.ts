@@ -5,7 +5,7 @@
 
 import { findFormat } from "../formats.ts";
 import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
-import type { Board } from "../workspace.ts";
+import { type Board, type Thread, threads } from "../workspace.ts";
 import { toMermaid } from "./mermaid.ts";
 
 export interface ExportMeta {
@@ -48,24 +48,32 @@ export function toMarkdown(board: Board, meta: ExportMeta): string {
     out.push("");
   }
 
-  const open = board.notes.filter((n) => !n.resolved);
-  const settled = board.notes.filter((n) => n.resolved);
-  if (open.length > 0) {
-    out.push(`## ${w.openQuestions}`, "");
-    for (const n of open)
-      out.push(
-        `- ❓ ${n.id}${n.target ? ` (${w.on(n.target)})` : ""}, ${w.who[n.by]}${w.colon} ${inline(n.text)}`,
-      );
+  const all = threads(board);
+  const discussions = (title: string, mark: string, list: Thread[]): void => {
+    if (list.length === 0) return;
+    out.push(`## ${title}`, "");
+    for (const thread of list) {
+      thread.notes.forEach((n, index) => {
+        const said = `${w.who[n.by]}${w.colon} ${inline(n.text)}`;
+        out.push(
+          index === 0
+            ? `- ${mark} ${n.id}${n.target ? ` (${w.on(n.target)})` : ""}, ${said}`
+            : `  - ${n.id}, ${said}`,
+        );
+      });
+    }
     out.push("");
-  }
-  if (settled.length > 0) {
-    out.push(`## ${w.resolvedNotes}`, "");
-    for (const n of settled)
-      out.push(
-        `- ✅ ${n.id}${n.target ? ` (${w.on(n.target)})` : ""}, ${w.who[n.by]}${w.colon} ${inline(n.text)}`,
-      );
-    out.push("");
-  }
+  };
+  discussions(
+    w.openQuestions,
+    "❓",
+    all.filter((thread) => !thread.resolved),
+  );
+  discussions(
+    w.resolvedNotes,
+    "✅",
+    all.filter((thread) => thread.resolved),
+  );
   return `${out.join("\n").trimEnd()}\n`;
 }
 

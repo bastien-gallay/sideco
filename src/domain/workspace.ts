@@ -30,10 +30,21 @@ export interface Edge {
 export interface Note {
   id: string;
   text: string;
+  /** The element the discussion is about; a reply carries the one of its thread. */
   target?: string;
+  /** The note that opened the discussion this one answers. */
+  thread?: string;
   by: Actor;
   seq: number;
   resolved: boolean;
+}
+
+/** A discussion: the note that opened it, then its replies, in order. Its id is the opening note's. */
+export interface Thread {
+  id: string;
+  target?: string;
+  resolved: boolean;
+  notes: Note[];
 }
 
 export interface Turn {
@@ -283,14 +294,14 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
         id: e.id,
         text: e.text,
         target: e.target,
+        thread: e.thread,
         by: e.actor,
         seq: e.seq,
         resolved: false,
       });
       break;
     case "NoteResolved": {
-      const note = board.notes.find((n) => n.id === e.id);
-      if (note) note.resolved = true;
+      for (const note of board.notes) if (threadOf(note) === e.id) note.resolved = true;
       break;
     }
     case "TurnPassed":
@@ -389,4 +400,20 @@ function openTurn(session: Session, e: Recorded): SessionTurn {
 function setStatus(session: Session, status: AgentStatus, detail?: string): void {
   session.status = status;
   session.statusDetail = detail;
+}
+
+/** The id of the discussion a note belongs to. */
+export function threadOf(note: Note): string {
+  return note.thread ?? note.id;
+}
+
+/** The board's notes as discussions, in the order they were opened. */
+export function threads(board: Board): Thread[] {
+  const byId = new Map<string, Thread>();
+  for (const note of board.notes) {
+    const thread = byId.get(threadOf(note));
+    if (thread) thread.notes.push(note);
+    else byId.set(note.id, { id: note.id, target: note.target, resolved: note.resolved, notes: [note] });
+  }
+  return [...byId.values()];
 }

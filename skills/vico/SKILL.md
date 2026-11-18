@@ -63,7 +63,14 @@ vico wait
   in the detail: `vico detail E1 "…"`.
 - **One question at a time.** A hand-over carries a single question; a
   `hotspot` or a note marks the others.
-- **Answer the user's notes**, then close them: `vico resolve N1`.
+- **Answer a note in its thread**: `vico reply N1 "…"`. Never answer by
+  opening a new note, or only by editing a card: the user could not tell
+  what your answer is to. If the answer changed the board, say what changed
+  in the reply. In `vico changes`, `reply N7 to N1 on S3: …` is the user's
+  answer to note N1; `vico show` lists each thread with its replies.
+- **Close a thread when it is settled**: `vico resolve N1` closes the whole
+  thread. Close yours once the user has answered and you have acted on it;
+  leave the user's own notes for them to close, unless they say otherwise.
 - **Write in the user's language** on the board.
 - **Never touch the files under `.vico/`.** The journal is the history: do
   not edit, move or delete it. To clear the table, remove boards with
@@ -97,7 +104,8 @@ vico move ID --col N | --lane L [--before ID]
 vico rm ID                        vico insert-col N
 vico link SRC DST ["label"]       vico unlink SRC DST
 vico focus [ID…] [--why "…"]      (no id clears the focus)
-vico note "Text" [--on ID]        vico resolve N1
+vico note "Text" [--on ID]        (opens a thread, on the board or on one element)
+vico reply N1 "Text"              vico resolve N1    (answer in a thread; close it)
 vico apply [FILE]                 (a batch of the lines above, stdin by default)
 vico changes                      vico pass ["question"]      vico wait
 vico export [BOARD] --format md|html|svg|mermaid|json [-o FILE]

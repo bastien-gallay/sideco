@@ -90,6 +90,7 @@ Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit
 | Double-cliquer une carte | La renomme |
 | Glisser une carte | La change d'étape ou de colonne ; la position reste sémantique, jamais en pixels |
 | Sélectionner une carte | Barre d'actions : renommer, détail, relier, note pour Claude, supprimer |
+| Notes, à gauche | Chaque note ouvre un fil : la carte concernée en tête, les messages dans l'ordre avec leur auteur et leur identifiant, un champ pour répondre, et qui est attendu. Cliquer l'en-tête du fil montre la carte ; sélectionner une carte encadre ses fils. `Resolve` ferme le fil entier |
 | Curseur d'historique, en bas | Remonte le temps, en lecture seule ; `Back to live` y revient |
 | `Undo` / `Redo`, ou `⌘Z` / `⇧⌘Z` (`Ctrl+Z` / `Ctrl+Shift+Z`) | Annule ou rétablit ton dernier geste sur le tableau affiché : ajout, renommage, détail, déplacement, suppression, lien. Jamais un geste de Claude, ni un geste que Claude a modifié depuis |
 | `Remove`, à côté du choix du tableau | Supprime le tableau affiché, après confirmation ; `Undo` le fait revenir entier |

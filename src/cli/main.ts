@@ -63,7 +63,9 @@ Model (BOARD defaults to the only board, or --board ID, or $VICO_BOARD)
   vico rm ID                        vico insert-col N
   vico link SRC DST ["label"]       vico unlink SRC DST
   vico focus [ID…] [--why "…"]      no id clears the focus
-  vico note "Text" [--on ID]        vico resolve N1
+  vico note "Text" [--on ID]        open a discussion, on the board or on one element
+  vico reply N1 "Text"              answer in the thread of a note
+  vico resolve N1                   close the thread
   vico apply [FILE]                 run a batch of the commands above, all or nothing (stdin by default)
 
 Work with the human

@@ -452,23 +452,106 @@ input[type="text"] {
   margin-top: 8px;
 }
 
-.note-list li {
+/* One discussion: the card it is about, what was said in order, where to answer. */
+.thread {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
   padding: 8px 10px;
   border: 1px solid var(--rule);
   border-radius: 6px;
   background: var(--bg);
 }
 
-.note-target {
+/* The discussions of the selected card answer the card's own outline. */
+.thread.is-current {
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 1px var(--accent-text);
+}
+
+.thread-on {
+  overflow: hidden;
   padding: 0;
   border: none;
   background: none;
-  color: var(--muted);
+  color: var(--accent-text);
   font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.note-target:disabled {
+.thread-on:disabled {
+  color: var(--muted);
   opacity: 1;
+}
+
+.thread-notes {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thread-notes li {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+
+/* Your own words sit to the right, as in any conversation. */
+.thread-notes li.by-human {
+  margin-left: 16px;
+  background: var(--vico-lane);
+}
+
+.thread-notes li.by-agent {
+  margin-right: 16px;
+}
+
+.thread-author,
+.thread-id {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.thread-author {
+  font-weight: 600;
+}
+
+.thread-id {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.thread-reply {
+  display: flex;
+  gap: 4px;
+}
+
+.thread-reply input {
+  flex: 1;
+  min-width: 0;
+}
+
+.thread-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.thread-waits {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.thread-waits.waits-you {
+  color: var(--warn);
+  font-weight: 600;
 }
 
 .note-form {
@@ -562,6 +645,13 @@ input[type="text"] {
 .card.is-selected .card-shape {
   stroke: var(--accent-text);
   stroke-width: 3;
+}
+
+/* The card a discussion is about, while the reader is on that discussion. */
+.card.is-pointed .card-shape {
+  stroke: var(--accent-text);
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
 }
 
 .card.is-link-source .card-shape {

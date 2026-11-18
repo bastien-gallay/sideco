@@ -150,6 +150,7 @@ describe("markdown", () => {
   t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
   t.do({ kind: "note", board: "commande", text: "Vu", target: "E1" }, "human");
   t.script("resolve N2");
+  t.script('reply N1 "L\'entrepôt"');
   const md = toMarkdown(t.board(), META);
 
   test("is a design note: title, workshop, diagram, source, tables, open questions", () => {
@@ -161,7 +162,9 @@ describe("markdown", () => {
     expect(md).toContain("| Id | Type | Label | Step | Detail | By |");
     expect(md).toContain("| E1 | Event | Commande passée | 1 |  | agent |");
     expect(md).toContain("## Links\n\n| From | To | Label |");
-    expect(md).toContain("## Open questions\n\n- ❓ N1 (on P1), human: Qui réserve ?");
+    expect(md).toContain(
+      "## Open questions\n\n- ❓ N1 (on P1), human: Qui réserve ?\n  - N3, agent: L'entrepôt\n",
+    );
     expect(md).toContain("## Resolved notes\n\n- ✅ N2 (on E1), human: Vu");
   });
 
@@ -172,7 +175,9 @@ describe("markdown", () => {
     expect(fr).toContain("| Id | Type | Libellé | Étape | Détail | Par |");
     expect(fr).toContain("| E1 | Événement | Commande passée | 1 |  | agent |");
     expect(fr).toContain("## Liens\n\n| De | Vers | Libellé |");
-    expect(fr).toContain("## Questions ouvertes\n\n- ❓ N1 (sur P1), humain : Qui réserve ?");
+    expect(fr).toContain(
+      "## Questions ouvertes\n\n- ❓ N1 (sur P1), humain : Qui réserve ?\n  - N3, agent : L'entrepôt\n",
+    );
     expect(fr).toContain("## Notes résolues\n\n- ✅ N2 (sur E1), humain : Vu");
   });
 

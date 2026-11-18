@@ -28,7 +28,9 @@ import {
 } from "./store.ts";
 import {
   agentStatus,
+  type Discussion,
   describeEvent,
+  discussions,
   handOverHint,
   pendingCount,
   recentTurns,
@@ -295,58 +297,38 @@ const paintPalette = region(palette, (m: PaletteModel) => {
 interface NotesModel {
   board: string | undefined;
   live: boolean;
-  notes: { id: string; text: string; target?: string; by: string }[];
+  /** The selected card: its discussions stand out. */
+  selected: string | null;
+  threads: Discussion[];
 }
 
-const paintNotes = region(notes, (m: NotesModel) => {
+/** Replies being typed, per discussion: they survive a repaint, such as Claude answering meanwhile. */
+const drafts = new Map<string, string>();
+const draftKey = (board: string, thread: string): string => `${board}/${thread}`;
+
+const paintThreads = region(notes, (m: NotesModel) => {
   if (!m.board) return [];
   const boardId = m.board;
+  const key = draftKey(boardId, "new");
   const input = h("input", {
     type: "text",
     name: "note",
     placeholder: t.notePlaceholder,
     "aria-label": t.newNote,
     maxlength: 1000,
+    value: drafts.get(key) ?? "",
+    oninput: () => drafts.set(key, input.value),
   });
   const add = (event: Event): void => {
     event.preventDefault();
     const text = input.value.trim();
     if (text) void send({ kind: "note", board: boardId, text });
     input.value = "";
+    drafts.delete(key);
   };
   return [
-    h("h2", {}, m.notes.length > 0 ? t.openNotes(m.notes.length) : t.notes),
-    h(
-      "ul",
-      { class: "note-list" },
-      ...m.notes.map((note) =>
-        h(
-          "li",
-          {},
-          h(
-            "button",
-            {
-              type: "button",
-              class: "note-target",
-              disabled: !note.target,
-              onclick: () => select(note.target),
-            },
-            t.noteOrigin(note.id, note.target, note.by === "agent"),
-          ),
-          h("p", {}, note.text),
-          m.live &&
-            h(
-              "button",
-              {
-                type: "button",
-                class: "quiet",
-                onclick: () => void send({ kind: "resolve", board: boardId, id: note.id }),
-              },
-              t.resolve,
-            ),
-        ),
-      ),
-    ),
+    h("h2", {}, m.threads.length > 0 ? t.openNotes(m.threads.length) : t.notes),
+    h("ul", { class: "note-list" }, ...m.threads.map((thread) => threadItem(boardId, thread, m))),
     m.live &&
       h(
         "form",
@@ -356,6 +338,105 @@ const paintNotes = region(notes, (m: NotesModel) => {
       ),
   ];
 });
+
+function threadItem(boardId: string, thread: Discussion, m: NotesModel): HTMLElement {
+  const on = thread.on;
+  const key = draftKey(boardId, thread.id);
+  const field = h("input", {
+    type: "text",
+    name: `reply-${thread.id}`,
+    placeholder: t.replyPlaceholder,
+    "aria-label": t.replyTo(thread.id),
+    maxlength: 1000,
+    value: drafts.get(key) ?? "",
+    oninput: () => drafts.set(key, field.value),
+  });
+  const reply = (event: Event): void => {
+    event.preventDefault();
+    const text = field.value.trim();
+    if (text) void send({ kind: "reply", board: boardId, to: thread.id, text });
+    field.value = "";
+    drafts.delete(key);
+  };
+  return h(
+    "li",
+    {
+      class: on && on.id === m.selected ? "thread is-current" : "thread",
+      "data-thread": thread.id,
+      onmouseenter: () => view.point(on?.id),
+      onmouseleave: () => view.point(undefined),
+      onfocusin: () => view.point(on?.id),
+      onfocusout: () => view.point(undefined),
+    },
+    h(
+      "button",
+      {
+        type: "button",
+        class: "thread-on",
+        disabled: on?.label === undefined,
+        title: on?.label === undefined ? undefined : t.showCard(on.id),
+        onclick: () => select(on?.id),
+      },
+      on ? (on.label === undefined ? t.cardGone(on.id) : `${on.id} · ${on.label}`) : t.wholeBoard,
+    ),
+    h(
+      "ol",
+      { class: "thread-notes" },
+      ...thread.notes.map((note) =>
+        h(
+          "li",
+          { class: `by-${note.by}`, "data-note": note.id },
+          h("span", { class: "thread-author" }, t.author[note.by]),
+          h("span", { class: "thread-id" }, note.id),
+          h("p", {}, note.text),
+        ),
+      ),
+    ),
+    m.live &&
+      h(
+        "form",
+        { class: "thread-reply", onsubmit: reply },
+        field,
+        h("button", { type: "submit", class: "quiet" }, t.reply),
+      ),
+    h(
+      "div",
+      { class: "thread-foot" },
+      h("span", { class: `thread-waits waits-${thread.waits}` }, t.waits[thread.waits]),
+      m.live &&
+        h(
+          "button",
+          {
+            type: "button",
+            class: "quiet thread-resolve",
+            onclick: () => void send({ kind: "resolve", board: boardId, id: thread.id }),
+          },
+          t.resolve,
+        ),
+    ),
+  );
+}
+
+/** Repaints the discussions without taking the keyboard from a reply being typed. */
+function paintNotes(model: NotesModel): void {
+  const active = document.activeElement;
+  const typing = active instanceof HTMLInputElement && notes.contains(active) ? active : undefined;
+  paintThreads(model);
+  if (!typing || typing.isConnected) return;
+  const again = notes.querySelector<HTMLInputElement>(`input[name="${typing.name}"]`);
+  if (!again) return;
+  again.value = typing.value;
+  again.focus();
+  again.setSelectionRange(typing.selectionStart, typing.selectionEnd);
+}
+
+/** Brings the selected card's first discussion into view, once per selection. */
+let shownFor: string | null = null;
+function revealThreads(selected: string | null): void {
+  if (selected === shownFor) return;
+  shownFor = selected;
+  notes.querySelector(".thread.is-current")?.scrollIntoView({ block: "nearest" });
+}
 
 const paintFocus = region(
   focusBar,
@@ -499,6 +580,7 @@ function select(id: string | undefined): void {
   if (!id) return;
   state.selected = id;
   changed();
+  view.reveal(id);
 }
 
 function exportAs(format: ExportFormat): void {
@@ -693,10 +775,10 @@ function render(): void {
   paintNotes({
     board: board?.id,
     live,
-    notes: (board?.notes ?? [])
-      .filter((n) => !n.resolved)
-      .map((n) => ({ id: n.id, text: n.text, target: n.target, by: n.by })),
+    selected: state.selected,
+    threads: board ? discussions(board) : [],
   });
+  revealThreads(state.selected);
 
   focusBar.hidden = !board?.focus;
   if (board?.focus) paintFocus({ ids: board.focus.ids, reason: board.focus.reason, live, board: board.id });

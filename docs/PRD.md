@@ -20,6 +20,7 @@ Rédigé le 2026-11-17. Niveau de preuve : ✅ lu sur une source primaire, ⚠�
 | D10 | Publication | − service hébergé | + site statique généré, servi en local ou ailleurs |
 | D11 | Langue | − interface en français seulement ; − langue inscrite dans le journal | + anglais par défaut, français au choix du lecteur ; l'agent lit toujours de l'anglais |
 | D12 | Annulation | − pile gardée par la page, perdue au rechargement ; − réécrire ou tronquer le journal | + événements inverses ajoutés au journal, marqués du geste qu'ils annulent ; une piste par auteur, projetée comme le reste ; une annulation n'écrase jamais un changement ultérieur de l'autre auteur : aujourd'hui le geste quitte la piste sans le dire ; cible décidée le 2026-11-18 : aucune surprise, demander confirmation (B8) |
+| D13 | Notes | − notes isolées : une réponse est une autre note, ou une édition de carte, sans lien avec la question | + fils de discussion : une réponse rejoint le fil de la note qu'elle suit (`thread`), à plat ; le fil porte la carte concernée ; résoudre ferme le fil entier |
 
 ## 1. Problème et public
 
@@ -143,6 +144,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F16 | Plusieurs humains ou plusieurs agents sur un même tableau | ❌ plus tard |
 | F17 | Page, dessin et exports en anglais par défaut, en français au choix du lecteur (sélecteur de la page, `--lang`, `VICO_LANG`) ; le texte lu par l'agent reste en anglais | ✅ |
 | F18 | Annuler et rétablir ses propres gestes dans la page (`Undo`, `Redo`, raccourcis), tableau supprimé compris ; l'agent n'est informé que du résultat net | ✅ |
+| F19 | Discuter par notes : répondre dans le fil d'une note, depuis la page ou par `vico reply` ; chaque fil nomme sa carte, la carte montre ses fils, et le fil dit qui est attendu | ✅ |
 
 ### 5.3 Exigences de qualité
 
@@ -210,6 +212,8 @@ Chaque ligne du journal porte `seq`, `ts`, `actor` (`human`, `agent`, `system`) 
 | --- | --- |
 | Tableau | `BoardCreated`, `BoardRetitled`, `ElementAdded`, `ElementRenamed`, `ElementAnnotated`, `ElementMoved`, `ElementRemoved`, `ColumnInserted`, `EdgeAdded`, `EdgeRemoved`, `FocusSet`, `FocusCleared`, `NoteAdded`, `NoteResolved`, `TurnPassed` |
 | Session | `SessionStarted`, `PromptSubmitted`, `ToolStarted`, `ToolFinished`, `TodosUpdated`, `AgentNotified`, `TurnEnded`, `ChangesDelivered` |
+
+Une réponse est un `NoteAdded` qui porte `thread`, l'identifiant de la note qui a ouvert le fil ; sans ce champ, la note ouvre un fil. `NoteResolved` ferme le fil entier.
 
 Évolution du schéma par ajout seulement : un lecteur ignore ce qu'il ne connaît pas, et un renommage passe par un point unique (`upcast`). Les commandes, elles, forment un ensemble fermé, validé à la frontière.
 

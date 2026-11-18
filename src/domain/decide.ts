@@ -12,6 +12,8 @@ import {
   findElement,
   findSession,
   lastColumn,
+  type Note,
+  threadOf,
   type Workspace,
 } from "./workspace.ts";
 
@@ -106,10 +108,20 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
         minted: id,
       };
     }
+    case "reply": {
+      const note = requireNote(board, cmd.to);
+      if (note.resolved) throw new CommandError(`note ${threadOf(note)} is resolved: open a new note`);
+      const id = mint(board, NOTE_PREFIX);
+      return {
+        events: [
+          { event: "NoteAdded", board: b, id, text: cmd.text, target: note.target, thread: threadOf(note) },
+        ],
+        minted: id,
+      };
+    }
     case "resolve": {
-      const note = board.notes.find((n) => n.id === cmd.id);
-      if (!note) throw new CommandError(`no note ${cmd.id} on "${b}"`);
-      return { events: note.resolved ? [] : [{ event: "NoteResolved", board: b, id: cmd.id }] };
+      const note = requireNote(board, cmd.id);
+      return { events: note.resolved ? [] : [{ event: "NoteResolved", board: b, id: threadOf(note) }] };
     }
     case "pass":
       return { events: [{ event: "TurnPassed", board: b, to: cmd.to, message: cmd.message }] };
@@ -221,6 +233,12 @@ function requireElement(board: Board, id: string): Element {
   const el = findElement(board, id);
   if (!el) throw new CommandError(`no element ${id} on "${board.id}"`);
   return el;
+}
+
+function requireNote(board: Board, id: string): Note {
+  const note = board.notes.find((n) => n.id === id);
+  if (!note) throw new CommandError(`no note ${id} on "${board.id}"`);
+  return note;
 }
 
 function requireLane(format: Format, lane: string): string {

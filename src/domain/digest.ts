@@ -17,6 +17,7 @@ import {
   emptyWorkspace,
   findBoard,
   findElement,
+  threads,
   type Workspace,
 } from "./workspace.ts";
 
@@ -53,10 +54,15 @@ export function describeBoard(board: Board): string {
     for (const edge of board.edges)
       lines.push(`  ${edge.src} -> ${edge.dst}${edge.label ? ` ${quote(edge.label)}` : ""}`);
   }
-  const open = board.notes.filter((n) => !n.resolved);
+  const open = threads(board).filter((thread) => !thread.resolved);
   if (open.length > 0) {
     lines.push("open notes");
-    for (const n of open) lines.push(`  ${n.id} by ${n.by}${n.target ? ` on ${n.target}` : ""}: ${n.text}`);
+    for (const thread of open) {
+      const [first, ...replies] = thread.notes;
+      if (!first) continue;
+      lines.push(`  ${first.id} by ${first.by}${first.target ? ` on ${first.target}` : ""}: ${first.text}`);
+      for (const reply of replies) lines.push(`    ${reply.id} by ${reply.by}: ${reply.text}`);
+    }
   }
   if (board.focus)
     lines.push(`focus: ${board.focus.ids.join(", ")}${board.focus.reason ? ` — ${board.focus.reason}` : ""}`);
@@ -106,6 +112,8 @@ interface Origin {
 export function describeChanges(events: readonly Recorded[], after: number, by: Actor = "human"): Changes {
   const ws = emptyWorkspace();
   const entries = new Map<string, Entry>();
+  /** Per thread, the replies told in this span. */
+  const replies = new Map<string, string[]>();
   const added = new Set<string>();
   const origin = new Map<string, Origin>();
   /** Moves are worded at the end, against the final board: a later change can undo them. */
@@ -247,11 +255,19 @@ export function describeChanges(events: readonly Recorded[], after: number, by: 
         case "FocusCleared":
           entries.delete(k("focus", ""));
           break;
-        case "NoteAdded":
-          put("note", e.id, `note ${e.id}${e.target ? ` on ${e.target}` : ""}: ${e.text}`);
+        case "NoteAdded": {
+          const on = e.target ? ` on ${e.target}` : "";
+          if (e.thread) {
+            put("note", e.id, `reply ${e.id} to ${e.thread}${on}: ${e.text}`);
+            replies.set(k("thread", e.thread), [...(replies.get(k("thread", e.thread)) ?? []), e.id]);
+          } else put("note", e.id, `note ${e.id}${on}: ${e.text}`);
           break;
+        }
         case "NoteResolved":
-          if (!entries.delete(k("note", e.id))) put("resolve", e.id, `✓ note ${e.id} resolved`);
+          // A thread opened and closed before the reader looked never existed for them, replies included.
+          if (entries.delete(k("note", e.id))) {
+            for (const reply of replies.get(k("thread", e.id)) ?? []) entries.delete(k("note", reply));
+          } else put("resolve", e.id, `✓ note ${e.id} resolved`);
           break;
         case "TurnPassed":
           if (e.to === "agent") {

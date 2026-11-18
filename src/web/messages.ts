@@ -2,6 +2,7 @@
  * Everything the page says, in each language. No DOM here: the wording is data,
  * tested like any other rule. A text that takes a value is a function of it.
  */
+import type { Actor } from "../domain/events.ts";
 import type { ExportFormat } from "../domain/export/index.ts";
 import { asLocale, DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
 
@@ -56,7 +57,14 @@ export interface Messages {
   // Notes and focus.
   notes: string;
   openNotes: (count: number) => string;
-  noteOrigin: (id: string, target: string | undefined, byAgent: boolean) => string;
+  wholeBoard: string;
+  cardGone: (id: string) => string;
+  author: Record<Actor, string>;
+  waits: Record<"you" | "claude", string>;
+  replyTo: (id: string) => string;
+  showCard: (id: string) => string;
+  replyPlaceholder: string;
+  reply: string;
   notePlaceholder: string;
   newNote: string;
   addNote: string;
@@ -178,8 +186,14 @@ const en: Messages = {
 
   notes: "Notes",
   openNotes: (count) => `Open notes (${count})`,
-  noteOrigin: (id, target, byAgent) =>
-    `${id}${target ? ` on ${target}` : ""} · ${byAgent ? "Claude" : "you"}`,
+  wholeBoard: "Whole board",
+  cardGone: (id) => `${id} (removed)`,
+  author: { human: "You", agent: "Claude", system: "Vico" },
+  waits: { you: "Awaits your answer", claude: "Awaits Claude" },
+  replyTo: (id) => `Reply to ${id}`,
+  showCard: (id) => `Show ${id} on the board`,
+  replyPlaceholder: "Reply…",
+  reply: "Reply",
   notePlaceholder: "A question, a remark…",
   newNote: "New note",
   addNote: "Add note",
@@ -290,8 +304,14 @@ const fr: Messages = {
 
   notes: "Notes",
   openNotes: (count) => `Notes ouvertes (${count})`,
-  noteOrigin: (id, target, byAgent) =>
-    `${id}${target ? ` sur ${target}` : ""} · ${byAgent ? "Claude" : "toi"}`,
+  wholeBoard: "Tout le tableau",
+  cardGone: (id) => `${id} (supprimé)`,
+  author: { human: "Toi", agent: "Claude", system: "Vico" },
+  waits: { you: "Attend ta réponse", claude: "Attend Claude" },
+  replyTo: (id) => `Répondre à ${id}`,
+  showCard: (id) => `Montrer ${id} sur le tableau`,
+  replyPlaceholder: "Répondre…",
+  reply: "Répondre",
   notePlaceholder: "Une question, une remarque…",
   newNote: "Nouvelle note",
   addNote: "Noter",

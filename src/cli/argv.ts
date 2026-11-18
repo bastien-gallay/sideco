@@ -182,6 +182,10 @@ export function boardAction(tokens: readonly string[], board: string | undefined
       return { command: { kind: "focus", board: target(), ids: p, reason: flags.get("why") } };
     case "note":
       return { command: { kind: "note", board: target(), text: need(0, "a text"), target: flags.get("on") } };
+    case "reply":
+      return {
+        command: { kind: "reply", board: target(), to: need(0, "a note id"), text: need(1, "a text") },
+      };
     case "resolve":
       return { command: { kind: "resolve", board: target(), id: need(0, "a note id") } };
     case "pass":
@@ -204,6 +208,7 @@ export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "unlink",
   "focus",
   "note",
+  "reply",
   "resolve",
   "pass",
 ]);

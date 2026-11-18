@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { CommandError } from "../../src/domain/commands.ts";
+import { threads } from "../../src/domain/workspace.ts";
 import { FLOW, KANBAN, ORDERING, table } from "../support.ts";
 
 describe("boards", () => {
@@ -187,6 +188,56 @@ describe("links, focus, notes, turn", () => {
     expect(t.board().notes.map((n) => n.resolved)).toEqual([true, false]);
     expect(() => t.script("resolve N9")).toThrow("no note N9");
     expect(() => t.script('note "x" --on E9')).toThrow("no element E9");
+  });
+
+  test("a reply joins the thread of the note it answers, and stays on its card", () => {
+    const t = table(ORDERING);
+    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
+    expect(t.do({ kind: "reply", board: "commande", to: "N1", text: "L'entrepôt" })).toBe("N2");
+    expect(t.events.at(-1)).toMatchObject({
+      event: "NoteAdded",
+      id: "N2",
+      thread: "N1",
+      target: "P1",
+      text: "L'entrepôt",
+    });
+    // Answering a reply answers its thread: a discussion is one line, not a tree.
+    t.script('reply N2 "Toujours ?"', "human");
+    t.do({ kind: "note", board: "commande", text: "Vue d'ensemble" }, "human");
+    expect(threads(t.board())).toMatchObject([
+      {
+        id: "N1",
+        target: "P1",
+        resolved: false,
+        notes: [
+          { id: "N1", by: "human" },
+          { id: "N2", by: "agent" },
+          { id: "N3", by: "human", thread: "N1" },
+        ],
+      },
+      { id: "N4", resolved: false, notes: [{ id: "N4" }] },
+    ]);
+  });
+
+  test("resolving any note of a thread resolves the whole thread, once", () => {
+    const t = table(ORDERING);
+    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
+    t.script('reply N1 "L\'entrepôt"');
+    const before = t.seq;
+    t.script("resolve N2").script("resolve N1");
+    expect(t.seq).toBe(before + 1);
+    expect(t.events.at(-1)).toMatchObject({ event: "NoteResolved", id: "N1" });
+    expect(t.board().notes.map((n) => n.resolved)).toEqual([true, true]);
+    expect(threads(t.board())).toMatchObject([{ id: "N1", resolved: true }]);
+  });
+
+  test("a reply needs a note that is still open", () => {
+    const t = table(ORDERING);
+    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
+    expect(() => t.script('reply N9 "x"')).toThrow('no note N9 on "commande"');
+    expect(() => t.script('reply E1 "x"')).toThrow('no note E1 on "commande"');
+    t.script("resolve N1");
+    expect(() => t.script('reply N1 "x"')).toThrow("note N1 is resolved");
   });
 
   test("passing the turn records who holds it", () => {

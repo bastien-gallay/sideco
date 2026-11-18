@@ -25,6 +25,21 @@ describe("parseCommand", () => {
     });
   });
 
+  test("a reply names the note it answers", () => {
+    expect(parseCommand({ kind: "reply", board: "b1", to: "N1", text: " Oui " })).toEqual({
+      kind: "reply",
+      board: "b1",
+      to: "N1",
+      text: "Oui",
+    });
+    expect(() => parseCommand({ kind: "reply", board: "b1", to: "note", text: "Oui" })).toThrow(
+      "`to` must be an id like E1 or C12",
+    );
+    expect(() => parseCommand({ kind: "reply", board: "b1", to: "N1", text: " " })).toThrow(
+      "`text` must not be empty",
+    );
+  });
+
   test("refuses an unknown kind by name", () => {
     expect(() => parseCommand({ kind: "explode" })).toThrow('unknown command kind: "explode"');
   });

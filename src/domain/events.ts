@@ -87,7 +87,8 @@ type BoardFact =
   | { event: "EdgeRemoved"; board: string; src: string; dst: string }
   | { event: "FocusSet"; board: string; ids: string[]; reason?: string }
   | { event: "FocusCleared"; board: string }
-  | { event: "NoteAdded"; board: string; id: string; text: string; target?: string }
+  /** `thread` is the note that opened the discussion this one answers; absent, the note opens one. */
+  | { event: "NoteAdded"; board: string; id: string; text: string; target?: string; thread?: string }
   | { event: "NoteResolved"; board: string; id: string }
   | { event: "TurnPassed"; board: string; to: "agent" | "human"; message?: string };
 
