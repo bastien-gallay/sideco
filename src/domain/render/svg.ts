@@ -59,8 +59,13 @@ export function bandMarkup(b: Band): string {
     case "row":
       return `<g class="band band-row"><line class="band-rule" x1="0" y1="${b.y}" x2="${b.w}" y2="${b.y}"/><rect x="12" y="${mid - 6}" width="12" height="12" rx="2" fill="${esc(b.swatch ?? "#E8EEF4")}" stroke="rgba(0,0,0,.2)"/><text class="band-label" x="32" y="${mid + 4}">${esc(b.label)}</text></g>`;
     case "lane":
-      return `<g class="band band-lane"><rect class="lane-bg" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="10"/><text class="lane-label" x="${b.x + 14}" y="${b.y + 27}">${esc(b.label)}</text><text class="lane-count" x="${b.x + b.w - 14}" y="${b.y + 27}">${b.count ?? 0}</text></g>`;
+      return `<g class="band band-lane"><rect class="lane-bg" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="10"/>${laneHeading(b)}</g>`;
   }
+}
+
+/** Across the top of a lane: its name, and how many cards it holds. */
+function laneHeading(b: Band): string {
+  return `<text class="lane-label" x="${b.x + 14}" y="${b.y + 27}">${esc(b.label)}</text><text class="lane-count" x="${b.x + b.w - 14}" y="${b.y + 27}">${b.count ?? 0}</text>`;
 }
 
 export function connectorMarkup(c: Connector): string {
