@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.vico/server.json
+tests/e2e/artifacts/
+.impeccable/

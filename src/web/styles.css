@@ -1,0 +1,951 @@
+/* Vico: a calm instrument. Grey chrome, one accent, colour only on the stickies. */
+
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f8;
+  --surface: #ffffff;
+  --ink: #1f2328;
+  --muted: #59636e;
+  --faint: #8c959f;
+  --rule: #e3e6ea;
+  --accent: #1a6fae;
+  --accent-text: #1a6fae;
+  --danger: #b42318;
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --vico-bg: var(--surface);
+  --vico-rule: var(--rule);
+  --vico-muted: var(--muted);
+  --vico-faint: var(--faint);
+  --vico-ink: var(--ink);
+  --vico-lane: #f1f2f4;
+  --vico-conn: #6e7781;
+  font:
+    14px / 1.45 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1114;
+    --surface: #17191d;
+    --ink: #e6e8eb;
+    --muted: #a0a8b2;
+    --faint: #737b85;
+    --rule: #2a2e34;
+    --accent-text: #6cb6ee;
+    --danger: #f97066;
+    --ok: #4ac26b;
+    --warn: #d4a72c;
+    --vico-lane: #1e2126;
+    --vico-conn: #8b949e;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  /* biome-ignore lint/complexity/noImportantStyles: the hidden attribute must win over any display rule below */
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+#app {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  height: 100%;
+}
+
+h1,
+h2,
+p,
+ul,
+ol,
+fieldset {
+  margin: 0;
+  padding: 0;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+h2 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Controls ─────────────────────────────────────────────────────────────── */
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button,
+select,
+summary {
+  cursor: pointer;
+}
+
+button,
+select,
+.menu summary {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 5px 10px;
+}
+
+button:hover:not(:disabled),
+.menu summary:hover {
+  border-color: var(--faint);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+button.quiet {
+  background: none;
+  border-color: transparent;
+  color: var(--accent-text);
+  padding: 3px 6px;
+}
+
+button.danger {
+  color: var(--danger);
+}
+
+input[type="text"] {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 5px 8px;
+  min-width: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 1px;
+}
+
+/* ── Top bar ──────────────────────────────────────────────────────────────── */
+
+/* Rows are named, so a hidden banner does not shift what follows. */
+.top {
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+}
+
+.brand {
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+.board-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.board-picker select {
+  max-width: 280px;
+  font-weight: 600;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+}
+
+.status-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.dot.tone-busy {
+  background: var(--accent-text);
+  animation: breathe 1.4s ease-in-out infinite;
+}
+
+.dot.tone-waiting {
+  background: var(--warn);
+  border-radius: 2px;
+}
+
+.dot.tone-listening {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent);
+}
+
+.dot.tone-off {
+  background: none;
+  border: 2px solid var(--faint);
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.zoom button {
+  width: 28px;
+  padding: 3px 0;
+}
+
+.zoom-label {
+  width: 48px;
+  text-align: center;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.menu {
+  position: relative;
+}
+
+.menu summary {
+  list-style: none;
+}
+
+.menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.menu-items {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  width: 260px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.menu-items button {
+  border-color: transparent;
+  text-align: left;
+}
+
+.menu-items button:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+.menu-note {
+  padding: 6px 10px 2px;
+  color: var(--muted);
+  font-size: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+.banner {
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 14px;
+  background: color-mix(in srgb, var(--warn) 16%, var(--surface));
+  border-bottom: 1px solid var(--rule);
+}
+
+/* ── Work area ────────────────────────────────────────────────────────────── */
+
+.work {
+  grid-row: 3;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr) 300px;
+  min-height: 0;
+}
+
+.left,
+.right {
+  overflow-y: auto;
+  padding: 14px;
+  background: var(--surface);
+}
+
+.left {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 22px;
+  overflow-x: hidden;
+  border-right: 1px solid var(--rule);
+}
+
+.right {
+  border-left: 1px solid var(--rule);
+}
+
+.purpose,
+.how,
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.purpose {
+  margin: 4px 0 10px;
+}
+
+.how {
+  margin-top: 10px;
+}
+
+.types {
+  display: grid;
+  gap: 2px;
+}
+
+.type {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 5px 6px;
+  border-color: transparent;
+  background: none;
+  text-align: left;
+}
+
+.type:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+.swatch {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 22px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.swatch.shape-sharp {
+  border-radius: 0;
+}
+
+.swatch.shape-box {
+  border-radius: 6px;
+}
+
+.swatch.shape-pill {
+  border-radius: 11px;
+}
+
+.swatch.shape-diamond {
+  clip-path: polygon(18% 0, 82% 0, 100% 50%, 82% 100%, 18% 100%, 0 50%);
+}
+
+.type-text {
+  display: grid;
+  min-width: 0;
+}
+
+.type-label {
+  font-weight: 600;
+}
+
+.type-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.note-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.note-list li {
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.note-target {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.note-target:disabled {
+  opacity: 1;
+}
+
+.note-form {
+  display: flex;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.note-form input {
+  flex: 1;
+}
+
+/* ── Stage ────────────────────────────────────────────────────────────────── */
+
+.stage {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.focus-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 14px;
+  background: var(--vico-lane);
+  border-bottom: 1px solid var(--rule);
+}
+
+.canvas {
+  position: relative;
+  grid-row: 2;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.canvas-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+.vico-board {
+  display: block;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.band {
+  pointer-events: none;
+}
+
+.card {
+  cursor: grab;
+  outline: none;
+  transition:
+    transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 200ms;
+}
+
+.card.no-motion,
+.card.is-dragging {
+  transition: none;
+}
+
+.card.is-dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+}
+
+.is-past .card {
+  cursor: default;
+}
+
+.is-linking .card {
+  cursor: crosshair;
+}
+
+.card.is-dim {
+  opacity: 0.32;
+}
+
+.card.is-focus .card-shape {
+  stroke: var(--ink);
+  stroke-width: 3;
+}
+
+.card:focus-visible .card-shape,
+.card.is-selected .card-shape {
+  stroke: var(--accent-text);
+  stroke-width: 3;
+}
+
+.card.is-link-source .card-shape {
+  stroke: var(--accent-text);
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+}
+
+.card.is-fresh .card-shape {
+  animation: fresh 2.4s ease-out;
+}
+
+@keyframes fresh {
+  0% {
+    stroke: var(--accent-text);
+    stroke-width: 5;
+  }
+}
+
+.drop-hint {
+  fill: var(--accent);
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.conn path.conn-hit {
+  stroke: transparent;
+  stroke-width: 14;
+  cursor: pointer;
+}
+
+.conn:hover path:not(.conn-hit) {
+  stroke: var(--accent-text);
+  stroke-width: 2.5;
+}
+
+.card-tools {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+  white-space: nowrap;
+}
+
+.card-tools button {
+  border-color: transparent;
+  padding: 3px 8px;
+}
+
+.card-tools button:hover {
+  background: var(--bg);
+}
+
+.tools-label {
+  padding: 0 8px;
+  color: var(--muted);
+}
+
+.card-editor {
+  position: absolute;
+  z-index: 6;
+  padding: 10px;
+  border: 2px solid var(--accent-text);
+  border-radius: 4px;
+  resize: none;
+  text-align: center;
+  font-size: 13px;
+  line-height: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.card-editor::placeholder {
+  color: inherit;
+  opacity: 0.6;
+}
+
+/* ── Empty state and the new-board dialog ─────────────────────────────────── */
+
+.empty {
+  grid-row: 2;
+  overflow-y: auto;
+  padding: 48px 32px;
+}
+
+.empty h1 {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.empty > p {
+  max-width: 56ch;
+  margin: 6px 0 24px;
+  color: var(--muted);
+}
+
+.formats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  max-width: 960px;
+}
+
+.format {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 14px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--surface);
+  text-align: left;
+}
+
+.format-name {
+  font-weight: 600;
+}
+
+.format-purpose {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.format-swatches {
+  display: flex;
+  gap: 3px;
+  margin-top: 8px;
+}
+
+.format-swatches span {
+  width: 16px;
+  height: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+dialog.new-board {
+  width: min(560px, calc(100vw - 32px));
+  padding: 20px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+dialog.new-board::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+dialog.new-board form {
+  display: grid;
+  gap: 16px;
+}
+
+dialog.new-board h2 {
+  font-size: 16px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+  font-weight: 600;
+}
+
+fieldset {
+  display: grid;
+  gap: 6px;
+  border: none;
+}
+
+legend {
+  padding: 0 0 6px;
+  font-weight: 600;
+}
+
+.choice {
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.choice input {
+  grid-row: span 2;
+  align-self: center;
+}
+
+.choice:has(input:checked) {
+  border-color: var(--accent-text);
+  box-shadow: inset 0 0 0 1px var(--accent-text);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ── Session ──────────────────────────────────────────────────────────────── */
+
+.session-status {
+  margin: 6px 0 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.session-status.tone-waiting {
+  color: var(--warn);
+}
+
+.session-status.tone-listening {
+  color: var(--ok);
+}
+
+.todos {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.todo-completed {
+  color: var(--faint);
+}
+
+.todo-in_progress {
+  font-weight: 600;
+}
+
+.turns {
+  display: grid;
+  gap: 14px;
+}
+
+.prompt {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-weight: 600;
+}
+
+.prompt time {
+  color: var(--faint);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.tools {
+  margin-top: 4px;
+  padding-left: 10px;
+  border-left: 1px solid var(--rule);
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.tools li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tools b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.mark {
+  display: inline-block;
+  width: 16px;
+}
+
+.tool-failed .mark {
+  color: var(--danger);
+}
+
+.tool-ok .mark {
+  color: var(--ok);
+}
+
+.tool-running {
+  color: var(--ink);
+}
+
+/* ── Bottom bar ───────────────────────────────────────────────────────────── */
+
+.bottom {
+  grid-row: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border-top: 1px solid var(--rule);
+}
+
+.history {
+  display: grid;
+  grid-template-columns: auto minmax(80px, 260px) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.history button {
+  padding: 3px 7px;
+  font-size: 11px;
+}
+
+.history input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.history-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.turn {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.pending,
+.theirs {
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: right;
+}
+
+.pending strong {
+  color: var(--ink);
+}
+
+.theirs {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--ink);
+}
+
+.pass {
+  display: flex;
+  gap: 6px;
+}
+
+.pass input {
+  width: 240px;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 84px;
+  z-index: 30;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--bg);
+  transform: translateX(-50%);
+}
+
+/* ── Narrow windows: the board keeps the room ─────────────────────────────── */
+
+@media (max-width: 1000px) {
+  .work {
+    grid-template-columns: 196px minmax(0, 1fr);
+  }
+
+  .right {
+    display: none;
+  }
+
+  .bottom {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .turn {
+    justify-items: stretch;
+  }
+
+  .pending,
+  .theirs {
+    text-align: left;
+  }
+
+  .pass input {
+    flex: 1;
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .dot.tone-busy,
+  .card.is-fresh .card-shape {
+    transition: none;
+    animation: none;
+  }
+}

@@ -1,0 +1,229 @@
+/**
+ * The command language. One grammar serves the shell (`vico add event "Paid"`)
+ * and batch files (`vico apply`, one command per line), so what the agent learns
+ * once works in both.
+ */
+import { slugify } from "../domain/commands.ts";
+
+export class UsageError extends Error {
+  override name = "UsageError";
+}
+
+/** Splits a line the way a shell would: spaces separate, quotes group, backslash escapes. */
+export function tokenize(line: string): string[] {
+  const tokens: string[] = [];
+  let current = "";
+  let quote: string | undefined;
+  let started = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i] ?? "";
+    if (quote) {
+      if (ch === quote) quote = undefined;
+      else if (ch === "\\" && quote === '"' && i + 1 < line.length) current += line[++i];
+      else current += ch;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      started = true;
+    } else if (ch === "\\" && i + 1 < line.length) {
+      current += line[++i];
+      started = true;
+    } else if (/\s/.test(ch)) {
+      if (started || current) tokens.push(current);
+      current = "";
+      started = false;
+    } else if (ch === "#" && !started && current === "") {
+      break;
+    } else {
+      current += ch;
+    }
+  }
+  if (quote) throw new UsageError(`unclosed ${quote} quote`);
+  if (started || current) tokens.push(current);
+  return tokens;
+}
+
+export interface Args {
+  positional: string[];
+  flags: Map<string, string>;
+}
+
+const SHORT: Record<string, string> = { "-o": "--out", "-b": "--board", "-f": "--format" };
+
+/** Every flag takes a value: `--col 3`, `--col=3`. */
+export function parseArgs(tokens: readonly string[]): Args {
+  const positional: string[] = [];
+  const flags = new Map<string, string>();
+  for (let i = 0; i < tokens.length; i++) {
+    const token = SHORT[tokens[i] ?? ""] ?? tokens[i] ?? "";
+    if (!token.startsWith("--") || token === "--") {
+      positional.push(token);
+      continue;
+    }
+    const eq = token.indexOf("=");
+    if (eq !== -1) {
+      flags.set(token.slice(2, eq), token.slice(eq + 1));
+      continue;
+    }
+    const value = tokens[i + 1];
+    if (value === undefined) throw new UsageError(`${token} needs a value`);
+    flags.set(token.slice(2), value);
+    i++;
+  }
+  return { positional, flags };
+}
+
+/** A command as it goes on the wire; the server validates it. */
+export type WireCommand = Record<string, unknown> & { kind: string };
+
+export interface Action {
+  command: WireCommand;
+  /** Set by `board new`: the board the following lines write to. */
+  board?: string;
+}
+
+/** The verbs that write to a board. `board` is the default board, when one is known. */
+export function boardAction(tokens: readonly string[], board: string | undefined): Action {
+  const [verb = "", ...rest] = tokens;
+  const { positional: p, flags } = parseArgs(rest);
+  const target = (): string => {
+    const chosen = flags.get("board") ?? board;
+    if (!chosen) throw new UsageError("which board? pass --board ID (see `vico boards`)");
+    return chosen;
+  };
+  const need = (index: number, what: string): string => {
+    const value = p[index];
+    if (value === undefined || value === "") throw new UsageError(`\`${verb}\` needs ${what}`);
+    return value;
+  };
+  const number = (name: string): number | undefined => {
+    const raw = flags.get(name);
+    if (raw === undefined) return undefined;
+    if (!/^\d+$/.test(raw)) throw new UsageError(`--${name} takes a whole number, got "${raw}"`);
+    return Number(raw);
+  };
+
+  switch (verb) {
+    case "board": {
+      if (p[0] === "rm") {
+        const id = p[1];
+        if (!id) throw new UsageError("`board rm` needs the id of the board to remove (see `vico boards`)");
+        return { command: { kind: "remove-board", board: id } };
+      }
+      if (p[0] !== "new")
+        throw new UsageError('usage: board new "Title" [--format F] [--id ID] | board rm ID');
+      const title = need(1, "a title");
+      const id = flags.get("id") ?? slugify(title);
+      return {
+        command: { kind: "create-board", board: id, title, format: flags.get("format") ?? "event-storming" },
+        board: id,
+      };
+    }
+    case "retitle":
+      return { command: { kind: "retitle", board: target(), title: need(0, "a title") } };
+    case "add":
+      return {
+        command: {
+          kind: "add",
+          board: target(),
+          type: need(0, "a type"),
+          label: need(1, "a label"),
+          id: flags.get("id"),
+          col: number("col"),
+          lane: flags.get("lane"),
+          detail: flags.get("detail"),
+          from: flags.get("from"),
+          edgeLabel: flags.get("edge"),
+        },
+      };
+    case "rename":
+      return {
+        command: { kind: "rename", board: target(), id: need(0, "an id"), label: need(1, "a label") },
+      };
+    case "detail":
+      return { command: { kind: "annotate", board: target(), id: need(0, "an id"), detail: p[1] ?? "" } };
+    case "move":
+      return {
+        command: {
+          kind: "move",
+          board: target(),
+          id: need(0, "an id"),
+          col: number("col"),
+          lane: flags.get("lane"),
+          before: flags.get("before"),
+        },
+      };
+    case "rm":
+      return { command: { kind: "remove", board: target(), id: need(0, "an id") } };
+    case "insert-col": {
+      const at = need(0, "a column number");
+      if (!/^\d+$/.test(at)) throw new UsageError(`insert-col takes a whole number, got "${at}"`);
+      return { command: { kind: "insert-column", board: target(), at: Number(at) } };
+    }
+    case "link":
+      return {
+        command: {
+          kind: "link",
+          board: target(),
+          src: need(0, "a source id"),
+          dst: need(1, "a target id"),
+          label: p[2],
+        },
+      };
+    case "unlink":
+      return {
+        command: {
+          kind: "unlink",
+          board: target(),
+          src: need(0, "a source id"),
+          dst: need(1, "a target id"),
+        },
+      };
+    case "focus":
+      return { command: { kind: "focus", board: target(), ids: p, reason: flags.get("why") } };
+    case "note":
+      return { command: { kind: "note", board: target(), text: need(0, "a text"), target: flags.get("on") } };
+    case "resolve":
+      return { command: { kind: "resolve", board: target(), id: need(0, "a note id") } };
+    case "pass":
+      return { command: { kind: "pass", board: target(), to: flags.get("to") ?? "human", message: p[0] } };
+    default:
+      throw new UsageError(`unknown command "${verb}" (try \`vico help\`)`);
+  }
+}
+
+export const BOARD_VERBS: ReadonlySet<string> = new Set([
+  "board",
+  "retitle",
+  "add",
+  "rename",
+  "detail",
+  "move",
+  "rm",
+  "insert-col",
+  "link",
+  "unlink",
+  "focus",
+  "note",
+  "resolve",
+  "pass",
+]);
+
+/** A batch file to its commands. Errors name the line. */
+export function parseBatch(text: string, board: string | undefined): WireCommand[] {
+  const commands: WireCommand[] = [];
+  let current = board;
+  text.split("\n").forEach((line, index) => {
+    try {
+      const tokens = tokenize(line);
+      if (tokens.length === 0) return;
+      const action = boardAction(tokens, current);
+      current = action.board ?? current;
+      if (action.command.kind === "remove-board" && action.command.board === current) current = undefined;
+      commands.push(action.command);
+    } catch (error) {
+      if (error instanceof UsageError) throw new UsageError(`line ${index + 1}: ${error.message}`);
+      throw error;
+    }
+  });
+  return commands;
+}

@@ -1,0 +1,176 @@
+import { describe, expect, test } from "bun:test";
+import { boardAction, parseArgs, parseBatch, tokenize, UsageError } from "../../src/cli/argv.ts";
+import { parseCommand } from "../../src/domain/commands.ts";
+
+describe("tokenize", () => {
+  test.each([
+    ['add event "Commande passée" --col 2', ["add", "event", "Commande passée", "--col", "2"]],
+    ["note 'Qui réserve ?' --on P1", ["note", "Qui réserve ?", "--on", "P1"]],
+    ['rename E1 "Dire \\"oui\\""', ["rename", "E1", 'Dire "oui"']],
+    ["rename E1 l\\'ami", ["rename", "E1", "l'ami"]],
+    ['detail E1 ""', ["detail", "E1", ""]],
+    ["  add   event   A  ", ["add", "event", "A"]],
+    ["# a comment", []],
+    ['add event "A" # trailing comment', ["add", "event", "A"]],
+    ['add event "prix #1"', ["add", "event", "prix #1"]],
+    ["add event issue#12", ["add", "event", "issue#12"]],
+    ["", []],
+  ])("%j", (line, tokens) => {
+    expect(tokenize(line)).toEqual(tokens);
+  });
+
+  test("an unclosed quote is an error, not a guess", () => {
+    expect(() => tokenize('add event "oops')).toThrow(UsageError);
+    expect(() => tokenize('add event "oops')).toThrow('unclosed " quote');
+  });
+});
+
+describe("parseArgs", () => {
+  test("flags take a value, in both spellings, and short forms expand", () => {
+    const { positional, flags } = parseArgs([
+      "E1",
+      "--col",
+      "3",
+      "--lane=doing",
+      "-o",
+      "out.md",
+      "-b",
+      "sprint",
+      "-f",
+      "md",
+    ]);
+    expect(positional).toEqual(["E1"]);
+    expect(Object.fromEntries(flags)).toEqual({
+      col: "3",
+      lane: "doing",
+      out: "out.md",
+      board: "sprint",
+      format: "md",
+    });
+  });
+
+  test("a flag without a value says which", () => {
+    expect(() => parseArgs(["E1", "--col"])).toThrow("--col needs a value");
+  });
+});
+
+describe("boardAction", () => {
+  const wire = (line: string, board: string | undefined = "b"): Record<string, unknown> => {
+    const { command } = boardAction(tokenize(line), board);
+    return JSON.parse(JSON.stringify(command));
+  };
+
+  test.each([
+    ['retitle "Nouveau titre"', { kind: "retitle", board: "b", title: "Nouveau titre" }],
+    [
+      'add event "Payée" --col 2 --detail "Par carte"',
+      { kind: "add", board: "b", type: "event", label: "Payée", col: 2, detail: "Par carte" },
+    ],
+    [
+      'add step "Expédier" --from D1 --edge oui --id S7',
+      { kind: "add", board: "b", type: "step", label: "Expédier", from: "D1", edgeLabel: "oui", id: "S7" },
+    ],
+    ['rename E1 "Validée"', { kind: "rename", board: "b", id: "E1", label: "Validée" }],
+    ['detail E1 "Texte"', { kind: "annotate", board: "b", id: "E1", detail: "Texte" }],
+    ["detail E1", { kind: "annotate", board: "b", id: "E1", detail: "" }],
+    ["move T1 --lane doing --before T2", { kind: "move", board: "b", id: "T1", lane: "doing", before: "T2" }],
+    ["rm E1", { kind: "remove", board: "b", id: "E1" }],
+    ["insert-col 2", { kind: "insert-column", board: "b", at: 2 }],
+    ['link E1 P1 "déclenche"', { kind: "link", board: "b", src: "E1", dst: "P1", label: "déclenche" }],
+    ["unlink E1 P1", { kind: "unlink", board: "b", src: "E1", dst: "P1" }],
+    ['focus E1 P1 --why "à revoir"', { kind: "focus", board: "b", ids: ["E1", "P1"], reason: "à revoir" }],
+    ["focus", { kind: "focus", board: "b", ids: [] }],
+    ['note "Qui ?" --on P1', { kind: "note", board: "b", text: "Qui ?", target: "P1" }],
+    ["resolve N1", { kind: "resolve", board: "b", id: "N1" }],
+    ['pass "à toi"', { kind: "pass", board: "b", to: "human", message: "à toi" }],
+    ["pass --to agent", { kind: "pass", board: "b", to: "agent" }],
+    ["rm E1 --board other", { kind: "remove", board: "other", id: "E1" }],
+  ])("%s", (line, expected) => {
+    expect(wire(line)).toEqual(expected);
+  });
+
+  test("every verb produces a command the server accepts", () => {
+    const lines = [
+      'retitle "T"',
+      'add event "A"',
+      'rename E1 "B"',
+      "detail E1",
+      "move E1 --col 2",
+      "rm E1",
+      "insert-col 1",
+      "link E1 E2",
+      "unlink E1 E2",
+      "focus",
+      'note "x"',
+      "resolve N1",
+      "pass",
+    ];
+    for (const line of lines) expect(() => parseCommand(wire(line))).not.toThrow();
+  });
+
+  test("`board new` derives the id from the title and becomes the current board", () => {
+    const action = boardAction(tokenize('board new "Passage de commande" --format flow'), undefined);
+    expect(action.board).toBe("passage-de-commande");
+    expect(action.command).toEqual({
+      kind: "create-board",
+      board: "passage-de-commande",
+      title: "Passage de commande",
+      format: "flow",
+    });
+    expect(boardAction(tokenize('board new "X" --id mine'), undefined).board).toBe("mine");
+  });
+
+  test("`board rm` names the board to remove: never the current one by default", () => {
+    expect(boardAction(tokenize("board rm commande"), "b").command).toEqual({
+      kind: "remove-board",
+      board: "commande",
+    });
+    expect(() => boardAction(tokenize("board rm"), "b")).toThrow("`board rm` needs the id of the board");
+  });
+
+  test("in a batch, removing the current board leaves no current board", () => {
+    expect(() => parseBatch('board new "Un" --id un\nboard rm un\nadd event "A"', undefined)).toThrow(
+      /^line 3: /,
+    );
+    expect(parseBatch('add event "A"\nboard rm autre\nadd event "B"', "un").map((c) => c.board)).toEqual([
+      "un",
+      "autre",
+      "un",
+    ]);
+  });
+
+  test.each([
+    ["add event", "`add` needs a label"],
+    ["rename", "`rename` needs an id"],
+    ["add event A --col deux", '--col takes a whole number, got "deux"'],
+    ["insert-col x", 'insert-col takes a whole number, got "x"'],
+    ["board list", "usage: board new"],
+    ["dance", 'unknown command "dance"'],
+  ])("%s → %s", (line, message) => {
+    expect(() => boardAction(tokenize(line), "b")).toThrow(message);
+  });
+
+  test("without a board, the error says how to choose one", () => {
+    expect(() => boardAction(tokenize("rm E1"), undefined)).toThrow("which board? pass --board ID");
+  });
+});
+
+describe("parseBatch", () => {
+  test("reads one command per line, skipping blanks and comments", () => {
+    const commands = parseBatch('# le modèle\n\nadd event "A"\n  add event "B"  \n', "b");
+    expect(commands.map((c) => c.label)).toEqual(["A", "B"]);
+  });
+
+  test("a `board new` line sets the board for the lines after it", () => {
+    const commands = parseBatch(
+      'board new "Un" --id un\nadd event "A"\nboard new "Deux" --id deux\nadd event "B"\nadd event "C" --board un',
+      undefined,
+    );
+    expect(commands.map((c) => c.board)).toEqual(["un", "un", "deux", "deux", "un"]);
+  });
+
+  test("an error names its line", () => {
+    expect(() => parseBatch('add event "A"\nadd event\n', "b")).toThrow("line 2: `add` needs a label");
+    expect(() => parseBatch('add event "A"\n\nrename E1 "oops', "b")).toThrow('line 3: unclosed " quote');
+  });
+});

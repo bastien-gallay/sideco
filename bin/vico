@@ -1,0 +1,11 @@
+#!/bin/sh
+# Resolves symlinks so `vico` works from a PATH link as well as from the plugin.
+self="$0"
+while [ -L "$self" ]; do
+  target="$(readlink "$self")"
+  case "$target" in
+    /*) self="$target" ;;
+    *) self="$(dirname "$self")/$target" ;;
+  esac
+done
+exec bun "$(cd "$(dirname "$self")/.." && pwd)/src/cli/main.ts" "$@"

@@ -1,0 +1,25 @@
+{
+  "name": "vico",
+  "version": "0.1.0",
+  "description": "Visual companion for Claude Code: a live, event-sourced modelling board shared by a developer and their agent.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "vico": "./bin/vico"
+  },
+  "scripts": {
+    "serve": "bun run src/cli/main.ts serve",
+    "test": "bun test tests/unit tests/integration",
+    "test:e2e": "bun test tests/e2e",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check . && bunx markdownlint-cli2 '**/*.md' '#node_modules'",
+    "check": "bun run typecheck && bun run lint && bun run test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.8",
+    "@types/bun": "^1.4.4",
+    "playwright-core": "^1.65.1",
+    "typescript": "^7.0.2"
+  }
+}

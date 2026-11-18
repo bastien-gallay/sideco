@@ -1,0 +1,21 @@
+{
+  "name": "vico",
+  "owner": {
+    "name": "Bastien Gallay"
+  },
+  "metadata": {
+    "description": "Vico — single-plugin marketplace.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "vico",
+      "source": "./",
+      "description": "Visual companion for Claude Code: a live modelling board, in a browser window beside the terminal, that the developer and the agent edit together.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["modelling", "diagram", "event-storming", "kanban", "visual", "workshop"]
+    }
+  ]
+}
