@@ -5,6 +5,7 @@ import { MESSAGES, pickLocale } from "../../src/web/messages.ts";
 import {
   addOffers,
   agentStatus,
+  claudeWaits,
   describeEvent,
   discussions,
   handOverHint,
@@ -604,5 +605,37 @@ describe("what is typed on a card is kept tidy", () => {
     expect(keptLines("  - un  point \n- un autre\n\n\n\nFin  \n")).toBe("- un point\n- un autre\n\nFin");
     expect(keptLines("une seule   ligne")).toBe("une seule ligne");
     expect(keptLines(" \n \n")).toBe("");
+  });
+});
+
+describe("claudeWaits says where Claude waits for the human", () => {
+  test("nothing while no turn was handed to the human", () => {
+    expect(claudeWaits(table(KANBAN).ws)).toBeUndefined();
+    const t = table(KANBAN);
+    t.do({ kind: "pass", board: "sprint", to: "agent" }, "human");
+    expect(claudeWaits(t.ws)).toBeUndefined();
+  });
+
+  test("the board Claude handed over on, with its words", () => {
+    const t = table(KANBAN).script('pass "Ton avis sur T2 ?"');
+    expect(claudeWaits(t.ws)).toEqual({
+      board: "sprint",
+      title: "Sprint 12",
+      message: "Ton avis sur T2 ?",
+      others: 0,
+    });
+  });
+
+  test("on several boards: the latest hand-over, and how many others", () => {
+    const t = table(KANBAN).script("pass");
+    t.script('board new "Autre" --id autre');
+    t.do({ kind: "pass", board: "autre", to: "human" });
+    expect(claudeWaits(t.ws)).toMatchObject({ board: "autre", title: "Autre", others: 1 });
+  });
+
+  test("handing the turn back ends the wait", () => {
+    const t = table(KANBAN).script("pass");
+    t.do({ kind: "pass", board: "sprint", to: "agent" }, "human");
+    expect(claudeWaits(t.ws)).toBeUndefined();
   });
 });

@@ -478,3 +478,20 @@ export const keptLines = (text: string): string =>
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+/** Where Claude waits for the human: the board of the latest turn handed to them, and how many others wait too. */
+export interface Waiting {
+  board: string;
+  title: string;
+  message?: string;
+  others: number;
+}
+
+export function claudeWaits(ws: Workspace): Waiting | undefined {
+  const handed = ws.boards
+    .filter((board) => board.turn?.to === "human")
+    .sort((a, b) => (b.turn?.seq ?? 0) - (a.turn?.seq ?? 0));
+  const [latest] = handed;
+  if (!latest) return undefined;
+  return { board: latest.id, title: latest.title, message: latest.turn?.message, others: handed.length - 1 };
+}

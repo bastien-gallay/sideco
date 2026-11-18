@@ -170,6 +170,11 @@ input[type="text"] {
   field-sizing: content;
 }
 
+/* Empty, it stays one line tall: its invitation is cut short rather than wrapped. */
+.words::placeholder {
+  white-space: nowrap;
+}
+
 :focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: 1px;
@@ -267,6 +272,54 @@ input[type="text"] {
 @keyframes breathe {
   50% {
     opacity: 0.3;
+  }
+}
+
+/* Claude waits for you: said beside the zoom, on whatever board you are. Empty, it takes no room. */
+.waits {
+  flex: none;
+}
+
+.waits button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 260px;
+  color: var(--warn);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.waits-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.waits-more {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* A slow ring that leaves the dot and fades: seen from the corner of the eye, never blinking. */
+@media (prefers-reduced-motion: no-preference) {
+  .waits-dot {
+    animation: waits-ring 2.4s ease-out infinite;
+  }
+}
+
+@keyframes waits-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentcolor 45%, transparent);
+  }
+
+  70%,
+  100% {
+    box-shadow: 0 0 0 7px transparent;
   }
 }
 

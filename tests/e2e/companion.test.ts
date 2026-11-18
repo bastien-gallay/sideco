@@ -1047,6 +1047,40 @@ describe("reopening a card without changing it", () => {
   });
 });
 
+describe("Claude waits for the human", () => {
+  const BOARD = "attente";
+  const pill = () => page.locator(`.top .waits button[data-board="${BOARD}"]`);
+
+  test("a pill in the header says so, from another board too, and leads to the board", async () => {
+    const elsewhere = await page.locator(".board-picker select").inputValue();
+    expect(elsewhere).not.toBe(BOARD);
+    await agent(
+      `board new "Attente" --id ${BOARD}\nadd event "Devis envoyé" --col 1\npass "Ton avis sur E1 ?"`,
+    );
+    await page.locator(".board-picker select").selectOption(elsewhere);
+    await pill().waitFor();
+    // Other boards of this run may wait too: they are counted after the name.
+    expect(await pill().textContent()).toStartWith("Claude waits · Attente");
+    expect(await pill().getAttribute("title")).toBe("Ton avis sur E1 ?");
+    // Just before the zoom, in the header.
+    expect(
+      await pill().evaluate((button) =>
+        button.closest(".waits")?.nextElementSibling?.classList.contains("zoom"),
+      ),
+    ).toBe(true);
+    await shot("22-claude-waits");
+
+    await pill().click();
+    await card("E1").getByText("Devis envoyé").waitFor();
+    expect(await pill().textContent()).toStartWith("Claude waits for you");
+  });
+
+  test("handing the turn back ends the wait", async () => {
+    await page.locator(".turn button", { hasText: "Hand over to Claude" }).click();
+    await pill().waitFor({ state: "detached" });
+  });
+});
+
 describe("tidying up", () => {
   const listed = (): Promise<string[]> =>
     page

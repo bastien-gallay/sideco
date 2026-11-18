@@ -110,6 +110,8 @@ export interface Messages {
   /** On a card or a discussion that carries a change Claude has not read. */
   unread: string;
   theirTurn: string;
+  claudeWaits: string;
+  claudeWaitsOn: (title: string) => string;
   handOver: string;
 
   // The history.
@@ -253,6 +255,8 @@ const en: Messages = {
   pending: (count) => `${count} change${plural(count)} Claude has not read`,
   unread: "Not read by Claude yet",
   theirTurn: "Claude hands over to you",
+  claudeWaits: "Claude waits for you",
+  claudeWaitsOn: (title) => `Claude waits · ${title}`,
   handOver: "Hand over to Claude",
 
   history: "Board history",
@@ -388,6 +392,8 @@ const fr: Messages = {
   pending: (count) => `${count} changement${plural(count)} que Claude n'a pas lu${plural(count)}`,
   unread: "Pas encore lu par Claude",
   theirTurn: "Claude te passe la main",
+  claudeWaits: "Claude t'attend",
+  claudeWaitsOn: (title) => `Claude attend · ${title}`,
   handOver: "Passer la main à Claude",
 
   history: "Historique du tableau",

@@ -28,6 +28,7 @@ import {
 } from "./store.ts";
 import {
   agentStatus,
+  claudeWaits,
   type Discussion,
   describeEvent,
   discussions,
@@ -43,6 +44,7 @@ import {
   redoTarget,
   undoTarget,
   unreadOn,
+  type Waiting,
 } from "./view.ts";
 
 const TURNS_SHOWN = 4;
@@ -63,6 +65,8 @@ document.head.prepend(h("style", {}, SVG_STYLE));
 
 const boardPicker = h("div", { class: "board-picker" });
 const statusPill = h("div", { class: "status", role: "status", "aria-live": "polite" });
+/** Claude waits for the human: said just before the zoom, whatever board is on screen. */
+const waitsPill = h("div", { class: "waits", role: "status", "aria-live": "polite" });
 const zoomLabel = h("span", { class: "zoom-label" }, "100 %");
 const undoGroup = h("div", { class: "undo" });
 const exportMenu = h("details", { class: "menu" });
@@ -163,6 +167,7 @@ app.append(
     boardPicker,
     undoGroup,
     statusPill,
+    waitsPill,
     h(
       "div",
       { class: "zoom" },
@@ -292,6 +297,27 @@ const paintStatus = region(statusPill, (m: { tone: string; text: string; connect
   h("span", { class: `dot tone-${m.connected ? m.tone : "off"}`, "aria-hidden": "true" }),
   h("span", { class: "status-text" }, m.connected ? m.text : t.disconnected),
 ]);
+
+const paintWaits = region(waitsPill, (m: { waiting: Waiting | undefined; current: string | undefined }) => {
+  const w = m.waiting;
+  if (!w) return [];
+  const here = w.board === m.current;
+  return [
+    h(
+      "button",
+      {
+        type: "button",
+        class: "quiet",
+        "data-board": w.board,
+        title: w.message,
+        onclick: () => openBoard(w.board),
+      },
+      h("span", { class: "waits-dot", "aria-hidden": "true" }),
+      here ? t.claudeWaits : t.claudeWaitsOn(w.title),
+      w.others > 0 && h("span", { class: "waits-more" }, ` +${w.others}`),
+    ),
+  ];
+});
 
 const paintExport = region(exportMenu, (m: { board: string | undefined }) => [
   h("summary", {}, t.export),
@@ -922,6 +948,7 @@ function render(): void {
   });
   paintStatus({ ...agentStatus(session, live ? state.listening : 0, locale), connected: state.connected });
   paintExport({ board: board?.id });
+  paintWaits({ waiting: live ? claudeWaits(ws) : undefined, current: board?.id });
   const mine = live ? (state.boardId ?? undefined) : undefined;
   paintUndo({
     undo: live && undoTarget(state.live, mine) !== undefined,
