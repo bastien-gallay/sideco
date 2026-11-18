@@ -17,8 +17,13 @@ const DRAG_THRESHOLD = 4;
 const ZOOMS = [0.5, 0.67, 0.8, 1, 1.25, 1.5];
 
 interface Editing {
+  /** The text the editor opened with, as it would be saved: leaving it as it was saves nothing. */
+  initial: string;
   commit(value: string): void;
 }
+
+/** A label or a detail as it is kept: on one line, single-spaced. */
+const tidy = (text: string): string => text.replace(/\s+/g, " ").trim();
 
 export interface BoardView {
   paint(board: Board | undefined): void;
@@ -251,7 +256,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     editor.style.background = colours.fill;
     editor.style.color = colours.ink;
     editor.hidden = false;
-    editing = { commit };
+    editing = { initial: tidy(value), commit };
     tools.hidden = true;
     paintOffers();
     editor.focus();
@@ -263,8 +268,8 @@ export function mountBoard(host: HTMLElement): BoardView {
     if (!current) return;
     editing = undefined;
     editor.hidden = true;
-    const value = editor.value.replace(/\s+/g, " ").trim();
-    if (save && value !== "") current.commit(value);
+    const value = tidy(editor.value);
+    if (save && value !== "" && value !== current.initial) current.commit(value);
     changed();
   }
 

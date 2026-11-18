@@ -275,3 +275,38 @@ test("decide never changes the workspace it reads", () => {
   expect(() => t.do({ kind: "add", board: "commande", type: "nope", label: "x" })).toThrow();
   expect(JSON.stringify(t.ws)).toBe(before);
 });
+
+describe("a command that changes nothing leaves no trace", () => {
+  test("the same label, the same detail, the same title: nothing is recorded", () => {
+    const t = table(ORDERING);
+    t.do({ kind: "annotate", board: "commande", id: "E1", detail: "Paiement par carte" });
+    const before = t.events.length;
+    t.do({ kind: "rename", board: "commande", id: "E1", label: "Commande passée" });
+    t.do({ kind: "annotate", board: "commande", id: "E1", detail: "Paiement par carte" });
+    t.do({ kind: "retitle", board: "commande", title: "Passage de commande" });
+    // A card with no detail, given none.
+    t.do({ kind: "annotate", board: "commande", id: "E2", detail: "" });
+    expect(t.events.length).toBe(before);
+  });
+
+  test("and a real change still is, a missing card still refused", () => {
+    const t = table(ORDERING);
+    t.do({ kind: "annotate", board: "commande", id: "E1", detail: "Paiement par carte" });
+    t.do({ kind: "annotate", board: "commande", id: "E1", detail: "Paiement par carte ou virement" });
+    expect(t.events.at(-1)).toMatchObject({
+      event: "ElementAnnotated",
+      detail: "Paiement par carte ou virement",
+    });
+    t.do({ kind: "annotate", board: "commande", id: "E1", detail: "" });
+    expect(t.events.at(-1)).toMatchObject({ event: "ElementAnnotated", id: "E1", detail: "" });
+    expect(() => t.do({ kind: "rename", board: "commande", id: "E9", label: "x" })).toThrow("E9");
+  });
+
+  test("so reopening a card is not a gesture to take back, nor a change to tell Claude", () => {
+    const t = table(ORDERING);
+    t.do({ kind: "rename", board: "commande", id: "E1", label: "Commande validée" }, "human");
+    const trail = t.board().trails.human?.undo.length;
+    t.do({ kind: "rename", board: "commande", id: "E1", label: "Commande validée" }, "human");
+    expect(t.board().trails.human?.undo.length).toBe(trail);
+  });
+});

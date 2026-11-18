@@ -28,6 +28,9 @@ export interface Decision {
   minted?: string;
 }
 
+/** A command that asks for what already is: accepted, and nothing is recorded. */
+const unchanged = (): { events: never[] } => ({ events: [] });
+
 type BoardCommand = Extract<Command, { board: string }>;
 type SessionCommand = Exclude<Command, { board: string }>;
 
@@ -61,16 +64,17 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
 
   switch (cmd.kind) {
     case "retitle":
+      if (board.title === cmd.title) return unchanged();
       return { events: [{ event: "BoardRetitled", board: b, title: cmd.title }] };
     case "remove-board":
       return { events: [{ event: "BoardRemoved", board: b, title: board.title }] };
     case "add":
       return add(board, format, cmd);
     case "rename":
-      requireElement(board, cmd.id);
+      if (requireElement(board, cmd.id).label === cmd.label) return unchanged();
       return { events: [{ event: "ElementRenamed", board: b, id: cmd.id, label: cmd.label }] };
     case "annotate":
-      requireElement(board, cmd.id);
+      if ((requireElement(board, cmd.id).detail ?? "") === cmd.detail) return unchanged();
       return { events: [{ event: "ElementAnnotated", board: b, id: cmd.id, detail: cmd.detail }] };
     case "move":
       return { events: [move(board, format, cmd)] };

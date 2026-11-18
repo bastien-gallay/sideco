@@ -147,6 +147,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F19 | Discuter par notes : répondre dans le fil d'une note, depuis la page ou par `vico reply` ; chaque fil nomme sa carte, la carte montre ses fils, et le fil dit qui est attendu | ✅ |
 | F20 | Ajouter là où l'on pointe : un « + » apparaît au survol d'une case ou d'une colonne, un par type possible, et la carte se pose à cet endroit (S1 du story map du 2026-11-18) | ✅ |
 | F21 | Cartes à la hauteur de leur libellé, de 48 à 88 px ; piles, rangées et zones de dépôt suivent (S22) | ✅ |
+| F22 | Une commande qui ne change rien (même libellé, même détail, même titre) n'enregistre rien ; rouvrir une carte dans la page sans la modifier n'envoie rien (S5) | ✅ |
 
 ### 5.3 Exigences de qualité
 

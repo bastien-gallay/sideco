@@ -769,6 +769,41 @@ describe("adding where the pointer is", () => {
   });
 });
 
+describe("reopening a card without changing it", () => {
+  test("says nothing to Claude: not its label, not a detail Claude wrote on several lines", async () => {
+    const detail = "Paiement par carte.\nVirement refusé.";
+    // Posted as JSON: the CLI grammar holds one command per line.
+    const posted = await fetch(`${running.url}/api/commands`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        actor: "agent",
+        session: SESSION,
+        commands: [{ kind: "annotate", board: "ajout-case", id: "E1", detail }],
+      }),
+    });
+    expect(posted.ok).toBe(true);
+    await card("E1").locator(".card-detail").waitFor();
+    const before = (await workspace()).seq;
+    const editor = page.locator("textarea.card-editor");
+
+    await card("E1").click();
+    await page.locator(".card-tools button", { hasText: "Detail" }).click();
+    await editor.waitFor({ state: "visible" });
+    await editor.press("Enter");
+    await editor.waitFor({ state: "hidden" });
+
+    await card("E1").dblclick();
+    await editor.waitFor({ state: "visible" });
+    await editor.press("Enter");
+    await editor.waitFor({ state: "hidden" });
+
+    await Bun.sleep(200);
+    expect((await workspace()).seq).toBe(before);
+    expect((await elementOf("ajout-case", "E1"))?.detail).toBe(detail);
+  });
+});
+
 describe("tidying up", () => {
   const listed = (): Promise<string[]> =>
     page
