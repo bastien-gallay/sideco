@@ -19,6 +19,7 @@ import {
   findServer,
   initRoot,
   listen,
+  RETRY_PAUSE_MS,
   showPage,
   WAIT_LEG_MS,
 } from "../../src/cli/client.ts";
@@ -133,6 +134,9 @@ test("showPage asks the companion to open its page, and takes any other answer a
   expect(await showPage({ url, fetch: unreachable })).toBe(false);
 });
 
+/** As long as an agent at rest is listened for. */
+const REWAKE_LIKE_MS = 12 * 60 * 60 * 1000;
+
 /** A companion whose long poll answers these outcomes in turn, and notes how long each call asked for. */
 function polled(outcomes: string[], asked: number[]): Fetch {
   return (async (input: string | URL | Request) => {
@@ -151,6 +155,48 @@ test("listening longer than a request can stay open is done in legs, each short 
   expect(asked).toEqual([WAIT_LEG_MS, WAIT_LEG_MS, 540_000 - 2 * WAIT_LEG_MS]);
   // The runtime gives up on a request left silent for 360 s (measured, Bun 1.4.4): a leg ends well before.
   expect(WAIT_LEG_MS).toBeLessThan(300_000);
+});
+
+test("once parked, the listening does not ask for a page again: one that reloads must not end it", async () => {
+  const watched: (string | null)[] = [];
+  const fetch = (async (input: string | URL | Request) => {
+    watched.push(new URL(String(input)).searchParams.get("watched"));
+    return Response.json({ outcome: watched.length < 3 ? "timeout" : "passed", text: "" });
+  }) as Fetch;
+  const waited = await listen({ url: "http://127.0.0.1:4747", fetch }, "s1", 3 * WAIT_LEG_MS, true);
+  expect(waited.outcome).toBe("passed");
+  expect(watched).toEqual(["1", null, null]);
+});
+
+test("once parked, a request that fails is made again after a pause: a companion restarted is heard again", async () => {
+  const url = "http://127.0.0.1:4747";
+  const pauses: number[] = [];
+  const rest = async (ms: number): Promise<void> => void pauses.push(ms);
+  /** Answers in turn; "down" is a companion out of reach. */
+  const companion = (answers: string[]): Fetch =>
+    (async () => {
+      const outcome = answers.shift() ?? "down";
+      if (outcome === "down") throw new Error("connection refused");
+      return Response.json({ outcome, text: "" });
+    }) as unknown as Fetch;
+
+  const heard = await listen(
+    { url, fetch: companion(["timeout", "down", "down", "passed"]) },
+    "s1",
+    REWAKE_LIKE_MS,
+    true,
+    rest,
+  );
+  expect(heard.outcome).toBe("passed");
+  expect(pauses).toEqual([RETRY_PAUSE_MS, RETRY_PAUSE_MS]);
+
+  // Out of reach from the start, there is nothing to listen to; gone for good, the listening gives up.
+  pauses.length = 0;
+  expect(listen({ url, fetch: companion([]) }, "s1", REWAKE_LIKE_MS, true, rest)).rejects.toThrow("refused");
+  expect(pauses).toEqual([]);
+  expect(listen({ url, fetch: companion(["timeout"]) }, "s1", REWAKE_LIKE_MS, true, rest)).rejects.toThrow(
+    "refused",
+  );
 });
 
 test("listening stops at its time, and at once when the session moves on", async () => {

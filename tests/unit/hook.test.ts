@@ -257,12 +257,13 @@ describe("bringing the human's changes back to the agent", () => {
 
   test("an agent idle for long stays parked: one short request after another, until the hand-over", async () => {
     const asked: number[] = [];
+    const watched: (string | null)[] = [];
     const answers = ["timeout", "timeout", "passed"];
     const slow: Server = {
       url: BASE,
       fetch: async (url) => {
         const query = new URL(String(url)).searchParams;
-        expect(query.get("watched")).toBe("1");
+        watched.push(query.get("watched"));
         asked.push(Number(query.get("timeout")));
         const outcome = answers.shift() ?? "timeout";
         return Response.json({ outcome, text: outcome === "passed" ? "The human passed you the turn." : "" });
@@ -273,6 +274,8 @@ describe("bringing the human's changes back to the agent", () => {
     expect(woken.exitCode).toBe(2);
     expect(woken.stderr).toContain("The human passed you the turn.");
     expect(asked).toEqual([WAIT_LEG_MS, WAIT_LEG_MS, WAIT_LEG_MS]);
+    // A page is asked for when parking, not after: one that reloads meanwhile does not unpark the hook.
+    expect(watched).toEqual(["1", null, null]);
   });
 
   test("a parked hook leaves quietly when the human types in the terminal instead", async () => {

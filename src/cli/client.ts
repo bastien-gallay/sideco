@@ -190,22 +190,45 @@ export interface Waited {
   text: string;
 }
 
+/** Once parked, a request that fails is made again after this pause… */
+export const RETRY_PAUSE_MS = 15_000;
+/** …this many times in a row, about two minutes: a companion being restarted is back within that. */
+const RETRIES = 8;
+
 /**
  * Listens for the human's hand-over for up to `totalMs`, one long poll after
  * another. Ends early on any answer but "timeout": the turn was passed, the
  * session moved on, or (`watched`) no page is open to pass it from.
+ *
+ * A page is asked for when parking only. Once parked, the listening outlives
+ * what comes and goes: a page that reloads, a companion that restarts.
  */
 export async function listen(
   server: Server,
   session: string,
   totalMs: number,
   watched = false,
+  rest: (ms: number) => Promise<unknown> = (ms) => Bun.sleep(ms),
 ): Promise<Waited> {
-  const query = `session=${encodeURIComponent(session)}${watched ? "&watched=1" : ""}`;
+  const who = `session=${encodeURIComponent(session)}`;
   let left = Math.max(0, Math.round(totalMs));
+  let parked = false;
+  let failures = 0;
   for (;;) {
     const leg = Math.min(left, WAIT_LEG_MS);
-    const waited = await get<Waited>(server, `/api/wait?${query}&timeout=${leg}`, 0);
+    const query = `${who}${watched && !parked ? "&watched=1" : ""}&timeout=${leg}`;
+    let waited: Waited;
+    try {
+      waited = await get<Waited>(server, `/api/wait?${query}`, 0);
+    } catch (error) {
+      failures += 1;
+      if (!parked || failures > RETRIES || left <= RETRY_PAUSE_MS) throw error;
+      await rest(RETRY_PAUSE_MS);
+      left -= RETRY_PAUSE_MS;
+      continue;
+    }
+    parked = true;
+    failures = 0;
     left -= leg;
     if (waited.outcome !== "timeout" || left <= 0) return waited;
   }
