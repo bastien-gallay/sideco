@@ -586,6 +586,21 @@ const paintTurn = region(turnBar, (m: TurnModel) => {
   ];
 });
 
+interface HistoryModel {
+  /** Where the slider's handle sits, and how far it goes. */
+  at: number;
+  max: number;
+  live: boolean;
+  label: string;
+}
+
+/** Not a region: the slider stays the same element, so a drag on it goes on through a repaint. */
+function paintHistory(m: HistoryModel): void {
+  historyRange.max = String(m.max);
+  if (document.activeElement !== historyRange || m.live) historyRange.value = String(m.at);
+  historyLabel.textContent = m.label;
+}
+
 // ── Actions ──────────────────────────────────────────────────────────────────
 
 function select(id: string | undefined): void {
@@ -872,14 +887,17 @@ function render(): void {
   });
   sessionPanel.scrollTop = sessionPanel.scrollHeight;
 
-  historyRange.max = String(max);
-  if (document.activeElement !== historyRange || live) historyRange.value = String(state.cursor ?? max);
   const at = state.cursor === null ? undefined : state.events.find((e) => e.seq === state.cursor);
-  historyLabel.textContent = live
-    ? t.live(max)
-    : state.cursor === 0
-      ? t.beforeFirst
-      : `${state.cursor} / ${max}${at ? ` · ${clock(at.ts)} · ${describeEvent(at, locale)}` : ""}`;
+  paintHistory({
+    at: state.cursor ?? max,
+    max,
+    live,
+    label: live
+      ? t.live(max)
+      : state.cursor === 0
+        ? t.beforeFirst
+        : `${state.cursor} / ${max}${at ? ` · ${clock(at.ts)} · ${describeEvent(at, locale)}` : ""}`,
+  });
 
   banner.hidden = live;
   if (!live && banner.childElementCount === 0) {
