@@ -4,6 +4,7 @@
  * event there.
  * No DOM here, so the wording is tested like any other rule.
  */
+import type { Command } from "../domain/commands.ts";
 import { type Changes, describeChanges } from "../domain/digest.ts";
 import type { Actor, Recorded } from "../domain/events.ts";
 import { findFormat, findType } from "../domain/formats.ts";
@@ -406,12 +407,141 @@ export interface Discussion {
 export function discussions(board: Board): Discussion[] {
   return threads(board)
     .filter((thread) => !thread.resolved)
-    .map((thread) => ({
-      id: thread.id,
-      on: thread.target ? { id: thread.target, label: findElement(board, thread.target)?.label } : undefined,
-      waits: thread.notes.at(-1)?.by === "human" ? "claude" : "you",
-      notes: thread.notes.map(({ id, by, text }) => ({ id, by, text })),
-    }));
+    .map(asDiscussion(board));
+}
+
+/** The board's resolved discussions, the latest opened first: closed, never out of reach. */
+export function resolvedDiscussions(board: Board): Discussion[] {
+  return threads(board)
+    .filter((thread) => thread.resolved)
+    .reverse()
+    .map(asDiscussion(board));
+}
+
+const asDiscussion =
+  (board: Board) =>
+  (thread: ReturnType<typeof threads>[number]): Discussion => ({
+    id: thread.id,
+    on: thread.target ? { id: thread.target, label: findElement(board, thread.target)?.label } : undefined,
+    waits: thread.notes.at(-1)?.by === "human" ? "claude" : "you",
+    notes: thread.notes.map(({ id, by, text }) => ({ id, by, text })),
+  });
+
+/** Words as a search compares them: without case, without accents. */
+const folded = (text: string): string =>
+  text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+
+/**
+ * The cards a search finds, best first: the card of that id, then those whose
+ * label holds every word asked, then those whose detail does. Board order within each.
+ */
+export function findCards(board: Board, query: string): string[] {
+  const words = folded(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  const holds = (text: string | undefined): boolean => {
+    const where = folded(text ?? "");
+    return words.every((word) => where.includes(word));
+  };
+  const byId = board.elements.filter((e) => folded(e.id) === words.join(" "));
+  const byLabel = board.elements.filter((e) => holds(e.label));
+  const byDetail = board.elements.filter((e) => holds(e.detail));
+  return [...new Set([...byId, ...byLabel, ...byDetail].map((e) => e.id))];
+}
+
+/** A piece of a message: its own words, or an id it names that the reader can go to. */
+export type Mention = string | { id: string };
+
+/** Cuts the ids of `known` out of a message, so the page can make each one a link. */
+export function mentions(text: string, known: ReadonlySet<string>): Mention[] {
+  const pieces: Mention[] = [];
+  let from = 0;
+  for (const match of text.matchAll(/\b[A-Z]{1,3}\d+\b/g)) {
+    const id = match[0];
+    if (!known.has(id)) continue;
+    if (match.index > from) pieces.push(text.slice(from, match.index));
+    pieces.push({ id });
+    from = match.index + id.length;
+  }
+  if (from < text.length) pieces.push(text.slice(from));
+  return pieces;
+}
+
+export type Direction = "up" | "down" | "left" | "right";
+
+interface Placed {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * The card an arrow key goes to from `id`: the nearest one that way, a card
+ * straight ahead before one off to the side.
+ */
+export function neighbour(cards: readonly Placed[], id: string, direction: Direction): string | undefined {
+  const from = cards.find((c) => c.id === id);
+  if (!from) return undefined;
+  const centre = (c: Placed): { x: number; y: number } => ({ x: c.x + c.w / 2, y: c.y + c.h / 2 });
+  const here = centre(from);
+  const sideways = direction === "left" || direction === "right";
+  const sign = direction === "right" || direction === "down" ? 1 : -1;
+  let best: { id: string; score: number } | undefined;
+  for (const card of cards) {
+    if (card.id === id) continue;
+    const there = centre(card);
+    const ahead = sign * (sideways ? there.x - here.x : there.y - here.y);
+    if (ahead < 1) continue;
+    const aside = Math.abs(sideways ? there.y - here.y : there.x - here.x);
+    const score = ahead + 2 * aside;
+    if (!best || score < best.score) best = { id: card.id, score };
+  }
+  return best?.id;
+}
+
+/** The order Tab takes through the cards: column by column, top to bottom. */
+export function readingOrder(cards: readonly Placed[]): string[] {
+  return [...cards].sort((a, b) => Math.round(a.x) - Math.round(b.x) || a.y - b.y).map((c) => c.id);
+}
+
+/**
+ * The move Alt and an arrow ask for on a focused card, by the board's own rules:
+ * on a timeline, a column either way or a place in its cell; in lanes, a lane
+ * either way or a place in its lane. Undefined where the card cannot go.
+ */
+export function keyMove(board: Board, id: string, direction: Direction): Command | undefined {
+  const format = findFormat(board.format);
+  const el = findElement(board, id);
+  if (!format || !el || format.layout === "graph") return undefined;
+  const timeline = format.layout === "timeline";
+  const siblings = board.elements.filter((other) =>
+    timeline ? other.col === el.col && other.type === el.type : other.lane === el.lane,
+  );
+  const place = timeline ? { col: el.col } : { lane: el.lane };
+  const at = siblings.indexOf(el);
+  if (direction === "up") {
+    const before = siblings[at - 1];
+    return before ? { kind: "move", board: board.id, id, ...place, before: before.id } : undefined;
+  }
+  if (direction === "down") {
+    if (at === siblings.length - 1) return undefined;
+    const after = siblings[at + 2];
+    return { kind: "move", board: board.id, id, ...place, ...(after ? { before: after.id } : {}) };
+  }
+  const step = direction === "right" ? 1 : -1;
+  if (timeline) {
+    const col = (el.col ?? 1) + step;
+    const last = Math.max(0, ...board.elements.filter((o) => o !== el).map((o) => o.col ?? 0));
+    if (col < 1 || col > last + 1) return undefined;
+    return { kind: "move", board: board.id, id, col };
+  }
+  const lanes = format.lanes.map((lane) => lane.id);
+  const lane = lanes[lanes.indexOf(el.lane ?? "") + step];
+  return lane && lanes.includes(el.lane ?? "") ? { kind: "move", board: board.id, id, lane } : undefined;
 }
 
 /** A "+" to click: adds a card of one kind where it is drawn. Scene coordinates. */

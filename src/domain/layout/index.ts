@@ -87,13 +87,18 @@ function cardMaker(board: Board, format: Format, locale: Locale): (e: Element, x
       fill: type?.fill ?? "#E8EEF4",
       ink: type?.ink ?? "#1F2328",
       shape: type?.shape ?? "box",
+      label: oneLineOf(e.label),
       tip: `${e.id} · ${type?.label[locale] ?? e.type} · ${WORDS[locale].addedBy[e.by]}${e.done ? ` · ${WORDS[locale].done}` : ""}`,
       by: e.by,
       hasDetail: Boolean(e.detail),
+      ...(e.detail ? { detail: e.detail } : {}),
       done: e.done === true,
       notes: openNotes.get(e.id) ?? 0,
     };
   };
 }
+
+/** A label on one line: the name a card is heard by. */
+const oneLineOf = (label: string): string => label.replace(/\s+/g, " ").trim();
 
 export type { Band, Card, Connector, Room, Scene, Target } from "./scene.ts";

@@ -158,6 +158,31 @@ export interface Messages {
 
   /** Between a label and what follows it: French puts a space before the colon. */
   colon: string;
+
+  // Reading and writing a card from the keyboard.
+  /** The name of the editor, by what it edits. */
+  detailOf: (id: string) => string;
+  noteOn: (id: string) => string;
+  /** How a text of several lines is saved, and left. */
+  saveLines: string;
+  /** An action with the key that does it too. */
+  withKey: (action: string, key: string) => string;
+  cardRemoved: (id: string) => string;
+  /** The board, as a screen reader names it. */
+  boardCards: (title: string) => string;
+
+  // Finding one's way on a large board.
+  find: string;
+  findPlaceholder: string;
+  findCount: (at: number, of: number) => string;
+  findNone: string;
+  fit: string;
+  fitHint: string;
+  resolvedNotes: (count: number) => string;
+  shortcuts: string;
+  /** Each shortcut of the page: the keys, then what they do. */
+  shortcutList: [keys: string, does: string][];
+  close: string;
 }
 
 const plural = (count: number): string => (count > 1 ? "s" : "");
@@ -300,6 +325,38 @@ const en: Messages = {
   reload: "Reload",
 
   colon: ":",
+
+  detailOf: (id) => `Detail of ${id}`,
+  noteOn: (id) => `Note for Claude on ${id}`,
+  saveLines: "Enter saves, Shift+Enter starts a new line, Esc cancels",
+  withKey: (action, key) => `${action} (${key})`,
+  cardRemoved: (id) => `${id} removed.`,
+  boardCards: (title) => `Cards of “${title}”`,
+
+  find: "Find a card",
+  findPlaceholder: "An id or words…",
+  findCount: (at, of) => `${at} / ${of}`,
+  findNone: "No card",
+  fit: "Fit",
+  fitHint: "Fit the whole board in the window, or back to 100 %",
+  resolvedNotes: (count) => `Resolved (${count})`,
+  shortcuts: "Keyboard shortcuts",
+  shortcutList: [
+    ["Tab", "Into the board, then out of it"],
+    ["← → ↑ ↓", "From a card to the next one"],
+    ["Alt + ← → ↑ ↓", "Move the card: column or lane, then its place"],
+    ["Enter or F2", "Rename the card"],
+    ["Space", "Select the card and show its actions"],
+    ["D", "Mark the card done, or not done"],
+    ["L", "Link from the card: then Space on the other one"],
+    ["N", "Note for Claude on the card"],
+    ["Delete", "Remove the card (Undo brings it back)"],
+    ["/", "Find a card by its id or its words"],
+    ["⌘Z / Ctrl+Z", "Undo your last change"],
+    ["Esc", "Close, cancel, deselect"],
+    ["?", "These shortcuts"],
+  ],
+  close: "Close",
 };
 
 const fr: Messages = {
@@ -442,6 +499,38 @@ const fr: Messages = {
   reload: "Recharger",
 
   colon: " :",
+
+  detailOf: (id) => `Détail de ${id}`,
+  noteOn: (id) => `Note pour Claude sur ${id}`,
+  saveLines: "Entrée enregistre, Maj+Entrée va à la ligne, Échap annule",
+  withKey: (action, key) => `${action} (${key})`,
+  cardRemoved: (id) => `${id} supprimée.`,
+  boardCards: (title) => `Cartes de « ${title} »`,
+
+  find: "Trouver une carte",
+  findPlaceholder: "Un id ou des mots…",
+  findCount: (at, of) => `${at} / ${of}`,
+  findNone: "Aucune carte",
+  fit: "Ajuster",
+  fitHint: "Faire tenir tout le tableau dans la fenêtre, ou revenir à 100 %",
+  resolvedNotes: (count) => `Résolues (${count})`,
+  shortcuts: "Raccourcis clavier",
+  shortcutList: [
+    ["Tab", "Entrer dans le tableau, puis en sortir"],
+    ["← → ↑ ↓", "D'une carte à la suivante"],
+    ["Alt + ← → ↑ ↓", "Déplacer la carte : colonne ou couloir, puis sa place"],
+    ["Entrée ou F2", "Renommer la carte"],
+    ["Espace", "Sélectionner la carte et montrer ses actions"],
+    ["D", "Marquer la carte faite, ou non faite"],
+    ["L", "Relier depuis la carte : puis Espace sur l'autre"],
+    ["N", "Note pour Claude sur la carte"],
+    ["Suppr", "Supprimer la carte (Annuler la ramène)"],
+    ["/", "Trouver une carte par son id ou ses mots"],
+    ["⌘Z / Ctrl+Z", "Annuler ton dernier changement"],
+    ["Échap", "Fermer, annuler, désélectionner"],
+    ["?", "Ces raccourcis"],
+  ],
+  close: "Fermer",
 };
 
 export const MESSAGES: Record<Locale, Messages> = { en, fr };

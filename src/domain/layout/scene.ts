@@ -16,10 +16,14 @@ export interface Card {
   fill: string;
   ink: string;
   shape: Shape;
+  /** The whole label, on one line: what `lines` shows of it, uncut. */
+  label: string;
   /** The tooltip: id, type and who added it, in the reader's language. */
   tip: string;
   by: Actor;
   hasDetail: boolean;
+  /** The detail as written: the tooltip carries it, for a reader who does not open the editor. */
+  detail?: string;
   /** What the card stands for is done. */
   done: boolean;
   /** Open notes pinned to this card. */
@@ -112,8 +116,9 @@ export function wrap(label: string, width = WRAP_CHARS, maxLines = WRAP_LINES): 
         lines.push(current);
         current = "";
       }
-      lines.push(rest.slice(0, width));
-      rest = rest.slice(width);
+      const cut = breakAt(rest, width);
+      lines.push(cut.line);
+      rest = cut.rest;
     }
     if (current && current.length + 1 + rest.length > width) {
       lines.push(current);
@@ -128,6 +133,23 @@ export function wrap(label: string, width = WRAP_CHARS, maxLines = WRAP_LINES): 
   const last = kept[maxLines - 1] ?? "";
   kept[maxLines - 1] = `${last.slice(0, width - 1).trimEnd()}…`;
   return kept;
+}
+
+/**
+ * Where a word too long for a line is cut: after its last slash or hyphen that
+ * fits, as a reader would; otherwise one character short, with a hyphen that
+ * says the word goes on.
+ */
+function breakAt(word: string, width: number): { line: string; rest: string } {
+  const head = word.slice(0, width);
+  const own = Math.max(head.lastIndexOf("/"), head.lastIndexOf("-"));
+  if (own > 0) return { line: word.slice(0, own + 1), rest: word.slice(own + 1) };
+  return { line: `${word.slice(0, width - 1)}-`, rest: word.slice(width - 1) };
+}
+
+/** The name a card is heard by: its words first, then what the tooltip says of it. */
+export function cardName(card: Pick<Card, "label" | "tip">): string {
+  return `${card.label} · ${card.tip}`;
 }
 
 /** A smooth connector between two cards, leaving and entering on the sides that face each other. */

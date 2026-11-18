@@ -16,6 +16,35 @@ test("text is escaped wherever it lands", () => {
   expect(svg).toContain('aria-label="A &lt;b&gt; &amp; &quot;c&quot;"');
 });
 
+test("a card's tooltip carries its whole label and its detail, which the card itself may cut", () => {
+  const long = "Ajout, modification et suppression des acteurs, idéalement avec une description visible";
+  const t = table(`board new "Carte" --id carte\nadd event "${long}" --col 1`);
+  t.do({ kind: "annotate", board: "carte", id: "E1", detail: "Règle n°4\nSource : atelier" });
+  const card = layoutBoard(t.board()).cards[0];
+  if (!card) throw new Error("the board has a card");
+  expect(card.lines.at(-1)).toEndWith("…");
+  const markup = cardMarkup(card);
+  expect(markup).toContain(
+    `<title>${esc(long)} · E1 · Event · added by Claude\nRègle n°4\nSource : atelier</title>`,
+  );
+});
+
+test("the id and the marks of a card are drawn in full ink, so they read on every sticky colour", () => {
+  const svg = svgOf(`${ORDERING}\ndetail P1 "Règle"`);
+  expect(svg).toMatch(/\.card-id \{[^}]*\}/);
+  expect(svg.match(/\.card-id \{[^}]*\}/)?.[0]).not.toContain("opacity");
+  expect(svg.match(/\.card-detail \{[^}]*\}/)?.[0]).not.toContain("opacity");
+});
+
+test("small labels of the chrome use the muted ink, never the faint one", () => {
+  const svg = svgOf(ORDERING);
+  for (const rule of [".band-step-label", ".lane-count"]) {
+    const css = svg.match(new RegExp(`\\${rule} \\{[^}]*\\}`))?.[0] ?? "";
+    expect(css).toContain("--vico-muted");
+    expect(css).not.toContain("--vico-faint");
+  }
+});
+
 test("a lane that says what it stands for is drawn on two lines: its name, then that", () => {
   const svg = svgOf(IMPACT_EFFORT);
   expect(count(svg, '<text class="lane-hint"')).toBe(4);

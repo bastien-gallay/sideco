@@ -32,6 +32,7 @@ import {
   type Discussion,
   describeEvent,
   discussions,
+  findCards,
   handOverHint,
   handOverNotice,
   historyBoard,
@@ -39,9 +40,11 @@ import {
   historyStep,
   historyStopAt,
   historyStops,
+  mentions,
   pendingChanges,
   recentTurns,
   redoTarget,
+  resolvedDiscussions,
   tabTitle,
   undoTarget,
   unreadOn,
@@ -69,7 +72,12 @@ const boardPicker = h("div", { class: "board-picker" });
 const statusPill = h("div", { class: "status", role: "status", "aria-live": "polite" });
 /** Claude waits for the human: said just before the zoom, whatever board is on screen. */
 const waitsPill = h("div", { class: "waits", role: "status", "aria-live": "polite" });
-const zoomLabel = h("span", { class: "zoom-label" }, "100 %");
+/** Says the zoom, and fits the whole board when pressed: on a large board, the way to see all of it. */
+const zoomLabel = h(
+  "button",
+  { type: "button", class: "zoom-label", title: t.fitHint, "aria-label": t.fitHint, onclick: () => fit() },
+  "100 %",
+);
 const undoGroup = h("div", { class: "undo" });
 const exportMenu = h("details", { class: "menu" });
 const banner = h("div", { class: "banner", hidden: true });
@@ -82,6 +90,7 @@ const sessionPanel = h("aside", { class: "right", "aria-label": t.sessionPanel }
 const historyLabel = h("output", { class: "history-label" });
 const historyRange = h("input", {
   type: "range",
+  name: "history",
   min: 0,
   max: 0,
   value: 0,
@@ -93,6 +102,7 @@ let wholeJournal = false;
 const historyScope = h(
   "select",
   {
+    name: "history-scope",
     "aria-label": t.historyScope,
     onchange: () => {
       wholeJournal = historyScope.value === "everything";
@@ -107,6 +117,7 @@ const turnSays = h("div", { class: "turn-says" });
 /** Made once: a message being typed for Claude keeps its words and the keyboard through every repaint. */
 const passMessage = h("input", {
   type: "text",
+  name: "message",
   placeholder: t.messagePlaceholder,
   "aria-label": t.messageForClaude,
   maxlength: 1000,
@@ -150,6 +161,7 @@ const languagePicker = h(
   "select",
   {
     class: "language",
+    name: "language",
     "aria-label": t.language,
     onchange: (event: Event) => {
       const next = asLocale((event.target as HTMLSelectElement).value);
@@ -159,7 +171,94 @@ const languagePicker = h(
   ...LOCALES.map((l) => h("option", { value: l, lang: l, selected: l === locale }, MESSAGES[l].languageName)),
 );
 
-const view = mountBoard(canvas);
+const view = mountBoard(canvas, {
+  removed: (id) => say(t.cardRemoved(id), { label: t.undoAction, run: () => void undo() }),
+});
+
+/** A search over the cards of the board shown: `/` opens it, Enter goes from one card found to the next. */
+const findField = h("input", {
+  type: "search",
+  name: "find",
+  placeholder: t.findPlaceholder,
+  "aria-label": t.find,
+  autocomplete: "off",
+});
+const findCount = h("output", { class: "find-count", "aria-live": "polite" });
+const findBar = h(
+  "form",
+  { class: "find-bar", role: "search", hidden: true },
+  findField,
+  findCount,
+  h("button", { type: "button", class: "quiet", onclick: () => closeFind() }, t.close),
+);
+let found: string[] = [];
+let foundAt = -1;
+
+function openFind(): void {
+  findBar.hidden = false;
+  findField.focus();
+  findField.select();
+}
+
+function closeFind(): void {
+  findBar.hidden = true;
+  findField.value = "";
+  findCount.textContent = "";
+  view.point(undefined);
+  const id = found[foundAt];
+  found = [];
+  foundAt = -1;
+  if (id) view.focus(id);
+}
+
+findField.addEventListener("input", () => {
+  const board = currentBoard();
+  found = board ? findCards(board, findField.value) : [];
+  foundAt = found.length > 0 ? 0 : -1;
+  showFound();
+});
+
+findBar.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (found.length === 0) return;
+  foundAt = (foundAt + 1) % found.length;
+  showFound();
+});
+
+findField.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  event.preventDefault();
+  event.stopPropagation();
+  closeFind();
+});
+
+function showFound(): void {
+  const id = found[foundAt];
+  findCount.textContent =
+    findField.value.trim() === "" ? "" : id ? t.findCount(foundAt + 1, found.length) : t.findNone;
+  view.point(id);
+  if (id) view.reveal(id);
+}
+
+/** The keys of the page, in one place: asked for with `?`, or from the palette. */
+const keysSheet = h("dialog", { class: "sheet keys" });
+
+function openKeys(): void {
+  keysSheet.replaceChildren(
+    h("h2", {}, t.shortcuts),
+    h(
+      "dl",
+      { class: "key-list" },
+      ...t.shortcutList.flatMap(([keys, does]) => [h("dt", {}, h("kbd", {}, keys)), h("dd", {}, does)]),
+    ),
+    h(
+      "div",
+      { class: "actions" },
+      h("button", { type: "button", class: "primary", onclick: () => keysSheet.close() }, t.close),
+    ),
+  );
+  keysSheet.showModal();
+}
 
 app.append(
   h(
@@ -185,7 +284,7 @@ app.append(
     "main",
     { class: "work" },
     h("aside", { class: "left" }, palette, notes),
-    h("section", { class: "stage" }, focusBar, canvas, empty),
+    h("section", { class: "stage" }, focusBar, findBar, canvas, empty),
     sessionPanel,
   ),
   h(
@@ -205,6 +304,7 @@ app.append(
   toast,
   dialog,
   removal,
+  keysSheet,
 );
 
 /** The board the history follows: none when the reader asked for everything, or no board is there. */
@@ -228,6 +328,10 @@ function zoom(by: -1 | 1): void {
   zoomLabel.textContent = `${Math.round(view.zoomBy(by) * 100)} %`;
 }
 
+function fit(): void {
+  zoomLabel.textContent = `${Math.round(view.fit() * 100)} %`;
+}
+
 // ── Regions: each repaints only when its own model changes ───────────────────
 
 interface BoardPickerModel {
@@ -243,6 +347,7 @@ const paintBoardPicker = region(boardPicker, (m: BoardPickerModel) => {
       h(
         "select",
         {
+          name: "board",
           "aria-label": t.boardShown,
           onchange: (event: Event) => openBoard((event.target as HTMLSelectElement).value),
         },
@@ -401,6 +506,11 @@ const paintPalette = region(palette, (m: PaletteModel) => {
       ),
     ),
     h("p", { class: "how" }, how),
+    h(
+      "button",
+      { type: "button", class: "quiet keys-open", onclick: () => openKeys() },
+      t.withKey(t.shortcuts, "?"),
+    ),
   ];
 });
 
@@ -410,9 +520,14 @@ interface NotesModel {
   /** The selected card: its discussions stand out. */
   selected: string | null;
   threads: Discussion[];
+  /** Closed, kept within reach: what was decided stays readable. */
+  resolved: Discussion[];
   /** The discussions that carry a note Claude has not read. */
   unread: string[];
 }
+
+/** The resolved discussions are open to read while the reader keeps them so: a repaint does not fold them back. */
+let resolvedOpen = false;
 
 /** A field for a few words that may run over several lines: Enter sends them, Shift+Enter breaks the line. */
 function wordsField(props: Props, words: string, oninput: (words: string) => void): HTMLTextAreaElement {
@@ -462,10 +577,27 @@ const paintThreads = region(notes, (m: NotesModel) => {
         input,
         h("button", { type: "submit", class: "quiet" }, t.addNote),
       ),
+    m.resolved.length > 0 &&
+      h(
+        "details",
+        {
+          class: "resolved",
+          open: resolvedOpen,
+          ontoggle: (event: Event) => {
+            resolvedOpen = (event.target as HTMLDetailsElement).open;
+          },
+        },
+        h("summary", {}, t.resolvedNotes(m.resolved.length)),
+        h(
+          "ul",
+          { class: "note-list" },
+          ...m.resolved.map((thread) => threadItem(boardId, thread, { ...m, live: false }, true)),
+        ),
+      ),
   ];
 });
 
-function threadItem(boardId: string, thread: Discussion, m: NotesModel): HTMLElement {
+function threadItem(boardId: string, thread: Discussion, m: NotesModel, resolved = false): HTMLElement {
   const on = thread.on;
   const key = draftKey(boardId, thread.id);
   const field = wordsField(
@@ -500,7 +632,9 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel): HTMLEle
     "li",
     {
       class: on && on.id === m.selected ? "thread is-current" : "thread",
-      "data-thread": thread.id,
+      // A resolved discussion is named apart: what speaks of an open one never lands on a closed one.
+      [resolved ? "data-resolved" : "data-thread"]: thread.id,
+      id: `thread-${thread.id}`,
       onmouseenter: () => view.point(on?.id),
       onmouseleave: () => view.point(undefined),
       onfocusin: () => view.point(on?.id),
@@ -538,12 +672,13 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel): HTMLEle
         field,
         h("button", { type: "submit", class: "quiet" }, t.reply),
       ),
-    h(
-      "div",
-      { class: "thread-foot" },
-      h("span", { class: `thread-waits waits-${thread.waits}` }, t.waits[thread.waits]),
-      m.live && closing,
-    ),
+    !resolved &&
+      h(
+        "div",
+        { class: "thread-foot" },
+        h("span", { class: `thread-waits waits-${thread.waits}` }, t.waits[thread.waits]),
+        m.live && closing,
+      ),
   );
 }
 
@@ -675,16 +810,55 @@ interface TurnModel {
   pending: number;
   hint: string;
   theirs: string | undefined;
+  /** The ids on the board shown, of cards and of notes: those Claude's words can lead to. */
+  known: string[];
 }
 
 const paintTurnSays = region(turnSays, (m: TurnModel) => {
   const count = m.pending === 0 ? t.upToDate : t.pending(m.pending);
   return [
     m.theirs !== undefined &&
-      h("p", { class: "theirs" }, h("strong", {}, t.theirTurn), m.theirs ? `${t.colon} ${m.theirs}` : ""),
+      h(
+        "p",
+        { class: "theirs" },
+        h("strong", {}, t.theirTurn),
+        m.theirs ? `${t.colon} ` : "",
+        ...linked(m.theirs, m.known),
+      ),
     h("p", { class: "pending" }, h("strong", {}, count), ` · ${m.hint}`),
   ];
 });
+
+/** Claude's words, with each card or discussion they name made a link to it. */
+function linked(text: string, known: string[]): (string | HTMLElement)[] {
+  return mentions(text, new Set(known)).map((piece) =>
+    typeof piece === "string"
+      ? piece
+      : h("button", { type: "button", class: "mention", onclick: () => goTo(piece.id) }, piece.id),
+  );
+}
+
+/** Leads to what an id names: a card is selected on the board, a discussion opened in the notes. */
+function goTo(id: string): void {
+  const board = currentBoard();
+  if (!board) return;
+  if (board.elements.some((e) => e.id === id)) {
+    select(id);
+    view.focus(id);
+    return;
+  }
+  const thread = board.notes.find((n) => n.id === id);
+  const opening = thread?.thread ?? thread?.id;
+  if (!opening) return;
+  if (board.notes.find((n) => n.id === opening)?.resolved) {
+    resolvedOpen = true;
+    notes.querySelector<HTMLDetailsElement>("details.resolved")?.setAttribute("open", "");
+  }
+  const item = document.getElementById(`thread-${opening}`);
+  item?.scrollIntoView({ block: "nearest" });
+  item?.classList.add("is-called");
+  setTimeout(() => item?.classList.remove("is-called"), 2400);
+}
 
 function paintTurn(m: TurnModel): void {
   paintTurnSays(m);
@@ -753,7 +927,10 @@ async function copyMermaid(): Promise<void> {
  */
 async function undo(): Promise<void> {
   const board = isLive() ? undoTarget(state.live, state.boardId ?? undefined) : undefined;
-  if (board) await send({ kind: "undo", board });
+  if (!board) return;
+  // An offer to take a gesture back is moot once one was taken back: it leaves.
+  if (toast.querySelector("button")) toast.hidden = true;
+  await send({ kind: "undo", board });
 }
 
 async function redo(): Promise<void> {
@@ -769,6 +946,15 @@ function typing(target: EventTarget | null): boolean {
     (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
   );
 }
+
+// `/` finds a card, `?` lists the keys: wherever the keyboard is, except in a text being typed.
+window.addEventListener("keydown", (event) => {
+  if (event.ctrlKey || event.metaKey || event.altKey || typing(event.target)) return;
+  if (event.key === "/" && currentBoard()) openFind();
+  else if (event.key === "?") openKeys();
+  else return;
+  event.preventDefault();
+});
 
 window.addEventListener("keydown", (event) => {
   if (!(event.ctrlKey || event.metaKey) || event.altKey || typing(event.target)) return;
@@ -977,6 +1163,7 @@ function render(): void {
     live,
     selected: state.selected,
     threads: board ? discussions(board) : [],
+    resolved: board ? resolvedDiscussions(board) : [],
     unread: unread.threads,
   });
   revealThreads(state.selected);
@@ -1011,11 +1198,14 @@ function render(): void {
     at: place.index,
     max: stops.length - 1,
     live,
-    label: live
-      ? t.live(place.of)
-      : place.at === 0
-        ? t.beforeFirst
-        : `${place.at} / ${place.of}${latest ? ` · ${clock(latest.ts)} · ${describeEvent(latest, locale)}` : ""}`,
+    // Cut off from the companion, the page is not live: it says so here too, where "Live" would be.
+    label: !state.connected
+      ? t.disconnected
+      : live
+        ? t.live(place.of)
+        : place.at === 0
+          ? t.beforeFirst
+          : `${place.at} / ${place.of}${latest ? ` · ${clock(latest.ts)} · ${describeEvent(latest, locale)}` : ""}`,
     board: followed,
     choice: wholeJournal || followed,
   });
@@ -1035,6 +1225,7 @@ function render(): void {
     pending: pending.count,
     hint: handOverHint(liveSession?.status, state.listening, locale),
     theirs: turn?.to === "human" ? (turn.message ?? "") : undefined,
+    known: board ? [...board.elements.map((e) => e.id), ...board.notes.map((n) => n.id)] : [],
   });
 
   if (state.error) say(state.error);

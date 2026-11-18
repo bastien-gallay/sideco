@@ -7,6 +7,7 @@ import { describeBoard } from "../../src/domain/digest.ts";
 import { FORMATS } from "../../src/domain/formats.ts";
 import { asLocale, DEFAULT_LOCALE, LOCALES } from "../../src/domain/i18n.ts";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
+import { cardName } from "../../src/domain/layout/scene.ts";
 import { KANBAN, ORDERING, table } from "../support.ts";
 
 test("English is the default, and French is the other language", () => {
@@ -53,11 +54,13 @@ describe("the drawing", () => {
     expect(rows("fr")).toContain("Événement");
   });
 
-  test("a card's tooltip says its type and who added it, in the reader's language", () => {
-    const tip = (locale?: "en" | "fr"): string | undefined =>
-      layoutBoard(table(ORDERING).board(), locale).cards.find((c) => c.id === "E1")?.tip;
-    expect(tip()).toBe("E1 · Event · added by Claude");
-    expect(tip("fr")).toBe("E1 · Événement · ajouté par Claude");
+  test("a card's tooltip says its type and who added it, and its name says its words first, in the reader's language", () => {
+    const e1 = (locale?: "en" | "fr") =>
+      layoutBoard(table(ORDERING).board(), locale).cards.find((c) => c.id === "E1");
+    expect(e1()?.tip).toBe("E1 · Event · added by Claude");
+    expect(e1("fr")?.tip).toBe("E1 · Événement · ajouté par Claude");
+    const fr = e1("fr");
+    expect(fr && cardName(fr)).toBe("Commande passée · E1 · Événement · ajouté par Claude");
   });
 });
 

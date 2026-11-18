@@ -39,8 +39,17 @@ describe("wrap", () => {
     ]);
   });
 
-  test("cuts a word longer than a line", () => {
-    expect(wrap("a".repeat(45), 20, 4)).toEqual(["a".repeat(20), "a".repeat(20), "a".repeat(5)]);
+  test("cuts a word longer than a line, and says so with a hyphen", () => {
+    expect(wrap("a".repeat(45), 20, 4)).toEqual([`${"a".repeat(19)}-`, `${"a".repeat(19)}-`, "a".repeat(7)]);
+  });
+
+  test("cuts a long word after a slash or a hyphen of its own, when it has one", () => {
+    expect(wrap("ajout/modification/suppression des acteurs", 20, 4)).toEqual([
+      "ajout/modification/",
+      "suppression des",
+      "acteurs",
+    ]);
+    expect(wrap("event-sourced-modelling-board", 20, 4)).toEqual(["event-sourced-", "modelling-board"]);
   });
 
   test("ends with an ellipsis when the label does not fit", () => {
@@ -397,7 +406,9 @@ test("a card carries what the painter needs: colours, author, detail and open no
     by: "agent",
     hasDetail: true,
     notes: 1,
+    label: "Quand commande passée, réserver le stock",
     tip: "P1 · Policy · added by Claude",
+    detail: "Règle n°4",
   });
   expect(card(scene, "H2")).toMatchObject({ by: "human", shape: "sharp", hasDetail: false, notes: 0 });
 });

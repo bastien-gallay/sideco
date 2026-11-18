@@ -907,7 +907,9 @@ describe("what Claude has not read yet", () => {
     await fetch(`${running.url}/api/changes?session=${SESSION}&ack=1`);
     await cardMark("E1").waitFor({ state: "detached" });
     await threadMark("N1").waitFor({ state: "detached" });
-    expect(await card("E1").getAttribute("aria-label")).toBeNull();
+    // Read, the card is heard by its words alone.
+    expect(await card("E1").getAttribute("aria-label")).toStartWith("Facture envoyée · E1");
+    expect(await card("E1").getAttribute("aria-label")).not.toEndWith(WORDS);
   });
 });
 
@@ -952,7 +954,8 @@ describe("adding where the pointer is", () => {
     );
     await page.locator(".board-picker select").selectOption("ajout-case");
     await card("E2").getByText("Stock réservé").waitFor();
-    const row = await page.locator(".band-row", { hasText: "Policy" }).locator("text").boundingBox();
+    // The row names sit over the cards, where they stay while the board scrolls.
+    const row = await page.locator(".heads-rows .band-label", { hasText: "Policy" }).boundingBox();
     const e2 = await centre("E2");
     if (!row) throw new Error("no Policy row");
     await page.mouse.move(e2.x, row.y + row.height / 2);
@@ -990,6 +993,9 @@ describe("adding where the pointer is", () => {
   });
 
   test("the offer leaves with the pointer, and is not made on a board shown as it was", async () => {
+    // The card added before is still selected: its toolbar, kept inside the window, would cover E2.
+    await page.keyboard.press("Escape");
+    await page.locator(".card-tools").waitFor({ state: "hidden" });
     const e2 = await centre("E2");
     await page.mouse.move(e2.x, e2.y);
     await offer("event").waitFor();
@@ -1029,6 +1035,14 @@ describe("reopening a card without changing it", () => {
     await card("E1").click();
     await page.locator(".card-tools button", { hasText: "Detail" }).click();
     await editor.waitFor({ state: "visible" });
+    // A detail is read before it is changed: nothing comes selected, the caret waits at its end.
+    expect(
+      await editor.evaluate(
+        (field: HTMLTextAreaElement) =>
+          field.selectionStart === field.value.length && field.selectionEnd === field.value.length,
+      ),
+    ).toBe(true);
+    expect(await editor.getAttribute("aria-label")).toBe("Detail of E1");
     await editor.press("Enter");
     await editor.waitFor({ state: "hidden" });
 
@@ -1052,11 +1066,56 @@ describe("reopening a card without changing it", () => {
     await editor.pressSequentially("seconde ligne");
     await editor.press("Enter");
     await editor.waitFor({ state: "hidden" });
+    // The keyboard is back on the card the detail is about.
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe("E1");
     await until(
       "the detail is kept line by line",
       async () => (await elementOf("ajout-case", "E1"))?.detail === "Première ligne\nseconde ligne",
     );
     await page.keyboard.press("Escape");
+  });
+});
+
+describe("the board from the keyboard", () => {
+  const focused = () => page.evaluate(() => document.activeElement?.getAttribute("data-id") ?? null);
+
+  test("the board is one Tab stop, and the arrows go from card to card", async () => {
+    expect(await page.locator('g.card[tabindex="0"]').count()).toBe(1);
+    const first = await page.locator('g.card[tabindex="0"]').getAttribute("data-id");
+    await page.locator('g.card[tabindex="0"]').focus();
+    for (const key of ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"]) {
+      await page.keyboard.press(key);
+      if ((await focused()) !== first) break;
+    }
+    const now = await focused();
+    expect(now).not.toBeNull();
+    expect(now).not.toBe(first);
+    // Tab enters the board where the keyboard left it.
+    expect(await card(now ?? "").getAttribute("tabindex")).toBe("0");
+    expect(await page.locator('g.card[tabindex="0"]').count()).toBe(1);
+  });
+
+  test("`/` finds a card by its id, and Esc leaves the keyboard on it", async () => {
+    const id = (await page.locator("g.card").first().getAttribute("data-id")) ?? "";
+    await page.locator(".canvas").click({ position: { x: 4, y: 4 } });
+    await page.keyboard.press("/");
+    const field = page.locator(".find-bar input");
+    await field.waitFor({ state: "visible" });
+    await field.fill(id.toLowerCase());
+    expect(await page.locator(".find-count").textContent()).toMatch(/^1 \/ \d+$/);
+    expect(await card(id).getAttribute("class")).toContain("is-pointed");
+    await field.press("Escape");
+    await page.locator(".find-bar").waitFor({ state: "hidden" });
+    expect(await focused()).toBe(id);
+  });
+
+  test("`?` lists the keys of the page", async () => {
+    await page.keyboard.press("?");
+    const sheet = page.locator("dialog.keys");
+    await sheet.waitFor({ state: "visible" });
+    expect(await sheet.locator("kbd", { hasText: "Alt + ← → ↑ ↓" }).count()).toBe(1);
+    await page.keyboard.press("Escape");
+    await sheet.waitFor({ state: "hidden" });
   });
 });
 

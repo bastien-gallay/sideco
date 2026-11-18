@@ -5,25 +5,25 @@
  * Colours of the chrome are CSS variables with fallbacks: standalone files get
  * the light theme, the page overrides the variables.
  */
-import { type Band, type Card, type Connector, LINE_H, type Scene } from "../layout/scene.ts";
+import { type Band, type Card, type Connector, cardName, LINE_H, type Scene } from "../layout/scene.ts";
 
 export const SVG_STYLE = `
 .vico-board { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 .band-rule { stroke: var(--vico-rule, #E3E6EA); stroke-width: 1; }
 .band-label { fill: var(--vico-muted, #59636E); font-size: 12px; font-weight: 600; }
-.band-step-label { fill: var(--vico-faint, #8C959F); font-size: 11px; text-anchor: middle; }
+.band-step-label { fill: var(--vico-muted, #59636E); font-size: 11px; text-anchor: middle; }
 .lane-bg { fill: var(--vico-lane, #F3F4F6); }
 .lane-label { fill: var(--vico-ink, #1F2328); font-size: 13px; font-weight: 600; }
-.lane-count { fill: var(--vico-faint, #8C959F); font-size: 12px; text-anchor: end; }
+.lane-count { fill: var(--vico-muted, #59636E); font-size: 12px; text-anchor: end; }
 .axis-label { fill: var(--vico-muted, #59636E); font-size: 12px; font-weight: 600; text-anchor: middle; letter-spacing: 0.04em; }
 .lane-hint { fill: var(--vico-muted, #59636E); font-size: 11px; }
 .conn path { fill: none; stroke: var(--vico-conn, #6E7781); stroke-width: 1.5; }
 .conn-label { fill: var(--vico-muted, #59636E); font-size: 11px; paint-order: stroke; stroke: var(--vico-bg, #FFFFFF); stroke-width: 4px; stroke-linejoin: round; }
 .vico-arrow { fill: var(--vico-conn, #6E7781); }
 .card-shape { stroke: rgba(0, 0, 0, 0.2); stroke-width: 1; }
-.card-id { font-size: 10px; font-weight: 700; opacity: 0.7; }
+.card-id { font-size: 10px; font-weight: 700; }
 .card-label { font-size: 13px; text-anchor: middle; }
-.card-detail { font-size: 11px; opacity: 0.7; text-anchor: end; }
+.card-detail { font-size: 11px; text-anchor: end; }
 .card-done { font-size: 13px; font-weight: 700; }
 .card-label-done { text-decoration: line-through; opacity: 0.65; }
 .card-notes circle { fill: #1A6FAE; stroke: var(--vico-bg, #FFFFFF); stroke-width: 2; }
@@ -95,7 +95,7 @@ export function cardMarkup(c: Card): string {
     .map((line, i) => `<tspan x="${c.w / 2}" y="${first + i * LINE_H}">${esc(line)}</tspan>`)
     .join("");
   return [
-    `<title>${esc(c.tip)}</title>`,
+    `<title>${esc(tooltip(c))}</title>`,
     shapeMarkup(c),
     `<text class="card-id" x="${8 + inset(c)}" y="14" fill="${esc(c.ink)}">${esc(c.id)}</text>`,
     authorMark(c),
@@ -108,6 +108,15 @@ export function cardMarkup(c: Card): string {
       ? `<g class="card-notes"><circle cx="${c.w - 3}" cy="3" r="9"/><text x="${c.w - 3}" y="6.5">${c.notes}</text></g>`
       : "",
   ].join("");
+}
+
+/**
+ * What a pointer resting on a card reads: the whole label when the card cuts
+ * it, then who added it, then the detail, which the card only marks with ≡.
+ */
+function tooltip(c: Card): string {
+  const cut = c.lines.at(-1)?.endsWith("…") ?? false;
+  return [cut ? cardName(c) : c.tip, c.detail].filter(Boolean).join("\n");
 }
 
 /** How far a shape's cut corners push the id and the author mark inward. */

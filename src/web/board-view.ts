@@ -6,15 +6,24 @@
 import type { Command } from "../domain/commands.ts";
 import { type Format, findFormat, findType } from "../domain/formats.ts";
 import { layoutBoard, locate, type Scene, type Target, vacancy } from "../domain/layout/index.ts";
+import { cardName } from "../domain/layout/scene.ts";
 import { arrowDefs, bandMarkup, cardMarkup, connectorMarkup, esc } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h, svg } from "./dom.ts";
 import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
-import { addOffers, keptLines, oneLine } from "./view.ts";
+import { addOffers, type Direction, keptLines, keyMove, neighbour, oneLine, readingOrder } from "./view.ts";
 
 const DRAG_THRESHOLD = 4;
-const ZOOMS = [0.5, 0.67, 0.8, 1, 1.25, 1.5];
+const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5];
+/** How far outside its card the ring of a focused or selected card is drawn: off the sticky's colour, always. */
+const RING = 5;
+const ARROWS: Record<string, Direction> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+};
 
 interface Editing {
   /** The text the editor opened with, as it would be saved: leaving it as it was saves nothing. */
@@ -22,8 +31,22 @@ interface Editing {
   commit(value: string): void;
   /** How the words are kept: on one line for a label, line by line for a detail. */
   tidy(text: string): string;
-  /** The card the words are about, when there is one: gone, the editor has nowhere to save. */
-  card?: string;
+  /** A text of several lines: read from the left, Shift+Enter breaks its lines. */
+  lines: boolean;
+  /** The card the keyboard goes back to once the editor closes. */
+  from: string | undefined;
+}
+
+/** How an editor opens: what it is called, and whether its words are several lines read before they are changed. */
+interface EditorKind {
+  name: string;
+  lines: boolean;
+  from?: string;
+}
+
+export interface BoardHooks {
+  /** A card left the board by a key: the page says so, and offers to take it back. */
+  removed(id: string): void;
 }
 
 /**
@@ -38,24 +61,37 @@ export interface BoardView {
   /** Opens the label editor for a new element of this type. */
   beginAdd(typeId: string, place?: { col?: number; lane?: string; x: number; y: number }): void;
   zoomBy(step: -1 | 1): number;
+  /** The whole board in the window; pressed again, back to 100 %. */
+  fit(): number;
   /** Marks one card as the one being talked about, without selecting it; no id clears the mark. */
   point(id: string | undefined): void;
   /** Scrolls the board so that the card is in view. */
   reveal(id: string): void;
+  /** Gives the card the keyboard: it is where Tab enters the board from now on. */
+  focus(id: string): void;
 }
 
-export function mountBoard(host: HTMLElement): BoardView {
-  const root = svg("svg", { class: "vico-board" });
+export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
+  const root = svg("svg", { class: "vico-board", role: "group" });
   root.innerHTML = arrowDefs();
   const bands = root.appendChild(svg("g", { class: "layer-bands" }));
   const hint = root.appendChild(svg("rect", { class: "drop-hint", rx: 8, visibility: "hidden" }));
   const conns = root.appendChild(svg("g", { class: "layer-conns" }));
   const cards = root.appendChild(svg("g", { class: "layer-cards" }));
+  /** The names of rows, steps and lanes, over the cards: they stay on screen while the board scrolls under them. */
+  const heads = root.appendChild(svg("g", { class: "layer-heads" }));
+  // The "+" stays over everything: the one that inserts a column sits on the step numbers.
   const adds = root.appendChild(svg("g", { class: "layer-adds" }));
   const scroll = h("div", { class: "canvas-scroll" });
   scroll.append(root);
   const tools = h("div", { class: "card-tools", hidden: true });
-  const editor = h("textarea", { class: "card-editor", hidden: true, rows: 3, "aria-label": t.cardLabel });
+  const editor = h("textarea", {
+    class: "card-editor",
+    name: "card-editor",
+    hidden: true,
+    rows: 3,
+    "aria-label": t.cardLabel,
+  });
   host.append(scroll, tools, editor);
 
   const nodes = new Map<string, { g: SVGGElement; signature: string }>();
@@ -70,6 +106,10 @@ export function mountBoard(host: HTMLElement): BoardView {
   let paintedBoard: string | undefined;
   /** The link the human clicked, and where, so its toolbar opens under the pointer. */
   let pickedLink: { src: string; dst: string; x: number; y: number } | undefined;
+  /** The one card Tab stops at: the board is a single stop, and the arrows go from card to card inside it. */
+  let current: string | undefined;
+  /** The markup of the bands last drawn. */
+  let paintedBands = "";
 
   const format = (): Format | undefined => (board ? findFormat(board.format) : undefined);
 
@@ -82,13 +122,21 @@ export function mountBoard(host: HTMLElement): BoardView {
       return;
     }
     root.removeAttribute("visibility");
+    root.setAttribute("aria-label", t.boardCards(board.title));
     scene = layoutBoard(board, locale);
     const w = Math.max(scene.width, 320);
     const hgt = Math.max(scene.height, 200);
     root.setAttribute("viewBox", `0 0 ${w} ${hgt}`);
     root.setAttribute("width", String(w * zoom));
     root.setAttribute("height", String(hgt * zoom));
-    bands.innerHTML = scene.bands.map(bandMarkup).join("");
+    // Rows, steps and lanes are redrawn only when they change: an event about a card leaves them, and their names, in place.
+    const banding = scene.bands.map(bandMarkup).join("");
+    if (banding !== paintedBands) {
+      paintedBands = banding;
+      bands.innerHTML = banding;
+      liftHeadings();
+    }
+    holdHeadings();
     conns.innerHTML = scene.connectors.map(connectorMarkup).join("");
     for (const conn of conns.querySelectorAll<SVGGElement>(".conn")) {
       const path = conn.querySelector("path");
@@ -106,17 +154,16 @@ export function mountBoard(host: HTMLElement): BoardView {
       const signature = JSON.stringify({ ...look, isUnread });
       let node = nodes.get(card.id);
       if (!node) {
-        const g = svg("g", { class: "card", "data-id": card.id, tabindex: 0, role: "button" });
+        const g = svg("g", { class: "card", "data-id": card.id, tabindex: -1, role: "button" });
         if (switched) g.classList.add("no-motion");
         cards.append(g);
         node = { g, signature: "" };
         nodes.set(card.id, node);
       }
       if (node.signature !== signature) {
-        node.g.innerHTML = cardMarkup(card) + (isUnread ? UNREAD_MARK : "");
-        // A screen reader hears a card as one name, so the mark's words join it.
-        if (isUnread) node.g.setAttribute("aria-label", `${card.tip} · ${t.unread}`);
-        else node.g.removeAttribute("aria-label");
+        node.g.innerHTML = ringMarkup(card) + cardMarkup(card) + (isUnread ? UNREAD_MARK : "");
+        // A screen reader hears a card as one name: its words first, then the mark's. Its detail stays in the tooltip.
+        node.g.setAttribute("aria-label", isUnread ? `${cardName(card)} · ${t.unread}` : cardName(card));
         node.signature = signature;
       }
       // A card in the human's hand stays there, whatever arrives meanwhile.
@@ -128,9 +175,9 @@ export function mountBoard(host: HTMLElement): BoardView {
       node.g.classList.toggle("is-dim", focus !== undefined && !focus.has(card.id));
     }
     // The card being written on was removed meanwhile: its words are handed back, not dropped.
-    if (editing?.card && !alive.has(editing.card)) {
+    if (editing?.from && !alive.has(editing.from)) {
       const words = editing.tidy(editor.value);
-      if (words !== "" && words !== editing.initial) state.notice = t.wordsOrphaned(editing.card, words);
+      if (words !== "" && words !== editing.initial) state.notice = t.wordsOrphaned(editing.from, words);
       editing = undefined;
       editor.hidden = true;
     }
@@ -139,6 +186,10 @@ export function mountBoard(host: HTMLElement): BoardView {
       node.g.remove();
       nodes.delete(id);
     }
+    // The board is one Tab stop: the selected card, else the last one the keyboard was on, else the first one read.
+    if (state.selected && alive.has(state.selected)) current = state.selected;
+    if (!current || !alive.has(current)) current = readingOrder(scene.cards)[0];
+    for (const [id, node] of nodes) node.g.setAttribute("tabindex", id === current ? "0" : "-1");
     if (switched)
       requestAnimationFrame(() => {
         for (const g of cards.querySelectorAll(".no-motion")) g.classList.remove("no-motion");
@@ -147,6 +198,59 @@ export function mountBoard(host: HTMLElement): BoardView {
     host.classList.toggle("is-past", !isLive());
     paintTools();
     paintOffers();
+  }
+
+  /** The ring of a focused or selected card, drawn around it rather than on it: it reads on every sticky. */
+  function ringMarkup(card: { w: number; h: number }): string {
+    return `<rect class="card-ring" x="${-RING}" y="${-RING}" width="${card.w + 2 * RING}" height="${card.h + 2 * RING}" rx="${RING + 2}"/>`;
+  }
+
+  /**
+   * Keeps the names of rows, steps and lanes on screen while the board scrolls
+   * under them, as the frozen headings of a sheet: the reader never has to
+   * remember which row is which.
+   */
+  function holdHeadings(): void {
+    const sx = scroll.scrollLeft / zoom;
+    const sy = scroll.scrollTop / zoom;
+    heads.querySelector(".heads-steps")?.setAttribute("transform", `translate(0 ${sy})`);
+    heads.querySelector(".heads-rows")?.setAttribute("transform", `translate(${sx} 0)`);
+    for (const head of heads.querySelectorAll<SVGGElement>("g.head")) {
+      const band = scene.bands[Number(head.dataset.band)];
+      if (band?.kind !== "lane") continue;
+      // A lane's heading goes down to its last card at most: it never leaves its own lane.
+      head.setAttribute("transform", `translate(0 ${Math.max(0, Math.min(sy - band.y, band.h - 56))})`);
+    }
+  }
+
+  /**
+   * Takes the names out of the bands, behind the cards, up to the layer over
+   * them. On a timeline they sit on a strip of the board's own surface, the step
+   * numbers across the top and the row names down the left: the frozen panes of
+   * a sheet. A lane keeps its heading, ringed by the lane's own colour.
+   */
+  function liftHeadings(): void {
+    heads.replaceChildren();
+    const steps = svg("g", { class: "heads-steps" });
+    const rows = svg("g", { class: "heads-rows" });
+    const top = Math.min(...scene.bands.filter((b) => b.kind === "row").map((b) => b.y));
+    const left = Math.min(...scene.bands.filter((b) => b.kind === "step").map((b) => b.x));
+    if (Number.isFinite(top))
+      steps.append(svg("rect", { class: "heads-strip", width: scene.width, height: top }));
+    if (Number.isFinite(left))
+      rows.append(svg("rect", { class: "heads-strip", width: left, height: scene.height }));
+    bands.querySelectorAll(":scope > g.band").forEach((group, index) => {
+      const kind = scene.bands[index]?.kind;
+      if (kind === "step") steps.append(...group.querySelectorAll("text"));
+      else if (kind === "row") rows.append(...group.querySelectorAll("rect, text"));
+      else if (kind === "lane") {
+        const head = svg("g", { class: "head band-lane", "data-band": index });
+        head.append(...group.querySelectorAll("text"));
+        heads.append(head);
+      }
+    });
+    if (steps.childElementCount > 1) heads.append(steps);
+    if (rows.childElementCount > 1) heads.append(rows);
   }
 
   /** Draws a "+" for each kind of card that can be added where the pointer is. */
@@ -219,33 +323,48 @@ export function mountBoard(host: HTMLElement): BoardView {
     }
     const boardId = board.id;
     const element = board.elements.find((e) => e.id === id);
+    // Each action says its key too: the shortcuts are learnt where they are used.
+    const keyed = (label: string, key: string): { title: string } => ({ title: t.withKey(label, key) });
+    const doneLabel = element?.done ? t.notDone : t.done;
     tools.replaceChildren(
-      h("button", { type: "button", onclick: () => rename(id) }, t.rename),
+      h("button", { type: "button", ...keyed(t.rename, "Enter"), onclick: () => rename(id) }, t.rename),
       h(
         "button",
         { type: "button", onclick: () => annotate(id) },
         element?.detail ? `${t.detail} ≡` : t.detail,
       ),
-      h("button", { type: "button", onclick: () => beginLink(id) }, t.link),
+      h("button", { type: "button", ...keyed(t.link, "L"), onclick: () => beginLink(id) }, t.link),
       h(
         "button",
         {
           type: "button",
+          ...keyed(doneLabel, "D"),
           onclick: () => void send({ kind: "mark", board: boardId, id, done: !element?.done }),
         },
-        element?.done ? t.notDone : t.done,
+        doneLabel,
       ),
-      h("button", { type: "button", onclick: () => noteOn(id) }, t.noteForClaude),
       h(
         "button",
-        { type: "button", class: "danger", onclick: () => void send({ kind: "remove", board: boardId, id }) },
+        { type: "button", ...keyed(t.noteForClaude, "N"), onclick: () => noteOn(id) },
+        t.noteForClaude,
+      ),
+      h(
+        "button",
+        {
+          type: "button",
+          class: "danger",
+          ...keyed(t.remove, "Delete"),
+          onclick: () => void send({ kind: "remove", board: boardId, id }),
+        },
         t.remove,
       ),
     );
     tools.hidden = false;
     const box = node.g.getBoundingClientRect();
     const frame = host.getBoundingClientRect();
-    tools.style.left = `${Math.max(8, box.left - frame.left)}px`;
+    // Above the card, and inside the window: a toolbar cut by the edge hides the action at its end.
+    const widest = Math.max(8, frame.width - tools.offsetWidth - 8);
+    tools.style.left = `${Math.min(widest, Math.max(8, box.left - frame.left))}px`;
     tools.style.top = `${Math.max(8, box.top - frame.top - tools.offsetHeight - 8)}px`;
   }
 
@@ -269,44 +388,61 @@ export function mountBoard(host: HTMLElement): BoardView {
     return document.elementFromPoint(event.clientX, event.clientY);
   }
 
+  /**
+   * Opens the editor over a card, or under it. A label is a few words replaced
+   * at once: they come selected, and Enter saves them. A detail or a note is
+   * read before it is changed: it opens with the caret at its end, left-aligned,
+   * Enter breaks the line and ⌘ or Ctrl with Enter saves.
+   */
   function openEditor(
     box: DOMRect,
     value: string,
     placeholder: string,
     colours: { fill: string; ink: string },
     commit: (value: string) => void,
-    tidy: (text: string) => string = oneLine,
-    card?: string,
+    kind: EditorKind = { name: t.cardLabel, lines: false },
   ): void {
     const frame = host.getBoundingClientRect();
+    const tidy = kind.lines ? keptLines : oneLine;
+    const width = Math.max(box.width, 152);
     editor.value = value;
     editor.placeholder = placeholder;
-    editor.style.left = `${box.left - frame.left}px`;
+    editor.setAttribute("aria-label", kind.name);
+    if (kind.lines) editor.setAttribute("aria-description", t.saveLines);
+    else editor.removeAttribute("aria-description");
+    editor.title = kind.lines ? t.saveLines : "";
+    editor.classList.toggle("is-lines", kind.lines);
+    editor.style.left = `${Math.min(Math.max(0, frame.width - width - 8), box.left - frame.left)}px`;
     editor.style.top = `${box.top - frame.top}px`;
-    editor.style.width = `${Math.max(box.width, 152)}px`;
+    editor.style.width = `${width}px`;
     editor.style.height = `${Math.max(box.height, 72)}px`;
     editor.style.background = colours.fill;
     editor.style.color = colours.ink;
     editor.hidden = false;
-    editing = { initial: tidy(value), commit, tidy, card };
+    editing = { initial: tidy(value), commit, tidy, lines: kind.lines, from: kind.from };
     tools.hidden = true;
     paintOffers();
     editor.focus();
-    editor.select();
+    if (kind.lines) editor.setSelectionRange(value.length, value.length);
+    else editor.select();
   }
 
-  function closeEditor(save: boolean): void {
-    const current = editing;
-    if (!current) return;
+  /** `refocus`: the keyboard goes back to the card the editor was about, rather than to nowhere. */
+  function closeEditor(save: boolean, refocus = true): void {
+    const was = editing;
+    if (!was) return;
     editing = undefined;
     editor.hidden = true;
-    const value = current.tidy(editor.value);
-    if (save && value !== "" && value !== current.initial) current.commit(value);
+    const value = was.tidy(editor.value);
+    if (save && value !== "" && value !== was.initial) was.commit(value);
     changed();
+    if (refocus && was.from) nodes.get(was.from)?.g.focus({ preventScroll: true });
   }
 
   editor.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && !event.shiftKey) {
+    // As everywhere on the page: Enter saves, Shift+Enter breaks the line.
+    const saves = event.key === "Enter" && !event.isComposing && !event.shiftKey;
+    if (saves) {
       event.preventDefault();
       closeEditor(true);
     } else if (event.key === "Escape") {
@@ -315,7 +451,8 @@ export function mountBoard(host: HTMLElement): BoardView {
     }
     event.stopPropagation();
   });
-  editor.addEventListener("blur", () => closeEditor(true));
+  // Leaving the editor for elsewhere keeps what was typed, and leaves the keyboard where it went.
+  editor.addEventListener("blur", () => closeEditor(true, false));
 
   function colours(typeId: string | undefined): { fill: string; ink: string } {
     const f = format();
@@ -336,8 +473,7 @@ export function mountBoard(host: HTMLElement): BoardView {
       (label) => {
         if (label !== element.label) void send({ kind: "rename", board: boardId, id, label });
       },
-      oneLine,
-      id,
+      { name: t.cardLabel, lines: false, from: id },
     );
   }
 
@@ -364,7 +500,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     if (!board || !node || !element) return;
     const boardId = board.id;
     const box = node.g.getBoundingClientRect();
-    const below = new DOMRect(box.left, box.bottom + 6, 260, 96);
+    const below = new DOMRect(box.left, box.bottom + 6, 300, 120);
     openEditor(
       below,
       element.detail ?? "",
@@ -373,8 +509,7 @@ export function mountBoard(host: HTMLElement): BoardView {
       (detail) => {
         void send({ kind: "annotate", board: boardId, id, detail });
       },
-      keptLines,
-      id,
+      { name: t.detailOf(id), lines: true, from: id },
     );
   }
 
@@ -383,7 +518,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     if (!board || !node) return;
     const boardId = board.id;
     const box = node.g.getBoundingClientRect();
-    const below = new DOMRect(box.left, box.bottom + 6, 260, 96);
+    const below = new DOMRect(box.left, box.bottom + 6, 300, 96);
     openEditor(
       below,
       "",
@@ -392,8 +527,7 @@ export function mountBoard(host: HTMLElement): BoardView {
       (text) => {
         void send({ kind: "note", board: boardId, text, target: id });
       },
-      keptLines,
-      id,
+      { name: t.noteOn(id), lines: true, from: id },
     );
   }
 
@@ -587,14 +721,58 @@ export function mountBoard(host: HTMLElement): BoardView {
     else if (target.kind === "slot" && f?.types[0]) beginAdd(f.types[0].id, { lane: target.lane, ...snap });
   });
 
+  /** The keyboard is on a card: Tab comes back to that one. */
+  root.addEventListener("focusin", (event) => {
+    const id = cardAt(event.target);
+    if (!id || id === current) return;
+    nodes.get(current ?? "")?.g.setAttribute("tabindex", "-1");
+    nodes.get(id)?.g.setAttribute("tabindex", "0");
+    current = id;
+  });
+
+  function focusCard(id: string): void {
+    const node = nodes.get(id);
+    if (!node) return;
+    nodes.get(current ?? "")?.g.setAttribute("tabindex", "-1");
+    node.g.setAttribute("tabindex", "0");
+    current = id;
+    node.g.focus({ preventScroll: true });
+    node.g.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+
   root.addEventListener("keydown", (event) => {
     const id = cardAt(event.target);
-    if (!id || !board || !isLive()) return;
+    if (!id || !board) return;
+    const direction = ARROWS[event.key];
+    // The arrows read, so they work on the past too; Alt and an arrow move, so only live.
+    if (direction && !event.altKey && !event.metaKey && !event.ctrlKey) {
+      event.preventDefault();
+      const next = neighbour(scene.cards, id, direction);
+      if (next) focusCard(next);
+      return;
+    }
+    if (!isLive()) return;
+    if (direction && event.altKey) {
+      event.preventDefault();
+      const command = keyMove(board, id, direction);
+      if (command)
+        void send(command).then(() =>
+          nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" }),
+        );
+      return;
+    }
     if (event.key === "Enter" || event.key === "F2") rename(id);
     else if (event.key === " ") choose(id);
-    else if (event.key === "Delete" || event.key === "Backspace")
-      void send({ kind: "remove", board: board.id, id });
-    else if (event.key.toLowerCase() === "d")
+    else if (event.key === "Delete" || event.key === "Backspace") {
+      // The keyboard goes on to the next card, and the page offers to take this one back.
+      const next = neighbour(scene.cards, id, "down") ?? neighbour(scene.cards, id, "up");
+      const boardId = board.id;
+      void send({ kind: "remove", board: boardId, id }).then((done) => {
+        if (done === undefined) return;
+        hooks.removed(id);
+        if (next) focusCard(next);
+      });
+    } else if (event.key.toLowerCase() === "d")
       void send({
         kind: "mark",
         board: board.id,
@@ -610,6 +788,9 @@ export function mountBoard(host: HTMLElement): BoardView {
   window.addEventListener("keydown", (event) => {
     if (event.key !== "Escape" || editing) return;
     pickedLink = undefined;
+    // The toolbar closes under the keyboard: it goes back to its card, not to the top of the page.
+    if (tools.contains(document.activeElement) && current)
+      nodes.get(current)?.g.focus({ preventScroll: true });
     tools.hidden = true;
     if (state.selected || state.linking) {
       state.selected = null;
@@ -618,7 +799,20 @@ export function mountBoard(host: HTMLElement): BoardView {
     }
   });
 
-  scroll.addEventListener("scroll", () => paintTools(), { passive: true });
+  scroll.addEventListener(
+    "scroll",
+    () => {
+      paintTools();
+      holdHeadings();
+    },
+    { passive: true },
+  );
+
+  function zoomTo(next: number): number {
+    zoom = next;
+    paint(board, unread);
+    return zoom;
+  }
 
   return {
     paint,
@@ -629,11 +823,19 @@ export function mountBoard(host: HTMLElement): BoardView {
     reveal(id) {
       nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" });
     },
+    focus: focusCard,
     zoomBy(step) {
-      const index = Math.min(ZOOMS.length - 1, Math.max(0, ZOOMS.indexOf(zoom) + step));
-      zoom = ZOOMS[index] ?? 1;
-      paint(board, unread);
-      return zoom;
+      // From a fitted zoom, the next step that way.
+      const next = step > 0 ? ZOOMS.find((z) => z > zoom + 0.001) : ZOOMS.findLast((z) => z < zoom - 0.001);
+      return zoomTo(next ?? zoom);
+    },
+    fit() {
+      if (zoom !== 1) return zoomTo(1);
+      const w = Math.max(scene.width, 320);
+      const hgt = Math.max(scene.height, 200);
+      const room = Math.min((scroll.clientWidth - 16) / w, (scroll.clientHeight - 16) / hgt);
+      // Never below the smallest step: under it, a card is a coloured dot, and the words are gone.
+      return zoomTo(Math.max(ZOOMS[0] ?? 0.25, Math.min(1, Math.floor(room * 100) / 100)));
     },
   };
 }
