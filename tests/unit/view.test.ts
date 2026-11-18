@@ -633,6 +633,20 @@ describe("claudeWaits says where Claude waits for the human", () => {
     expect(claudeWaits(t.ws)).toMatchObject({ board: "autre", title: "Autre", others: 1 });
   });
 
+  test("an answer anywhere ends every wait before it: a hand-over on another board, or a prompt in the terminal", () => {
+    const t = table(KANBAN).script("pass");
+    t.script('board new "Autre" --id autre');
+    t.do({ kind: "pass", board: "autre", to: "agent" }, "human");
+    expect(claudeWaits(t.ws)).toBeUndefined();
+
+    const typed = table(KANBAN).script("pass");
+    typed.do({ kind: "session-start" }, "agent", "s1");
+    typed.do({ kind: "prompt", text: "Continue" }, "agent", "s1");
+    expect(claudeWaits(typed.ws)).toBeUndefined();
+    typed.script("pass", "agent", "sprint");
+    expect(claudeWaits(typed.ws)).toMatchObject({ board: "sprint", others: 0 });
+  });
+
   test("handing the turn back ends the wait", () => {
     const t = table(KANBAN).script("pass");
     t.do({ kind: "pass", board: "sprint", to: "agent" }, "human");

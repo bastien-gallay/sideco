@@ -1073,6 +1073,12 @@ describe("Claude waits for the human", () => {
     await pill().click();
     await card("E1").getByText("Devis envoyé").waitFor();
     expect(await pill().textContent()).toStartWith("Claude waits for you");
+    // Pressed, the pill says why: Claude's words, on the board they are about.
+    await until("the words are said", async () =>
+      ((await page.locator(".toast").textContent()) ?? "").includes(
+        "Claude hands over to you: Ton avis sur E1 ?",
+      ),
+    );
   });
 
   test("handing the turn back ends the wait", async () => {

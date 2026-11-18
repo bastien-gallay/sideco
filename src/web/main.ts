@@ -310,7 +310,11 @@ const paintWaits = region(waitsPill, (m: { waiting: Waiting | undefined; current
         class: "quiet",
         "data-board": w.board,
         title: w.message,
-        onclick: () => openBoard(w.board),
+        // Pressed, it leads to the board and says why: Claude's words, wherever the reader was.
+        onclick: () => {
+          if (!here) openBoard(w.board);
+          say(w.message ? `${t.theirTurn}${t.colon} ${w.message}` : t.theirTurn);
+        },
       },
       h("span", { class: "waits-dot", "aria-hidden": "true" }),
       here ? t.claudeWaits : t.claudeWaitsOn(w.title),
