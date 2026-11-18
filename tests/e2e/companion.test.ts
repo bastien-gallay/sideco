@@ -359,22 +359,86 @@ describe("history", () => {
     const live = await page.locator("g.card").count();
     expect(await page.locator(".history-label").textContent()).toStartWith("Live · ");
 
-    await page.locator(".history input").fill("5");
+    // The slider counts the board's own events: its creation, then one per card.
+    await page.locator(".history input").fill("3");
     await page.locator(".banner").waitFor({ state: "visible" });
     expect(await page.locator("g.card").count()).toBe(3);
-    expect(await page.locator(".history-label").textContent()).toMatch(/^5 \/ \d+ · .*Claude adds E1/);
+    expect(await page.locator(".history-label").textContent()).toMatch(/^4 \/ \d+ · .*Claude adds E1/);
     expect(await paletteType("Event").isDisabled()).toBe(true);
     expect(await page.locator(".board-picker button.remove-board").isDisabled()).toBe(true);
     await shot("06-history");
 
     await page.locator(".history button", { hasText: "►" }).click();
     await page.waitForFunction(() =>
-      document.querySelector(".history-label")?.textContent?.startsWith("6 / "),
+      document.querySelector(".history-label")?.textContent?.startsWith("5 / "),
     );
 
     await page.locator(".banner button").click();
     await page.locator(".banner").waitFor({ state: "hidden" });
     expect(await page.locator("g.card").count()).toBe(live);
+  });
+
+  test("the arrows and the slider stop at the events of the board on screen, or at every event when asked", async () => {
+    const scope = page.getByRole("combobox", { name: "The history steps through" });
+    const back = page.locator(".history button", { hasText: "◄" });
+    const forward = page.locator(".history button", { hasText: "►" });
+    const reads = (what: RegExp): Promise<void> =>
+      until(`the history reads ${what}`, async () =>
+        what.test((await page.locator(".history-label").textContent()) ?? ""),
+      );
+    await agent(
+      [
+        'board new "Devis" --id devis',
+        'board new "Facture" --id facture',
+        'add event "Devis demandé" --col 1 --board devis',
+        'add event "Facture émise" --col 1 --board facture',
+        'add event "Devis signé" --col 2 --board devis',
+        'add event "Facture payée" --col 2 --board facture',
+      ].join("\n"),
+    );
+    await page.locator(".board-picker select").selectOption("devis");
+    await card("E2").waitFor();
+    const all = (await workspace()).seq;
+
+    // This board, by default: one step back is its previous event, not the other board's.
+    expect(await scope.inputValue()).toBe("board");
+    expect(await scope.locator("option").allTextContents()).toEqual(["This board", "Everything"]);
+    await reads(/^Live · 3 events$/);
+    await back.click();
+    await reads(/^2 \/ 3 · .*Claude adds E1 “Devis demandé”$/);
+    expect(await page.locator("g.card").count()).toBe(1);
+    await back.click();
+    await reads(/^1 \/ 3 · .*Claude creates the board “Devis”$/);
+    // The board's history starts at its creation: no earlier moment would show it.
+    await back.click();
+    await Bun.sleep(150);
+    expect(await page.locator(".history-label").textContent()).toStartWith("1 / 3 · ");
+    expect(await page.title()).toBe("Devis · Vico");
+    await page.locator(".banner button").click();
+    await reads(/^Live · 3 events$/);
+    await page.locator(".history input").press("ArrowLeft");
+    await reads(/^2 \/ 3 · /);
+    await page.locator(".banner button").click();
+
+    // Everything: the same step back is the journal's very previous event.
+    await scope.selectOption("everything");
+    await reads(new RegExp(`^Live · ${all} events$`));
+    await back.click();
+    await reads(new RegExp(`^${all - 1} / ${all} · .*Claude adds E2 “Devis signé”$`));
+    expect(await page.locator("g.card").count()).toBe(2);
+    await back.click();
+    await reads(new RegExp(`^${all - 2} / ${all} · .*Claude adds E1 “Facture émise”$`));
+
+    // Back to this board from a moment that is not one of its events: the board is as its latest
+    // event left it, and a step goes to its nearest event that way.
+    await scope.selectOption("board");
+    await reads(/^2 \/ 3 · .*Claude adds E1 “Devis demandé”$/);
+    await forward.click();
+    await reads(/^Live · 3 events$/);
+    await page.locator(".banner").waitFor({ state: "hidden" });
+
+    await page.locator(".board-picker select").selectOption("commande");
+    await card("E1").waitFor();
   });
 });
 
@@ -497,6 +561,7 @@ describe("the reader's language", () => {
     expect(await page.locator(".palette h2").textContent()).toBe("Event Storming");
     expect(await paletteType("Événement").count()).toBe(1);
     expect(await page.locator(".history-label").textContent()).toStartWith("En direct · ");
+    expect(await page.locator(".history select option").allTextContents()).toEqual(["Ce tableau", "Tout"]);
     expect(await page.locator("g.card[data-id='E1'] title").textContent()).toMatch(
       /^E1 · Événement · ajouté par /,
     );
@@ -767,7 +832,7 @@ describe("adding where the pointer is", () => {
     await page.mouse.move(700, 20);
     await until("the offer is gone", async () => (await offers().count()) === 0);
 
-    await page.locator(".history input").fill(String((await workspace()).seq - 1));
+    await page.locator(".history button", { hasText: "◄" }).click();
     await page.locator(".banner").waitFor({ state: "visible" });
     await page.mouse.move(e2.x, e2.y + 4);
     await Bun.sleep(150);

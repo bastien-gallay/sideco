@@ -33,6 +33,11 @@ import {
   discussions,
   handOverHint,
   handOverNotice,
+  historyBoard,
+  historyPlace,
+  historyStep,
+  historyStopAt,
+  historyStops,
   pendingCount,
   recentTurns,
   redoTarget,
@@ -76,6 +81,20 @@ const historyRange = h("input", {
   step: 1,
   "aria-label": t.history,
 });
+/** The reader asked the history for every event, not only the board's. Kept while the page is open. */
+let wholeJournal = false;
+const historyScope = h(
+  "select",
+  {
+    "aria-label": t.historyScope,
+    onchange: () => {
+      wholeJournal = historyScope.value === "everything";
+      changed();
+    },
+  },
+  h("option", { value: "board" }, t.thisBoard),
+  h("option", { value: "everything" }, t.everything),
+);
 const turnBar = h("div", { class: "turn" });
 const toast = h("div", { class: "toast", role: "alert", hidden: true });
 const dialog = h("dialog", { class: "sheet new-board" });
@@ -132,6 +151,7 @@ app.append(
       h("button", { type: "button", "aria-label": t.previousEvent, onclick: () => step(-1) }, "◄"),
       historyRange,
       h("button", { type: "button", "aria-label": t.nextEvent, onclick: () => step(1) }, "►"),
+      historyScope,
       historyLabel,
     ),
     turnBar,
@@ -141,10 +161,21 @@ app.append(
   removal,
 );
 
-historyRange.addEventListener("input", () => travelTo(Number(historyRange.value)));
+/** The board the history follows: none when the reader asked for everything, or no board is there. */
+function historyFollows(): string | undefined {
+  return wholeJournal ? undefined : historyBoard(state.events, state.boardId, currentBoard()?.id);
+}
+
+function historyStopsShown(): number[] {
+  return historyStops(state.events, historyFollows());
+}
+
+historyRange.addEventListener("input", () =>
+  travelTo(historyStopAt(historyStopsShown(), Number(historyRange.value))),
+);
 
 function step(by: -1 | 1): void {
-  travelTo((state.cursor ?? state.live.seq) + by);
+  travelTo(historyStep(historyStopsShown(), state.cursor, by));
 }
 
 function zoom(by: -1 | 1): void {
@@ -592,6 +623,10 @@ interface HistoryModel {
   max: number;
   live: boolean;
   label: string;
+  /** The history follows a board; otherwise it steps through every event. */
+  board: boolean;
+  /** False when the reader wants a board and none is there to follow. */
+  choice: boolean;
 }
 
 /** Not a region: the slider stays the same element, so a drag on it goes on through a repaint. */
@@ -599,6 +634,8 @@ function paintHistory(m: HistoryModel): void {
   historyRange.max = String(m.max);
   if (document.activeElement !== historyRange || m.live) historyRange.value = String(m.at);
   historyLabel.textContent = m.label;
+  historyScope.value = m.board ? "board" : "everything";
+  historyScope.disabled = !m.choice;
 }
 
 // ── Actions ──────────────────────────────────────────────────────────────────
@@ -838,7 +875,6 @@ function render(): void {
   const session = currentSession();
   const live = isLive();
   const liveSession = latestSession(state.live);
-  const max = state.live.seq;
 
   paintBoardPicker({
     boards: ws.boards.map((b) => ({ id: b.id, title: b.title })),
@@ -887,16 +923,21 @@ function render(): void {
   });
   sessionPanel.scrollTop = sessionPanel.scrollHeight;
 
-  const at = state.cursor === null ? undefined : state.events.find((e) => e.seq === state.cursor);
+  const followed = historyFollows() !== undefined;
+  const stops = historyStopsShown();
+  const place = historyPlace(stops, state.cursor);
+  const latest = state.events.find((e) => e.seq === place.seq);
   paintHistory({
-    at: state.cursor ?? max,
-    max,
+    at: place.index,
+    max: stops.length - 1,
     live,
     label: live
-      ? t.live(max)
-      : state.cursor === 0
+      ? t.live(place.of)
+      : place.at === 0
         ? t.beforeFirst
-        : `${state.cursor} / ${max}${at ? ` · ${clock(at.ts)} · ${describeEvent(at, locale)}` : ""}`,
+        : `${place.at} / ${place.of}${latest ? ` · ${clock(latest.ts)} · ${describeEvent(latest, locale)}` : ""}`,
+    board: followed,
+    choice: wholeJournal || followed,
   });
 
   banner.hidden = live;

@@ -9,6 +9,11 @@ import {
   discussions,
   handOverHint,
   handOverNotice,
+  historyBoard,
+  historyPlace,
+  historyStep,
+  historyStopAt,
+  historyStops,
   pendingCount,
   recentTurns,
   redoTarget,
@@ -250,6 +255,8 @@ describe("the page's own words", () => {
     expect(MESSAGES.fr.pending(3)).toBe("3 changements que Claude n'a pas lus");
     expect(MESSAGES.en.live(1)).toBe("Live · 1 event");
     expect(MESSAGES.fr.live(2)).toBe("En direct · 2 événements");
+    expect([MESSAGES.en.thisBoard, MESSAGES.en.everything]).toEqual(["This board", "Everything"]);
+    expect([MESSAGES.fr.thisBoard, MESSAGES.fr.everything]).toEqual(["Ce tableau", "Tout"]);
     expect(MESSAGES.en.handOver).toBe("Hand over to Claude");
     expect(MESSAGES.fr.handOver).toBe("Passer la main à Claude");
   });
@@ -356,6 +363,97 @@ describe("the history says when a line takes an earlier one back", () => {
     t.script("board rm commande").do({ kind: "undo", board: "commande" });
     expect(last("en")).toBe("Claude restores the board “Passage de commande” (undo)");
     expect(last("fr")).toBe("Claude restaure le tableau « Passage de commande » (annulation)");
+  });
+});
+
+describe("the history stops at the events of one board, or at every event of the journal", () => {
+  // seq 1 session · 2-3 commande · 4-5 sprint · 6 prompt · 7 commande · 8 sprint · 9 tool · 10 commande · 11 sprint
+  const t = withSession("");
+  t.script('board new "Commande" --id commande\nadd event "Passée" --col 1');
+  t.script('board new "Sprint" --format kanban --id sprint\nadd task "Tester"');
+  t.do({ kind: "prompt", text: "go" }, "agent", "s1");
+  t.script('add event "Payée" --col 2', "agent", "commande");
+  t.script('add task "Publier"', "agent", "sprint");
+  t.do({ kind: "tool-start", call: "c1", tool: "Bash", summary: "bun test" }, "agent", "s1");
+  t.script("pass", "agent", "commande");
+  t.script('add task "Livrer"', "agent", "sprint");
+  const commande = historyStops(t.events, "commande");
+  const journal = historyStops(t.events);
+
+  test("one board: its events only, from its creation, whatever the other boards and the session did", () => {
+    expect(commande).toEqual([2, 3, 7, 10]);
+    expect(historyStops(t.events, "sprint")).toEqual([4, 5, 8, 11]);
+  });
+
+  test("the whole journal: every event, and the moment before the first", () => {
+    expect(t.seq).toBe(11);
+    expect(journal).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  });
+
+  test("the board followed is the one in the address, then the one on screen, if the journal knows it", () => {
+    expect(historyBoard(t.events, "commande", "sprint")).toBe("commande");
+    expect(historyBoard(t.events, null, "sprint")).toBe("sprint");
+    expect(historyBoard(t.events, "never-was", "sprint")).toBe("sprint");
+    expect(historyBoard(t.events, null, undefined)).toBeUndefined();
+  });
+
+  test("live sits on the last stop: one step back shows the board before its latest event", () => {
+    expect(historyStep(commande, null, -1)).toBe(7);
+    expect(historyStep(journal, null, -1)).toBe(10);
+    expect(historyStep(commande, null, 1)).toBeNull();
+  });
+
+  test("from a stop, a step goes to the one before or after; arriving on the last one is being live", () => {
+    expect(historyStep(commande, 7, -1)).toBe(3);
+    expect(historyStep(commande, 3, 1)).toBe(7);
+    expect(historyStep(commande, 7, 1)).toBeNull();
+    expect(historyStep(journal, 10, 1)).toBeNull();
+  });
+
+  test("from a position that is not a stop, a step goes to the nearest stop that way, never further", () => {
+    expect(historyStep(commande, 5, -1)).toBe(3);
+    expect(historyStep(commande, 5, 1)).toBe(7);
+    expect(historyStep(commande, 9, 1)).toBeNull();
+  });
+
+  test("a board's history starts at its creation: nothing earlier to step back to", () => {
+    expect(historyStep(commande, 2, -1)).toBe(2);
+    expect(historyStep(commande, 1, -1)).toBe(1);
+    expect(historyStep(commande, 1, 1)).toBe(2);
+  });
+
+  test("the whole journal starts before its first event", () => {
+    expect(historyStep(journal, 1, -1)).toBe(0);
+    expect(historyStep(journal, 0, -1)).toBe(0);
+    expect(historyStep(journal, 0, 1)).toBe(1);
+  });
+
+  test("past the board's last event nothing is ahead but the present", () => {
+    const sprint = historyStops(t.events.slice(0, 10), "sprint");
+    expect(sprint).toEqual([4, 5, 8]);
+    expect(historyStep(sprint, 9, 1)).toBeNull();
+    expect(historyStep(sprint, 9, -1)).toBeNull();
+  });
+
+  test("the slider goes stop by stop, and its far end is live", () => {
+    expect(historyStopAt(commande, 0)).toBe(2);
+    expect(historyStopAt(commande, 2)).toBe(7);
+    expect(historyStopAt(commande, 3)).toBeNull();
+    expect(historyStopAt(journal, 5)).toBe(5);
+    expect(historyStopAt(journal, 11)).toBeNull();
+  });
+
+  test("the place counts the events of the scope: how many have happened, out of how many, and the latest", () => {
+    expect(historyPlace(commande, null)).toEqual({ index: 3, at: 4, of: 4, seq: 10 });
+    expect(historyPlace(commande, 7)).toEqual({ index: 2, at: 3, of: 4, seq: 7 });
+    expect(historyPlace(journal, null)).toEqual({ index: 11, at: 11, of: 11, seq: 11 });
+    expect(historyPlace(journal, 5)).toEqual({ index: 5, at: 5, of: 11, seq: 5 });
+  });
+
+  test("between two stops the board is as its latest event left it; before the first, none has happened", () => {
+    expect(historyPlace(commande, 5)).toEqual({ index: 1, at: 2, of: 4, seq: 3 });
+    expect(historyPlace(commande, 1)).toEqual({ index: 0, at: 0, of: 4, seq: undefined });
+    expect(historyPlace(journal, 0)).toEqual({ index: 0, at: 0, of: 11, seq: undefined });
   });
 });
 

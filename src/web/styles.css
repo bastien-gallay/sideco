@@ -1006,7 +1006,7 @@ legend {
 
 .history {
   display: grid;
-  grid-template-columns: auto minmax(80px, 260px) auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(80px, 260px) auto auto minmax(0, 1fr);
   align-items: center;
   gap: 6px;
 }
@@ -1014,6 +1014,16 @@ legend {
 .history button {
   padding: 3px 7px;
   font-size: 11px;
+}
+
+.history select {
+  padding: 3px 6px;
+  color: var(--muted);
+}
+
+.history select:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .history input {

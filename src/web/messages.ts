@@ -111,6 +111,9 @@ export interface Messages {
   history: string;
   previousEvent: string;
   nextEvent: string;
+  historyScope: string;
+  thisBoard: string;
+  everything: string;
   live: (events: number) => string;
   beforeFirst: string;
   past: string;
@@ -243,6 +246,9 @@ const en: Messages = {
   history: "Board history",
   previousEvent: "Previous event",
   nextEvent: "Next event",
+  historyScope: "The history steps through",
+  thisBoard: "This board",
+  everything: "Everything",
   live: (events) => `Live · ${events} event${plural(events)}`,
   beforeFirst: "Before the first event",
   past: "You are looking at the past: the board is read-only.",
@@ -369,6 +375,9 @@ const fr: Messages = {
   history: "Historique du tableau",
   previousEvent: "Événement précédent",
   nextEvent: "Événement suivant",
+  historyScope: "L'historique parcourt",
+  thisBoard: "Ce tableau",
+  everything: "Tout",
   live: (events) => `En direct · ${events} événement${plural(events)}`,
   beforeFirst: "Avant le premier événement",
   past: "Tu regardes le passé : le tableau est en lecture seule.",

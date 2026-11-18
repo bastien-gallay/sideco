@@ -1,6 +1,7 @@
 /**
  * What the page says, as pure functions of the journal: the agent's status, when
- * it will read the human's changes, and one line per event for the history.
+ * it will read the human's changes, where the history stops, and one line per
+ * event there.
  * No DOM here, so the wording is tested like any other rule.
  */
 import { describeChanges } from "../domain/digest.ts";
@@ -244,6 +245,78 @@ function french(e: Recorded): string {
 function clip(text: string): string {
   const line = text.replace(/\s+/g, " ").trim();
   return line.length > MAX_LINE ? `${line.slice(0, MAX_LINE - 1)}…` : line;
+}
+
+const onBoard =
+  (board: string) =>
+  (e: Recorded): boolean =>
+    "board" in e && e.board === board;
+
+/**
+ * The board whose events the history steps through: the first of `candidates`
+ * the journal knows. The page names the board in the address before the one on
+ * screen: at a moment when that board is not there, the past shows another in
+ * its place, and the history must not leave for that one.
+ */
+export function historyBoard(
+  events: readonly Recorded[],
+  ...candidates: (string | null | undefined)[]
+): string | undefined {
+  return candidates.find((id): id is string => typeof id === "string" && events.some(onBoard(id)));
+}
+
+/**
+ * The journal positions the history stops at, oldest first. For one board, its
+ * events, from its creation: no earlier moment would show it. For the whole
+ * journal, every event, and 0, the moment before the first.
+ */
+export function historyStops(events: readonly Recorded[], board?: string): number[] {
+  if (board === undefined) return [0, ...events.map((e) => e.seq)];
+  return events.filter(onBoard(board)).map((e) => e.seq);
+}
+
+/** The last stop is the present: being there is being live, which a null position says. */
+function arrive(stops: readonly number[], stop: number | undefined): number | null {
+  return stop === undefined || stop === stops.at(-1) ? null : stop;
+}
+
+/**
+ * Where a step from `cursor` lands, a stop or not: on the nearest stop that
+ * way, and where it was when nothing is earlier. Live sits on the last stop.
+ */
+export function historyStep(stops: readonly number[], cursor: number | null, by: -1 | 1): number | null {
+  const from = cursor ?? stops.at(-1) ?? 0;
+  const next = by > 0 ? stops.find((s) => s > from) : stops.findLast((s) => s < from);
+  return next === undefined && by < 0 ? cursor : arrive(stops, next);
+}
+
+/** The position the slider asks for: it goes stop by stop, and its far end is live. */
+export function historyStopAt(stops: readonly number[], index: number): number | null {
+  return arrive(stops, stops[index]);
+}
+
+/** Where the history stands, counted in the events of its stops. */
+export interface HistoryPlace {
+  /** The slider's handle: the stop the board on screen is at. */
+  index: number;
+  /** How many of the events have happened, out of how many. */
+  at: number;
+  of: number;
+  /** The latest of them: between two stops, the board is as that event left it. */
+  seq: number | undefined;
+}
+
+export function historyPlace(stops: readonly number[], cursor: number | null): HistoryPlace {
+  const reached = cursor === null ? stops : stops.filter((s) => s <= cursor);
+  // 0 is a stop of the whole journal, and no event.
+  const isEvent = (stop: number): boolean => stop > 0;
+  const happened = reached.filter(isEvent);
+  return {
+    index: Math.max(0, reached.length - 1),
+    at: happened.length,
+    of: stops.filter(isEvent).length,
+    seq: happened.at(-1),
+  };
 }
 
 /**
