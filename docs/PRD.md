@@ -159,6 +159,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F31 | Plusieurs sessions dans un même projet : chacune ne reçoit que les changements et les passages de main des tableaux qu'elle suit. Elle suit un tableau en y écrivant, en le lisant (`vico show`) ou en le disant (`vico follow`) ; `vico unfollow` le lâche. Un tableau qu'aucune session en cours ne suit est remis à toutes | Livré ; cible : un passage de main adressé à une session, visible dans la page |
 | F32 | Quand Claude a passé la main, l'en-tête le dit par une pastille, quel que soit le tableau à l'écran, et le titre de l'onglet commence par « ● Claude t'attend ». Si une session écoute la réponse (`vico wait`), la pastille et l'onglet disent « Claude est bloqué sur toi », dans la couleur de ce qui arrête le travail | Livré ; une notification du navigateur reste à étudier (S107) |
 | F33 | L'agent lit une partie d'un tableau : `vico show BOARD --lane L`, `--col N`, `--brief` (sans les détails), `--notes` (les fils ouverts seuls), et `vico show ID` pour une carte avec sa place, ses liens et ses fils. La première ligne nomme la partie lue, pour qu'elle ne passe pas pour le tout | Livré |
+| F34 | L'éditeur d'une carte reste ouvert, avec son texte et le curseur, quand Claude écrit sur le tableau pendant la saisie ; ce que l'humain valide l'emporte. Si la carte est supprimée entre-temps, l'éditeur se ferme et le texte saisi est rendu dans un message | Livré |
 
 ### 5.3 Exigences de qualité
 

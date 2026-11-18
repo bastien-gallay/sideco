@@ -131,6 +131,7 @@ export interface Messages {
   // A card's actions.
   cardLabel: string;
   laneName: string;
+  wordsOrphaned: (id: string, words: string) => string;
   rename: string;
   detail: string;
   link: string;
@@ -277,6 +278,7 @@ const en: Messages = {
 
   cardLabel: "Label",
   laneName: "Column name",
+  wordsOrphaned: (id, words) => `${id} was removed while you were typing. Your words: “${words}”`,
   rename: "Rename",
   detail: "Detail",
   link: "Link",
@@ -417,6 +419,7 @@ const fr: Messages = {
 
   cardLabel: "Libellé",
   laneName: "Nom de la colonne",
+  wordsOrphaned: (id, words) => `${id} a été supprimée pendant ta saisie. Ton texte : « ${words} »`,
   rename: "Renommer",
   detail: "Détail",
   link: "Relier",

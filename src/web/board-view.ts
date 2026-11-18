@@ -22,6 +22,8 @@ interface Editing {
   commit(value: string): void;
   /** How the words are kept: on one line for a label, line by line for a detail. */
   tidy(text: string): string;
+  /** The card the words are about, when there is one: gone, the editor has nowhere to save. */
+  card?: string;
 }
 
 /**
@@ -124,6 +126,13 @@ export function mountBoard(host: HTMLElement): BoardView {
       node.g.classList.toggle("is-fresh", state.fresh.has(`${board.id}/${card.id}`));
       node.g.classList.toggle("is-focus", focus?.has(card.id) ?? false);
       node.g.classList.toggle("is-dim", focus !== undefined && !focus.has(card.id));
+    }
+    // The card being written on was removed meanwhile: its words are handed back, not dropped.
+    if (editing?.card && !alive.has(editing.card)) {
+      const words = editing.tidy(editor.value);
+      if (words !== "" && words !== editing.initial) state.notice = t.wordsOrphaned(editing.card, words);
+      editing = undefined;
+      editor.hidden = true;
     }
     for (const [id, node] of nodes) {
       if (alive.has(id)) continue;
@@ -267,6 +276,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     colours: { fill: string; ink: string },
     commit: (value: string) => void,
     tidy: (text: string) => string = oneLine,
+    card?: string,
   ): void {
     const frame = host.getBoundingClientRect();
     editor.value = value;
@@ -278,7 +288,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     editor.style.background = colours.fill;
     editor.style.color = colours.ink;
     editor.hidden = false;
-    editing = { initial: tidy(value), commit, tidy };
+    editing = { initial: tidy(value), commit, tidy, card };
     tools.hidden = true;
     paintOffers();
     editor.focus();
@@ -318,9 +328,17 @@ export function mountBoard(host: HTMLElement): BoardView {
     const element = board?.elements.find((e) => e.id === id);
     if (!board || !node || !element || !isLive()) return;
     const boardId = board.id;
-    openEditor(node.g.getBoundingClientRect(), element.label, t.cardLabel, colours(element.type), (label) => {
-      if (label !== element.label) void send({ kind: "rename", board: boardId, id, label });
-    });
+    openEditor(
+      node.g.getBoundingClientRect(),
+      element.label,
+      t.cardLabel,
+      colours(element.type),
+      (label) => {
+        if (label !== element.label) void send({ kind: "rename", board: boardId, id, label });
+      },
+      oneLine,
+      id,
+    );
   }
 
   /** Opens the editor on the name of a lane: what is typed is the name this board gives it. */
@@ -356,6 +374,7 @@ export function mountBoard(host: HTMLElement): BoardView {
         void send({ kind: "annotate", board: boardId, id, detail });
       },
       keptLines,
+      id,
     );
   }
 
@@ -374,6 +393,7 @@ export function mountBoard(host: HTMLElement): BoardView {
         void send({ kind: "note", board: boardId, text, target: id });
       },
       keptLines,
+      id,
     );
   }
 

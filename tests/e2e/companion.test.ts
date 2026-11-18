@@ -1120,6 +1120,47 @@ describe("Claude waits for the human", () => {
   });
 });
 
+describe("an editor kept while the board changes under it", () => {
+  const BOARD = "garde";
+  const editor = () => page.locator(".card-editor");
+  const labelOf = async (id: string): Promise<string | undefined> => (await elementOf(BOARD, id))?.label;
+
+  test("Claude adds a card and renames another while a label is typed: the words stay, and are saved", async () => {
+    await agent(`board new "Garde" --id ${BOARD}\nadd event "Première" --col 1\nadd event "Seconde" --col 2`);
+    await page.locator(".board-picker select").selectOption(BOARD);
+    await card("E1").getByText("Première").waitFor();
+    await card("E1").dblclick();
+    await editor().fill("En cours de frappe");
+    await agent('add event "Arrivée entre-temps" --col 3\nrename E2 "Renommée par Claude"', BOARD);
+    await card("E3").waitFor();
+    await card("E2").getByText("Renommée par Claude").waitFor();
+    expect(await editor().isVisible()).toBe(true);
+    expect(await editor().inputValue()).toBe("En cours de frappe");
+    expect(await editor().evaluate((field) => field === document.activeElement)).toBe(true);
+    await editor().press("Enter");
+    await until("the label typed is saved", async () => (await labelOf("E1")) === "En cours de frappe");
+  });
+
+  test("Claude renames the very card being edited: what the human types is kept, and wins", async () => {
+    await card("E2").dblclick();
+    await editor().fill("Mon libellé");
+    await agent('rename E2 "Celui de Claude"', BOARD);
+    await until("Claude's name reached the journal", async () => (await labelOf("E2")) === "Celui de Claude");
+    expect(await editor().inputValue()).toBe("Mon libellé");
+    await editor().press("Enter");
+    await until("the human's label is saved", async () => (await labelOf("E2")) === "Mon libellé");
+  });
+
+  test("Claude removes the card being edited: the words are not lost without a word", async () => {
+    await card("E3").dblclick();
+    await editor().fill("Trop tard");
+    await agent("rm E3", BOARD);
+    await card("E3").waitFor({ state: "detached" });
+    await editor().waitFor({ state: "hidden" });
+    await page.locator(".toast", { hasText: "Trop tard" }).waitFor();
+  });
+});
+
 describe("tidying up", () => {
   const listed = (): Promise<string[]> =>
     page
