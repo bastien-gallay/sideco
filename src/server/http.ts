@@ -10,9 +10,9 @@
  */
 import { existsSync, statSync } from "node:fs";
 import { join, normalize, sep } from "node:path";
-import { type Command, CommandError, parseCommand } from "../domain/commands.ts";
+import { type Command, parseCommand } from "../domain/commands.ts";
 import { ACTORS, type Actor } from "../domain/events.ts";
-import { BatchError, type Hub } from "./hub.ts";
+import { atCommand, BatchError, type Hub } from "./hub.ts";
 
 export interface Site {
   hub: Hub;
@@ -127,14 +127,7 @@ async function commands(hub: Hub, request: Request): Promise<Response> {
 
   let parsed: Command[];
   try {
-    parsed = batch.commands.map((raw, index) => {
-      try {
-        return parseCommand(raw);
-      } catch (error) {
-        if (error instanceof CommandError) throw new BatchError(error.message, index);
-        throw error;
-      }
-    });
+    parsed = batch.commands.map((raw, index) => atCommand(index, () => parseCommand(raw)));
     const done = hub.dispatch(parsed, { actor: actor as Actor, session });
     return json({ seq: hub.workspace.seq, minted: done.minted, events: done.events.length });
   } catch (error) {

@@ -27,6 +27,16 @@ export class BatchError extends CommandError {
   }
 }
 
+/** Runs what one command of a batch asks for; a refusal then says which command it was. */
+export function atCommand<T>(index: number, step: () => T): T {
+  try {
+    return step();
+  } catch (error) {
+    if (error instanceof CommandError) throw new BatchError(error.message, index);
+    throw error;
+  }
+}
+
 type Listener = (event: Recorded) => void;
 
 export class Hub {
@@ -55,13 +65,7 @@ export class Hub {
     const ts = this.now().toISOString();
 
     commands.forEach((command, index) => {
-      let decision: ReturnType<typeof decide>;
-      try {
-        decision = decide(draft, command, ctx);
-      } catch (error) {
-        if (error instanceof CommandError) throw new BatchError(error.message, index);
-        throw error;
-      }
+      const decision = atCommand(index, () => decide(draft, command, ctx));
       minted.push(decision.minted);
       for (const event of decision.events) {
         const recorded = this.stamp(event, ctx, ts, this.workspace.seq + staged.length + 1);
