@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { rankNodes } from "../../src/domain/layout/graph.ts";
-import { type Card, layoutBoard, locate, type Scene } from "../../src/domain/layout/index.ts";
+import { type Card, layoutBoard, locate, type Scene, vacancy } from "../../src/domain/layout/index.ts";
 import { CARD_H, CARD_MIN_H, CARD_W, cardHeight, wrap } from "../../src/domain/layout/scene.ts";
 import { FLOW, KANBAN, ORDERING, table } from "../support.ts";
 
@@ -166,6 +166,78 @@ describe("a card is as tall as its label", () => {
   test("a flow keeps nodes of one height, so that its links stay level", () => {
     const scene = layoutBoard(table(FLOW).board());
     expect(new Set(scene.cards.map((c) => c.h)).size).toBe(1);
+  });
+});
+
+describe("the room to add a card, where the pointer is", () => {
+  test("in a lane: under its last card, down to the foot of the lane", () => {
+    const board = table(KANBAN).board();
+    const scene = layoutBoard(board);
+    const lane = scene.bands.find((b) => b.id === "todo");
+    const last = card(scene, "T4");
+    const room = vacancy(board, { kind: "slot", lane: "todo", before: "T3" });
+    expect(room).toEqual({
+      x: last.x,
+      y: last.y + last.h,
+      w: CARD_W,
+      h: (lane?.y ?? 0) + (lane?.h ?? 0) - (last.y + last.h),
+    });
+    // There is always room for a card there: the lane grows with its stack.
+    expect(room?.h).toBeGreaterThanOrEqual(CARD_H);
+  });
+
+  test("in an empty lane: under its header", () => {
+    const board = table('board new "Vide" --format kanban --id vide').board();
+    const lane = layoutBoard(board).bands.find((b) => b.id === "doing");
+    const room = vacancy(board, { kind: "slot", lane: "doing" });
+    expect(room?.x).toBe((lane?.x ?? 0) + ((lane?.w ?? 0) - CARD_W) / 2);
+    expect(room?.y).toBeGreaterThan(lane?.y ?? 0);
+    expect((room?.y ?? 0) + (room?.h ?? 0)).toBe((lane?.y ?? 0) + (lane?.h ?? 0));
+  });
+
+  test("in a timeline cell: under its stack, down to the foot of the row", () => {
+    const board = table(ORDERING).script('add event "Stock insuffisant" --col 1').board();
+    const scene = layoutBoard(board);
+    const row = scene.bands.find((b) => b.kind === "row" && b.id === "event");
+    const foot = (row?.y ?? 0) + (row?.h ?? 0);
+    // Step 2 holds one event where step 1 holds two: the room is what the row leaves under it.
+    const e2 = card(scene, "E2");
+    expect(vacancy(board, { kind: "cell", col: 2, type: "event" })).toEqual({
+      x: e2.x,
+      y: e2.y + e2.h,
+      w: CARD_W,
+      h: foot - (e2.y + e2.h),
+    });
+    // The fullest cell of the row keeps the padding of the row, no more.
+    const e3 = card(scene, "E3");
+    expect(vacancy(board, { kind: "cell", col: 1, type: "event" })).toEqual({
+      x: e3.x,
+      y: e3.y + e3.h,
+      w: CARD_W,
+      h: foot - (e3.y + e3.h),
+    });
+    expect(foot - (e3.y + e3.h)).toBeGreaterThan(0);
+  });
+
+  test("in an empty cell: the whole height of the row, the spare column included", () => {
+    const board = table(ORDERING).board();
+    const scene = layoutBoard(board);
+    const row = scene.bands.find((b) => b.kind === "row" && b.id === "readmodel");
+    const spare = scene.bands.filter((b) => b.kind === "step").at(-1);
+    expect(vacancy(board, { kind: "cell", col: Number(spare?.id), type: "readmodel" })).toEqual({
+      x: (spare?.x ?? 0) + ((spare?.w ?? 0) - CARD_W) / 2,
+      y: row?.y ?? -1,
+      w: CARD_W,
+      h: row?.h ?? -1,
+    });
+  });
+
+  test("nowhere else: off the board, in a row that does not exist, on a flow", () => {
+    const board = table(ORDERING).board();
+    expect(vacancy(board, { kind: "none" })).toBeUndefined();
+    expect(vacancy(board, { kind: "cell", col: 1, type: "nope" })).toBeUndefined();
+    expect(vacancy(board, { kind: "slot", lane: "todo" })).toBeUndefined();
+    expect(vacancy(table(FLOW).board(), { kind: "cell", col: 1, type: "step" })).toBeUndefined();
   });
 });
 

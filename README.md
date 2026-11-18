@@ -86,7 +86,7 @@ Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit
 | Geste | Effet |
 | --- | --- |
 | Cliquer un type dans la palette | Ajoute un post-it à la suite (ou relié au nœud sélectionné, dans un flux) |
-| Double-cliquer une case vide | Ajoute un post-it à cet endroit |
+| Survoler une case ou une colonne, cliquer le « + » | Ajoute un post-it à cet endroit : du type de la rangée dans une frise, du type choisi (un « + » par type) dans une colonne. Double-cliquer une zone vide fait de même |
 | Double-cliquer une carte | La renomme |
 | Glisser une carte | La change d'étape ou de colonne ; la position reste sémantique, jamais en pixels |
 | Sélectionner une carte | Barre d'actions : renommer, détail, relier, note pour Claude, supprimer |

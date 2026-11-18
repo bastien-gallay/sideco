@@ -5,7 +5,9 @@
  */
 import { describeChanges } from "../domain/digest.ts";
 import type { Actor, Recorded } from "../domain/events.ts";
+import { findFormat, findType } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
+import { type Target, vacancy } from "../domain/layout/index.ts";
 import {
   type AgentStatus,
   type Board,
@@ -291,4 +293,56 @@ export function discussions(board: Board): Discussion[] {
       waits: thread.notes.at(-1)?.by === "human" ? "claude" : "you",
       notes: thread.notes.map(({ id, by, text }) => ({ id, by, text })),
     }));
+}
+
+/** A "+" to click: adds a card of one kind where it is drawn. Scene coordinates. */
+export interface Offer {
+  type: string;
+  /** What the button does, for a tooltip and a screen reader. */
+  label: string;
+  /** What it shows: a plus, and the letter of the kind when several are offered. */
+  text: string;
+  fill: string;
+  ink: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+const OFFER_H = 22;
+const OFFER_GAP = 6;
+/** How far under the last card an offer sits, when the room is larger than that. */
+const OFFER_REACH = 56;
+
+/**
+ * The "+" offered in the free room of the cell or lane at `target`: the kind
+ * of its row in a timeline, each kind of the workshop in a lane.
+ */
+export function addOffers(board: Board, target: Target, locale: Locale = DEFAULT_LOCALE): Offer[] {
+  const format = findFormat(board.format);
+  const room = vacancy(board, target);
+  if (!format || !room) return [];
+  const types = target.kind === "cell" ? [findType(format, target.type)] : format.types;
+  const several = types.length > 1;
+  const w = several ? 40 : 28;
+  const left = room.x + (room.w - types.length * w - (types.length - 1) * OFFER_GAP) / 2;
+  const y = room.y + (Math.min(room.h, OFFER_REACH) - OFFER_H) / 2;
+  return types.flatMap((type, i) =>
+    type
+      ? [
+          {
+            type: type.id,
+            label: MESSAGES[locale].add(type.label[locale]),
+            text: several ? `+ ${type.prefix}` : "+",
+            fill: type.fill,
+            ink: type.ink,
+            x: left + i * (w + OFFER_GAP),
+            y,
+            w,
+            h: OFFER_H,
+          },
+        ]
+      : [],
+  );
 }

@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { LOCALES } from "../../src/domain/i18n.ts";
+import { layoutBoard, vacancy } from "../../src/domain/layout/index.ts";
 import { MESSAGES, pickLocale } from "../../src/web/messages.ts";
 import {
+  addOffers,
   agentStatus,
   describeEvent,
   discussions,
@@ -12,7 +14,7 @@ import {
   redoTarget,
   undoTarget,
 } from "../../src/web/view.ts";
-import { KANBAN, ORDERING, type Table, table } from "../support.ts";
+import { FLOW, KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 function withSession(script = ORDERING): Table {
   const t = table(script);
@@ -376,5 +378,49 @@ describe("what Undo and Redo in the page would act on", () => {
   test("never a board Claude removed", () => {
     const t = table(ORDERING).script(KANBAN).script("board rm commande", "agent");
     expect(undoTarget(t.ws, "sprint")).toBeUndefined();
+  });
+});
+
+describe("addOffers: a + in the free room under the pointer, one per kind of card that goes there", () => {
+  test("a timeline cell offers the kind of its row, just under its stack", () => {
+    const board = table(ORDERING).board();
+    const target = { kind: "cell", col: 2, type: "readmodel" } as const;
+    const room = vacancy(board, target);
+    if (!room) throw new Error("no room");
+    const [offer, ...others] = addOffers(board, target, "fr");
+    expect(others).toEqual([]);
+    expect(offer).toMatchObject({ type: "readmodel", text: "+", label: "Ajouter : Vue" });
+    if (!offer) throw new Error("no offer");
+    // Centred in the column, and inside the empty row from top to bottom.
+    expect(offer.x + offer.w / 2).toBe(room.x + room.w / 2);
+    expect(offer.y).toBeGreaterThanOrEqual(room.y);
+    expect(offer.y + offer.h).toBeLessThanOrEqual(room.y + room.h);
+    expect(offer.fill).toMatch(/^#/);
+  });
+
+  test("a lane offers each kind of card of the workshop, side by side, close under the last card", () => {
+    const board = table(KANBAN).board();
+    const target = { kind: "slot", lane: "todo", before: "T3" } as const;
+    const room = vacancy(board, target);
+    const last = layoutBoard(board).cards.find((c) => c.id === "T4");
+    if (!room || !last) throw new Error("no room");
+    const offers = addOffers(board, target);
+    expect(offers.map((o) => `${o.type} ${o.text} ${o.label}`)).toEqual([
+      "task + T Add: Task",
+      "blocker + B Add: Blocker",
+    ]);
+    const [task, blocker] = offers;
+    if (!task || !blocker) throw new Error("no offers");
+    expect(blocker.x).toBeGreaterThan(task.x + task.w);
+    expect((task.x + blocker.x + blocker.w) / 2).toBe(room.x + room.w / 2);
+    expect(task.y).toBe(blocker.y);
+    // Under the last card without touching it, and near it rather than at the foot of the lane.
+    expect(task.y).toBeGreaterThan(last.y + last.h);
+    expect(task.y).toBeLessThan(last.y + last.h + 40);
+  });
+
+  test("nothing is offered off the board, nor on a flow", () => {
+    expect(addOffers(table(KANBAN).board(), { kind: "none" })).toEqual([]);
+    expect(addOffers(table(FLOW).board(), { kind: "cell", col: 1, type: "step" })).toEqual([]);
   });
 });

@@ -13,6 +13,7 @@ import {
   type Card,
   labelHeight,
   MARGIN,
+  type Room,
   type Scene,
   type Target,
 } from "./scene.ts";
@@ -75,6 +76,16 @@ function laneX(index: number): number {
 /** The room a stack takes, each card as tall as its label. */
 function stackHeight(stack: Element[]): number {
   return stack.reduce((sum, e) => sum + labelHeight(e.label) + STACK_GAP, 0);
+}
+
+/** The free room of a lane: under its last card, or under its header, down to its foot. */
+export function roomInColumns(board: Board, format: Format, lane: string): Room | undefined {
+  const index = format.lanes.findIndex((candidate) => candidate.id === lane);
+  if (index === -1) return undefined;
+  const stacks = format.lanes.map((each) => board.elements.filter((e) => e.lane === each.id));
+  const stack = stacks[index] ?? [];
+  const y = stack.length === 0 ? MARGIN + HEADER_H : STACK_TOP + stackHeight(stack) - STACK_GAP;
+  return { x: laneX(index) + (LANE_W - CARD_W) / 2, y, w: CARD_W, h: MARGIN + laneHeight(stacks) - y };
 }
 
 /** The lane under a point and the card the drop would land before; `moving` is left out of the count. */

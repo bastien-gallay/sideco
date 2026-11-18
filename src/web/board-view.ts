@@ -5,12 +5,13 @@
  */
 import type { Command } from "../domain/commands.ts";
 import { type Format, findFormat, findType } from "../domain/formats.ts";
-import { layoutBoard, locate, type Scene, type Target } from "../domain/layout/index.ts";
+import { layoutBoard, locate, type Scene, type Target, vacancy } from "../domain/layout/index.ts";
 import { arrowDefs, bandMarkup, cardMarkup, connectorMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h, svg } from "./dom.ts";
 import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
+import { addOffers } from "./view.ts";
 
 const DRAG_THRESHOLD = 4;
 const ZOOMS = [0.5, 0.67, 0.8, 1, 1.25, 1.5];
@@ -37,6 +38,7 @@ export function mountBoard(host: HTMLElement): BoardView {
   const hint = root.appendChild(svg("rect", { class: "drop-hint", rx: 8, visibility: "hidden" }));
   const conns = root.appendChild(svg("g", { class: "layer-conns" }));
   const cards = root.appendChild(svg("g", { class: "layer-cards" }));
+  const adds = root.appendChild(svg("g", { class: "layer-adds" }));
   const scroll = h("div", { class: "canvas-scroll" });
   scroll.append(root);
   const tools = h("div", { class: "card-tools", hidden: true });
@@ -48,6 +50,9 @@ export function mountBoard(host: HTMLElement): BoardView {
   let scene: Scene = { width: 0, height: 0, bands: [], cards: [], connectors: [] };
   let zoom = 1;
   let editing: Editing | undefined;
+  /** Where the pointer is, as a place to add to; and what is drawn there, to repaint only on a change. */
+  let pointed: Target = { kind: "none" };
+  let offered = "";
   let paintedBoard: string | undefined;
   /** The link the human clicked, and where, so its toolbar opens under the pointer. */
   let pickedLink: { src: string; dst: string; x: number; y: number } | undefined;
@@ -115,6 +120,44 @@ export function mountBoard(host: HTMLElement): BoardView {
     host.classList.toggle("is-linking", state.linking !== null);
     host.classList.toggle("is-past", !isLive());
     paintTools();
+    paintOffers();
+  }
+
+  /** Draws a "+" for each kind of card that can be added where the pointer is. */
+  function paintOffers(): void {
+    const quiet = !board || !isLive() || editing !== undefined || drag?.moving === true;
+    const offers = quiet || !board ? [] : addOffers(board, pointed, locale);
+    const signature = JSON.stringify(offers);
+    if (signature === offered) return;
+    offered = signature;
+    adds.replaceChildren(
+      ...offers.map((offer) => {
+        const g = svg("g", {
+          class: "add-here",
+          "data-type": offer.type,
+          role: "button",
+          "aria-label": offer.label,
+          transform: `translate(${offer.x} ${offer.y})`,
+        });
+        const title = svg("title", {});
+        title.textContent = offer.label;
+        const text = svg("text", { x: offer.w / 2, y: offer.h / 2, fill: offer.ink });
+        text.textContent = offer.text;
+        g.append(title, svg("rect", { width: offer.w, height: offer.h, rx: 6, fill: offer.fill }), text);
+        return g;
+      }),
+    );
+  }
+
+  /** Opens the editor for a new card of this kind where the pointer is: in its cell, or at the end of its lane. */
+  function addHere(typeId: string): void {
+    const room = board ? vacancy(board, pointed) : undefined;
+    const matrix = root.getScreenCTM();
+    if (!room || !matrix || pointed.kind === "none") return;
+    const corner = new DOMPoint(room.x, room.y).matrixTransform(matrix);
+    const place = { x: corner.x, y: corner.y };
+    if (pointed.kind === "cell") beginAdd(typeId, { col: pointed.col, ...place });
+    else beginAdd(typeId, { lane: pointed.lane, ...place });
   }
 
   function paintTools(): void {
@@ -210,6 +253,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     editor.hidden = false;
     editing = { commit };
     tools.hidden = true;
+    paintOffers();
     editor.focus();
     editor.select();
   }
@@ -338,6 +382,9 @@ export function mountBoard(host: HTMLElement): BoardView {
     | { id: string; startX: number; startY: number; dx: number; dy: number; moving: boolean; target: Target }
     | undefined;
 
+  const offerAt = (target: EventTarget | null): SVGGElement | null =>
+    (target as Element | null)?.closest?.<SVGGElement>("g.add-here") ?? null;
+
   root.addEventListener("pointerdown", (event) => {
     const id = cardAt(event.target);
     if (!id || event.button !== 0) return;
@@ -356,6 +403,18 @@ export function mountBoard(host: HTMLElement): BoardView {
     root.setPointerCapture(event.pointerId);
   });
 
+  // A mouse or a pen says where it is before it presses: that is where a card can be offered.
+  root.addEventListener("pointermove", (event) => {
+    if (drag || !board || event.pointerType === "touch" || offerAt(event.target)) return;
+    const at = toScene(event);
+    pointed = locate(board, at.x, at.y);
+    paintOffers();
+  });
+  root.addEventListener("pointerleave", () => {
+    pointed = { kind: "none" };
+    paintOffers();
+  });
+
   root.addEventListener("pointermove", (event) => {
     if (!drag || !board) return;
     const at = toScene(event);
@@ -363,6 +422,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     if (!drag.moving && movable && Math.hypot(at.x - drag.startX, at.y - drag.startY) > DRAG_THRESHOLD) {
       drag.moving = true;
       tools.hidden = true;
+      paintOffers();
       nodes.get(drag.id)?.g.classList.add("is-dragging");
     }
     if (!drag.moving) return;
@@ -415,6 +475,11 @@ export function mountBoard(host: HTMLElement): BoardView {
     dropped = false;
     const target = under(event);
     if (wasDrop || cardAt(target)) return;
+    const offer = offerAt(target);
+    if (offer) {
+      addHere(offer.dataset.type ?? "");
+      return;
+    }
     const conn = target?.closest<SVGGElement>("g.conn");
     const { src, dst } = conn?.dataset ?? {};
     const frame = host.getBoundingClientRect();
@@ -429,7 +494,7 @@ export function mountBoard(host: HTMLElement): BoardView {
   });
 
   root.addEventListener("dblclick", (event) => {
-    if (!board || !isLive()) return;
+    if (!board || !isLive() || offerAt(under(event))) return;
     const id = cardAt(under(event));
     if (id) {
       rename(id);

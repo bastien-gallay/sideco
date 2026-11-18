@@ -8,7 +8,16 @@ import type { Format } from "../formats.ts";
 import type { Locale } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
 import { lastColumn } from "../workspace.ts";
-import { type Band, CARD_W, type Card, labelHeight, MARGIN, type Scene, type Target } from "./scene.ts";
+import {
+  type Band,
+  CARD_W,
+  type Card,
+  labelHeight,
+  MARGIN,
+  type Room,
+  type Scene,
+  type Target,
+} from "./scene.ts";
 
 export const COL_W = 176;
 const HEADER_W = 136;
@@ -109,6 +118,16 @@ export function locateInTimeline(board: Board, format: Format, x: number, y: num
   const col = Math.floor((x - HEADER_W) / COL_W) + 1;
   if (!row || col < 1 || col > grid.columns) return { kind: "none" };
   return { kind: "cell", col, type: row.type };
+}
+
+/** The free room of a cell: under its stack, or from the top of an empty cell, down to the foot of its row. */
+export function roomInTimeline(board: Board, format: Format, col: number, type: string): Room | undefined {
+  const grid = timelineGrid(board, format);
+  const row = grid.rows.find((candidate) => candidate.type === type);
+  if (!row || col < 1 || col > grid.columns) return undefined;
+  const [stack] = cellHeights(board.elements.filter((e) => e.type === type && e.col === col));
+  const y = stack === undefined ? row.y : row.y + ROW_PAD + stack;
+  return { x: columnX(col) + (COL_W - CARD_W) / 2, y, w: CARD_W, h: row.y + row.h - y };
 }
 
 /** The column whose left edge is nearest to `x`: a column inserted there takes that number. */

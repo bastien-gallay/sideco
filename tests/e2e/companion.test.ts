@@ -694,6 +694,81 @@ describe("talking it through, note by note", () => {
   });
 });
 
+describe("adding where the pointer is", () => {
+  const offer = (type: string) => page.locator(`.vico-board .add-here[data-type="${type}"]`);
+  const offers = () => page.locator(".vico-board .add-here");
+
+  test("retro: a column offers one + per kind of card, and the card lands in that column", async () => {
+    await agent(
+      `board new "Rétro du sprint" --format retro --id ajout\nadd point "Les tests d'abord" --lane keep`,
+    );
+    await page.locator(".board-picker select").selectOption("ajout");
+    await card("K1").getByText("Les tests").waitFor();
+    // Nothing is offered while the pointer is elsewhere.
+    await page.mouse.move(700, 20);
+    expect(await offers().count()).toBe(0);
+
+    const lane = await page.locator(".band-lane .lane-label", { hasText: "Try" }).boundingBox();
+    if (!lane) throw new Error("no Try lane");
+    await page.mouse.move(lane.x + 60, lane.y + 150);
+    await offer("action").waitFor();
+    expect(await offers().count()).toBe(2);
+    expect(await offer("action").getAttribute("aria-label")).toBe("Add: Action");
+    expect(await offer("point").getAttribute("aria-label")).toBe("Add: Observation");
+    // Let the offer finish fading in before the picture.
+    await Bun.sleep(200);
+    await shot("16-add-here");
+
+    await offer("action").click();
+    await typeInEditor("Écrire le test avant le code");
+    await until("the action is in Try", async () => {
+      const added = await elementOf("ajout", "A1");
+      return added?.type === "action" && added.lane === "try";
+    });
+    await card("A1").getByText("Écrire le test").waitFor();
+    expect(await page.locator(".palette .how").textContent()).toContain("+");
+  });
+
+  test("timeline: a cell offers the kind of its row, and the card lands in that step", async () => {
+    await agent(
+      `board new "Ajout en case" --id ajout-case\nadd event "Commande passée" --col 1\nadd event "Stock réservé" --col 2`,
+    );
+    await page.locator(".board-picker select").selectOption("ajout-case");
+    await card("E2").getByText("Stock réservé").waitFor();
+    const row = await page.locator(".band-row", { hasText: "Policy" }).locator("text").boundingBox();
+    const e2 = await centre("E2");
+    if (!row) throw new Error("no Policy row");
+    await page.mouse.move(e2.x, row.y + row.height / 2);
+    await offer("policy").waitFor();
+    expect(await offers().count()).toBe(1);
+    await Bun.sleep(200);
+    await shot("17-add-in-cell");
+
+    await offer("policy").click();
+    await typeInEditor("Quand stock réservé, facturer");
+    await until("the policy is in step 2", async () => (await elementOf("ajout-case", "P1"))?.col === 2);
+    await card("P1").waitFor();
+  });
+
+  test("the offer leaves with the pointer, and is not made on a board shown as it was", async () => {
+    const e2 = await centre("E2");
+    await page.mouse.move(e2.x, e2.y);
+    await offer("event").waitFor();
+    await page.mouse.move(700, 20);
+    await until("the offer is gone", async () => (await offers().count()) === 0);
+
+    await page.locator(".history input").fill(String((await workspace()).seq - 1));
+    await page.locator(".banner").waitFor({ state: "visible" });
+    await page.mouse.move(e2.x, e2.y + 4);
+    await Bun.sleep(150);
+    expect(await offers().count()).toBe(0);
+    await page.locator(".banner button").click();
+    await page.locator(".banner").waitFor({ state: "hidden" });
+    await page.mouse.move(e2.x, e2.y);
+    await offer("event").waitFor();
+  });
+});
+
 describe("tidying up", () => {
   const listed = (): Promise<string[]> =>
     page

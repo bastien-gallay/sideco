@@ -5,20 +5,21 @@
 import { type Format, findFormat, findType } from "../formats.ts";
 import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
 import { type Board, type Element, threads } from "../workspace.ts";
-import { layoutColumns, locateInColumns } from "./columns.ts";
+import { layoutColumns, locateInColumns, roomInColumns } from "./columns.ts";
 import { layoutGraph, NODE_LINES } from "./graph.ts";
 import {
   CARD_W,
   type Card,
   cardHeight,
   curve,
+  type Room,
   type Scene,
   type Target,
   WRAP_CHARS,
   WRAP_LINES,
   wrap,
 } from "./scene.ts";
-import { layoutTimeline, locateInTimeline } from "./timeline.ts";
+import { layoutTimeline, locateInTimeline, roomInTimeline } from "./timeline.ts";
 
 const EMPTY: Scene = { width: 0, height: 0, bands: [], cards: [], connectors: [] };
 
@@ -50,6 +51,20 @@ export function locate(board: Board, x: number, y: number, moving?: string): Tar
   return { kind: "none" };
 }
 
+/**
+ * The free room where an element added at `target` would go, so that the page
+ * can offer it there. Undefined where nothing is added by place: off the board,
+ * and on a flow, whose elements are placed by their links.
+ */
+export function vacancy(board: Board, target: Target): Room | undefined {
+  const format = findFormat(board.format);
+  if (format?.layout === "timeline" && target.kind === "cell")
+    return roomInTimeline(board, format, target.col, target.type);
+  if (format?.layout === "columns" && target.kind === "slot")
+    return roomInColumns(board, format, target.lane);
+  return undefined;
+}
+
 function cardMaker(board: Board, format: Format, locale: Locale): (e: Element, x: number, y: number) => Card {
   const openNotes = new Map<string, number>();
   for (const thread of threads(board)) {
@@ -78,4 +93,4 @@ function cardMaker(board: Board, format: Format, locale: Locale): (e: Element, x
   };
 }
 
-export type { Band, Card, Connector, Scene, Target } from "./scene.ts";
+export type { Band, Card, Connector, Room, Scene, Target } from "./scene.ts";

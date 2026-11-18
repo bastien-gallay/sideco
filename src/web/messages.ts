@@ -185,8 +185,8 @@ const en: Messages = {
 
   palette: "Elements to add",
   add: (type) => `Add: ${type}`,
-  howTimeline: "Click a type to add it at the end, or double-click a cell.",
-  howColumns: "Click a type, or double-click a column. Drag to move.",
+  howTimeline: "Point at a cell and click its +, or click a type to add it at the end.",
+  howColumns: "Point at a column and click a +, or click a type. Drag to move.",
   howGraph: "Select an element so that the next one is linked to it.",
   howGraphFrom: (id) => `The new element will be linked to ${id}.`,
   newCard: (type, hint) => `${type}: ${hint.toLowerCase()}`,
@@ -306,8 +306,8 @@ const fr: Messages = {
 
   palette: "Éléments à ajouter",
   add: (type) => `Ajouter : ${type}`,
-  howTimeline: "Clique un type pour l'ajouter à la suite, ou double-clique dans une case.",
-  howColumns: "Clique un type, ou double-clique dans une colonne. Glisse pour déplacer.",
+  howTimeline: "Survole une case et clique son +, ou clique un type pour l'ajouter à la suite.",
+  howColumns: "Survole une colonne et clique un +, ou clique un type. Glisse pour déplacer.",
   howGraph: "Sélectionne un élément pour que le suivant lui soit relié.",
   howGraphFrom: (id) => `Le nouvel élément sera relié à ${id}.`,
   newCard: (type, hint) => `${type} : ${hint.toLowerCase()}`,

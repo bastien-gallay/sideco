@@ -57,6 +57,14 @@ export interface Scene {
 }
 
 /** Where a pointer position lands, in the board's own terms. */
+/** A free rectangle of the board, in scene coordinates. */
+export interface Room {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export type Target =
   | { kind: "cell"; col: number; type: string }
   | { kind: "slot"; lane: string; before?: string }
