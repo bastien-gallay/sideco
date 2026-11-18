@@ -63,12 +63,29 @@ export type Target =
   | { kind: "none" };
 
 export const CARD_W = 152;
+/** The tallest card: a label of `WRAP_LINES` lines. */
 export const CARD_H = 88;
+/** The shortest card: one line, with room for the id above it and the marks around it. */
+export const CARD_MIN_H = 48;
 export const MARGIN = 24;
 
 /** Characters per line and lines per card that fit `CARD_W` × `CARD_H` at 13px. */
 export const WRAP_CHARS = 20;
 export const WRAP_LINES = 4;
+/** The height of one line of label. */
+export const LINE_H = 16;
+/** What a card needs besides its label: the id strip above, the breathing room below. */
+const CARD_CHROME = CARD_H - WRAP_LINES * LINE_H;
+
+/** A card is as tall as its label: the height of one that shows this many lines. */
+export function cardHeight(lines: number): number {
+  return Math.max(CARD_MIN_H, CARD_CHROME + lines * LINE_H);
+}
+
+/** The height of the card that shows this label, in a layout of stacked stickies. */
+export function labelHeight(label: string): number {
+  return cardHeight(wrap(label).length);
+}
 
 /** Breaks a label into at most `maxLines` lines of at most `width` characters, ending with … when cut. */
 export function wrap(label: string, width = WRAP_CHARS, maxLines = WRAP_LINES): string[] {

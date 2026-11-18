@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { rankNodes } from "../../src/domain/layout/graph.ts";
 import { type Card, layoutBoard, locate, type Scene } from "../../src/domain/layout/index.ts";
-import { CARD_H, CARD_W, wrap } from "../../src/domain/layout/scene.ts";
+import { CARD_H, CARD_MIN_H, CARD_W, cardHeight, wrap } from "../../src/domain/layout/scene.ts";
 import { FLOW, KANBAN, ORDERING, table } from "../support.ts";
 
 const card = (scene: Scene, id: string): Card => {
@@ -81,7 +81,7 @@ describe("timeline layout", () => {
   test("two elements in one cell stack, and the row grows to hold them", () => {
     const stacked = layoutBoard(table(ORDERING).script('add event "Stock insuffisant" --col 2').board());
     expect(card(stacked, "E3").x).toBe(card(stacked, "E2").x);
-    expect(card(stacked, "E3").y).toBeGreaterThanOrEqual(card(stacked, "E2").y + CARD_H);
+    expect(card(stacked, "E3").y).toBeGreaterThanOrEqual(card(stacked, "E2").y + card(stacked, "E2").h);
     expect(card(stacked, "P1").y).toBeGreaterThan(card(scene, "P1").y);
     expectTidy(stacked);
   });
@@ -114,6 +114,58 @@ describe("timeline layout", () => {
     expect(blank.bands.filter((b) => b.kind === "row")).toHaveLength(8);
     const row = blank.bands.find((b) => b.kind === "row" && b.id === "event");
     expect(locate(empty, 200, (row?.y ?? 0) + 5)).toEqual({ kind: "cell", col: 1, type: "event" });
+  });
+});
+
+describe("a card is as tall as its label", () => {
+  const LONG = "Un libellé long qui prend bien quatre lignes entières sur la carte";
+
+  test("from one line to four: nothing is cut, nothing is padded", () => {
+    expect([1, 2, 3, 4].map(cardHeight)).toEqual([48, 56, 72, 88]);
+    expect([cardHeight(1), cardHeight(4)]).toEqual([CARD_MIN_H, CARD_H]);
+    const scene = layoutBoard(table(KANBAN).script(`add task "${LONG}"`).board());
+    expect(card(scene, "T1")).toMatchObject({ lines: ["Écrire le PRD"], h: 48 });
+    expect(card(scene, "T3")).toMatchObject({ lines: ["Tester de bout en", "bout"], h: 56 });
+    expect(card(scene, "T5").lines).toHaveLength(4);
+    expect(card(scene, "T5").h).toBe(88);
+  });
+
+  test("in a lane, each card sits right under the one before, tall or short", () => {
+    const board = table(KANBAN).script(`add task "${LONG}"\nadd task "Court"`).board();
+    const scene = layoutBoard(board);
+    const [t3, t4, t5, t6] = ["T3", "T4", "T5", "T6"].map((id) => card(scene, id));
+    if (!t3 || !t4 || !t5 || !t6) throw new Error("missing card");
+    const gap = t4.y - (t3.y + t3.h);
+    expect(gap).toBeGreaterThan(0);
+    expect(t5.y - (t4.y + t4.h)).toBe(gap);
+    expect(t6.y - (t5.y + t5.h)).toBe(gap);
+    const lane = scene.bands.find((b) => b.id === "todo");
+    expect((lane?.y ?? 0) + (lane?.h ?? 0)).toBeGreaterThan(t6.y + t6.h);
+    expectTidy(scene);
+    // A drop lands before the card under the pointer, whatever the heights above it.
+    for (const c of [t3, t4, t5, t6]) {
+      expect(locate(board, c.x + 10, c.y + 4)).toEqual({ kind: "slot", lane: "todo", before: c.id });
+    }
+    expect(locate(board, t6.x + 10, t6.y + t6.h + 40)).toMatchObject({ lane: "todo", before: undefined });
+  });
+
+  test("in a timeline, a row is as tall as its tallest cell", () => {
+    const board = table(ORDERING).script(`add event "${LONG}" --col 2`).board();
+    const scene = layoutBoard(board);
+    const row = (id: string): number => scene.bands.find((b) => b.kind === "row" && b.id === id)?.h ?? 0;
+    // Commands are one-liners; the events of step 2 are a short card above a tall one.
+    expect(row("command")).toBe(card(scene, "C1").h + 24);
+    const [e2, e3] = [card(scene, "E2"), card(scene, "E3")];
+    expect([e2.h, e3.h]).toEqual([48, 88]);
+    expect(e3.y).toBeGreaterThan(e2.y + e2.h);
+    expect(row("event")).toBe(e3.y + e3.h - e2.y + 24);
+    expectTidy(scene);
+    expect(locate(board, e3.x + 10, e3.y + e3.h - 2)).toEqual({ kind: "cell", col: 2, type: "event" });
+  });
+
+  test("a flow keeps nodes of one height, so that its links stay level", () => {
+    const scene = layoutBoard(table(FLOW).board());
+    expect(new Set(scene.cards.map((c) => c.h)).size).toBe(1);
   });
 });
 

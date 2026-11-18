@@ -5,7 +5,7 @@
  * Colours of the chrome are CSS variables with fallbacks: standalone files get
  * the light theme, the page overrides the variables.
  */
-import type { Band, Card, Connector, Scene } from "../layout/scene.ts";
+import { type Band, type Card, type Connector, LINE_H, type Scene } from "../layout/scene.ts";
 
 export const SVG_STYLE = `
 .vico-board { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -26,7 +26,6 @@ export const SVG_STYLE = `
 .card-notes text { fill: #FFFFFF; font-size: 10px; font-weight: 700; text-anchor: middle; }
 `;
 
-const LINE_H = 16;
 const ID_STRIP = 14;
 
 export function esc(text: string): string {

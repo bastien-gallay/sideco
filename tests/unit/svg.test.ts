@@ -63,7 +63,7 @@ describe("a card", () => {
 
   test("is drawn at the origin, so the page can move it without repainting", () => {
     expect(markup("E2")).toContain(
-      '<rect class="card-shape" fill="#FF9F1C" width="152" height="88" rx="2"/>',
+      '<rect class="card-shape" fill="#FF9F1C" width="152" height="48" rx="2"/>',
     );
   });
 });

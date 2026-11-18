@@ -8,9 +8,9 @@ import { type Board, type Element, threads } from "../workspace.ts";
 import { layoutColumns, locateInColumns } from "./columns.ts";
 import { layoutGraph, NODE_LINES } from "./graph.ts";
 import {
-  CARD_H,
   CARD_W,
   type Card,
+  cardHeight,
   curve,
   type Scene,
   type Target,
@@ -59,13 +59,14 @@ function cardMaker(board: Board, format: Format, locale: Locale): (e: Element, x
   const maxLines = format.layout === "graph" ? NODE_LINES : WRAP_LINES;
   return (e, x, y) => {
     const type = findType(format, e.type);
+    const lines = wrap(e.label, WRAP_CHARS, maxLines);
     return {
       id: e.id,
       x,
       y,
       w: CARD_W,
-      h: CARD_H,
-      lines: wrap(e.label, WRAP_CHARS, maxLines),
+      h: cardHeight(lines.length),
+      lines,
       fill: type?.fill ?? "#E8EEF4",
       ink: type?.ink ?? "#1F2328",
       shape: type?.shape ?? "box",
