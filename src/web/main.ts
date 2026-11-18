@@ -66,7 +66,8 @@ const historyRange = h("input", {
 });
 const turnBar = h("div", { class: "turn" });
 const toast = h("div", { class: "toast", role: "alert", hidden: true });
-const dialog = h("dialog", { class: "new-board" });
+const dialog = h("dialog", { class: "sheet new-board" });
+const removal = h("dialog", { class: "sheet remove-board" });
 
 /** The reader's language: every language under its own name, so it is found whatever the page speaks. */
 const languagePicker = h(
@@ -124,6 +125,7 @@ app.append(
   ),
   toast,
   dialog,
+  removal,
 );
 
 historyRange.addEventListener("input", () => travelTo(Number(historyRange.value)));
@@ -138,9 +140,15 @@ function zoom(by: -1 | 1): void {
 
 // ── Regions: each repaints only when its own model changes ───────────────────
 
-const paintBoardPicker = region(
-  boardPicker,
-  (m: { boards: { id: string; title: string }[]; current: string | undefined }) => [
+interface BoardPickerModel {
+  boards: { id: string; title: string }[];
+  current: string | undefined;
+  live: boolean;
+}
+
+const paintBoardPicker = region(boardPicker, (m: BoardPickerModel) => {
+  const shown = m.boards.find((b) => b.id === m.current);
+  return [
     m.boards.length > 0 &&
       h(
         "select",
@@ -151,8 +159,21 @@ const paintBoardPicker = region(
         ...m.boards.map((b) => h("option", { value: b.id, selected: b.id === m.current }, b.title)),
       ),
     h("button", { type: "button", class: "quiet", onclick: () => openNewBoard() }, t.newBoardButton),
-  ],
-);
+    shown &&
+      h(
+        "button",
+        {
+          type: "button",
+          class: "quiet remove-board",
+          title: t.removeBoard(shown.title),
+          "aria-label": t.removeBoard(shown.title),
+          disabled: !m.live,
+          onclick: () => askToRemove(shown.id),
+        },
+        t.remove,
+      ),
+  ];
+});
 
 const paintStatus = region(statusPill, (m: { tone: string; text: string; connected: boolean }) => [
   h("span", { class: `dot tone-${m.connected ? m.tone : "off"}`, "aria-hidden": "true" }),
@@ -525,6 +546,32 @@ function openNewBoard(formatId = "event-storming"): void {
   title.focus();
 }
 
+/**
+ * Removing a board is the one gesture the page cannot take back, so it asks
+ * first, and the answer that keeps the board has the focus.
+ */
+function askToRemove(id: string): void {
+  const board = findBoard(state.live, id);
+  if (!board || !isLive()) return;
+  const keep = h("button", { type: "button", class: "quiet", onclick: () => removal.close() }, t.cancel);
+  const remove = async (): Promise<void> => {
+    await send({ kind: "remove-board", board: id });
+    removal.close();
+  };
+  removal.replaceChildren(
+    h("h2", {}, t.removeBoardQuestion(board.title)),
+    h("p", {}, t.removeBoardConsequence(board.elements.length)),
+    h(
+      "div",
+      { class: "actions" },
+      keep,
+      h("button", { type: "button", class: "danger", onclick: () => void remove() }, t.remove),
+    ),
+  );
+  removal.showModal();
+  keep.focus();
+}
+
 /** A board id not in use yet: the slug, or the slug with the first free number. */
 function freeId(slug: string): string {
   if (!findBoard(state.live, slug)) return slug;
@@ -544,7 +591,11 @@ function render(): void {
   const liveSession = latestSession(state.live);
   const max = state.live.seq;
 
-  paintBoardPicker({ boards: ws.boards.map((b) => ({ id: b.id, title: b.title })), current: board?.id });
+  paintBoardPicker({
+    boards: ws.boards.map((b) => ({ id: b.id, title: b.title })),
+    current: board?.id,
+    live,
+  });
   paintStatus({ ...agentStatus(session, live ? state.listening : 0, locale), connected: state.connected });
   paintExport({ board: board?.id });
   paintPalette({

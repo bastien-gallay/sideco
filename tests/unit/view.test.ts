@@ -203,6 +203,19 @@ describe("the page's own words", () => {
     expect(MESSAGES.fr.handOver).toBe("Passer la main à Claude");
   });
 
+  test("removing a board says what leaves and what stays, before it is done", () => {
+    expect(MESSAGES.en.removeBoardQuestion("Sprint 12")).toBe("Remove the board “Sprint 12”?");
+    expect(MESSAGES.fr.removeBoardQuestion("Sprint 12")).toBe("Supprimer le tableau « Sprint 12 » ?");
+    expect(MESSAGES.en.removeBoardConsequence(0)).toStartWith("It is empty. ");
+    expect(MESSAGES.en.removeBoardConsequence(1)).toStartWith("It holds 1 element. ");
+    expect(MESSAGES.en.removeBoardConsequence(3)).toStartWith("It holds 3 elements. ");
+    expect(MESSAGES.fr.removeBoardConsequence(3)).toStartWith("Il contient 3 éléments. ");
+    for (const locale of LOCALES) {
+      expect(MESSAGES[locale].removeBoardConsequence(3)).toContain("Claude");
+      expect(MESSAGES[locale].removeBoardConsequence(3)).toContain("journal");
+    }
+  });
+
   test("the language is the reader's choice, then the companion's, then English", () => {
     expect(pickLocale("fr", "en")).toBe("fr");
     expect(pickLocale("en", "fr")).toBe("en");

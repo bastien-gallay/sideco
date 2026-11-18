@@ -352,6 +352,7 @@ describe("history", () => {
     expect(await page.locator("g.card").count()).toBe(3);
     expect(await page.locator(".history-label").textContent()).toMatch(/^5 \/ \d+ · .*Claude adds E1/);
     expect(await paletteType("Event").isDisabled()).toBe(true);
+    expect(await page.locator(".board-picker button.remove-board").isDisabled()).toBe(true);
     await shot("06-history");
 
     await page.locator(".history button", { hasText: "►" }).click();
@@ -417,7 +418,7 @@ describe("other workshops", () => {
   });
 
   test("a new board from the page: pick a workshop, name it, start", async () => {
-    await page.locator(".board-picker button").click();
+    await page.locator(".board-picker button", { hasText: "+ Board" }).click();
     await page.locator("dialog.new-board").waitFor({ state: "visible" });
     await page.locator('dialog.new-board input[name="title"]').fill("Rétro sprint 12");
     await page.locator("dialog.new-board label.choice", { hasText: "Retrospective" }).click();
@@ -530,6 +531,34 @@ describe("tidying up", () => {
     expect(page.url()).toEndWith(`#/b/${remaining.at(-1)}`);
     expect(await page.locator(".board-picker select").inputValue()).toBe(remaining.at(-1) ?? "");
     expect(await page.locator("g.card").count()).toBeGreaterThan(0);
+  });
+
+  test("the human removes a board from the page, after being asked once", async () => {
+    await agent('board new "À jeter" --format kanban --id a-jeter\nadd task "Rien" --lane todo');
+    await page.locator(".board-picker select").selectOption("a-jeter");
+    await card("T1").waitFor();
+
+    const remove = page.locator(".board-picker button.remove-board");
+    const sheet = page.locator("dialog.remove-board");
+    expect(await remove.getAttribute("title")).toBe("Remove the board “À jeter”");
+    await remove.click();
+    expect(await sheet.locator("h2").textContent()).toBe("Remove the board “À jeter”?");
+    expect(await sheet.locator("p").textContent()).toStartWith("It holds 1 element. ");
+    await shot("12-remove-board");
+    // The safe answer has the focus: Enter keeps the board.
+    await page.keyboard.press("Enter");
+    await sheet.waitFor({ state: "hidden" });
+    expect(await listed()).toContain("a-jeter");
+
+    await remove.click();
+    await sheet.locator("button.danger").click();
+    await until("the removed board left the picker", async () => !(await listed()).includes("a-jeter"));
+    await sheet.waitFor({ state: "hidden" });
+    const remaining = (await workspace()).boards.map((b) => b.id);
+    expect(remaining).not.toContain("a-jeter");
+    expect(page.url()).toEndWith(`#/b/${remaining.at(-1)}`);
+    // The agent is told: the removal is one of the human's changes.
+    expect(await pending()).toContain("a-jeter");
   });
 
   test("a companion restarted on another journal: the page forgets the boards that are gone", async () => {

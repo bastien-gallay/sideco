@@ -185,6 +185,15 @@ input[type="text"] {
   min-width: 0;
 }
 
+/* Offered, never advertised: the one gesture the page cannot take back. */
+.board-picker .remove-board {
+  color: var(--muted);
+}
+
+.board-picker .remove-board:hover:not(:disabled) {
+  color: var(--danger);
+}
+
 .board-picker select {
   max-width: 280px;
   font-weight: 600;
@@ -679,7 +688,7 @@ input[type="text"] {
   border-radius: 2px;
 }
 
-dialog.new-board {
+dialog.sheet {
   width: min(560px, calc(100vw - 32px));
   padding: 20px;
   border: 1px solid var(--rule);
@@ -688,16 +697,25 @@ dialog.new-board {
   color: var(--ink);
 }
 
-dialog.new-board::backdrop {
+dialog.sheet::backdrop {
   background: rgba(0, 0, 0, 0.35);
 }
 
-dialog.new-board form {
+dialog.sheet form,
+dialog.remove-board[open] {
   display: grid;
   gap: 16px;
 }
 
-dialog.new-board h2 {
+dialog.remove-board {
+  width: min(440px, calc(100vw - 32px));
+}
+
+dialog.remove-board p {
+  color: var(--muted);
+}
+
+dialog.sheet h2 {
   font-size: 16px;
   letter-spacing: 0;
   text-transform: none;

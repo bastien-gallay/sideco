@@ -275,7 +275,7 @@ Un atelier déclare ses types (libellé, préfixe d'identifiant, couleur, forme)
 
 Hors MVP, assumé : dessin libre, images, curseurs multiples, comptes, synchronisation distante.
 
-**Traiter** « Ensuite » et « Manques connus » avant toute nouvelle idée : priorité donnée le 2026-11-18. L'ordre à l'intérieur des deux listes n'est pas encore arrêté.
+**Traiter** « Ensuite » et « Manques connus » avant toute nouvelle idée : priorité donnée le 2026-11-18. Ordre arrêté le même jour, du prochain au dernier : L1, L6, B5, L2, B7, L3, B3, B1, B4, B2, L4, B6. Le kanban « backlog » de Vico porte l'ordre courant ; il n'est pas versionné pour l'instant.
 
 | Repère | Ensuite |
 | --- | --- |
@@ -289,21 +289,20 @@ Hors MVP, assumé : dessin libre, images, curseurs multiples, comptes, synchroni
 
 | Repère | Manque connu | Conséquence aujourd'hui |
 | --- | --- | --- |
-| L1 | Pas de bouton de suppression de tableau dans la page | Passer par `vico board rm ID` |
+| L1 | ✅ Levé le 2026-11-18 : bouton `Remove` à côté du choix du tableau, avec confirmation | Reste : la page ne sait pas restaurer un tableau supprimé (voir B5) |
 | L2 | Seule la session la plus récente est affichée | Deux sessions Claude Code dans le même projet : une seule est suivie |
 | L3 | Le compagnon reste en marche après la fin de la session | L'arrêter avec `vico stop` |
 | L4 | Deux branches qui écrivent dans `boards.jsonl` | ⚠️ Conflit de fusion probable, non essayé ; vérification : fusionner deux branches qui ont chacune ajouté des événements |
-| L5 | Le hook `PostToolUse` lit les tâches de `TodoWrite`, dont le format n'est pas documenté côté hooks | Le panneau de tâches peut se vider sans prévenir à une mise à jour de Claude Code |
 | L6 | Premier `vico open` d'un projet sous bac à sable | ⚠️ Non observé en vrai : le démarrage serait refusé avec `this shell may not start the companion` (vérifié en test unitaire seulement) |
 
-<sub>Source : backlog présenté en session le 2026-11-18 ; L1 à L3 : `src/web/main.ts`, `src/domain/workspace.ts` (`latestSession`), `src/cli/main.ts` (`stop`) ; L5 : `src/cli/hook.ts`.</sub>
+<sub>Source : backlog présenté en session le 2026-11-18 ; L1 à L3 : `src/web/main.ts`, `src/domain/workspace.ts` (`latestSession`), `src/cli/main.ts` (`stop`) ; L5 n'est pas une tâche mais un risque : voir R2.</sub>
 
 ## 9. Risques
 
 | Repère | Risque | Parade |
 | --- | --- | --- |
 | R1 | ✅ `asyncRewake` sur `Stop` réveille bien une session interactive au repos (essai réel du 2026-11-17, Claude Code 2.1.326). Revers constaté : un hook en attente empêche `claude -p` de se terminer | Le hook n'attend que si une page est ouverte, et jamais dans une session sans interface |
-| R2 | ⚠️ Le schéma de `TodoWrite` n'est pas documenté dans la page des hooks | Lecture défensive ; `TaskCreated` et `TaskCompleted`, documentés, en second |
+| R2 | ⚠️ Le schéma de `TodoWrite` n'est pas documenté dans la page des hooks : le panneau de tâches peut se vider sans prévenir à une mise à jour de Claude Code (`src/cli/hook.ts`) | Lecture défensive ; `TaskCreated` et `TaskCompleted`, documentés, en second |
 | R3 | Le contenu du tableau sert de vecteur d'injection | Boucle locale, origine vérifiée, cadrage du texte injecté |
 | R4 | Le journal grossit (une ligne par outil lancé) | Résumés courts, sorties d'outil jamais stockées ; compaction plus tard |
 | R5 | `boards.jsonl` en conflit de fusion entre deux développeurs | Non traité au MVP ; à résoudre avant F16 |

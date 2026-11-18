@@ -69,6 +69,12 @@ export interface Messages {
   cancel: string;
   create: string;
 
+  // Removing the board on screen.
+  removeBoard: (title: string) => string;
+  removeBoardQuestion: (title: string) => string;
+  /** What leaves and what stays, said before the board is removed. */
+  removeBoardConsequence: (elements: number) => string;
+
   // The session panel.
   sessionPanel: string;
   session: string;
@@ -178,6 +184,11 @@ const en: Messages = {
   cancel: "Cancel",
   create: "Create",
 
+  removeBoard: (title) => `Remove the board “${title}”`,
+  removeBoardQuestion: (title) => `Remove the board “${title}”?`,
+  removeBoardConsequence: (elements) =>
+    `${elements === 0 ? "It is empty." : `It holds ${elements} element${plural(elements)}.`} It leaves the page, for you and for Claude. Its history stays in the journal, but the page cannot bring it back.`,
+
   sessionPanel: "Claude Code session",
   session: "Session",
   turnInProgress: "(turn in progress)",
@@ -279,6 +290,11 @@ const fr: Messages = {
   workshop: "Atelier",
   cancel: "Annuler",
   create: "Créer",
+
+  removeBoard: (title) => `Supprimer le tableau « ${title} »`,
+  removeBoardQuestion: (title) => `Supprimer le tableau « ${title} » ?`,
+  removeBoardConsequence: (elements) =>
+    `${elements === 0 ? "Il est vide." : `Il contient ${elements} élément${plural(elements)}.`} Il quitte la page, pour toi comme pour Claude. Son histoire reste dans le journal, mais la page ne sait pas le restaurer.`,
 
   sessionPanel: "Session Claude Code",
   session: "Session",

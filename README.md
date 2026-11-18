@@ -91,6 +91,7 @@ Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit
 | Glisser une carte | La change d'étape ou de colonne ; la position reste sémantique, jamais en pixels |
 | Sélectionner une carte | Barre d'actions : renommer, détail, relier, note pour Claude, supprimer |
 | Curseur d'historique, en bas | Remonte le temps, en lecture seule ; `Back to live` y revient |
+| `Remove`, à côté du choix du tableau | Supprime le tableau affiché, après confirmation ; son histoire reste dans le journal, mais la page ne sait pas le restaurer |
 | `Export` | Markdown, HTML, SVG, Mermaid ou modèle JSON du tableau courant, dans la langue de la page |
 | `Hand over to Claude` | Envoie tes changements, avec un mot facultatif |
 | Sélecteur `English` / `Français`, en haut à droite | Change la langue de la page ; le choix est gardé par ce navigateur |
@@ -205,9 +206,9 @@ bun run typecheck && bun run lint
 
 | Niveau | Ce qu'il prouve | Tests | Hors bac à sable |
 | --- | --- | --- | --- |
-| Unitaire | Règles du domaine, mise en page, exports, hooks, contrat du plugin, textes des deux langues | 378 | non |
+| Unitaire | Règles du domaine, mise en page, exports, hooks, contrat du plugin, textes des deux langues | 379 | non |
 | Intégration | `bin/vico` de bout en bout : serveur, lots, attente, hooks par stdin, publication, suppression, ouverture de la page, langue des exports et de la page servie | 34 | oui (port local) |
-| Bout en bout | La page dans Chrome : ajout, glisser, renommer, notes, historique, passage de main, suppression, redémarrage, bascule de langue | 27 | oui (navigateur) |
+| Bout en bout | La page dans Chrome : ajout, glisser, renommer, notes, historique, passage de main, suppression (par Claude et depuis la page), redémarrage, bascule de langue | 28 | oui (navigateur) |
 
 <sub>Source : exécution du 2026-11-18 sur cette machine (Bun 1.4.4, macOS).</sub>
 
