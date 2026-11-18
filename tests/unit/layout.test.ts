@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { rankNodes } from "../../src/domain/layout/graph.ts";
-import { type Card, layoutBoard, locate, type Scene, vacancy } from "../../src/domain/layout/index.ts";
+import {
+  type Band,
+  type Card,
+  layoutBoard,
+  locate,
+  type Scene,
+  vacancy,
+} from "../../src/domain/layout/index.ts";
 import { CARD_H, CARD_MIN_H, CARD_W, cardHeight, wrap } from "../../src/domain/layout/scene.ts";
 import { FLOW, IMPACT_EFFORT, KANBAN, ORDERING, table } from "../support.ts";
 
@@ -393,4 +400,100 @@ test("a card carries what the painter needs: colours, author, detail and open no
     tip: "P1 · Policy · added by Claude",
   });
   expect(card(scene, "H2")).toMatchObject({ by: "human", shape: "sharp", hasDetail: false, notes: 0 });
+});
+
+describe("impact / effort is a plan of two by two cells", () => {
+  const GRID = `${IMPACT_EFFORT}
+add item "Marquer fait" --lane quick
+add item "Trois de front ?" --lane quick
+add item "Jamais" --lane avoid`;
+  const board = table(GRID).board();
+  const scene = layoutBoard(board, "fr");
+  const lane = (id: string): Band => {
+    const band = scene.bands.find((b) => b.kind === "lane" && b.id === id);
+    if (!band) throw new Error(`no lane ${id}`);
+    return band;
+  };
+  const cardOf = (id: string): Card => {
+    const card = scene.cards.find((c) => c.id === id);
+    if (!card) throw new Error(`no card ${id}`);
+    return card;
+  };
+
+  test("high impact on top, low effort on the left: the four lanes keep their names and take a cell each", () => {
+    const [quick, bet, fill, avoid] = ["quick", "bet", "fill", "avoid"].map(lane);
+    if (!quick || !bet || !fill || !avoid) throw new Error("four lanes");
+    expect(bet.y).toBe(quick.y);
+    expect(bet.x).toBeGreaterThanOrEqual(quick.x + quick.w);
+    expect(fill.x).toBe(quick.x);
+    expect(fill.y).toBeGreaterThanOrEqual(quick.y + quick.h);
+    expect([avoid.x, avoid.y]).toEqual([bet.x, fill.y]);
+    // Cells of a row are as tall as each other, cells of a column as wide.
+    expect([bet.h, avoid.h, fill.w, bet.w]).toEqual([quick.h, fill.h, quick.w, quick.w]);
+    expect(quick.count).toBe(3);
+  });
+
+  test("the two axes are named beside the plan, outside the cells", () => {
+    const axes = scene.bands.filter((b) => b.kind === "axis");
+    expect(axes.map((b) => `${b.id} ${b.label}`)).toEqual(["y Impact", "x Effort"]);
+    const [y, x] = axes;
+    if (!y || !x) throw new Error("two axes");
+    expect(y.x + y.w).toBeLessThanOrEqual(lane("quick").x);
+    expect(x.y).toBeGreaterThanOrEqual(lane("fill").y + lane("fill").h);
+    expect(scene.height).toBeGreaterThanOrEqual(x.y + x.h);
+    expect(layoutBoard(table(KANBAN).board()).bands.filter((b) => b.kind === "axis")).toEqual([]);
+  });
+
+  test("cards sit two abreast in a cell, the third below, none outside its cell or over another", () => {
+    const [first, second, third] = ["I1", "I4", "I5"].map(cardOf);
+    if (!first || !second || !third) throw new Error("three cards");
+    expect(second.y).toBe(first.y);
+    expect(second.x).toBeGreaterThanOrEqual(first.x + first.w);
+    expect(third.x).toBe(first.x);
+    expect(third.y).toBeGreaterThanOrEqual(first.y + first.h);
+    for (const e of board.elements) {
+      const c = cardOf(e.id);
+      const cell = lane(e.lane);
+      expect(c.x).toBeGreaterThanOrEqual(cell.x);
+      expect(c.x + c.w).toBeLessThanOrEqual(cell.x + cell.w);
+      expect(c.y + c.h).toBeLessThanOrEqual(cell.y + cell.h);
+    }
+  });
+
+  test("a point in a cell is a place in its order: before the card whose left half it is on", () => {
+    const [first, second, third] = ["I1", "I4", "I5"].map(cardOf);
+    if (!first || !second || !third) throw new Error("three cards");
+    expect(locate(board, second.x + 10, second.y + 10)).toEqual({
+      kind: "slot",
+      lane: "quick",
+      before: "I4",
+    });
+    expect(locate(board, second.x + second.w - 10, second.y + 10)).toEqual({
+      kind: "slot",
+      lane: "quick",
+      before: "I5",
+    });
+    expect(locate(board, first.x + 10, first.y + 10)).toEqual({ kind: "slot", lane: "quick", before: "I1" });
+    expect(locate(board, third.x + third.w + 40, third.y + 10)).toEqual({ kind: "slot", lane: "quick" });
+    const avoid = lane("avoid");
+    expect(locate(board, avoid.x + 20, avoid.y + avoid.h - 10)).toEqual({ kind: "slot", lane: "avoid" });
+    // The card in the hand does not count.
+    expect(locate(board, second.x + 10, second.y + 10, "I4")).toEqual({
+      kind: "slot",
+      lane: "quick",
+      before: "I5",
+    });
+  });
+
+  test("the free room of a cell is the next place in it: beside the last card, or under a full row", () => {
+    const [, second, third] = ["I1", "I4", "I5"].map(cardOf);
+    const only = cardOf("I2");
+    if (!second || !third) throw new Error("three cards");
+    const beside = vacancy(board, { kind: "slot", lane: "bet" });
+    expect(beside).toMatchObject({ x: only.x + CARD_W + 12, y: only.y, w: CARD_W });
+    const under = vacancy(board, { kind: "slot", lane: "quick" });
+    expect(under).toMatchObject({ x: second.x, y: third.y, w: CARD_W });
+    const cell = lane("quick");
+    expect((under?.y ?? 0) + (under?.h ?? 0)).toBeLessThanOrEqual(cell.y + cell.h);
+  });
 });

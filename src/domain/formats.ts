@@ -36,6 +36,19 @@ export interface Lane {
   hint?: Text;
 }
 
+/**
+ * Lanes laid as the cells of a plan, row after row: `perRow` lanes side by
+ * side, `abreast` cards side by side in a cell, and a name for each axis.
+ */
+export interface Grid {
+  perRow: number;
+  abreast: number;
+  /** What grows from left to right. */
+  x: Text;
+  /** What grows from bottom to top. */
+  y: Text;
+}
+
 export interface Format {
   id: string;
   name: Text;
@@ -45,6 +58,8 @@ export interface Format {
   types: readonly ElementType[];
   /** Only for `columns` layouts. */
   lanes: readonly Lane[];
+  /** Only for `columns` layouts: the lanes are the cells of a plan. */
+  grid?: Grid;
 }
 
 const t = (en: string, fr: string): Text => ({ en, fr });
@@ -301,6 +316,8 @@ const IMPACT_EFFORT: Format = {
     "Que fait-on d'abord, pour ce que ça rapporte et ce que ça coûte ?",
   ),
   layout: "columns",
+  // High impact on top, low effort on the left: the lanes below are read row after row.
+  grid: { perRow: 2, abreast: 2, x: t("Effort", "Effort"), y: t("Impact", "Impact") },
   lanes: [
     {
       id: "quick",

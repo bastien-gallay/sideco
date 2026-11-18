@@ -547,10 +547,14 @@ describe("other workshops", () => {
       "Low impact · high effort",
     ]);
 
-    // A big bet is one lane to the right of the quick wins.
+    // The plan is two cells by two: the low-impact cell sits under the quick wins, the big bets beside them.
     const quick = await centre("I1");
     const fill = await centre("I3");
-    await dragTo("I3", (quick.x + fill.x) / 2, quick.y + 120);
+    expect(fill.y).toBeGreaterThan(quick.y + 100);
+    expect(await page.locator(".axis-label").allTextContents()).toEqual(["Impact →", "Effort →"]);
+    const bets = await page.locator(".band-lane .lane-label", { hasText: "Big bets" }).boundingBox();
+    if (!bets) throw new Error("no Big bets cell");
+    await dragTo("I3", bets.x + 100, quick.y);
     await until("I3 is a big bet", async () => (await elementOf("priorites", "I3"))?.lane === "bet");
     expect(await pending()).toContain("→ I3 moved lane fill → bet");
     await settled("I3");

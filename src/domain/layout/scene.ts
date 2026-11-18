@@ -26,9 +26,9 @@ export interface Card {
   notes: number;
 }
 
-/** A labelled region behind the cards: a type row, a step column, or a lane. */
+/** A labelled region behind the cards: a type row, a step column, a lane, or the name of an axis beside a plan. */
 export interface Band {
-  kind: "row" | "step" | "lane";
+  kind: "row" | "step" | "lane" | "axis";
   id: string;
   label: string;
   x: number;

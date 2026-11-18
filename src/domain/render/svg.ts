@@ -15,6 +15,7 @@ export const SVG_STYLE = `
 .lane-bg { fill: var(--vico-lane, #F3F4F6); }
 .lane-label { fill: var(--vico-ink, #1F2328); font-size: 13px; font-weight: 600; }
 .lane-count { fill: var(--vico-faint, #8C959F); font-size: 12px; text-anchor: end; }
+.axis-label { fill: var(--vico-muted, #59636E); font-size: 12px; font-weight: 600; text-anchor: middle; letter-spacing: 0.04em; }
 .lane-hint { fill: var(--vico-muted, #59636E); font-size: 11px; }
 .conn path { fill: none; stroke: var(--vico-conn, #6E7781); stroke-width: 1.5; }
 .conn-label { fill: var(--vico-muted, #59636E); font-size: 11px; paint-order: stroke; stroke: var(--vico-bg, #FFFFFF); stroke-width: 4px; stroke-linejoin: round; }
@@ -61,6 +62,12 @@ export function bandMarkup(b: Band): string {
       return `<g class="band band-step"><line class="band-rule" x1="${b.x}" y1="0" x2="${b.x}" y2="${b.h}"/><text class="band-step-label" x="${b.x + b.w / 2}" y="20">${esc(b.label)}</text></g>`;
     case "row":
       return `<g class="band band-row"><line class="band-rule" x1="0" y1="${b.y}" x2="${b.w}" y2="${b.y}"/><rect x="12" y="${mid - 6}" width="12" height="12" rx="2" fill="${esc(b.swatch ?? "#E8EEF4")}" stroke="rgba(0,0,0,.2)"/><text class="band-label" x="32" y="${mid + 4}">${esc(b.label)}</text></g>`;
+    case "axis": {
+      // The name runs along its axis, and an arrow says which way it grows: up, or to the right.
+      const cx = b.x + b.w / 2;
+      const turn = b.id === "y" ? ` transform="rotate(-90 ${cx} ${mid})"` : "";
+      return `<g class="band band-axis"><text class="axis-label" x="${cx}" y="${mid + 4}"${turn}>${esc(b.label)} →</text></g>`;
+    }
     case "lane":
       return `<g class="band band-lane"><rect class="lane-bg" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="10"/>${laneHeading(b)}</g>`;
   }
