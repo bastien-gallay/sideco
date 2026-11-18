@@ -144,11 +144,23 @@ L'agent, lui, écrit par lots, tout ou rien :
 ```sh
 vico apply <<'EOF'
 board new "Passage de commande" --format event-storming
-add command "Passer commande" --col 1
-add event "Commande passée" --col 1
-link C1 E1
+add command "Passer commande" --col 1 --alias passer
+add event "Commande passée" --col 1 --alias passee
+link @passer @passee
 EOF
 ```
+
+Vico attribue les identifiants (`C1`, `E1`) en appliquant le lot : une ligne ne peut pas connaître celui de la ligne d'avant. Elle la nomme.
+
+| Dans un lot | Effet |
+| --- | --- |
+| `add … --alias NOM`, `note … --alias NOM` | Nomme la carte ou la note créée : minuscules, chiffres et tirets |
+| `@NOM` à la place d'un identifiant | Vaut l'identifiant de ce qui porte ce nom, dans les lignes suivantes du même lot |
+| ❌ `@NOM` jamais donné plus haut, ou nom donné deux fois | Le lot entier est refusé, l'erreur dit quelle commande |
+
+Un nom ne vit que le temps de son lot : le journal ne garde que les identifiants.
+
+<sub>Source : `src/domain/aliases.ts` ; `tests/unit/aliases.test.ts`, `tests/unit/hub.test.ts`, `tests/integration/cli.test.ts`.</sub>
 
 ## Les données
 

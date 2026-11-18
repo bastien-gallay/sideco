@@ -4,6 +4,10 @@
  * Reading the journal is tolerant; accepting a command is not. `parseCommand` is
  * the boundary: whatever crosses it is fully typed, and an unknown `kind` or a
  * malformed field is refused with a message that says which one.
+ *
+ * Where a command takes the id of an element or of a note, it may carry `@name`
+ * instead: what an earlier command of the same batch named with `alias`. The
+ * hub puts the id back (see `aliases.ts`) before anything is decided.
  */
 import type { Todo } from "./events.ts";
 
@@ -23,6 +27,8 @@ export type Command =
       /** Also link from this element to the new one. */
       from?: string;
       edgeLabel?: string;
+      /** A name for the new element, for the commands after this one in the batch. */
+      alias?: string;
     }
   | { kind: "rename"; board: string; id: string; label: string }
   | { kind: "annotate"; board: string; id: string; detail: string }
@@ -32,7 +38,7 @@ export type Command =
   | { kind: "link"; board: string; src: string; dst: string; label?: string }
   | { kind: "unlink"; board: string; src: string; dst: string }
   | { kind: "focus"; board: string; ids: string[]; reason?: string }
-  | { kind: "note"; board: string; text: string; target?: string }
+  | { kind: "note"; board: string; text: string; target?: string; alias?: string }
   /** Answers a note, in its thread. */
   | { kind: "reply"; board: string; to: string; text: string }
   /** Closes the thread the note belongs to. */
@@ -71,6 +77,7 @@ export class CommandError extends Error {
 
 const BOARD_ID = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
 const ELEMENT_ID = /^[A-Z][1-9][0-9]{0,5}$/;
+const ALIAS = /^[a-z][a-z0-9-]{0,39}$/;
 
 /** A board id from a title: lowercase ASCII words joined by dashes. */
 export function slugify(title: string): string {
@@ -87,6 +94,11 @@ export function slugify(title: string): string {
 
 export function isElementId(value: string): boolean {
   return ELEMENT_ID.test(value);
+}
+
+/** The name `@name` refers to; undefined for anything else, an id included. */
+export function referredName(value: string): string | undefined {
+  return value.startsWith("@") && ALIAS.test(value.slice(1)) ? value.slice(1) : undefined;
 }
 
 type Fields = Record<string, unknown>;
@@ -119,46 +131,47 @@ export function parseCommand(input: unknown): Command {
         col: optional(f, "col", column),
         lane: optional(f, "lane", (x, k) => text(x, k, 40)),
         detail: optional(f, "detail", (x, k) => text(x, k, LIMITS.detail)),
-        from: optional(f, "from", elementId),
+        from: optional(f, "from", idOrName),
         edgeLabel: optional(f, "edgeLabel", (x, k) => text(x, k, LIMITS.label)),
+        alias: optional(f, "alias", alias),
       };
     case "rename":
-      return { kind, board: boardId(f), id: elementId(f, "id"), label: text(f, "label", LIMITS.label) };
+      return { kind, board: boardId(f), id: idOrName(f, "id"), label: text(f, "label", LIMITS.label) };
     case "annotate":
       return {
         kind,
         board: boardId(f),
-        id: elementId(f, "id"),
+        id: idOrName(f, "id"),
         detail: text(f, "detail", LIMITS.detail, true),
       };
     case "move":
       return {
         kind,
         board: boardId(f),
-        id: elementId(f, "id"),
+        id: idOrName(f, "id"),
         col: optional(f, "col", column),
         lane: optional(f, "lane", (x, k) => text(x, k, 40)),
-        before: optional(f, "before", elementId),
+        before: optional(f, "before", idOrName),
       };
     case "remove":
-      return { kind, board: boardId(f), id: elementId(f, "id") };
+      return { kind, board: boardId(f), id: idOrName(f, "id") };
     case "insert-column":
       return { kind, board: boardId(f), at: column(f, "at") };
     case "link":
       return {
         kind,
         board: boardId(f),
-        src: elementId(f, "src"),
-        dst: elementId(f, "dst"),
+        src: idOrName(f, "src"),
+        dst: idOrName(f, "dst"),
         label: optional(f, "label", (x, k) => text(x, k, LIMITS.label)),
       };
     case "unlink":
-      return { kind, board: boardId(f), src: elementId(f, "src"), dst: elementId(f, "dst") };
+      return { kind, board: boardId(f), src: idOrName(f, "src"), dst: idOrName(f, "dst") };
     case "focus":
       return {
         kind,
         board: boardId(f),
-        ids: list(f, "ids").map((id, i) => elementId({ id }, "id", `ids[${i}]`)),
+        ids: list(f, "ids").map((id, i) => idOrName({ id }, "id", `ids[${i}]`)),
         reason: optional(f, "reason", (x, k) => text(x, k, LIMITS.label)),
       };
     case "note":
@@ -166,12 +179,13 @@ export function parseCommand(input: unknown): Command {
         kind,
         board: boardId(f),
         text: text(f, "text", LIMITS.note),
-        target: optional(f, "target", elementId),
+        target: optional(f, "target", idOrName),
+        alias: optional(f, "alias", alias),
       };
     case "reply":
-      return { kind, board: boardId(f), to: elementId(f, "to"), text: text(f, "text", LIMITS.note) };
+      return { kind, board: boardId(f), to: idOrName(f, "to"), text: text(f, "text", LIMITS.note) };
     case "resolve":
-      return { kind, board: boardId(f), id: elementId(f, "id") };
+      return { kind, board: boardId(f), id: idOrName(f, "id") };
     case "pass":
       return {
         kind,
@@ -230,10 +244,31 @@ function boardId(f: Fields): string {
   return value;
 }
 
-function elementId(f: Fields, key: string, shown = key): string {
+function elementId(f: Fields, key: string): string {
   const value = f[key];
   if (typeof value !== "string" || !ELEMENT_ID.test(value)) {
-    throw new CommandError(`\`${shown}\` must be an id like E1 or C12`);
+    throw new CommandError(`\`${key}\` must be an id like E1 or C12`);
+  }
+  return value;
+}
+
+/** The id of something that exists, or `@name` for what an earlier command of the batch named. */
+function idOrName(f: Fields, key: string, shown = key): string {
+  const value = f[key];
+  if (typeof value !== "string" || !(ELEMENT_ID.test(value) || referredName(value) !== undefined)) {
+    throw new CommandError(
+      `\`${shown}\` must be an id like E1 or C12, or the @name an earlier command of the batch gave`,
+    );
+  }
+  return value;
+}
+
+function alias(f: Fields, key: string): string {
+  const value = f[key];
+  if (typeof value !== "string" || !ALIAS.test(value)) {
+    throw new CommandError(
+      `\`${key}\` must be a name like placed or step-2: lowercase letters, digits and dashes, a letter first`,
+    );
   }
   return value;
 }

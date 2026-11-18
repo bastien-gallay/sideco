@@ -66,6 +66,81 @@ describe("dispatch", () => {
     expect(hub.workspace.boards[0]?.edges).toHaveLength(1);
   });
 
+  test("a batch names the cards it adds and refers to them; what is recorded carries ids only", () => {
+    const { hub, journal } = setup("");
+    const done = hub.dispatch(
+      batch(`board new "Checkout" --id checkout
+add event "Order placed" --col 1 --alias placed
+add policy "Reserve stock" --col 2 --alias reserve
+link @placed @reserve
+detail @placed "Emitted by the checkout"
+note "Is the stock checked first?" --on @reserve
+add command "Pay" --col 3 --from @placed`),
+      { actor: "agent" },
+    );
+    expect(done.minted).toEqual([undefined, "E1", "P1", undefined, undefined, "N1", "C1"]);
+    expect(done.events.slice(3)).toMatchObject([
+      { event: "EdgeAdded", src: "E1", dst: "P1" },
+      { event: "ElementAnnotated", id: "E1", detail: "Emitted by the checkout" },
+      { event: "NoteAdded", id: "N1", target: "P1" },
+      { event: "ElementAdded", id: "C1" },
+      { event: "EdgeAdded", src: "E1", dst: "C1" },
+    ]);
+    expect(JSON.stringify(journal.load())).not.toMatch(/@|alias/);
+    expect(new Hub(journal).workspace).toEqual(hub.workspace);
+  });
+
+  test("a name given on one board is refused on another: it would point at a stranger's card", () => {
+    const { hub, journal } = setup("");
+    const script = `board new "One" --id one
+add event "Here" --alias here
+board new "Two" --id two
+add event "There"
+rename @here "Renamed by mistake"`;
+    expect(() => hub.dispatch(batch(script), { actor: "agent" })).toThrow(
+      '@here names E1 on "one", not a card of "two"',
+    );
+    expect(journal.load()).toHaveLength(0);
+  });
+
+  test("a name lives for one batch: the next batch does not know it", () => {
+    const { hub, run } = setup();
+    run('add event "Payée" --alias paid\nrename @paid "Commande payée"');
+    expect(hub.workspace.boards[0]?.elements.at(-1)).toMatchObject({ id: "E3", label: "Commande payée" });
+    expect(() => run("rm @paid")).toThrow("nothing is named @paid earlier in this batch");
+  });
+
+  test.each([
+    [
+      "a name no command gave",
+      'add event "Gardé ?" --alias kept\nlink @kept @lost\nadd event "Jamais"',
+      { index: 1, message: "nothing is named @lost earlier in this batch (names so far: kept)" },
+    ],
+    [
+      "a name given further down",
+      'link @later E1\nadd event "Trop tard" --alias later',
+      { index: 0, message: "nothing is named @later earlier in this batch (names so far: none)" },
+    ],
+    [
+      "a name given twice",
+      'add event "Un" --alias twin\nadd event "Autre"\nadd event "Deux" --alias twin',
+      { index: 2, message: "@twin already names E3 in this batch; choose another name" },
+    ],
+  ])("a batch with %s is refused whole, and says which command", (_what, script, refusal) => {
+    const { hub, journal } = setup();
+    const before = { state: JSON.stringify(hub.workspace), lines: journal.load().length };
+    let error: unknown;
+    try {
+      hub.dispatch(batch(script, "commande"), { actor: "agent" });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(BatchError);
+    expect(error).toMatchObject(refusal);
+    expect(JSON.stringify(hub.workspace)).toBe(before.state);
+    expect(journal.load()).toHaveLength(before.lines);
+  });
+
   test("a batch that fails midway leaves no trace, and says which command failed", () => {
     const { hub, journal } = setup();
     const before = {

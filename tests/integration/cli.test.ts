@@ -148,6 +148,43 @@ describe("the agent models from the terminal", () => {
     expect((await vico(["show"])).out).not.toContain("Payée");
   });
 
+  test("a batch names the cards it adds and links them in the same round trip", async () => {
+    const ran = await vico(["apply"], {
+      stdin: `board new "Checkout" --id checkout
+add event "Order placed" --col 1 --alias placed
+add policy "Reserve stock" --col 2 --alias reserve
+link @placed @reserve
+detail @placed "Emitted by the checkout"
+note "Is the stock checked first?" --on @reserve
+add command "Pay" --col 3 --from @placed
+`,
+    });
+    expect(ran).toEqual({ code: 0, out: "applied 7 commands (seq 15): E1 P1 N1 C1", err: "" });
+    const shown = (await vico(["show", "checkout"])).out;
+    for (const piece of ["E1 -> P1", "E1 -> C1", "Emitted by the checkout", "N1 by agent on P1"])
+      expect(shown).toContain(piece);
+    expect(readFileSync(join(root, ".vico", "boards.jsonl"), "utf8")).not.toContain("@placed");
+  });
+
+  test("a batch that refers to a name it never gave changes nothing and names the line", async () => {
+    try {
+      const before = (await vico(["show", "checkout"])).out;
+      const ran = await vico(["apply", "--board", "checkout"], {
+        stdin: 'add event "Shipped" --col 4 --alias shipped\nlink @shipped @nowhere\n',
+      });
+      expect(ran).toEqual({
+        code: 1,
+        out: "",
+        err: "vico: command 2: nothing is named @nowhere earlier in this batch (names so far: shipped)",
+      });
+      expect(before).toContain("Order placed");
+      expect((await vico(["show", "checkout"])).out).toBe(before);
+    } finally {
+      // The tests below write to the only board there is.
+      await vico(["board", "rm", "checkout"]);
+    }
+  });
+
   test("show prints the board as the agent reads it", async () => {
     const shown = (await vico(["show"])).out;
     expect(shown).toContain("Passage de commande");

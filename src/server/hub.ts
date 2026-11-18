@@ -3,6 +3,7 @@
  * of commands into recorded events, and tells subscribers about each one.
  * No HTTP here: the server and the tests drive it the same way.
  */
+import { type Aliases, bindAlias, resolveAliases } from "../domain/aliases.ts";
 import { type Command, CommandError } from "../domain/commands.ts";
 import { type Context, decide } from "../domain/decide.ts";
 import { type Changes, describeChanges } from "../domain/digest.ts";
@@ -63,9 +64,11 @@ export class Hub {
     const staged: Recorded[] = [];
     const minted: (string | undefined)[] = [];
     const ts = this.now().toISOString();
+    let aliases: Aliases = new Map();
 
     commands.forEach((command, index) => {
-      const decision = atCommand(index, () => decide(draft, command, ctx));
+      const decision = atCommand(index, () => decide(draft, resolveAliases(command, aliases), ctx));
+      aliases = bindAlias(aliases, command, decision.minted);
       minted.push(decision.minted);
       for (const event of decision.events) {
         const recorded = this.stamp(event, ctx, ts, this.workspace.seq + staged.length + 1);

@@ -133,6 +133,7 @@ export function boardAction(tokens: readonly string[], board: string | undefined
           detail: flags.get("detail"),
           from: flags.get("from"),
           edgeLabel: flags.get("edge"),
+          alias: flags.get("alias"),
         },
       };
     case "rename":
@@ -181,7 +182,15 @@ export function boardAction(tokens: readonly string[], board: string | undefined
     case "focus":
       return { command: { kind: "focus", board: target(), ids: p, reason: flags.get("why") } };
     case "note":
-      return { command: { kind: "note", board: target(), text: need(0, "a text"), target: flags.get("on") } };
+      return {
+        command: {
+          kind: "note",
+          board: target(),
+          text: need(0, "a text"),
+          target: flags.get("on"),
+          alias: flags.get("alias"),
+        },
+      };
     case "reply":
       return {
         command: { kind: "reply", board: target(), to: need(0, "a note id"), text: need(1, "a text") },

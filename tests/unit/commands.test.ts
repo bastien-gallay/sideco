@@ -82,6 +82,60 @@ describe("parseCommand", () => {
   });
 });
 
+describe("names in a batch", () => {
+  test("`add` and `note` may name what they create", () => {
+    expect(
+      parseCommand({ kind: "add", board: "b", type: "event", label: "Paid", alias: "paid" }),
+    ).toMatchObject({ alias: "paid" });
+    expect(parseCommand({ kind: "note", board: "b", text: "Why?", alias: "why-2" })).toMatchObject({
+      alias: "why-2",
+    });
+  });
+
+  test.each(["Paid", "2nd", "", "with space", "@paid", "-paid", "a".repeat(41), 3])(
+    "refuses the name %j",
+    (alias) => {
+      expect(() => parseCommand({ kind: "add", board: "b", type: "event", label: "x", alias })).toThrow(
+        "`alias` must be a name like placed or step-2",
+      );
+    },
+  );
+
+  test("a reference stands wherever a command takes the id of a card or of a note", () => {
+    const b = "b";
+    for (const command of [
+      { kind: "add", board: b, type: "event", label: "x", from: "@paid" },
+      { kind: "rename", board: b, id: "@paid", label: "x" },
+      { kind: "annotate", board: b, id: "@paid", detail: "x" },
+      { kind: "move", board: b, id: "@paid", lane: "doing", before: "@paid" },
+      { kind: "remove", board: b, id: "@paid" },
+      { kind: "link", board: b, src: "@paid", dst: "@paid" },
+      { kind: "unlink", board: b, src: "@paid", dst: "@paid" },
+      { kind: "focus", board: b, ids: ["E1", "@paid"] },
+      { kind: "note", board: b, text: "x", target: "@paid" },
+      { kind: "reply", board: b, to: "@paid", text: "x" },
+      { kind: "resolve", board: b, id: "@paid" },
+    ]) {
+      expect(parseCommand(command)).toMatchObject(command);
+    }
+  });
+
+  test.each(["@", "@Paid", "@2nd", "@a b", "@@paid", "paid", `@${"a".repeat(41)}`])(
+    "refuses %j as a reference",
+    (id) => {
+      expect(() => parseCommand({ kind: "remove", board: "b", id })).toThrow(
+        "`id` must be an id like E1 or C12, or the @name an earlier command of the batch gave",
+      );
+    },
+  );
+
+  test("the id a new card claims is an id, never a reference", () => {
+    expect(() => parseCommand({ kind: "add", board: "b", type: "event", label: "x", id: "@paid" })).toThrow(
+      /^`id` must be an id like E1 or C12$/,
+    );
+  });
+});
+
 describe("slugify", () => {
   test.each([
     ["Passage de commande", "passage-de-commande"],

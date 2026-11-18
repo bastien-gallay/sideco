@@ -86,6 +86,15 @@ describe("boardAction", () => {
     ['pass "à toi"', { kind: "pass", board: "b", to: "human", message: "à toi" }],
     ["pass --to agent", { kind: "pass", board: "b", to: "agent" }],
     ["rm E1 --board other", { kind: "remove", board: "other", id: "E1" }],
+    [
+      'add event "Order placed" --col 1 --alias placed',
+      { kind: "add", board: "b", type: "event", label: "Order placed", col: 1, alias: "placed" },
+    ],
+    [
+      'note "Checked first?" --on @reserve --alias ask',
+      { kind: "note", board: "b", text: "Checked first?", target: "@reserve", alias: "ask" },
+    ],
+    ["link @placed @reserve", { kind: "link", board: "b", src: "@placed", dst: "@reserve" }],
   ])("%s", (line, expected) => {
     expect(wire(line)).toEqual(expected);
   });
@@ -105,6 +114,11 @@ describe("boardAction", () => {
       'note "x"',
       "resolve N1",
       "pass",
+      'add event "A" --alias a --from @b',
+      'note "x" --alias ask --on @a',
+      "move @a --lane doing --before @b",
+      "focus @a E2",
+      'reply @ask "y"',
     ];
     for (const line of lines) expect(() => parseCommand(wire(line))).not.toThrow();
   });

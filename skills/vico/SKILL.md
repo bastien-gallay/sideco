@@ -34,11 +34,11 @@ vico open
 vico board new "Passage de commande" --format event-storming
 vico apply <<'EOF'
 add actor "Client" --col 1
-add command "Passer commande" --col 1
-add event "Commande passée" --col 1
-add policy "Réserver le stock" --col 2
-link C1 E1
-link E1 P1
+add command "Passer commande" --col 1 --alias passer
+add event "Commande passée" --col 1 --alias passee
+add policy "Réserver le stock" --col 2 --alias reserver
+link @passer @passee
+link @passee @reserver
 EOF
 vico focus P1 --why "La règle de réservation n'est pas claire"
 vico pass "Qui réserve le stock : nous ou l'entrepôt ?"
@@ -51,10 +51,15 @@ vico wait
   `vico apply` prints them in order. Do not guess an id: read it from the
   output or from `vico show`. A removed id is never used again, unless the
   user brings the element back.
+- **In a batch, name what you add.** A line cannot know the id an earlier
+  line will get: write `add event "Payée" --alias payee`, then `@payee` where
+  an id goes on the lines after it (`link @payee P1`, `detail @payee "…"`,
+  `note "…" --on @payee`). A name is lowercase letters, digits and dashes.
+  It lives for that one `vico apply`: afterwards, use the id that was printed.
 - **Positions are semantic**, never pixels: a column (`--col N`), a lane
   (`--lane doing`), or a link (`--from S1`). The layout is computed.
 - **A batch is all or nothing.** One bad line and nothing is applied; the
-  error names the line.
+  error names the line. A `@name` no earlier line gave is a bad line.
 - **The user's edits win.** Do not undo a rename, a move or a removal they
   made. If you disagree, say why in the terminal or pin a note. They can
   undo their own gestures in the page: you are told the net result, and
@@ -107,6 +112,7 @@ vico focus [ID…] [--why "…"]      (no id clears the focus)
 vico note "Text" [--on ID]        (opens a thread, on the board or on one element)
 vico reply N1 "Text"              vico resolve N1    (answer in a thread; close it)
 vico apply [FILE]                 (a batch of the lines above, stdin by default)
+  in a batch: add … --alias NAME     (then @NAME for its id on the lines below)
 vico changes                      vico pass ["question"]      vico wait
 vico export [BOARD] --format md|html|svg|mermaid|json [-o FILE]
 vico publish                      vico status                 vico url

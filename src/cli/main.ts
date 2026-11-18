@@ -68,6 +68,8 @@ Model (BOARD defaults to the only board, or --board ID, or $VICO_BOARD)
   vico reply N1 "Text"              answer in the thread of a note
   vico resolve N1                   close the thread
   vico apply [FILE]                 run a batch of the commands above, all or nothing (stdin by default)
+                                    in a batch, \`add … --alias NAME\` (or \`note … --alias NAME\`) names what the line
+                                    creates, and @NAME is its id on the lines after it: \`link @NAME E1\`
 
 Work with the human
   vico changes                      what the human changed since you last asked
