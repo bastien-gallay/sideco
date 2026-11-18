@@ -107,6 +107,24 @@ describe("timeline layout", () => {
     expect(locate(board, e2.x, scene.height + 500)).toEqual({ kind: "none" });
   });
 
+  test("above the rows, a point means the edge between two steps nearest to it: where a column can be inserted", () => {
+    const board = table(ORDERING).board();
+    const steps = layoutBoard(board).bands.filter((b) => b.kind === "step");
+    const [first, second, spare] = steps;
+    if (!first || !second || !spare) throw new Error("two steps and a spare one");
+    expect(locate(board, second.x + 3, 10)).toEqual({ kind: "boundary", col: 2 });
+    expect(locate(board, second.x - 30, 10)).toEqual({ kind: "boundary", col: 2 });
+    expect(locate(board, first.x + 20, 10)).toEqual({ kind: "boundary", col: 1 });
+    // Past the last step that holds a card, a column would change nothing; nor in the corner over the row names.
+    expect(locate(board, spare.x + 2, 10)).toEqual({ kind: "none" });
+    expect(locate(board, 10, 10)).toEqual({ kind: "none" });
+    expect(locate(table('board new "Vide" --id vide').board(), first.x, 10)).toEqual({ kind: "none" });
+    // The edge has no room for a card, but a place to stand: on the rule, as high as the heading.
+    expect(vacancy(board, { kind: "boundary", col: 2 })).toEqual({ x: second.x, y: 0, w: 0, h: 32 });
+    // Lanes are not steps in time.
+    expect(locate(table(KANBAN).board(), 200, 10).kind).not.toBe("boundary");
+  });
+
   test("an empty board still shows its rows and a first column to drop into", () => {
     const empty = table('board new "Vide" --id vide').board();
     const blank = layoutBoard(empty);

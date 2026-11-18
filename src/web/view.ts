@@ -392,7 +392,10 @@ export function discussions(board: Board): Discussion[] {
 
 /** A "+" to click: adds a card of one kind where it is drawn. Scene coordinates. */
 export interface Offer {
+  /** The kind of card it adds; "column" when it inserts a column instead. */
   type: string;
+  /** The number the inserted column takes. */
+  column?: number;
   /** What the button does, for a tooltip and a screen reader. */
   label: string;
   /** What it shows: a plus, and the letter of the kind when several are offered. */
@@ -412,12 +415,30 @@ const OFFER_REACH = 56;
 
 /**
  * The "+" offered in the free room of the cell or lane at `target`: the kind
- * of its row in a timeline, each kind of the workshop in a lane.
+ * of its row in a timeline, each kind of the workshop in a lane. On the edge
+ * between two steps, the "+" offers a column there.
  */
 export function addOffers(board: Board, target: Target, locale: Locale = DEFAULT_LOCALE): Offer[] {
   const format = findFormat(board.format);
   const room = vacancy(board, target);
   if (!format || !room) return [];
+  if (target.kind === "boundary") {
+    const w = 28;
+    return [
+      {
+        type: "column",
+        column: target.col,
+        label: MESSAGES[locale].insertColumn,
+        text: "+",
+        fill: "#FFFFFF",
+        ink: "#1F2328",
+        x: room.x - w / 2,
+        y: (room.h - OFFER_H) / 2,
+        w,
+        h: OFFER_H,
+      },
+    ];
+  }
   const types = target.kind === "cell" ? [findType(format, target.type)] : format.types;
   const several = types.length > 1;
   const w = several ? 40 : 28;

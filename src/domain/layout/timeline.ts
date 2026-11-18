@@ -111,8 +111,16 @@ export function layoutTimeline(
   return { width, height: bottom + MARGIN, bands, cards, connectors: [] };
 }
 
-/** The cell under a point, or `none` outside the grid. */
+/**
+ * The cell under a point; above the rows, the edge between two steps nearest
+ * to it, as far as steps hold cards; `none` outside the grid.
+ */
 export function locateInTimeline(board: Board, format: Format, x: number, y: number): Target {
+  if (y >= 0 && y < TOP_H) {
+    const edge = columnBoundary(x);
+    const inReach = x >= HEADER_W - COL_W / 2 && edge <= lastColumn(board);
+    return inReach ? { kind: "boundary", col: edge } : { kind: "none" };
+  }
   const grid = timelineGrid(board, format);
   const row = grid.rows.find((candidate) => y >= candidate.y && y < candidate.y + candidate.h);
   const col = Math.floor((x - HEADER_W) / COL_W) + 1;
@@ -130,8 +138,13 @@ export function roomInTimeline(board: Board, format: Format, col: number, type: 
   return { x: columnX(col) + (COL_W - CARD_W) / 2, y, w: CARD_W, h: row.y + row.h - y };
 }
 
+/** Where an edge between two steps is pointed at: on its rule, as high as the heading of the steps. */
+export function roomOnBoundary(col: number): Room {
+  return { x: columnX(col), y: 0, w: 0, h: TOP_H };
+}
+
 /** The column whose left edge is nearest to `x`: a column inserted there takes that number. */
-export function columnBoundary(x: number): number {
+function columnBoundary(x: number): number {
   return Math.max(1, Math.round((x - HEADER_W) / COL_W) + 1);
 }
 

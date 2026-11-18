@@ -50,6 +50,8 @@ export interface Messages {
   // The palette.
   palette: string;
   add: (type: string) => string;
+  /** The "+" on the edge between two steps of a timeline. */
+  insertColumn: string;
   howTimeline: string;
   howColumns: string;
   howGraph: string;
@@ -194,7 +196,9 @@ const en: Messages = {
 
   palette: "Elements to add",
   add: (type) => `Add: ${type}`,
-  howTimeline: "Point at a cell and click its +, or click a type to add it at the end.",
+  insertColumn: "Insert a column here",
+  howTimeline:
+    "Point at a cell and click its +, or click a type to add it at the end. Point between two step numbers to insert a column.",
   howColumns: "Point at a column and click a +, or click a type. Drag to move.",
   howGraph: "Select an element so that the next one is linked to it.",
   howGraphFrom: (id) => `The new element will be linked to ${id}.`,
@@ -322,7 +326,9 @@ const fr: Messages = {
 
   palette: "Éléments à ajouter",
   add: (type) => `Ajouter : ${type}`,
-  howTimeline: "Survole une case et clique son +, ou clique un type pour l'ajouter à la suite.",
+  insertColumn: "Insérer une colonne ici",
+  howTimeline:
+    "Survole une case et clique son +, ou clique un type pour l'ajouter à la suite. Survole entre deux numéros d'étape pour insérer une colonne.",
   howColumns: "Survole une colonne et clique un +, ou clique un type. Glisse pour déplacer.",
   howGraph: "Sélectionne un élément pour que le suivant lui soit relié.",
   howGraphFrom: (id) => `Le nouvel élément sera relié à ${id}.`,

@@ -723,6 +723,15 @@ input[type="text"] {
   user-select: none;
 }
 
+/* The "+" that inserts a column adds no card: it wears the colours of the page. */
+.add-here.insert-column rect {
+  fill: var(--surface);
+}
+
+.add-here.insert-column text {
+  fill: var(--ink);
+}
+
 .add-here:hover rect {
   stroke-opacity: 1;
   stroke-width: 1.5;

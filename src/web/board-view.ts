@@ -151,8 +151,9 @@ export function mountBoard(host: HTMLElement): BoardView {
     adds.replaceChildren(
       ...offers.map((offer) => {
         const g = svg("g", {
-          class: "add-here",
+          class: offer.column === undefined ? "add-here" : "add-here insert-column",
           "data-type": offer.type,
+          ...(offer.column === undefined ? {} : { "data-column": offer.column }),
           role: "button",
           "aria-label": offer.label,
           transform: `translate(${offer.x} ${offer.y})`,
@@ -175,7 +176,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     const corner = new DOMPoint(room.x, room.y).matrixTransform(matrix);
     const place = { x: corner.x, y: corner.y };
     if (pointed.kind === "cell") beginAdd(typeId, { col: pointed.col, ...place });
-    else beginAdd(typeId, { lane: pointed.lane, ...place });
+    else if (pointed.kind === "slot") beginAdd(typeId, { lane: pointed.lane, ...place });
   }
 
   function paintTools(): void {
@@ -495,7 +496,9 @@ export function mountBoard(host: HTMLElement): BoardView {
     if (wasDrop || cardAt(target)) return;
     const offer = offerAt(target);
     if (offer) {
-      addHere(offer.dataset.type ?? "");
+      const column = offer.dataset.column;
+      if (column === undefined) addHere(offer.dataset.type ?? "");
+      else if (board && isLive()) void send({ kind: "insert-column", board: board.id, at: Number(column) });
       return;
     }
     const conn = target?.closest<SVGGElement>("g.conn");

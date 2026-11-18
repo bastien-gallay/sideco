@@ -552,6 +552,20 @@ describe("addOffers: a + in the free room under the pointer, one per kind of car
     expect(offer.fill).toMatch(/^#/);
   });
 
+  test("the edge between two steps offers a column there, on the rule and in the heading", () => {
+    const board = table(ORDERING).board();
+    const second = layoutBoard(board).bands.find((b) => b.kind === "step" && b.id === "2");
+    if (!second) throw new Error("no second step");
+    const [offer, ...others] = addOffers(board, { kind: "boundary", col: 2 }, "fr");
+    expect(others).toEqual([]);
+    expect(offer).toMatchObject({ type: "column", column: 2, text: "+", label: "Insérer une colonne ici" });
+    if (!offer) throw new Error("no offer");
+    expect(offer.x + offer.w / 2).toBe(second.x);
+    expect(offer.y).toBeGreaterThanOrEqual(0);
+    expect(offer.y + offer.h).toBeLessThanOrEqual(32);
+    expect(addOffers(board, { kind: "boundary", col: 2 })[0]?.label).toBe("Insert a column here");
+  });
+
   test("a lane offers each kind of card of the workshop, side by side, close under the last card", () => {
     const board = table(KANBAN).board();
     const target = { kind: "slot", lane: "todo", before: "T3" } as const;

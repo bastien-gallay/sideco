@@ -70,6 +70,8 @@ export interface Room {
 export type Target =
   | { kind: "cell"; col: number; type: string }
   | { kind: "slot"; lane: string; before?: string }
+  /** The edge between two steps of a timeline: a column inserted there takes the number `col`. */
+  | { kind: "boundary"; col: number }
   | { kind: "none" };
 
 export const CARD_W = 152;

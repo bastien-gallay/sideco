@@ -19,7 +19,7 @@ import {
   WRAP_LINES,
   wrap,
 } from "./scene.ts";
-import { layoutTimeline, locateInTimeline, roomInTimeline } from "./timeline.ts";
+import { layoutTimeline, locateInTimeline, roomInTimeline, roomOnBoundary } from "./timeline.ts";
 
 const EMPTY: Scene = { width: 0, height: 0, bands: [], cards: [], connectors: [] };
 
@@ -53,13 +53,15 @@ export function locate(board: Board, x: number, y: number, moving?: string): Tar
 
 /**
  * The free room where an element added at `target` would go, so that the page
- * can offer it there. Undefined where nothing is added by place: off the board,
- * and on a flow, whose elements are placed by their links.
+ * can offer it there; for an edge between two steps, where a column is offered.
+ * Undefined where nothing is added by place: off the board, and on a flow,
+ * whose elements are placed by their links.
  */
 export function vacancy(board: Board, target: Target): Room | undefined {
   const format = findFormat(board.format);
   if (format?.layout === "timeline" && target.kind === "cell")
     return roomInTimeline(board, format, target.col, target.type);
+  if (format?.layout === "timeline" && target.kind === "boundary") return roomOnBoundary(target.col);
   if (format?.layout === "columns" && target.kind === "slot")
     return roomInColumns(board, format, target.lane);
   return undefined;

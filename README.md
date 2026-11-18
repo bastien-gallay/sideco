@@ -89,6 +89,7 @@ Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit
 | --- | --- |
 | Cliquer un type dans la palette | Ajoute un post-it à la suite (ou relié au nœud sélectionné, dans un flux) |
 | Survoler une case ou une colonne, cliquer le « + » | Ajoute un post-it à cet endroit : du type de la rangée dans une frise, du type choisi (un « + » par type) dans une colonne. Double-cliquer une zone vide fait de même |
+| Dans une frise, survoler entre deux numéros d'étape, cliquer le « + » | Insère une colonne à cet endroit : les étapes suivantes se décalent d'un cran. ⚠️ Ne s'annule pas encore, et aucun raccourci clavier |
 | Double-cliquer une carte | La renomme |
 | Glisser une carte | La change d'étape ou de colonne ; la position reste sémantique, jamais en pixels |
 | Sélectionner une carte | Barre d'actions : renommer, détail, relier, note pour Claude, supprimer |
@@ -233,9 +234,9 @@ bun run typecheck && bun run lint
 
 | Niveau | Ce qu'il prouve | Tests | Hors bac à sable |
 | --- | --- | --- | --- |
-| Unitaire | Règles du domaine, mise en page, exports, hooks, contrat du plugin, textes des deux langues, annulation, fils de discussion, hauteur des cartes, écoute longue, « + » au survol, commande sans effet, fin de session, noms dans un lot, arrêts de l'historique, marque « non lu », empreinte de la page | 540 | non |
+| Unitaire | Règles du domaine, mise en page, exports, hooks, contrat du plugin, textes des deux langues, annulation, fils de discussion, hauteur des cartes, écoute longue, « + » au survol, commande sans effet, fin de session, noms dans un lot, arrêts de l'historique, marque « non lu », empreinte de la page | 542 | non |
 | Intégration | `bin/vico` de bout en bout : serveur, lots, attente, hooks par stdin, publication, suppression, ouverture de la page, langue des exports et de la page servie, réponse à une note, fin de session, noms dans un lot | 39 | oui (port local) |
-| Bout en bout | La page dans Chrome : ajout, glisser, renommer, notes, historique, passage de main, suppression (par Claude et depuis la page), redémarrage, bascule de langue, annuler / rétablir, fils de discussion, passage de main sans écoute, « + » au survol, carte rouverte sans changement, fil clos avec une réponse en cours, historique du tableau affiché, marque « non lu », page rechargée après une mise à jour | 52 | oui (navigateur) |
+| Bout en bout | La page dans Chrome : ajout, glisser, renommer, notes, historique, passage de main, suppression (par Claude et depuis la page), redémarrage, bascule de langue, annuler / rétablir, fils de discussion, passage de main sans écoute, « + » au survol, carte rouverte sans changement, fil clos avec une réponse en cours, historique du tableau affiché, marque « non lu », page rechargée après une mise à jour | 53 | oui (navigateur) |
 
 <sub>Source : exécution du 2026-11-18 sur cette machine (Bun 1.4.4, macOS).</sub>
 

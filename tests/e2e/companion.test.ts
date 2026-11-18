@@ -918,6 +918,28 @@ describe("adding where the pointer is", () => {
     await card("P1").waitFor();
   });
 
+  test("timeline: the edge between two steps offers a column, and the steps after it move over", async () => {
+    const e2 = await settled("E2");
+    const heading = await page.locator(".band-step-label", { hasText: /^2$/ }).boundingBox();
+    if (!heading) throw new Error("no heading for step 2");
+    // Just right of the rule that opens step 2, as high as the step numbers.
+    await page.mouse.move(e2.x - 4, heading.y + heading.height / 2);
+    const column = page.locator('.vico-board .add-here[data-column="2"]');
+    await column.waitFor();
+    expect(await offers().count()).toBe(1);
+    expect(await column.getAttribute("aria-label")).toBe("Insert a column here");
+    await Bun.sleep(200);
+    await shot("20-insert-column");
+
+    await column.click();
+    await until("step 2 moved to 3", async () => (await elementOf("ajout-case", "E2"))?.col === 3);
+    expect((await elementOf("ajout-case", "P1"))?.col).toBe(3);
+    expect((await elementOf("ajout-case", "E1"))?.col).toBe(1);
+    // Back to where the next tests expect the cards.
+    await agent("move E2 --col 2\nmove P1 --col 2", "ajout-case");
+    await until("step 2 is back", async () => (await elementOf("ajout-case", "E2"))?.col === 2);
+  });
+
   test("the offer leaves with the pointer, and is not made on a board shown as it was", async () => {
     const e2 = await centre("E2");
     await page.mouse.move(e2.x, e2.y);

@@ -151,6 +151,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F23 | Claude au repos reste joignable depuis la page une journée de travail (12 h après son dernier tour) ; la fermeture de la session libère l'écoute, et la page dit alors qu'aucune session n'est reliée | ✅ testé ; ⚠️ pas encore essayé en session réelle au-delà de quelques minutes |
 | F24 | Marquer ce que Claude n'a pas encore lu : une pastille sur chaque carte et un mot sous chaque fil que nomme le résumé en attente, jusqu'à sa remise à la session ; jamais dans l'historique (S4) | ✅ |
 | F25 | Atelier Impact / Effort : la matrice 2 × 2 dépliée en quatre colonnes (gains rapides, gros paris, remplissage, à éviter), chacune disant sous son nom l'impact et l'effort qu'elle représente (T29, S24) | ✅ |
+| F26 | Insérer une colonne depuis la page : dans une frise, un « + » apparaît au survol de la frontière entre deux étapes, et les étapes suivantes se décalent (T41, S32) | ✅ ; ⚠️ ne s'annule pas encore, souris seulement |
 
 ### 5.3 Exigences de qualité
 
