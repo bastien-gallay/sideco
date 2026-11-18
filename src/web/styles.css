@@ -1071,6 +1071,11 @@ legend {
   gap: 4px;
 }
 
+/* Its lines sit in the bar's own grid, beside the form that is not repainted. */
+.turn-says {
+  display: contents;
+}
+
 .pending,
 .theirs {
   color: var(--muted);

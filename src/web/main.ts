@@ -96,7 +96,45 @@ const historyScope = h(
   h("option", { value: "board" }, t.thisBoard),
   h("option", { value: "everything" }, t.everything),
 );
-const turnBar = h("div", { class: "turn" });
+/** What the bar says of the turn. Repainted apart from the message beside it. */
+const turnSays = h("div", { class: "turn-says" });
+/** Made once: a message being typed for Claude keeps its words and the keyboard through every repaint. */
+const passMessage = h("input", {
+  type: "text",
+  placeholder: t.messagePlaceholder,
+  "aria-label": t.messageForClaude,
+  maxlength: 1000,
+});
+const passButton = h("button", { type: "submit", class: "primary" }, t.handOver);
+/** The board the turn is handed over on: the one on screen. */
+let passOn: string | undefined;
+const turnBar = h(
+  "div",
+  { class: "turn" },
+  turnSays,
+  h(
+    "form",
+    {
+      class: "pass",
+      onsubmit: (event: Event) => {
+        event.preventDefault();
+        if (!passOn) return;
+        void send({
+          kind: "pass",
+          board: passOn,
+          to: "agent",
+          message: passMessage.value.trim() || undefined,
+        });
+        passMessage.value = "";
+        // The page cannot wake a terminal at rest: say what will make Claude read this.
+        const notice = handOverNotice(latestSession(state.live)?.status, state.listening, locale);
+        if (notice) say(notice);
+      },
+    },
+    passMessage,
+    passButton,
+  ),
+);
 const toast = h("div", { class: "toast", role: "alert", hidden: true });
 const dialog = h("dialog", { class: "sheet new-board" });
 const removal = h("dialog", { class: "sheet remove-board" });
@@ -590,36 +628,20 @@ interface TurnModel {
   theirs: string | undefined;
 }
 
-const paintTurn = region(turnBar, (m: TurnModel) => {
-  const message = h("input", {
-    type: "text",
-    placeholder: t.messagePlaceholder,
-    "aria-label": t.messageForClaude,
-    maxlength: 1000,
-    disabled: !m.live || !m.board,
-  });
-  const pass = (event: Event): void => {
-    event.preventDefault();
-    if (!m.board) return;
-    void send({ kind: "pass", board: m.board, to: "agent", message: message.value.trim() || undefined });
-    message.value = "";
-    // The page cannot wake a terminal at rest: say what will make Claude read this.
-    const notice = handOverNotice(latestSession(state.live)?.status, state.listening, locale);
-    if (notice) say(notice);
-  };
+const paintTurnSays = region(turnSays, (m: TurnModel) => {
   const count = m.pending === 0 ? t.upToDate : t.pending(m.pending);
   return [
     m.theirs !== undefined &&
       h("p", { class: "theirs" }, h("strong", {}, t.theirTurn), m.theirs ? `${t.colon} ${m.theirs}` : ""),
     h("p", { class: "pending" }, h("strong", {}, count), ` · ${m.hint}`),
-    h(
-      "form",
-      { class: "pass", onsubmit: pass },
-      message,
-      h("button", { type: "submit", class: "primary", disabled: !m.live || !m.board }, t.handOver),
-    ),
   ];
 });
+
+function paintTurn(m: TurnModel): void {
+  paintTurnSays(m);
+  passOn = m.board;
+  passMessage.disabled = passButton.disabled = !m.live || !m.board;
+}
 
 interface HistoryModel {
   /** Where the slider's handle sits, and how far it goes. */

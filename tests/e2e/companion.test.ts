@@ -353,6 +353,18 @@ describe("the human edits, the agent is told", () => {
       (await pending()).includes("The human passed you the turn: Un mot pour plus tard"),
     );
   });
+
+  test("a message being typed for Claude survives Claude handing the turn over, keyboard included", async () => {
+    const field = page.locator(".pass input");
+    await field.click();
+    await page.keyboard.type("Bonne idée, le focus");
+    await agent('pass "Qui réserve le stock ?"', "commande");
+    await page.locator(".theirs", { hasText: "Qui réserve le stock ?" }).waitFor();
+    expect(await field.inputValue()).toBe("Bonne idée, le focus");
+    await page.keyboard.type(" !");
+    expect(await field.inputValue()).toBe("Bonne idée, le focus !");
+    await field.fill("");
+  });
 });
 
 describe("history", () => {
