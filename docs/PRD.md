@@ -18,6 +18,7 @@ Rédigé le 2026-11-17. Niveau de preuve : ✅ lu sur une source primaire, ⚠�
 | D8 | Rendu | − un rendu page, un rendu export | + un seul peintre SVG pour les deux |
 | D9 | Confidentialité | − un journal unique | + `boards.jsonl` versionnable, `sessions.jsonl` local |
 | D10 | Publication | − service hébergé | + site statique généré, servi en local ou ailleurs |
+| D11 | Langue | − interface en français seulement ; − langue inscrite dans le journal | + anglais par défaut, français au choix du lecteur ; l'agent lit toujours de l'anglais |
 
 ## 1. Problème et public
 
@@ -115,7 +116,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 1. Le développeur lance `vico open` : la page s'ouvre, vide, et propose cinq ateliers.
 2. Il demande à Claude un event storming du passage de commande.
 3. Claude crée le tableau en un lot ; les post-its apparaissent pendant qu'il continue à lire le code.
-4. Le développeur renomme un événement, en déplace un autre, épingle une note, puis clique « Passer la main à Claude ».
+4. Le développeur renomme un événement, en déplace un autre, épingle une note, puis clique « Hand over to Claude ».
 5. Claude reçoit le résumé net de ces changements, corrige le modèle, pose le focus sur un point chaud.
 6. Le développeur exporte le tableau en Markdown dans `docs/` et publie le site statique.
 
@@ -139,6 +140,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F14 | Publication en site statique | ✅ |
 | F15 | Ateliers définis par la communauté dans des fichiers | ❌ plus tard |
 | F16 | Plusieurs humains ou plusieurs agents sur un même tableau | ❌ plus tard |
+| F17 | Page, dessin et exports en anglais par défaut, en français au choix du lecteur (sélecteur de la page, `--lang`, `VICO_LANG`) ; le texte lu par l'agent reste en anglais | ✅ |
 
 ### 5.3 Exigences de qualité
 
@@ -272,6 +274,29 @@ Un atelier déclare ses types (libellé, préfixe d'identifiant, couleur, forme)
 | Plus tard | Multi-utilisateurs et multi-agents (F16) ; compaction du journal ; C4, Wardley, impact mapping ; hébergement partagé |
 
 Hors MVP, assumé : dessin libre, images, curseurs multiples, comptes, synchronisation distante.
+
+**Traiter** « Ensuite » et « Manques connus » avant toute nouvelle idée : priorité donnée le 2026-11-18. L'ordre à l'intérieur des deux listes n'est pas encore arrêté.
+
+| Repère | Ensuite |
+| --- | --- |
+| B1 | Serveur MCP typé |
+| B2 | Flux de texte en direct par l'API mod |
+| B3 | Ateliers en fichiers (F15) |
+| B4 | Capture des diagrammes de séquence et des tables |
+| B5 | Annuler / rétablir |
+| B6 | Binaire unique |
+| B7 | Diff « depuis ma dernière visite » |
+
+| Repère | Manque connu | Conséquence aujourd'hui |
+| --- | --- | --- |
+| L1 | Pas de bouton de suppression de tableau dans la page | Passer par `vico board rm ID` |
+| L2 | Seule la session la plus récente est affichée | Deux sessions Claude Code dans le même projet : une seule est suivie |
+| L3 | Le compagnon reste en marche après la fin de la session | L'arrêter avec `vico stop` |
+| L4 | Deux branches qui écrivent dans `boards.jsonl` | ⚠️ Conflit de fusion probable, non essayé ; vérification : fusionner deux branches qui ont chacune ajouté des événements |
+| L5 | Le hook `PostToolUse` lit les tâches de `TodoWrite`, dont le format n'est pas documenté côté hooks | Le panneau de tâches peut se vider sans prévenir à une mise à jour de Claude Code |
+| L6 | Premier `vico open` d'un projet sous bac à sable | ⚠️ Non observé en vrai : le démarrage serait refusé avec `this shell may not start the companion` (vérifié en test unitaire seulement) |
+
+<sub>Source : backlog présenté en session le 2026-11-18 ; L1 à L3 : `src/web/main.ts`, `src/domain/workspace.ts` (`latestSession`), `src/cli/main.ts` (`stop`) ; L5 : `src/cli/hook.ts`.</sub>
 
 ## 9. Risques
 

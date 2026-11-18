@@ -15,6 +15,7 @@ import {
   type Session,
   type Workspace,
 } from "../domain/workspace.ts";
+import { t } from "./locale.ts";
 
 export interface State {
   events: Recorded[];
@@ -140,14 +141,14 @@ function announce(event: Recorded): void {
   if ("board" in event && "id" in event && event.event !== "ElementRemoved")
     markFresh(`${event.board}/${event.id}`);
   if (event.event === "BoardRemoved") {
-    if (event.actor === "agent") state.notice = `Claude a supprimé le tableau « ${event.title} ».`;
+    if (event.actor === "agent") state.notice = t.agentRemovedBoard(event.title);
     leaveMissingBoard();
     return;
   }
   if (event.event !== "BoardCreated") return;
   if (state.boardId === null) openBoard(event.board);
   else if (event.actor === "agent" && event.board !== state.boardId)
-    state.notice = `Claude a créé le tableau « ${event.title} » : il est dans la liste des tableaux, en haut.`;
+    state.notice = t.agentCreatedBoard(event.title);
 }
 
 function markFresh(key: string): void {

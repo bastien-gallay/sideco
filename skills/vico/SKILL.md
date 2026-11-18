@@ -23,7 +23,8 @@ each side sees the other's changes within a second.
 4. **Point** at what you want discussed: `vico focus E3 P1 --why "…"`.
 5. **Hand over** with one question: `vico pass "Qui réserve le stock ?"`.
 6. **Wait** when the next step depends on the user: `vico wait`. It blocks
-   until they press "Passer la main à Claude", then prints what they changed.
+   until they press "Hand over to Claude" ("Passer la main à Claude" when
+   their page is in French), then prints what they changed.
    If it prints `no hand-over yet`, run it again or carry on with other work.
 7. **Take their edits as input.** A digest of their changes also arrives in
    your context on their next prompt. `vico changes` asks for it explicitly.

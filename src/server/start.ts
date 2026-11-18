@@ -5,6 +5,7 @@
  */
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { Locale } from "../domain/i18n.ts";
 import { serve } from "./http.ts";
 import { Hub } from "./hub.ts";
 import { openJournal } from "./journal.ts";
@@ -28,15 +29,22 @@ export function serverNote(root: string): string {
   return join(dataDir(root), "server.json");
 }
 
+export interface StartOptions {
+  /** Opens an address in the user's browser, for shells that may not. */
+  show?: (address: string) => Promise<boolean>;
+  /** The language the page opens in; each reader may pick another. */
+  locale?: Locale;
+}
+
 export async function start(
   root: string,
   preferredPort = DEFAULT_PORT,
-  show?: (address: string) => Promise<boolean>,
+  { show, locale }: StartOptions = {},
 ): Promise<Running> {
   const dir = dataDir(root);
   mkdirSync(dir, { recursive: true });
   const hub = new Hub(openJournal(dir));
-  const page = await buildPage();
+  const page = await buildPage(locale);
   const siteDir = join(dir, "site");
 
   const server = listen((port) => serve({ hub, page, root, siteDir, show, port }), preferredPort);

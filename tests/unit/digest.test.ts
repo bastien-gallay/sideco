@@ -35,13 +35,13 @@ describe("describeBoard", () => {
 
   test("columns read lane by lane, in stacking order", () => {
     expect(describeBoard(table(KANBAN).board()).split("\n").slice(1)).toEqual([
-      "lane todo (À faire)",
+      "lane todo (To do)",
       '  T3 task "Tester de bout en bout"',
       '  T4 task "Publier"',
-      "lane doing (En cours)",
+      "lane doing (Doing)",
       '  T2 task "Brancher les hooks"',
       '  B1 blocker "Port bloqué en bac à sable"',
-      "lane done (Fait)",
+      "lane done (Done)",
       '  T1 task "Écrire le PRD"',
     ]);
   });

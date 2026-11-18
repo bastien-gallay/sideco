@@ -4,7 +4,7 @@ Vico est le compagnon visuel de Claude Code : une page web locale, ouverte à c�
 
 ![Un event storming dans Vico : la palette à gauche, le tableau au centre, la session de Claude à droite, le passage de main en bas](docs/img/vico-event-storming.png)
 
-<sub>Source : capture du test de bout en bout `tests/e2e/companion.test.ts`, le 2026-11-17. Le losange en haut d'une carte marque une carte posée par Claude, le point une carte posée par toi ; le contour bleu signale ce qui vient de changer.</sub>
+<sub>Source : capture du test de bout en bout `tests/e2e/companion.test.ts`, le 2026-11-18. Le losange en haut d'une carte marque une carte posée par Claude, le point une carte posée par toi ; le contour bleu signale ce qui vient de changer.</sub>
 
 **Complète** le terminal, ne le remplace pas : la conversation reste dans Claude Code.
 
@@ -63,12 +63,12 @@ sequenceDiagram
     Claude->>Vico: vico pass "Qui réserve le stock ?"
     Toi->>Page: renommer, déplacer, relier, annoter
     Page->>Vico: commandes (POST)
-    Toi->>Page: Passer la main à Claude
+    Toi->>Page: Hand over to Claude
     Vico-->>Claude: tes changements, en résumé
     Claude->>Vico: vico show, puis la suite
 ```
 
-<sub>Source : `src/server/http.ts`, `src/cli/hook.ts` ; latence mesurée par `tests/e2e/companion.test.ts` (23 ms le 2026-11-18, sur cette machine).</sub>
+<sub>Source : `src/server/http.ts`, `src/cli/hook.ts` ; latence mesurée par `tests/e2e/companion.test.ts` (22 ms le 2026-11-18, sur cette machine).</sub>
 
 Tes changements reviennent à Claude par quatre canaux, selon ce qu'il fait à ce moment-là :
 
@@ -90,9 +90,22 @@ Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit
 | Double-cliquer une carte | La renomme |
 | Glisser une carte | La change d'étape ou de colonne ; la position reste sémantique, jamais en pixels |
 | Sélectionner une carte | Barre d'actions : renommer, détail, relier, note pour Claude, supprimer |
-| Curseur d'historique, en bas | Remonte le temps, en lecture seule ; « En direct » y revient |
-| `Exporter` | Markdown, HTML, SVG, Mermaid ou modèle JSON du tableau courant |
-| `Passer la main à Claude` | Envoie tes changements, avec un mot facultatif |
+| Curseur d'historique, en bas | Remonte le temps, en lecture seule ; `Back to live` y revient |
+| `Export` | Markdown, HTML, SVG, Mermaid ou modèle JSON du tableau courant, dans la langue de la page |
+| `Hand over to Claude` | Envoie tes changements, avec un mot facultatif |
+| Sélecteur `English` / `Français`, en haut à droite | Change la langue de la page ; le choix est gardé par ce navigateur |
+
+### Langue
+
+La page, le dessin et les exports sont en anglais par défaut ; le français est l'autre langue fournie. Ce que tu écris sur un post-it n'est jamais traduit.
+
+| Qui lit | Langue | Comment la changer |
+| --- | --- | --- |
+| Toi, dans la page | anglais | le sélecteur de la page (gardé par le navigateur) ; `VICO_LANG=fr` au démarrage du compagnon change la langue d'ouverture |
+| Le lecteur d'un export ou du site publié | anglais | `--lang fr` sur `vico export` et `vico publish`, ou `VICO_LANG=fr` |
+| L'agent, dans le terminal (`vico show`, `vico changes`, erreurs) | anglais, toujours | ne se change pas : un seul vocabulaire à apprendre pour l'agent |
+
+<sub>Source : `src/domain/i18n.ts`, `src/web/messages.ts`, `src/cli/main.ts` (`language`) ; `tests/unit/i18n.test.ts`, `tests/integration/cli.test.ts`, `tests/e2e/companion.test.ts`, exécutés le 2026-11-18.</sub>
 
 ## Les ateliers
 
@@ -100,11 +113,11 @@ Un atelier est une donnée (`src/domain/formats.ts`), pas un moteur de rendu : t
 
 | Atelier | Question posée | Mise en page | Types (préfixe des identifiants) |
 | --- | --- | --- | --- |
-| `event-storming` | Que se passe-t-il dans le domaine, dans quel ordre ? | étapes | acteur `X`, commande `C`, agrégat `A`, événement `E`, règle `P`, vue `R`, système externe `G`, point chaud `H` |
-| `flow` | Par où passe-t-on, où le chemin se sépare-t-il ? | graphe | étape `S`, décision `D`, issue `O` |
-| `kanban` | Où en est le travail, qu'est-ce qui le bloque ? | colonnes | tâche `T`, blocage `B` |
-| `story-map` | Quel parcours, que livre-t-on d'abord ? | étapes | activité `A`, tâche `T`, story `S` |
-| `retro` | Que garde-t-on, qu'arrête-t-on, qu'essaie-t-on ? | colonnes | point `K`, action `A` |
+| `event-storming` | Que se passe-t-il dans le domaine, dans quel ordre ? | étapes | `actor` `X`, `command` `C`, `aggregate` `A`, `event` `E`, `policy` `P`, `readmodel` `R`, `system` `G`, `hotspot` `H` |
+| `flow` | Par où passe-t-on, où le chemin se sépare-t-il ? | graphe | `step` `S`, `decision` `D`, `outcome` `O` |
+| `kanban` | Où en est le travail, qu'est-ce qui le bloque ? | colonnes | `task` `T`, `blocker` `B` |
+| `story-map` | Quel parcours, que livre-t-on d'abord ? | étapes | `activity` `A`, `task` `T`, `story` `S` |
+| `retro` | Que garde-t-on, qu'arrête-t-on, qu'essaie-t-on ? | colonnes | `point` `K`, `action` `A` |
 
 <sub>Source : `vico formats`.</sub>
 
@@ -117,6 +130,7 @@ vico open                       # démarre le compagnon et ouvre la page, si ell
 vico status                     # tableaux, session, serveur
 vico show                       # le tableau en texte, comme l'agent le lit
 vico export --format md -o docs/design/commande.md
+vico export --format md --lang fr   # le même, en français
 vico board rm brouillon         # supprime un tableau ; son histoire reste dans le journal
 vico publish                    # tous les tableaux en site statique, sous .vico/site
 vico stop                       # arrête le compagnon ; le journal reste
@@ -191,9 +205,9 @@ bun run typecheck && bun run lint
 
 | Niveau | Ce qu'il prouve | Tests | Hors bac à sable |
 | --- | --- | --- | --- |
-| Unitaire | Règles du domaine, mise en page, exports, hooks, contrat du plugin | 358 | non |
-| Intégration | `bin/vico` de bout en bout : serveur, lots, attente, hooks par stdin, publication, suppression, ouverture de la page | 31 | oui (port local) |
-| Bout en bout | La page dans Chrome : ajout, glisser, renommer, notes, historique, passage de main, suppression, redémarrage | 24 | oui (navigateur) |
+| Unitaire | Règles du domaine, mise en page, exports, hooks, contrat du plugin, textes des deux langues | 378 | non |
+| Intégration | `bin/vico` de bout en bout : serveur, lots, attente, hooks par stdin, publication, suppression, ouverture de la page, langue des exports et de la page servie | 34 | oui (port local) |
+| Bout en bout | La page dans Chrome : ajout, glisser, renommer, notes, historique, passage de main, suppression, redémarrage, bascule de langue | 27 | oui (navigateur) |
 
 <sub>Source : exécution du 2026-11-18 sur cette machine (Bun 1.4.4, macOS).</sub>
 

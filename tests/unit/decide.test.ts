@@ -94,7 +94,7 @@ describe("adding elements", () => {
     expect(() => table(KANBAN).script('add task "x" --lane later')).toThrow(
       'Kanban has no lane "later" (lanes: todo, doing, done)',
     );
-    expect(() => table(FLOW).script('add step "x" --col 2')).toThrow("Flux boards take no `col`");
+    expect(() => table(FLOW).script('add step "x" --col 2')).toThrow("Flow boards take no `col`");
   });
 
   test("`--from` adds the element and its incoming link in one command", () => {

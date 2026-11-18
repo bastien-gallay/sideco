@@ -239,6 +239,11 @@ input[type="text"] {
   }
 }
 
+/* The quietest control of the header: set once, then forgotten. */
+.language {
+  color: var(--muted);
+}
+
 .zoom {
   display: flex;
   align-items: center;

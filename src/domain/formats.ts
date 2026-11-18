@@ -3,6 +3,7 @@
  * board is laid out, and what to tell the agent about it. Adding a workshop means
  * adding an entry here, not writing a renderer.
  */
+import type { Text } from "./i18n.ts";
 
 /** How semantic positions become geometry. */
 export type LayoutKind =
@@ -18,31 +19,33 @@ export type Shape = "sticky" | "sharp" | "box" | "pill" | "diamond";
 
 export interface ElementType {
   id: string;
-  label: string;
+  label: Text;
   /** Ids are minted as `<prefix><n>`: E1, C2. One letter, unique within the format, never `N`. */
   prefix: string;
   fill: string;
   ink: string;
   shape: Shape;
   /** One line for the palette tooltip and the agent's guidance. */
-  hint: string;
+  hint: Text;
 }
 
 export interface Lane {
   id: string;
-  label: string;
+  label: Text;
 }
 
 export interface Format {
   id: string;
-  name: string;
+  name: Text;
   /** The question this workshop answers, shown when choosing a format. */
-  purpose: string;
+  purpose: Text;
   layout: LayoutKind;
   types: readonly ElementType[];
   /** Only for `columns` layouts. */
   lanes: readonly Lane[];
 }
+
+const t = (en: string, fr: string): Text => ({ en, fr });
 
 const DARK = "#1F2328";
 const LIGHT = "#FFFFFF";
@@ -50,212 +53,235 @@ const LIGHT = "#FFFFFF";
 /** Lanes, colours and id prefixes follow faceto, so its model files load unchanged. */
 const EVENT_STORMING: Format = {
   id: "event-storming",
-  name: "Event Storming",
-  purpose: "Que se passe-t-il dans le domaine, dans quel ordre, et qui le déclenche ?",
+  name: t("Event Storming", "Event Storming"),
+  purpose: t(
+    "What happens in the domain, in what order, and what triggers it?",
+    "Que se passe-t-il dans le domaine, dans quel ordre, et qui le déclenche ?",
+  ),
   layout: "timeline",
   lanes: [],
   types: [
     {
       id: "actor",
-      label: "Acteur",
+      label: t("Actor", "Acteur"),
       prefix: "X",
       fill: "#FCEFA1",
       ink: DARK,
       shape: "sticky",
-      hint: "Qui agit",
+      hint: t("Who acts", "Qui agit"),
     },
     {
       id: "command",
-      label: "Commande",
+      label: t("Command", "Commande"),
       prefix: "C",
       fill: "#1A6FAE",
       ink: LIGHT,
       shape: "sticky",
-      hint: "Une intention, à l'impératif",
+      hint: t("An intent, in the imperative", "Une intention, à l'impératif"),
     },
     {
       id: "aggregate",
-      label: "Agrégat",
+      label: t("Aggregate", "Agrégat"),
       prefix: "A",
       fill: "#FFD23F",
       ink: DARK,
       shape: "sticky",
-      hint: "Ce qui décide et garde la cohérence",
+      hint: t("What decides and keeps things consistent", "Ce qui décide et garde la cohérence"),
     },
     {
       id: "event",
-      label: "Événement",
+      label: t("Event", "Événement"),
       prefix: "E",
       fill: "#FF9F1C",
       ink: DARK,
       shape: "sticky",
-      hint: "Un fait métier, au passé",
+      hint: t("A business fact, in the past tense", "Un fait métier, au passé"),
     },
     {
       id: "policy",
-      label: "Règle",
+      label: t("Policy", "Règle"),
       prefix: "P",
       fill: "#C39BD3",
       ink: DARK,
       shape: "sticky",
-      hint: "Quand ceci arrive, alors cela",
+      hint: t("When this happens, then that", "Quand ceci arrive, alors cela"),
     },
     {
       id: "readmodel",
-      label: "Vue",
+      label: t("Read model", "Vue"),
       prefix: "R",
       fill: "#6FCF97",
       ink: DARK,
       shape: "sticky",
-      hint: "Ce qu'on lit pour décider",
+      hint: t("What is read to decide", "Ce qu'on lit pour décider"),
     },
     {
       id: "system",
-      label: "Système externe",
+      label: t("External system", "Système externe"),
       prefix: "G",
       fill: "#F2A0C9",
       ink: DARK,
       shape: "sticky",
-      hint: "Hors de notre contrôle",
+      hint: t("Outside our control", "Hors de notre contrôle"),
     },
     {
       id: "hotspot",
-      label: "Point chaud",
+      label: t("Hotspot", "Point chaud"),
       prefix: "H",
       fill: "#C0392B",
       ink: LIGHT,
       shape: "sharp",
-      hint: "Question, risque ou désaccord",
+      hint: t("A question, a risk or a disagreement", "Question, risque ou désaccord"),
     },
   ],
 };
 
 const FLOW: Format = {
   id: "flow",
-  name: "Flux",
-  purpose: "Par où passe-t-on, et où le chemin se sépare-t-il ?",
+  name: t("Flow", "Flux"),
+  purpose: t(
+    "Which way does it go, and where does the path split?",
+    "Par où passe-t-on, et où le chemin se sépare-t-il ?",
+  ),
   layout: "graph",
   lanes: [],
   types: [
-    { id: "step", label: "Étape", prefix: "S", fill: "#E8EEF4", ink: DARK, shape: "box", hint: "Une action" },
+    {
+      id: "step",
+      label: t("Step", "Étape"),
+      prefix: "S",
+      fill: "#E8EEF4",
+      ink: DARK,
+      shape: "box",
+      hint: t("An action", "Une action"),
+    },
     {
       id: "decision",
-      label: "Décision",
+      label: t("Decision", "Décision"),
       prefix: "D",
       fill: "#FFD23F",
       ink: DARK,
       shape: "diamond",
-      hint: "Une question dont dépend la suite",
+      hint: t("A question the rest depends on", "Une question dont dépend la suite"),
     },
     {
       id: "outcome",
-      label: "Issue",
+      label: t("Outcome", "Issue"),
       prefix: "O",
       fill: "#6FCF97",
       ink: DARK,
       shape: "pill",
-      hint: "Là où le chemin s'arrête",
+      hint: t("Where the path ends", "Là où le chemin s'arrête"),
     },
   ],
 };
 
 const KANBAN: Format = {
   id: "kanban",
-  name: "Kanban",
-  purpose: "Où en est le travail, et qu'est-ce qui le bloque ?",
+  name: t("Kanban", "Kanban"),
+  purpose: t(
+    "Where does the work stand, and what is blocking it?",
+    "Où en est le travail, et qu'est-ce qui le bloque ?",
+  ),
   layout: "columns",
   lanes: [
-    { id: "todo", label: "À faire" },
-    { id: "doing", label: "En cours" },
-    { id: "done", label: "Fait" },
+    { id: "todo", label: t("To do", "À faire") },
+    { id: "doing", label: t("Doing", "En cours") },
+    { id: "done", label: t("Done", "Fait") },
   ],
   types: [
     {
       id: "task",
-      label: "Tâche",
+      label: t("Task", "Tâche"),
       prefix: "T",
       fill: "#FCEFA1",
       ink: DARK,
       shape: "sticky",
-      hint: "Un lot de travail",
+      hint: t("A piece of work", "Un lot de travail"),
     },
     {
       id: "blocker",
-      label: "Blocage",
+      label: t("Blocker", "Blocage"),
       prefix: "B",
       fill: "#C0392B",
       ink: LIGHT,
       shape: "sharp",
-      hint: "Ce qui empêche d'avancer",
+      hint: t("What stops progress", "Ce qui empêche d'avancer"),
     },
   ],
 };
 
 const STORY_MAP: Format = {
   id: "story-map",
-  name: "Story Mapping",
-  purpose: "Quel parcours l'utilisateur suit-il, et que livre-t-on d'abord ?",
+  name: t("Story Mapping", "Story Mapping"),
+  purpose: t(
+    "What journey does the user follow, and what ships first?",
+    "Quel parcours l'utilisateur suit-il, et que livre-t-on d'abord ?",
+  ),
   layout: "timeline",
   lanes: [],
   types: [
     {
       id: "activity",
-      label: "Activité",
+      label: t("Activity", "Activité"),
       prefix: "A",
       fill: "#1A6FAE",
       ink: LIGHT,
       shape: "sticky",
-      hint: "Un grand but de l'utilisateur",
+      hint: t("A broad user goal", "Un grand but de l'utilisateur"),
     },
     {
       id: "task",
-      label: "Tâche",
+      label: t("Task", "Tâche"),
       prefix: "T",
       fill: "#6FCF97",
       ink: DARK,
       shape: "sticky",
-      hint: "Une étape du parcours",
+      hint: t("A step of the journey", "Une étape du parcours"),
     },
     {
       id: "story",
-      label: "Story",
+      label: t("Story", "Story"),
       prefix: "S",
       fill: "#FCEFA1",
       ink: DARK,
       shape: "sticky",
-      hint: "Une tranche livrable",
+      hint: t("A shippable slice", "Une tranche livrable"),
     },
   ],
 };
 
 const RETRO: Format = {
   id: "retro",
-  name: "Rétrospective",
-  purpose: "Que garde-t-on, qu'arrête-t-on, qu'essaie-t-on ?",
+  name: t("Retrospective", "Rétrospective"),
+  purpose: t(
+    "What do we keep, what do we stop, what do we try?",
+    "Que garde-t-on, qu'arrête-t-on, qu'essaie-t-on ?",
+  ),
   layout: "columns",
   lanes: [
-    { id: "keep", label: "On garde" },
-    { id: "drop", label: "On arrête" },
-    { id: "try", label: "On essaie" },
+    { id: "keep", label: t("Keep", "On garde") },
+    { id: "drop", label: t("Stop", "On arrête") },
+    { id: "try", label: t("Try", "On essaie") },
   ],
   types: [
     {
       id: "point",
-      label: "Constat",
+      label: t("Observation", "Constat"),
       prefix: "K",
       fill: "#FCEFA1",
       ink: DARK,
       shape: "sticky",
-      hint: "Un fait observé",
+      hint: t("Something observed", "Un fait observé"),
     },
     {
       id: "action",
-      label: "Action",
+      label: t("Action", "Action"),
       prefix: "A",
       fill: "#6FCF97",
       ink: DARK,
       shape: "sticky",
-      hint: "Ce qu'on fera, par qui",
+      hint: t("What we will do, and who", "Ce qu'on fera, par qui"),
     },
   ],
 };

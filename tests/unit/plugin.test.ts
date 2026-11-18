@@ -10,9 +10,11 @@ import { BOARD_VERBS } from "../../src/cli/argv.ts";
 import type { Server } from "../../src/cli/client.ts";
 import { HOOK_EVENTS, runHook } from "../../src/cli/hook.ts";
 import { CLI_VERBS } from "../../src/cli/main.ts";
+import { LOCALES } from "../../src/domain/i18n.ts";
 import { handler } from "../../src/server/http.ts";
 import { Hub } from "../../src/server/hub.ts";
 import { openJournal } from "../../src/server/journal.ts";
+import { MESSAGES } from "../../src/web/messages.ts";
 
 const ROOT = join(import.meta.dir, "..", "..");
 const read = (path: string): string => readFileSync(join(ROOT, path), "utf8");
@@ -166,4 +168,9 @@ test("the skill has the agent open the board itself, before it writes", () => {
   const loop = read("skills/vico/SKILL.md").split("## The loop")[1]?.split("## Rules")[0] ?? "";
   expect(loop.indexOf("vico open")).toBeGreaterThan(-1);
   expect(loop.indexOf("vico open")).toBeLessThan(loop.indexOf("vico apply"));
+});
+
+test("the skill names the hand-over button as the page shows it, in every language", () => {
+  const skill = read("skills/vico/SKILL.md");
+  for (const locale of LOCALES) expect(skill).toContain(`"${MESSAGES[locale].handOver}"`);
 });

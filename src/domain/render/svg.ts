@@ -77,9 +77,8 @@ export function cardMarkup(c: Card): string {
   const lines = c.lines
     .map((line, i) => `<tspan x="${c.w / 2}" y="${first + i * LINE_H}">${esc(line)}</tspan>`)
     .join("");
-  const author = c.by === "agent" ? "Claude" : c.by === "human" ? "toi" : "le système";
   return [
-    `<title>${esc(`${c.id} · ${c.typeLabel} · ajouté par ${author}`)}</title>`,
+    `<title>${esc(c.tip)}</title>`,
     shapeMarkup(c),
     `<text class="card-id" x="${8 + inset(c)}" y="14" fill="${esc(c.ink)}">${esc(c.id)}</text>`,
     authorMark(c),

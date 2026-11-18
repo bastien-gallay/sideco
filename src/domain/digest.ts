@@ -40,7 +40,7 @@ export function describeBoard(board: Board): string {
     }
   } else if (format?.layout === "columns") {
     for (const lane of format.lanes) {
-      lines.push(`lane ${lane.id} (${lane.label})`);
+      lines.push(`lane ${lane.id} (${lane.label.en})`);
       for (const e of board.elements) if (e.lane === lane.id) lines.push(show(e.id));
     }
   } else {

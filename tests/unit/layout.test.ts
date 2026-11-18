@@ -226,7 +226,7 @@ test("a card carries what the painter needs: colours, author, detail and open no
     by: "agent",
     hasDetail: true,
     notes: 1,
-    typeLabel: "Règle",
+    tip: "P1 · Policy · added by Claude",
   });
   expect(card(scene, "H2")).toMatchObject({ by: "human", shape: "sharp", hasDetail: false, notes: 0 });
 });

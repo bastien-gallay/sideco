@@ -9,6 +9,7 @@ import { layoutBoard, locate, type Scene, type Target } from "../domain/layout/i
 import { arrowDefs, bandMarkup, cardMarkup, connectorMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h, svg } from "./dom.ts";
+import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
 
 const DRAG_THRESHOLD = 4;
@@ -35,7 +36,7 @@ export function mountBoard(host: HTMLElement): BoardView {
   const scroll = h("div", { class: "canvas-scroll" });
   scroll.append(root);
   const tools = h("div", { class: "card-tools", hidden: true });
-  const editor = h("textarea", { class: "card-editor", hidden: true, rows: 3, "aria-label": "Libellé" });
+  const editor = h("textarea", { class: "card-editor", hidden: true, rows: 3, "aria-label": t.cardLabel });
   host.append(scroll, tools, editor);
 
   const nodes = new Map<string, { g: SVGGElement; signature: string }>();
@@ -57,7 +58,7 @@ export function mountBoard(host: HTMLElement): BoardView {
       return;
     }
     root.removeAttribute("visibility");
-    scene = layoutBoard(board);
+    scene = layoutBoard(board, locale);
     const w = Math.max(scene.width, 320);
     const hgt = Math.max(scene.height, 200);
     root.setAttribute("viewBox", `0 0 ${w} ${hgt}`);
@@ -129,8 +130,8 @@ export function mountBoard(host: HTMLElement): BoardView {
         void send({ kind: "unlink", board: boardId, src: link.src, dst: link.dst });
       };
       tools.replaceChildren(
-        h("span", { class: "tools-label" }, `Lien ${link.src} → ${link.dst}`),
-        h("button", { type: "button", class: "danger", onclick: remove }, "Supprimer le lien"),
+        h("span", { class: "tools-label" }, t.linkBetween(link.src, link.dst)),
+        h("button", { type: "button", class: "danger", onclick: remove }, t.removeLink),
       );
       tools.hidden = false;
       tools.style.left = `${Math.max(8, link.x)}px`;
@@ -145,14 +146,18 @@ export function mountBoard(host: HTMLElement): BoardView {
     const boardId = board.id;
     const element = board.elements.find((e) => e.id === id);
     tools.replaceChildren(
-      h("button", { type: "button", onclick: () => rename(id) }, "Renommer"),
-      h("button", { type: "button", onclick: () => annotate(id) }, element?.detail ? "Détail ≡" : "Détail"),
-      h("button", { type: "button", onclick: () => beginLink(id) }, "Relier"),
-      h("button", { type: "button", onclick: () => noteOn(id) }, "Note pour Claude"),
+      h("button", { type: "button", onclick: () => rename(id) }, t.rename),
+      h(
+        "button",
+        { type: "button", onclick: () => annotate(id) },
+        element?.detail ? `${t.detail} ≡` : t.detail,
+      ),
+      h("button", { type: "button", onclick: () => beginLink(id) }, t.link),
+      h("button", { type: "button", onclick: () => noteOn(id) }, t.noteForClaude),
       h(
         "button",
         { type: "button", class: "danger", onclick: () => void send({ kind: "remove", board: boardId, id }) },
-        "Supprimer",
+        t.remove,
       ),
     );
     tools.hidden = false;
@@ -238,7 +243,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     const element = board?.elements.find((e) => e.id === id);
     if (!board || !node || !element || !isLive()) return;
     const boardId = board.id;
-    openEditor(node.g.getBoundingClientRect(), element.label, "Libellé", colours(element.type), (label) => {
+    openEditor(node.g.getBoundingClientRect(), element.label, t.cardLabel, colours(element.type), (label) => {
       if (label !== element.label) void send({ kind: "rename", board: boardId, id, label });
     });
   }
@@ -253,7 +258,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     openEditor(
       below,
       element.detail ?? "",
-      "Détail : règle, exemple, source…",
+      t.detailPlaceholder,
       { fill: "var(--surface)", ink: "var(--ink)" },
       (detail) => {
         void send({ kind: "annotate", board: boardId, id, detail });
@@ -267,15 +272,9 @@ export function mountBoard(host: HTMLElement): BoardView {
     const boardId = board.id;
     const box = node.g.getBoundingClientRect();
     const below = new DOMRect(box.left, box.bottom + 6, 260, 96);
-    openEditor(
-      below,
-      "",
-      `Note pour Claude sur ${id}…`,
-      { fill: "var(--surface)", ink: "var(--ink)" },
-      (text) => {
-        void send({ kind: "note", board: boardId, text, target: id });
-      },
-    );
+    openEditor(below, "", t.noteOnPlaceholder(id), { fill: "var(--surface)", ink: "var(--ink)" }, (text) => {
+      void send({ kind: "note", board: boardId, text, target: id });
+    });
   }
 
   function beginLink(id: string): void {
@@ -293,7 +292,7 @@ export function mountBoard(host: HTMLElement): BoardView {
       ? new DOMRect(place.x, place.y, 152 * zoom, 88 * zoom)
       : new DOMRect(frame.left + 16, frame.top + 16, 168, 88);
     const from = f.layout === "graph" ? (state.selected ?? undefined) : undefined;
-    openEditor(box, "", `${type.label} : ${type.hint.toLowerCase()}`, type, (label) => {
+    openEditor(box, "", t.newCard(type.label[locale], type.hint[locale]), type, (label) => {
       const command: Command = {
         kind: "add",
         board: boardId,

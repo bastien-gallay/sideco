@@ -30,6 +30,7 @@ async function vico(
       VICO_SESSION: "",
       VICO_BOARD: "",
       VICO_ACTOR: "",
+      VICO_LANG: "",
       // No test opens a real browser window: the opener is a command that does nothing.
       BROWSER: "true",
       // These tests may themselves run inside a Claude Code session: start from an attended one.
@@ -298,6 +299,19 @@ describe("sharing", () => {
     expect(model.title).toBe("Passage de commande");
   });
 
+  test("exports are in English unless --lang or VICO_LANG says otherwise", async () => {
+    expect((await vico(["export"])).out).toContain("## Elements\n");
+    expect((await vico(["export", "--lang", "fr"])).out).toContain("## Éléments\n");
+    expect((await vico(["export"], { env: { VICO_LANG: "fr_FR.UTF-8" } })).out).toContain("## Éléments\n");
+    // The flag wins over the environment.
+    expect((await vico(["export", "--lang", "en"], { env: { VICO_LANG: "fr" } })).out).toContain(
+      "## Elements\n",
+    );
+    const unknown = await vico(["export", "--lang", "tlh"]);
+    expect(unknown.code).toBe(1);
+    expect(unknown.err).toBe("vico: --lang is one of: en, fr");
+  });
+
   test("a file that cannot be written is one plain line on stderr, not a stack trace", async () => {
     const ran = await vico(["export", "--format", "md", "--out", join(root, "no", "such", "dir", "note.md")]);
     expect(ran.code).toBe(1);
@@ -330,6 +344,9 @@ describe("sharing", () => {
       expect(existsSync(join(root, ".vico", "site", file))).toBe(true);
     const index = await (await fetch(`${url}/pub/`)).text();
     expect(index).toContain("Passage de commande");
+    expect(index).toContain("<h1>Vico boards</h1>");
+    await vico(["publish", "--lang", "fr"]);
+    expect(await (await fetch(`${url}/pub/`)).text()).toContain("<h1>Tableaux Vico</h1>");
     expect((await fetch(`${url}/pub/passage-de-commande.svg`)).headers.get("content-type")).toContain(
       "image/svg+xml",
     );
@@ -398,6 +415,24 @@ describe("opening the page, by the agent as well as the human", () => {
         "vico: could not open the browser, from this shell or from the companion (a sandbox blocks it, or no browser is set). Run `vico open` outside the sandbox, or give the user the address above.",
       );
     }));
+});
+
+describe("the page's language", () => {
+  test("the companion serves the page in English by default", async () => {
+    expect(await (await fetch(url)).text()).toStartWith('<!doctype html>\n<html lang="en">');
+  });
+
+  test("a companion started with VICO_LANG=fr serves it in French", async () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), "vico-cli-lang-")));
+    try {
+      const started = await vico(["open"], { cwd: dir, env: { VICO_LANG: "fr" } });
+      const address = started.out.split("\n")[0] ?? "";
+      expect(await (await fetch(address)).text()).toStartWith('<!doctype html>\n<html lang="fr">');
+    } finally {
+      await vico(["stop"], { cwd: dir });
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("tidying up", () => {

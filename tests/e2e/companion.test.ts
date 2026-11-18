@@ -51,7 +51,10 @@ const pending = async (): Promise<string> =>
   ((await (await fetch(`${running.url}/api/changes?session=${SESSION}`)).json()) as { text: string }).text;
 
 const card = (id: string) => page.locator(`g.card[data-id="${id}"]`);
-const paletteType = (label: string) => page.locator("button.type", { hasText: label });
+const paletteType = (label: string) =>
+  page
+    .locator("button.type")
+    .filter({ has: page.locator(".type-label", { hasText: new RegExp(`^${label}$`) }) });
 const status = () => page.locator(".status-text");
 
 async function shot(name: string): Promise<void> {
@@ -126,15 +129,15 @@ afterAll(async () => {
 describe("first look", () => {
   test("an empty companion says what it is for and offers the workshops", async () => {
     await page.locator(".empty h1").waitFor();
-    expect(await page.locator(".empty h1").textContent()).toBe("Que veux-tu modéliser ?");
+    expect(await page.locator(".empty h1").textContent()).toBe("What do you want to model?");
     expect(await page.locator(".empty .format-name").allTextContents()).toEqual([
       "Event Storming",
-      "Flux",
+      "Flow",
       "Kanban",
       "Story Mapping",
-      "Rétrospective",
+      "Retrospective",
     ]);
-    expect(await status().textContent()).toBe("Aucune session Claude Code reliée");
+    expect(await status().textContent()).toBe("No Claude Code session linked");
     await shot("01-empty");
   });
 });
@@ -144,7 +147,7 @@ describe("the agent writes, the page follows", () => {
     const started = await hook({ hook_event_name: "SessionStart", source: "startup" });
     expect(started.stdout).toContain(running.url);
     await page.waitForFunction(
-      () => document.querySelector(".status-text")?.textContent === "Claude est au repos",
+      () => document.querySelector(".status-text")?.textContent === "Claude is idle",
     );
   });
 
@@ -185,7 +188,7 @@ describe("the agent writes, the page follows", () => {
   test("the agent points at what it wants discussed", async () => {
     await agent('focus P1 --why "Qui décide de réserver ?"', "commande");
     await page.locator(".focus-bar").waitFor({ state: "visible" });
-    expect(await page.locator(".focus-bar").textContent()).toContain("Focus : P1 — Qui décide de réserver ?");
+    expect(await page.locator(".focus-bar").textContent()).toContain("Focus: P1 — Qui décide de réserver ?");
     expect(await card("P1").getAttribute("class")).toContain("is-focus");
     expect(await card("E1").getAttribute("class")).toContain("is-dim");
     await shot("02-agent-wrote");
@@ -199,7 +202,7 @@ describe("the session beside the board", () => {
   test("prompt, tool calls and tasks follow the terminal", async () => {
     await hook({ hook_event_name: "UserPromptSubmit", prompt: "Modélise le passage de commande" });
     await page.waitForFunction(
-      () => document.querySelector(".status-text")?.textContent === "Claude réfléchit",
+      () => document.querySelector(".status-text")?.textContent === "Claude is thinking",
     );
     expect(await page.locator(".turns .prompt").last().textContent()).toContain(
       "Modélise le passage de commande",
@@ -212,7 +215,7 @@ describe("the session beside the board", () => {
       tool_input: { command: "bun test" },
     });
     await page.waitForFunction(
-      () => document.querySelector(".status-text")?.textContent === "Claude exécute Bash bun test",
+      () => document.querySelector(".status-text")?.textContent === "Claude is running Bash bun test",
     );
     expect(await page.locator(".tools li.tool-running").textContent()).toContain("Bash bun test");
 
@@ -236,14 +239,14 @@ describe("the session beside the board", () => {
 
     await hook({ hook_event_name: "Stop", last_assistant_message: "Voilà le premier jet." });
     await page.waitForFunction(
-      () => document.querySelector(".status-text")?.textContent === "Claude est au repos",
+      () => document.querySelector(".status-text")?.textContent === "Claude is idle",
     );
   });
 });
 
 describe("the human edits, the agent is told", () => {
   test("a sticky added from the palette", async () => {
-    await paletteType("Événement").click();
+    await paletteType("Event").click();
     await typeInEditor("Paiement accepté");
     await card("E3").waitFor();
     expect(await card("E3").textContent()).toContain("Paiement accepté");
@@ -286,10 +289,10 @@ describe("the human edits, the agent is told", () => {
 
   test("the card toolbar pins a note for Claude", async () => {
     await card("P1").click();
-    await page.locator(".card-tools button", { hasText: "Note pour Claude" }).click();
+    await page.locator(".card-tools button", { hasText: "Note for Claude" }).click();
     await typeInEditor("L'entrepôt réserve, pas nous");
     await page.locator(".notes .note-list li").waitFor();
-    expect(await page.locator(".notes h2").textContent()).toBe("Notes ouvertes (1)");
+    expect(await page.locator(".notes h2").textContent()).toBe("Open notes (1)");
     expect(await page.locator(".notes .note-list li").textContent()).toContain(
       "L'entrepôt réserve, pas nous",
     );
@@ -307,10 +310,8 @@ describe("the human edits, the agent is told", () => {
 
   test("the footer counts what Claude has not read, and says when it will read it", async () => {
     const told = await page.locator(".pending").textContent();
-    expect(told).toMatch(/^\d+ changements que Claude n'a pas lus · /);
-    expect(told).toContain(
-      "Claude est au repos : il lira tes changements à ton prochain message dans le terminal.",
-    );
+    expect(told).toMatch(/^\d+ changes Claude has not read · /);
+    expect(told).toContain("Claude is idle: it will read your changes at your next message in the terminal.");
     const lines = (await pending()).split("\n").filter((line) => line.startsWith("  ")).length;
     expect(Number(/^\d+/.exec(told ?? "")?.[0])).toBe(lines);
     await shot("04-human-edited");
@@ -321,10 +322,10 @@ describe("the human edits, the agent is told", () => {
       (response) => response.json() as Promise<{ outcome: string; text: string }>,
     );
     await page.waitForFunction(
-      () => document.querySelector(".status-text")?.textContent === "Claude attend que tu lui passes la main",
+      () => document.querySelector(".status-text")?.textContent === "Claude is waiting for you to hand over",
     );
     expect(await page.locator(".pending").textContent()).toContain(
-      "Claude reprend dès que tu lui passes la main.",
+      "Claude resumes as soon as you hand over.",
     );
     await shot("05-listening");
 
@@ -336,7 +337,7 @@ describe("the human edits, the agent is told", () => {
     expect(waited.text).toContain("Paiement accepté");
     expect(waited.text).toContain("L'entrepôt réserve, pas nous");
     await page.waitForFunction(
-      () => document.querySelector(".pending strong")?.textContent === "Claude est à jour",
+      () => document.querySelector(".pending strong")?.textContent === "Claude is up to date",
     );
   });
 });
@@ -344,13 +345,13 @@ describe("the human edits, the agent is told", () => {
 describe("history", () => {
   test("stepping back shows the board as it was, read-only, and comes back", async () => {
     const live = await page.locator("g.card").count();
-    expect(await page.locator(".history-label").textContent()).toStartWith("En direct · ");
+    expect(await page.locator(".history-label").textContent()).toStartWith("Live · ");
 
     await page.locator(".history input").fill("5");
     await page.locator(".banner").waitFor({ state: "visible" });
     expect(await page.locator("g.card").count()).toBe(3);
-    expect(await page.locator(".history-label").textContent()).toMatch(/^5 \/ \d+ · .*Claude ajoute E1/);
-    expect(await paletteType("Événement").isDisabled()).toBe(true);
+    expect(await page.locator(".history-label").textContent()).toMatch(/^5 \/ \d+ · .*Claude adds E1/);
+    expect(await paletteType("Event").isDisabled()).toBe(true);
     await shot("06-history");
 
     await page.locator(".history button", { hasText: "►" }).click();
@@ -377,7 +378,7 @@ describe("other workshops", () => {
     );
     // The human stays on their board; a line says a new one exists.
     await page.locator(".toast").waitFor({ state: "visible" });
-    expect(await page.locator(".toast").textContent()).toStartWith("Claude a créé le tableau « Sprint 12 »");
+    expect(await page.locator(".toast").textContent()).toStartWith("Claude created the board “Sprint 12”");
     expect(page.url()).toEndWith("#/b/commande");
     await page.locator(".board-picker select").selectOption("sprint");
     await card("T3").waitFor();
@@ -405,9 +406,9 @@ describe("other workshops", () => {
     await card("S2").waitFor();
     await card("S2").click();
     await page.waitForFunction(
-      () => document.querySelector(".palette .how")?.textContent === "Le nouvel élément sera relié à S2.",
+      () => document.querySelector(".palette .how")?.textContent === "The new element will be linked to S2.",
     );
-    await paletteType("Issue").click();
+    await paletteType("Outcome").click();
     await typeInEditor("Colis livré");
     await card("O2").waitFor();
     const board = (await workspace()).boards.find((b) => b.id === "livraison");
@@ -419,13 +420,13 @@ describe("other workshops", () => {
     await page.locator(".board-picker button").click();
     await page.locator("dialog.new-board").waitFor({ state: "visible" });
     await page.locator('dialog.new-board input[name="title"]').fill("Rétro sprint 12");
-    await page.locator("dialog.new-board label.choice", { hasText: "Rétrospective" }).click();
+    await page.locator("dialog.new-board label.choice", { hasText: "Retrospective" }).click();
     await shot("09-new-board");
     await page.locator("dialog.new-board button[type=submit]").click();
     await page.waitForFunction(() => location.hash === "#/b/retro-sprint-12");
-    expect(await page.locator(".palette h2").textContent()).toBe("Rétrospective");
+    expect(await page.locator(".palette h2").textContent()).toBe("Retrospective");
 
-    await paletteType("Constat").click();
+    await paletteType("Observation").click();
     await typeInEditor("Les revues sont rapides");
     await card("K1").waitFor();
     expect((await workspace()).boards.find((b) => b.id === "retro-sprint-12")?.elements[0]).toMatchObject({
@@ -463,6 +464,53 @@ describe("keeping the model", () => {
   });
 });
 
+describe("the reader's language", () => {
+  const language = () => page.locator("select.language");
+
+  test("the page opens in English, and says so to the browser", async () => {
+    expect(await page.evaluate(() => document.documentElement.lang)).toBe("en");
+    expect(await language().inputValue()).toBe("en");
+    expect(await language().locator("option").allTextContents()).toEqual(["English", "Français"]);
+    expect(await page.locator(".pass button.primary").textContent()).toBe("Hand over to Claude");
+    expect(await page.locator("g.card[data-id='E1'] title").textContent()).toMatch(/^E1 · Event · added by /);
+  });
+
+  test("choosing French turns the whole page, the drawing and the exports to French, and it sticks", async () => {
+    await language().selectOption("fr");
+    await page.waitForFunction(() => document.documentElement.lang === "fr");
+    await card("E1").waitFor();
+    expect(page.url()).toEndWith("#/b/commande");
+    expect(await page.locator(".pass button.primary").textContent()).toBe("Passer la main à Claude");
+    expect(await page.locator(".palette h2").textContent()).toBe("Event Storming");
+    expect(await paletteType("Événement").count()).toBe(1);
+    expect(await page.locator(".history-label").textContent()).toStartWith("En direct · ");
+    expect(await page.locator("g.card[data-id='E1'] title").textContent()).toMatch(
+      /^E1 · Événement · ajouté par /,
+    );
+    // What the user wrote is theirs: it is never translated.
+    expect(await card("E1").textContent()).toContain("Commande validée");
+
+    await page.locator(".menu summary").click();
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.locator(".menu-items button", { hasText: "Markdown" }).click(),
+    ]);
+    expect(readFileSync(await download.path(), "utf8")).toContain("## Éléments\n");
+
+    await page.reload();
+    await card("E1").waitFor();
+    expect(await page.evaluate(() => document.documentElement.lang)).toBe("fr");
+    await shot("09b-french");
+  });
+
+  test("and back to English", async () => {
+    await language().selectOption("en");
+    await page.waitForFunction(() => document.documentElement.lang === "en");
+    await card("E1").waitFor();
+    expect(await page.locator(".pass button.primary").textContent()).toBe("Hand over to Claude");
+  });
+});
+
 describe("tidying up", () => {
   const listed = (): Promise<string[]> =>
     page
@@ -476,7 +524,7 @@ describe("tidying up", () => {
 
     await agent("board rm brouillon");
     await until("the removed board left the picker", async () => !(await listed()).includes("brouillon"));
-    await page.locator(".toast", { hasText: "Claude a supprimé le tableau « Brouillon »" }).waitFor();
+    await page.locator(".toast", { hasText: "Claude removed the board “Brouillon”" }).waitFor();
     const remaining = (await workspace()).boards.map((b) => b.id);
     expect(await listed()).toEqual(remaining);
     expect(page.url()).toEndWith(`#/b/${remaining.at(-1)}`);
@@ -499,7 +547,7 @@ describe("tidying up", () => {
     await card("E1").waitFor();
     expect(await page.locator("g.card").count()).toBe(1);
     expect(page.url()).toEndWith("#/b/flux-vico");
-    expect(await status().textContent()).not.toContain("déconnecté");
+    expect(await status().textContent()).not.toContain("disconnected");
     // Chrome logs the stream this test cut; anything else it logged stays a problem.
     const cut = /net::ERR_(INCOMPLETE_CHUNKED_ENCODING|CONNECTION_REFUSED)/;
     problems.splice(before, problems.length - before, ...problems.slice(before).filter((p) => !cut.test(p)));

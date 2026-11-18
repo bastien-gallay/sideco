@@ -59,7 +59,7 @@ describe("mermaid", () => {
     expect(text.split("\n").slice(0, 4)).toEqual([
       "%% lossy: links between cards are not kept",
       "kanban",
-      "  todo[À faire]",
+      "  todo[To do]",
       "    T3[T3 Tester de bout en bout]",
     ]);
   });
@@ -153,14 +153,27 @@ describe("markdown", () => {
   const md = toMarkdown(t.board(), META);
 
   test("is a design note: title, workshop, diagram, source, tables, open questions", () => {
-    expect(md.startsWith("# Passage de commande\n\n> **Event Storming** — ")).toBe(true);
+    expect(md.startsWith("# Passage de commande\n\n> **Event Storming** — What happens in the domain")).toBe(
+      true,
+    );
     expect(md).toContain("```mermaid\n%% lossy");
-    expect(md).toContain(`Source : journal Vico, tableau \`commande\`, seq ${t.seq}, exporté le 2026-11-17.`);
-    expect(md).toContain("| Id | Type | Libellé | Étape | Détail | Par |");
-    expect(md).toContain("| E1 | Événement | Commande passée | 1 |  | agent |");
-    expect(md).toContain("## Liens\n\n| De | Vers | Libellé |");
-    expect(md).toContain("## Questions ouvertes\n\n- ❓ N1 (sur P1), humain : Qui réserve ?");
-    expect(md).toContain("## Notes résolues\n\n- ✅ N2 (sur E1), humain : Vu");
+    expect(md).toContain(`Source: Vico journal, board \`commande\`, seq ${t.seq}, exported on 2026-11-17.`);
+    expect(md).toContain("| Id | Type | Label | Step | Detail | By |");
+    expect(md).toContain("| E1 | Event | Commande passée | 1 |  | agent |");
+    expect(md).toContain("## Links\n\n| From | To | Label |");
+    expect(md).toContain("## Open questions\n\n- ❓ N1 (on P1), human: Qui réserve ?");
+    expect(md).toContain("## Resolved notes\n\n- ✅ N2 (on E1), human: Vu");
+  });
+
+  test("speaks French when the export asks for it", () => {
+    const fr = toMarkdown(t.board(), { ...META, locale: "fr" });
+    expect(fr).toContain("> **Event Storming** — Que se passe-t-il dans le domaine");
+    expect(fr).toContain(`Source : journal Vico, tableau \`commande\`, seq ${t.seq}, exporté le 2026-11-17.`);
+    expect(fr).toContain("| Id | Type | Libellé | Étape | Détail | Par |");
+    expect(fr).toContain("| E1 | Événement | Commande passée | 1 |  | agent |");
+    expect(fr).toContain("## Liens\n\n| De | Vers | Libellé |");
+    expect(fr).toContain("## Questions ouvertes\n\n- ❓ N1 (sur P1), humain : Qui réserve ?");
+    expect(fr).toContain("## Notes résolues\n\n- ✅ N2 (sur E1), humain : Vu");
   });
 
   test("a pipe in a cell cannot break the table", () => {
@@ -175,7 +188,7 @@ describe("markdown", () => {
 
   test("a kanban names its lanes by their label", () => {
     expect(toMarkdown(table(KANBAN).board(), META)).toContain(
-      "| T2 | Tâche | Brancher les hooks | En cours |  | agent |",
+      "| T2 | Task | Brancher les hooks | Doing |  | agent |",
     );
   });
 });
@@ -189,6 +202,22 @@ describe("html", () => {
     expect(html).not.toMatch(/<script|src="http|href="http/);
   });
 
+  test("a board page is written in the language of the export, and says so to the browser", () => {
+    const board = table(ORDERING).board();
+    const en = toHtml(board, META);
+    expect(en).toContain('<html lang="en">');
+    expect(en).toContain("<h2>Elements</h2>");
+    expect(en).toContain("<th>Label</th><th>Step</th><th>Detail</th><th>By</th>");
+    expect(en).toContain("Source: Vico journal, board <code>commande</code>");
+    const fr = toHtml(board, { ...META, locale: "fr" });
+    expect(fr).toContain('<html lang="fr">');
+    expect(fr).toContain("<h2>Éléments</h2>");
+    expect(fr).toContain("Source : journal Vico, tableau <code>commande</code>");
+    // The drawing inside follows.
+    expect(en).toContain(">Event</text>");
+    expect(fr).toContain(">Événement</text>");
+  });
+
   test("the index links every board in every format", () => {
     const html = toIndexHtml(
       "Tableaux",
@@ -197,6 +226,18 @@ describe("html", () => {
     );
     for (const ext of ["html", "md", "svg", "model.json"]) expect(html).toContain(`href="commande.${ext}"`);
     expect(html).toContain("Passage &lt;de&gt; commande");
+    expect(html).toContain('<html lang="en">');
+    expect(html).toContain("1 board, published on 2026-11-17.");
+    expect(html).toContain("<th>Board</th><th>Workshop</th><th>Elements</th><th>Other formats</th>");
+    expect(html).toContain("<td>Event Storming</td>");
+  });
+
+  test("the index counts and names in French when asked", () => {
+    const entry = { id: "a", title: "A", format: "retro", elements: 0 };
+    const html = toIndexHtml("Tableaux", [entry, { ...entry, id: "b" }], { ...META, locale: "fr" });
+    expect(html).toContain('<html lang="fr">');
+    expect(html).toContain("2 tableaux, publiés le 2026-11-17.");
+    expect(html).toContain("<td>Rétrospective</td>");
   });
 });
 

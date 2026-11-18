@@ -50,8 +50,8 @@ describe("a card", () => {
   test("tells who added it by shape, not by colour: a diamond for the agent, a dot for the human", () => {
     expect(markup("E1")).toMatch(/<path class="card-author"/);
     expect(markup("E3")).toMatch(/<circle class="card-author"/);
-    expect(markup("E1")).toContain("ajouté par Claude");
-    expect(markup("E3")).toContain("ajouté par toi");
+    expect(markup("E1")).toContain("<title>E1 · Event · added by Claude</title>");
+    expect(markup("E3")).toContain("<title>E3 · Event · added by you</title>");
   });
 
   test("marks a detail and counts its open notes", () => {

@@ -25,9 +25,9 @@ export function exportBoard(board: Board, format: ExportFormat, meta: ExportMeta
     case "html":
       return toHtml(board, meta);
     case "svg":
-      return `${sceneToSvg(layoutBoard(board), board.title)}\n`;
+      return `${sceneToSvg(layoutBoard(board, meta.locale), board.title)}\n`;
     case "mermaid":
-      return `${toMermaid(board)}\n`;
+      return `${toMermaid(board, meta.locale)}\n`;
     case "json":
       return `${JSON.stringify(toModel(board), null, 2)}\n`;
   }

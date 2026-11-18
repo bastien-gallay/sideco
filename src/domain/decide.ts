@@ -70,7 +70,7 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand): Decision {
       return { events: [{ event: "ElementRemoved", board: b, id: cmd.id }] };
     case "insert-column":
       if (format.layout !== "timeline")
-        throw new CommandError(`${format.name} boards have no columns to insert`);
+        throw new CommandError(`${format.name.en} boards have no columns to insert`);
       return { events: [{ event: "ColumnInserted", board: b, at: cmd.at }] };
     case "link":
       requireElement(board, cmd.src);
@@ -113,7 +113,7 @@ function add(board: Board, format: Format, cmd: Extract<Command, { kind: "add" }
   const type = findType(format, cmd.type);
   if (!type) {
     const allowed = format.types.map((t) => t.id).join(", ");
-    throw new CommandError(`${format.name} has no "${cmd.type}" (types: ${allowed})`);
+    throw new CommandError(`${format.name.en} has no "${cmd.type}" (types: ${allowed})`);
   }
   if (cmd.from) requireElement(board, cmd.from);
   const id = cmd.id === undefined ? mint(board, type.prefix) : claim(board, type, cmd.id);
@@ -173,12 +173,14 @@ function move(board: Board, format: Format, cmd: Extract<Command, { kind: "move"
       return { event: "ElementMoved", board: board.id, id: el.id, col: el.col, lane, before: cmd.before };
     }
     case "graph":
-      throw new CommandError(`${format.name} boards place elements from their links; link or unlink instead`);
+      throw new CommandError(
+        `${format.name.en} boards place elements from their links; link or unlink instead`,
+      );
   }
 }
 
 function refuse(value: unknown, field: string, format: Format, why: string): void {
-  if (value !== undefined) throw new CommandError(`${format.name} boards take no \`${field}\`: ${why}`);
+  if (value !== undefined) throw new CommandError(`${format.name.en} boards take no \`${field}\`: ${why}`);
 }
 
 function requireFormat(id: string): Format {
@@ -196,7 +198,7 @@ function requireElement(board: Board, id: string): Element {
 function requireLane(format: Format, lane: string): string {
   if (!format.lanes.some((l) => l.id === lane)) {
     throw new CommandError(
-      `${format.name} has no lane "${lane}" (lanes: ${format.lanes.map((l) => l.id).join(", ")})`,
+      `${format.name.en} has no lane "${lane}" (lanes: ${format.lanes.map((l) => l.id).join(", ")})`,
     );
   }
   return lane;

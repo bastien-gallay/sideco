@@ -2,14 +2,12 @@
  * Board to one self-contained HTML file: the drawing as inline SVG, the facts as
  * tables, no script and no network. This is what `vico publish` serves.
  */
-import type { Actor } from "../events.ts";
 import { findFormat } from "../formats.ts";
+import { DEFAULT_LOCALE, WORDS } from "../i18n.ts";
 import { layoutBoard } from "../layout/index.ts";
 import { esc, sceneToSvg } from "../render/svg.ts";
 import type { Board } from "../workspace.ts";
 import type { ExportMeta } from "./markdown.ts";
-
-const WHO: Record<Actor, string> = { human: "humain", agent: "agent", system: "système" };
 
 export const PAGE_STYLE = `
 :root { --vico-bg: #FFFFFF; --vico-ink: #1F2328; --vico-muted: #59636E; --vico-faint: #8C959F; --vico-rule: #E3E6EA; --vico-lane: #F3F4F6; --vico-conn: #6E7781; }
@@ -37,8 +35,10 @@ export function toHtml(board: Board, meta: ExportMeta): string {
   const format = findFormat(board.format);
   const layout = format?.layout;
   const type = (id: string) => format?.types.find((t) => t.id === id);
-  const lane = (id: string): string => format?.lanes.find((l) => l.id === id)?.label ?? id;
-  const where = layout === "timeline" ? "Étape" : layout === "columns" ? "Colonne" : undefined;
+  const locale = meta.locale ?? DEFAULT_LOCALE;
+  const w = WORDS[locale];
+  const lane = (id: string): string => format?.lanes.find((l) => l.id === id)?.label[locale] ?? id;
+  const where = layout === "timeline" ? w.step : layout === "columns" ? w.column : undefined;
 
   const rows = [...board.elements]
     .sort((a, b) => a.col - b.col)
@@ -50,7 +50,7 @@ export function toHtml(board: Board, meta: ExportMeta): string {
           : layout === "columns"
             ? `<td>${esc(lane(e.lane))}</td>`
             : "";
-      return `<tr><td class="id">${esc(e.id)}</td><td><span class="swatch" style="background:${esc(t?.fill ?? "#E8EEF4")}"></span>${esc(t?.label ?? e.type)}</td><td>${esc(e.label)}</td>${place}<td>${esc(e.detail ?? "")}</td><td>${WHO[e.by]}</td></tr>`;
+      return `<tr><td class="id">${esc(e.id)}</td><td><span class="swatch" style="background:${esc(t?.fill ?? "#E8EEF4")}"></span>${esc(t?.label[locale] ?? e.type)}</td><td>${esc(e.label)}</td>${place}<td>${esc(e.detail ?? "")}</td><td>${w.who[e.by]}</td></tr>`;
     })
     .join("\n");
 
@@ -65,12 +65,12 @@ export function toHtml(board: Board, meta: ExportMeta): string {
   const notes = open
     .map(
       (n) =>
-        `<li>❓ <strong>${esc(n.id)}</strong>${n.target ? ` (sur ${esc(n.target)})` : ""}, ${WHO[n.by]} : ${esc(n.text)}</li>`,
+        `<li>❓ <strong>${esc(n.id)}</strong>${n.target ? ` (${esc(w.on(n.target))})` : ""}, ${w.who[n.by]}${w.colon} ${esc(n.text)}</li>`,
     )
     .join("\n");
 
   return `<!doctype html>
-<html lang="fr">
+<html lang="${locale}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -80,19 +80,19 @@ export function toHtml(board: Board, meta: ExportMeta): string {
 <body>
 <main>
 <h1>${esc(board.title)}</h1>
-<p class="meta">${format ? `<strong>${esc(format.name)}</strong> — ${esc(format.purpose)}` : esc(board.format)}</p>
+<p class="meta">${format ? `<strong>${esc(format.name[locale])}</strong> — ${esc(format.purpose[locale])}` : esc(board.format)}</p>
 <div class="drawing">
-${sceneToSvg(layoutBoard(board), board.title)}
+${sceneToSvg(layoutBoard(board, locale), board.title)}
 </div>
-<h2>Éléments</h2>
+<h2>${w.elements}</h2>
 ${
   board.elements.length === 0
-    ? "<p>Aucun élément.</p>"
-    : `<table><thead><tr><th>Id</th><th>Type</th><th>Libellé</th>${where ? `<th>${where}</th>` : ""}<th>Détail</th><th>Par</th></tr></thead><tbody>\n${rows}\n</tbody></table>`
+    ? `<p>${w.noElement}</p>`
+    : `<table><thead><tr><th>Id</th><th>Type</th><th>${w.label}</th>${where ? `<th>${where}</th>` : ""}<th>${w.detail}</th><th>${w.by}</th></tr></thead><tbody>\n${rows}\n</tbody></table>`
 }
-${links ? `<h2>Liens</h2>\n<table><thead><tr><th>De</th><th>Vers</th><th>Libellé</th></tr></thead><tbody>\n${links}\n</tbody></table>` : ""}
-${notes ? `<h2>Questions ouvertes</h2>\n<ul>\n${notes}\n</ul>` : ""}
-<footer>Source : journal Vico, tableau <code>${esc(board.id)}</code>, seq ${board.changedSeq}, exporté le ${esc(meta.exportedAt.slice(0, 10))}.</footer>
+${links ? `<h2>${w.links}</h2>\n<table><thead><tr><th>${w.from}</th><th>${w.to}</th><th>${w.label}</th></tr></thead><tbody>\n${links}\n</tbody></table>` : ""}
+${notes ? `<h2>${w.openQuestions}</h2>\n<ul>\n${notes}\n</ul>` : ""}
+<footer>${w.source(`<code>${esc(board.id)}</code>`, board.changedSeq, esc(meta.exportedAt.slice(0, 10)))}</footer>
 </main>
 </body>
 </html>
@@ -107,14 +107,16 @@ export interface IndexEntry {
 }
 
 export function toIndexHtml(title: string, boards: IndexEntry[], meta: ExportMeta): string {
+  const locale = meta.locale ?? DEFAULT_LOCALE;
+  const w = WORDS[locale];
   const items = boards
     .map((b) => {
-      const name = findFormat(b.format)?.name ?? b.format;
+      const name = findFormat(b.format)?.name[locale] ?? b.format;
       return `<tr><td><a href="${esc(b.id)}.html">${esc(b.title)}</a></td><td>${esc(name)}</td><td>${b.elements}</td><td><a href="${esc(b.id)}.md">Markdown</a> · <a href="${esc(b.id)}.svg">SVG</a> · <a href="${esc(b.id)}.model.json">JSON</a></td></tr>`;
     })
     .join("\n");
   return `<!doctype html>
-<html lang="fr">
+<html lang="${locale}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -124,8 +126,8 @@ export function toIndexHtml(title: string, boards: IndexEntry[], meta: ExportMet
 <body>
 <main>
 <h1>${esc(title)}</h1>
-<p class="meta">${boards.length} tableau${boards.length > 1 ? "x" : ""}, publié${boards.length > 1 ? "s" : ""} le ${esc(meta.exportedAt.slice(0, 10))}.</p>
-<table><thead><tr><th>Tableau</th><th>Atelier</th><th>Éléments</th><th>Autres formats</th></tr></thead><tbody>
+<p class="meta">${w.published(boards.length, esc(meta.exportedAt.slice(0, 10)))}</p>
+<table><thead><tr><th>${w.board}</th><th>${w.workshop}</th><th>${w.elements}</th><th>${w.otherFormats}</th></tr></thead><tbody>
 ${items}
 </tbody></table>
 </main>

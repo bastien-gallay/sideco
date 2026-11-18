@@ -2,7 +2,9 @@
  * Columns layout: one named lane per column, elements stacked top to bottom in
  * board order. Kanban, retrospectives, any "sort these into buckets" workshop.
  */
+
 import type { Format } from "../formats.ts";
+import type { Locale } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
 import { type Band, CARD_H, CARD_W, type Card, MARGIN, type Scene, type Target } from "./scene.ts";
 
@@ -17,6 +19,7 @@ export function layoutColumns(
   board: Board,
   format: Format,
   card: (e: Element, x: number, y: number) => Card,
+  locale: Locale,
 ): Scene {
   const stacks = format.lanes.map((lane) => board.elements.filter((e) => e.lane === lane.id));
   const slots = Math.max(MIN_SLOTS, ...stacks.map((s) => s.length + 1));
@@ -30,7 +33,7 @@ export function layoutColumns(
     bands.push({
       kind: "lane",
       id: lane.id,
-      label: lane.label,
+      label: lane.label[locale],
       x,
       y: MARGIN,
       w: LANE_W,

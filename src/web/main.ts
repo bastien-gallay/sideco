@@ -7,10 +7,13 @@ import { slugify } from "../domain/commands.ts";
 import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../domain/export/index.ts";
 import { toMermaid } from "../domain/export/mermaid.ts";
 import { FORMATS, findFormat } from "../domain/formats.ts";
+import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import { findBoard, latestSession } from "../domain/workspace.ts";
 import { mountBoard } from "./board-view.ts";
 import { clock, h, region } from "./dom.ts";
+import { chooseLocale, locale, t } from "./locale.ts";
+import { MESSAGES } from "./messages.ts";
 import {
   changed,
   currentBoard,
@@ -27,13 +30,6 @@ import { agentStatus, describeEvent, handOverHint, pendingCount, recentTurns } f
 
 const TURNS_SHOWN = 4;
 const TOOLS_SHOWN = 8;
-const EXPORT_LABELS: Record<ExportFormat, string> = {
-  md: "Markdown (note de conception)",
-  html: "Page HTML autonome",
-  svg: "Image SVG",
-  mermaid: "Diagramme Mermaid",
-  json: "Modèle JSON (réimportable)",
-};
 const MIME: Record<ExportFormat, string> = {
   md: "text/markdown",
   html: "text/html",
@@ -53,12 +49,12 @@ const statusPill = h("div", { class: "status", role: "status", "aria-live": "pol
 const zoomLabel = h("span", { class: "zoom-label" }, "100 %");
 const exportMenu = h("details", { class: "menu" });
 const banner = h("div", { class: "banner", hidden: true });
-const palette = h("section", { class: "palette", "aria-label": "Éléments à ajouter" });
-const notes = h("section", { class: "notes", "aria-label": "Notes" });
+const palette = h("section", { class: "palette", "aria-label": t.palette });
+const notes = h("section", { class: "notes", "aria-label": t.notes });
 const focusBar = h("div", { class: "focus-bar", hidden: true });
 const canvas = h("div", { class: "canvas" });
 const empty = h("div", { class: "empty", hidden: true });
-const sessionPanel = h("aside", { class: "right", "aria-label": "Session Claude Code" });
+const sessionPanel = h("aside", { class: "right", "aria-label": t.sessionPanel });
 const historyLabel = h("output", { class: "history-label" });
 const historyRange = h("input", {
   type: "range",
@@ -66,11 +62,25 @@ const historyRange = h("input", {
   max: 0,
   value: 0,
   step: 1,
-  "aria-label": "Historique du tableau",
+  "aria-label": t.history,
 });
 const turnBar = h("div", { class: "turn" });
 const toast = h("div", { class: "toast", role: "alert", hidden: true });
 const dialog = h("dialog", { class: "new-board" });
+
+/** The reader's language: every language under its own name, so it is found whatever the page speaks. */
+const languagePicker = h(
+  "select",
+  {
+    class: "language",
+    "aria-label": t.language,
+    onchange: (event: Event) => {
+      const next = asLocale((event.target as HTMLSelectElement).value);
+      if (next) chooseLocale(next);
+    },
+  },
+  ...LOCALES.map((l) => h("option", { value: l, lang: l, selected: l === locale }, MESSAGES[l].languageName)),
+);
 
 const view = mountBoard(canvas);
 
@@ -84,11 +94,12 @@ app.append(
     h(
       "div",
       { class: "zoom" },
-      h("button", { type: "button", "aria-label": "Dézoomer", onclick: () => zoom(-1) }, "−"),
+      h("button", { type: "button", "aria-label": t.zoomOut, onclick: () => zoom(-1) }, "−"),
       zoomLabel,
-      h("button", { type: "button", "aria-label": "Zoomer", onclick: () => zoom(1) }, "+"),
+      h("button", { type: "button", "aria-label": t.zoomIn, onclick: () => zoom(1) }, "+"),
     ),
     exportMenu,
+    languagePicker,
   ),
   banner,
   h(
@@ -104,9 +115,9 @@ app.append(
     h(
       "div",
       { class: "history" },
-      h("button", { type: "button", "aria-label": "Événement précédent", onclick: () => step(-1) }, "◄"),
+      h("button", { type: "button", "aria-label": t.previousEvent, onclick: () => step(-1) }, "◄"),
       historyRange,
-      h("button", { type: "button", "aria-label": "Événement suivant", onclick: () => step(1) }, "►"),
+      h("button", { type: "button", "aria-label": t.nextEvent, onclick: () => step(1) }, "►"),
       historyLabel,
     ),
     turnBar,
@@ -134,22 +145,22 @@ const paintBoardPicker = region(
       h(
         "select",
         {
-          "aria-label": "Tableau affiché",
+          "aria-label": t.boardShown,
           onchange: (event: Event) => openBoard((event.target as HTMLSelectElement).value),
         },
         ...m.boards.map((b) => h("option", { value: b.id, selected: b.id === m.current }, b.title)),
       ),
-    h("button", { type: "button", class: "quiet", onclick: () => openNewBoard() }, "+ Tableau"),
+    h("button", { type: "button", class: "quiet", onclick: () => openNewBoard() }, t.newBoardButton),
   ],
 );
 
 const paintStatus = region(statusPill, (m: { tone: string; text: string; connected: boolean }) => [
   h("span", { class: `dot tone-${m.connected ? m.tone : "off"}`, "aria-hidden": "true" }),
-  h("span", { class: "status-text" }, m.connected ? m.text : "Compagnon déconnecté, reconnexion…"),
+  h("span", { class: "status-text" }, m.connected ? m.text : t.disconnected),
 ]);
 
 const paintExport = region(exportMenu, (m: { board: string | undefined }) => [
-  h("summary", {}, "Exporter"),
+  h("summary", {}, t.export),
   h(
     "div",
     { class: "menu-items" },
@@ -157,15 +168,11 @@ const paintExport = region(exportMenu, (m: { board: string | undefined }) => [
       h(
         "button",
         { type: "button", disabled: !m.board, onclick: () => exportAs(format) },
-        EXPORT_LABELS[format],
+        t.exportAs[format],
       ),
     ),
-    h(
-      "button",
-      { type: "button", disabled: !m.board, onclick: () => void copyMermaid() },
-      "Copier le Mermaid",
-    ),
-    h("p", { class: "menu-note" }, "Tout publier d'un coup : vico publish"),
+    h("button", { type: "button", disabled: !m.board, onclick: () => void copyMermaid() }, t.copyMermaid),
+    h("p", { class: "menu-note" }, t.publishAll),
   ),
 ]);
 
@@ -180,15 +187,15 @@ const paintPalette = region(palette, (m: PaletteModel) => {
   if (!format) return [];
   const how =
     format.layout === "timeline"
-      ? "Clique un type pour l'ajouter à la suite, ou double-clique dans une case."
+      ? t.howTimeline
       : format.layout === "columns"
-        ? "Clique un type, ou double-clique dans une colonne. Glisse pour déplacer."
+        ? t.howColumns
         : m.from
-          ? `Le nouvel élément sera relié à ${m.from}.`
-          : "Sélectionne un élément pour que le suivant lui soit relié.";
+          ? t.howGraphFrom(m.from)
+          : t.howGraph;
   return [
-    h("h2", {}, format.name),
-    h("p", { class: "purpose" }, format.purpose),
+    h("h2", {}, format.name[locale]),
+    h("p", { class: "purpose" }, format.purpose[locale]),
     h(
       "ul",
       { class: "types" },
@@ -202,7 +209,7 @@ const paintPalette = region(palette, (m: PaletteModel) => {
               type: "button",
               class: "type",
               disabled: !m.live,
-              title: `Ajouter : ${type.label}`,
+              title: t.add(type.label[locale]),
               onclick: () => view.beginAdd(type.id),
             },
             h(
@@ -213,8 +220,8 @@ const paintPalette = region(palette, (m: PaletteModel) => {
             h(
               "span",
               { class: "type-text" },
-              h("span", { class: "type-label" }, type.label),
-              h("span", { class: "type-hint" }, type.hint),
+              h("span", { class: "type-label" }, type.label[locale]),
+              h("span", { class: "type-hint" }, type.hint[locale]),
             ),
           ),
         ),
@@ -236,8 +243,8 @@ const paintNotes = region(notes, (m: NotesModel) => {
   const input = h("input", {
     type: "text",
     name: "note",
-    placeholder: "Une question, une remarque…",
-    "aria-label": "Nouvelle note",
+    placeholder: t.notePlaceholder,
+    "aria-label": t.newNote,
     maxlength: 1000,
   });
   const add = (event: Event): void => {
@@ -247,7 +254,7 @@ const paintNotes = region(notes, (m: NotesModel) => {
     input.value = "";
   };
   return [
-    h("h2", {}, m.notes.length > 0 ? `Notes ouvertes (${m.notes.length})` : "Notes"),
+    h("h2", {}, m.notes.length > 0 ? t.openNotes(m.notes.length) : t.notes),
     h(
       "ul",
       { class: "note-list" },
@@ -263,7 +270,7 @@ const paintNotes = region(notes, (m: NotesModel) => {
               disabled: !note.target,
               onclick: () => select(note.target),
             },
-            `${note.id}${note.target ? ` sur ${note.target}` : ""} · ${note.by === "agent" ? "Claude" : "toi"}`,
+            t.noteOrigin(note.id, note.target, note.by === "agent"),
           ),
           h("p", {}, note.text),
           m.live &&
@@ -274,7 +281,7 @@ const paintNotes = region(notes, (m: NotesModel) => {
                 class: "quiet",
                 onclick: () => void send({ kind: "resolve", board: boardId, id: note.id }),
               },
-              "Résoudre",
+              t.resolve,
             ),
         ),
       ),
@@ -284,7 +291,7 @@ const paintNotes = region(notes, (m: NotesModel) => {
         "form",
         { class: "note-form", onsubmit: add },
         input,
-        h("button", { type: "submit", class: "quiet" }, "Noter"),
+        h("button", { type: "submit", class: "quiet" }, t.addNote),
       ),
   ];
 });
@@ -292,7 +299,7 @@ const paintNotes = region(notes, (m: NotesModel) => {
 const paintFocus = region(
   focusBar,
   (m: { ids: string[]; reason?: string; live: boolean; board?: string }) => [
-    h("span", {}, h("strong", {}, `Focus : ${m.ids.join(", ")}`), m.reason ? ` — ${m.reason}` : ""),
+    h("span", {}, h("strong", {}, t.focus(m.ids.join(", "))), m.reason ? ` — ${m.reason}` : ""),
     m.live && m.board
       ? h(
           "button",
@@ -301,19 +308,15 @@ const paintFocus = region(
             class: "quiet",
             onclick: () => void send({ kind: "focus", board: m.board ?? "", ids: [] }),
           },
-          "Lever le focus",
+          t.clearFocus,
         )
       : null,
   ],
 );
 
 const paintEmpty = region(empty, (m: { live: boolean }) => [
-  h("h1", {}, "Que veux-tu modéliser ?"),
-  h(
-    "p",
-    {},
-    "Choisis un atelier, ou demande-le à Claude dans le terminal : il écrira ici pendant qu'il travaille.",
-  ),
+  h("h1", {}, t.emptyTitle),
+  h("p", {}, t.emptyHint),
   h(
     "div",
     { class: "formats" },
@@ -326,8 +329,8 @@ function formatCard(id: string, onPick: () => void, disabled = false): HTMLEleme
   return h(
     "button",
     { type: "button", class: "format", disabled, onclick: onPick },
-    h("span", { class: "format-name" }, format?.name ?? id),
-    h("span", { class: "format-purpose" }, format?.purpose ?? ""),
+    h("span", { class: "format-name" }, format?.name[locale] ?? id),
+    h("span", { class: "format-purpose" }, format?.purpose[locale] ?? ""),
     h(
       "span",
       { class: "format-swatches", "aria-hidden": "true" },
@@ -351,7 +354,7 @@ const TOOL_MARK: Record<string, string> = { ok: "✓", failed: "✗", running: "
 const TODO_MARK: Record<string, string> = { completed: "☑", in_progress: "◐", pending: "☐" };
 
 const paintSession = region(sessionPanel, (m: SessionModel) => [
-  h("h2", {}, "Session"),
+  h("h2", {}, t.session),
   h("p", { class: `session-status tone-${m.status.tone}` }, m.status.text),
   m.todos.length > 0 &&
     h(
@@ -373,11 +376,11 @@ const paintSession = region(sessionPanel, (m: SessionModel) => [
       h(
         "li",
         {},
-        h("p", { class: "prompt" }, h("time", {}, turn.at), ` ${turn.prompt || "(tour en cours)"}`),
+        h("p", { class: "prompt" }, h("time", {}, turn.at), ` ${turn.prompt || t.turnInProgress}`),
         h(
           "ul",
           { class: "tools" },
-          turn.hidden > 0 && h("li", { class: "more" }, `… ${turn.hidden} étapes avant`),
+          turn.hidden > 0 && h("li", { class: "more" }, t.earlierSteps(turn.hidden)),
           ...turn.tools.map((tool) =>
             h(
               "li",
@@ -391,12 +394,7 @@ const paintSession = region(sessionPanel, (m: SessionModel) => [
       ),
     ),
   ),
-  m.turns.length === 0 &&
-    h(
-      "p",
-      { class: "hint" },
-      "Les étapes de Claude apparaîtront ici dès qu'une session Claude Code tournera dans ce projet.",
-    ),
+  m.turns.length === 0 && h("p", { class: "hint" }, t.sessionHint),
 ]);
 
 interface TurnModel {
@@ -410,8 +408,8 @@ interface TurnModel {
 const paintTurn = region(turnBar, (m: TurnModel) => {
   const message = h("input", {
     type: "text",
-    placeholder: "Un mot pour Claude (facultatif)",
-    "aria-label": "Message pour Claude",
+    placeholder: t.messagePlaceholder,
+    "aria-label": t.messageForClaude,
     maxlength: 1000,
     disabled: !m.live || !m.board,
   });
@@ -420,28 +418,16 @@ const paintTurn = region(turnBar, (m: TurnModel) => {
     if (m.board)
       void send({ kind: "pass", board: m.board, to: "agent", message: message.value.trim() || undefined });
   };
-  const count =
-    m.pending === 0
-      ? "Claude est à jour"
-      : `${m.pending} changement${m.pending > 1 ? "s" : ""} que Claude n'a pas lu${m.pending > 1 ? "s" : ""}`;
+  const count = m.pending === 0 ? t.upToDate : t.pending(m.pending);
   return [
     m.theirs !== undefined &&
-      h(
-        "p",
-        { class: "theirs" },
-        h("strong", {}, "Claude te passe la main"),
-        m.theirs ? ` : ${m.theirs}` : "",
-      ),
+      h("p", { class: "theirs" }, h("strong", {}, t.theirTurn), m.theirs ? `${t.colon} ${m.theirs}` : ""),
     h("p", { class: "pending" }, h("strong", {}, count), ` · ${m.hint}`),
     h(
       "form",
       { class: "pass", onsubmit: pass },
       message,
-      h(
-        "button",
-        { type: "submit", class: "primary", disabled: !m.live || !m.board },
-        "Passer la main à Claude",
-      ),
+      h("button", { type: "submit", class: "primary", disabled: !m.live || !m.board }, t.handOver),
     ),
   ];
 });
@@ -457,7 +443,7 @@ function select(id: string | undefined): void {
 function exportAs(format: ExportFormat): void {
   const board = currentBoard();
   if (!board) return;
-  const text = exportBoard(board, format, { exportedAt: new Date().toISOString() });
+  const text = exportBoard(board, format, { exportedAt: new Date().toISOString(), locale });
   const url = URL.createObjectURL(new Blob([text], { type: MIME[format] }));
   const link = h("a", { href: url, download: `${board.id}.${EXTENSION[format]}` });
   document.body.append(link);
@@ -471,10 +457,10 @@ async function copyMermaid(): Promise<void> {
   const board = currentBoard();
   if (!board) return;
   try {
-    await navigator.clipboard.writeText(toMermaid(board));
-    say("Mermaid copié dans le presse-papiers.");
+    await navigator.clipboard.writeText(toMermaid(board, locale));
+    say(t.mermaidCopied);
   } catch {
-    say("Le navigateur a refusé l'accès au presse-papiers ; utilise l'export Mermaid.");
+    say(t.clipboardRefused);
   }
   exportMenu.open = false;
 }
@@ -497,16 +483,16 @@ function openNewBoard(formatId = "event-storming"): void {
     name: "title",
     required: true,
     maxlength: 120,
-    placeholder: "Passage de commande",
-    "aria-label": "Titre du tableau",
+    placeholder: t.titleExample,
+    "aria-label": t.boardTitle,
   });
   const choices = FORMATS.map((format) =>
     h(
       "label",
       { class: "format choice" },
       h("input", { type: "radio", name: "format", value: format.id, checked: format.id === formatId }),
-      h("span", { class: "format-name" }, format.name),
-      h("span", { class: "format-purpose" }, format.purpose),
+      h("span", { class: "format-name" }, format.name[locale]),
+      h("span", { class: "format-purpose" }, format.purpose[locale]),
     ),
   );
   const create = async (event: Event): Promise<void> => {
@@ -524,14 +510,14 @@ function openNewBoard(formatId = "event-storming"): void {
     h(
       "form",
       { onsubmit: (event: Event) => void create(event) },
-      h("h2", {}, "Nouveau tableau"),
-      h("label", { class: "field" }, "Titre", title),
-      h("fieldset", {}, h("legend", {}, "Atelier"), ...choices),
+      h("h2", {}, t.newBoard),
+      h("label", { class: "field" }, t.title, title),
+      h("fieldset", {}, h("legend", {}, t.workshop), ...choices),
       h(
         "div",
         { class: "actions" },
-        h("button", { type: "button", class: "quiet", onclick: () => dialog.close() }, "Annuler"),
-        h("button", { type: "submit", class: "primary" }, "Créer"),
+        h("button", { type: "button", class: "quiet", onclick: () => dialog.close() }, t.cancel),
+        h("button", { type: "submit", class: "primary" }, t.create),
       ),
     ),
   );
@@ -559,7 +545,7 @@ function render(): void {
   const max = state.live.seq;
 
   paintBoardPicker({ boards: ws.boards.map((b) => ({ id: b.id, title: b.title })), current: board?.id });
-  paintStatus({ ...agentStatus(session, live ? state.listening : 0), connected: state.connected });
+  paintStatus({ ...agentStatus(session, live ? state.listening : 0, locale), connected: state.connected });
   paintExport({ board: board?.id });
   paintPalette({
     format: board?.format,
@@ -583,7 +569,7 @@ function render(): void {
   view.paint(board);
 
   paintSession({
-    status: agentStatus(session, live ? state.listening : 0),
+    status: agentStatus(session, live ? state.listening : 0, locale),
     todos: (session?.todos ?? []).map((t) => ({ text: t.text, status: t.status })),
     turns: recentTurns(session, TURNS_SHOWN).map((turn) => ({
       at: clock(turn.startedAt),
@@ -600,16 +586,16 @@ function render(): void {
   if (document.activeElement !== historyRange || live) historyRange.value = String(state.cursor ?? max);
   const at = state.cursor === null ? undefined : state.events.find((e) => e.seq === state.cursor);
   historyLabel.textContent = live
-    ? `En direct · ${max} événement${max > 1 ? "s" : ""}`
+    ? t.live(max)
     : state.cursor === 0
-      ? "Avant le premier événement"
-      : `${state.cursor} / ${max}${at ? ` · ${clock(at.ts)} · ${describeEvent(at)}` : ""}`;
+      ? t.beforeFirst
+      : `${state.cursor} / ${max}${at ? ` · ${clock(at.ts)} · ${describeEvent(at, locale)}` : ""}`;
 
   banner.hidden = live;
   if (!live && banner.childElementCount === 0) {
     banner.append(
-      h("span", {}, "Tu regardes le passé : le tableau est en lecture seule."),
-      h("button", { type: "button", class: "primary", onclick: () => travelTo(null) }, "Revenir au direct"),
+      h("span", {}, t.past),
+      h("button", { type: "button", class: "primary", onclick: () => travelTo(null) }, t.backToLive),
     );
   }
 
@@ -618,7 +604,7 @@ function render(): void {
     board: board?.id,
     live,
     pending: pendingCount(state.events, liveSession),
-    hint: handOverHint(liveSession?.status, state.listening),
+    hint: handOverHint(liveSession?.status, state.listening, locale),
     theirs: turn?.to === "human" ? (turn.message ?? "") : undefined,
   });
 

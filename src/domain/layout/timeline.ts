@@ -3,7 +3,9 @@
  * Columns are numbered from 1. Elements sharing a cell stack in board order. A
  * spare column stays open on the right so the timeline can always be extended.
  */
+
 import type { Format } from "../formats.ts";
+import type { Locale } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
 import { lastColumn } from "../workspace.ts";
 import { type Band, CARD_H, CARD_W, type Card, MARGIN, type Scene, type Target } from "./scene.ts";
@@ -48,6 +50,7 @@ export function layoutTimeline(
   board: Board,
   format: Format,
   card: (e: Element, x: number, y: number) => Card,
+  locale: Locale,
 ): Scene {
   const grid = timelineGrid(board, format);
   const width = HEADER_W + grid.columns * COL_W + MARGIN;
@@ -70,7 +73,7 @@ export function layoutTimeline(
     bands.push({
       kind: "row",
       id: row.type,
-      label: type?.label ?? row.type,
+      label: type?.label[locale] ?? row.type,
       x: 0,
       y: row.y,
       w: width,

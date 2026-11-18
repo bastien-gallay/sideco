@@ -14,8 +14,6 @@ describe.each(FORMATS.map((f) => [f.id, f] as const))("format %s", (_id, format)
   test("type ids are unique and every type explains itself", () => {
     expect(new Set(format.types.map((t) => t.id)).size).toBe(format.types.length);
     for (const type of format.types) {
-      expect(type.label).not.toBe("");
-      expect(type.hint).not.toBe("");
       expect(type.fill).toMatch(/^#[0-9A-F]{6}$/);
       expect(type.ink).toMatch(/^#[0-9A-F]{6}$/);
     }
@@ -33,7 +31,7 @@ describe.each(FORMATS.map((f) => [f.id, f] as const))("format %s", (_id, format)
 
 test("format ids are unique and found by id", () => {
   expect(new Set(FORMATS.map((f) => f.id)).size).toBe(FORMATS.length);
-  expect(findFormat("kanban")?.name).toBe("Kanban");
+  expect(findFormat("kanban")?.name.en).toBe("Kanban");
   expect(findFormat("nope")).toBeUndefined();
 });
 

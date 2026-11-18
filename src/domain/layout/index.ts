@@ -3,6 +3,7 @@
  * place that knows there are several.
  */
 import { type Format, findFormat, findType } from "../formats.ts";
+import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
 import { layoutColumns, locateInColumns } from "./columns.ts";
 import { layoutGraph, NODE_LINES } from "./graph.ts";
@@ -21,14 +22,17 @@ import { layoutTimeline, locateInTimeline } from "./timeline.ts";
 
 const EMPTY: Scene = { width: 0, height: 0, bands: [], cards: [], connectors: [] };
 
-export function layoutBoard(board: Board): Scene {
+/** The board as geometry and text. `locale` is the reader's language: it names lanes, rows and tooltips. */
+export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE): Scene {
   const format = findFormat(board.format);
   if (!format) return EMPTY;
-  const card = cardMaker(board, format);
+  const card = cardMaker(board, format, locale);
   if (format.layout === "graph") return layoutGraph(board, card);
 
   const scene =
-    format.layout === "timeline" ? layoutTimeline(board, format, card) : layoutColumns(board, format, card);
+    format.layout === "timeline"
+      ? layoutTimeline(board, format, card, locale)
+      : layoutColumns(board, format, card, locale);
   const byId = new Map(scene.cards.map((c) => [c.id, c]));
   for (const edge of board.edges) {
     const a = byId.get(edge.src);
@@ -46,7 +50,7 @@ export function locate(board: Board, x: number, y: number, moving?: string): Tar
   return { kind: "none" };
 }
 
-function cardMaker(board: Board, format: Format): (e: Element, x: number, y: number) => Card {
+function cardMaker(board: Board, format: Format, locale: Locale): (e: Element, x: number, y: number) => Card {
   const openNotes = new Map<string, number>();
   for (const note of board.notes) {
     if (note.target && !note.resolved) openNotes.set(note.target, (openNotes.get(note.target) ?? 0) + 1);
@@ -64,7 +68,7 @@ function cardMaker(board: Board, format: Format): (e: Element, x: number, y: num
       fill: type?.fill ?? "#E8EEF4",
       ink: type?.ink ?? "#1F2328",
       shape: type?.shape ?? "box",
-      typeLabel: type?.label ?? e.type,
+      tip: `${e.id} · ${type?.label[locale] ?? e.type} · ${WORDS[locale].addedBy[e.by]}`,
       by: e.by,
       hasDetail: Boolean(e.detail),
       notes: openNotes.get(e.id) ?? 0,

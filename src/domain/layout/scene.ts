@@ -16,7 +16,8 @@ export interface Card {
   fill: string;
   ink: string;
   shape: Shape;
-  typeLabel: string;
+  /** The tooltip: id, type and who added it, in the reader's language. */
+  tip: string;
   by: Actor;
   hasDetail: boolean;
   /** Open notes pinned to this card. */

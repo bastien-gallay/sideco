@@ -4,12 +4,13 @@
  * a leading `%% lossy:` comment instead of dropping it silently.
  */
 import { type Format, findFormat } from "../formats.ts";
+import { DEFAULT_LOCALE, type Locale } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
 
-export function toMermaid(board: Board): string {
+export function toMermaid(board: Board, locale: Locale = DEFAULT_LOCALE): string {
   const format = findFormat(board.format);
   if (!format) return "flowchart TD";
-  if (format.layout === "columns") return kanban(board, format);
+  if (format.layout === "columns") return kanban(board, format, locale);
   return flowchart(board, format);
 }
 
@@ -49,12 +50,12 @@ function node(e: Element, format: Format): string {
   return `${e.id}[${label}]`;
 }
 
-function kanban(board: Board, format: Format): string {
+function kanban(board: Board, format: Format, locale: Locale): string {
   const lines: string[] = [];
   if (board.edges.length > 0) lines.push("%% lossy: links between cards are not kept");
   lines.push("kanban");
   for (const lane of format.lanes) {
-    lines.push(`  ${lane.id}[${plain(lane.label)}]`);
+    lines.push(`  ${lane.id}[${plain(lane.label[locale])}]`);
     for (const e of board.elements)
       if (e.lane === lane.id) lines.push(`    ${e.id}[${plain(`${e.id} ${e.label}`)}]`);
   }

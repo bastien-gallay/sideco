@@ -4,37 +4,44 @@
  * No DOM here, so the wording is tested like any other rule.
  */
 import { describeChanges } from "../domain/digest.ts";
-import type { Actor, Recorded } from "../domain/events.ts";
+import type { Recorded } from "../domain/events.ts";
+import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
 import type { AgentStatus, Session, SessionTurn } from "../domain/workspace.ts";
+import { MESSAGES } from "./messages.ts";
 
 export type Tone = "off" | "idle" | "busy" | "waiting" | "listening";
 
-export function agentStatus(session: Session | undefined, listening: number): { tone: Tone; text: string } {
-  if (listening > 0) return { tone: "listening", text: "Claude attend que tu lui passes la main" };
-  if (!session) return { tone: "off", text: "Aucune session Claude Code reliée" };
+export function agentStatus(
+  session: Session | undefined,
+  listening: number,
+  locale: Locale = DEFAULT_LOCALE,
+): { tone: Tone; text: string } {
+  const m = MESSAGES[locale];
+  if (listening > 0) return { tone: "listening", text: m.listening };
+  if (!session) return { tone: "off", text: m.noSession };
   switch (session.status) {
     case "idle":
-      return { tone: "idle", text: "Claude est au repos" };
+      return { tone: "idle", text: m.idle };
     case "thinking":
-      return { tone: "busy", text: "Claude réfléchit" };
+      return { tone: "busy", text: m.thinking };
     case "running":
-      return { tone: "busy", text: `Claude exécute ${session.statusDetail ?? "un outil"}` };
+      return { tone: "busy", text: m.running(session.statusDetail) };
     case "waiting":
-      return {
-        tone: "waiting",
-        text: `Claude t'attend dans le terminal : ${session.statusDetail ?? ""}`.trim(),
-      };
+      return { tone: "waiting", text: m.waitingInTerminal(session.statusDetail ?? "") };
   }
 }
 
 /** The honest answer to "when will Claude see what I just did?". */
-export function handOverHint(status: AgentStatus | undefined, listening: number): string {
-  if (listening > 0) return "Claude reprend dès que tu lui passes la main.";
-  if (status === undefined)
-    return "Aucune session reliée : Claude lira tes changements quand une session démarrera ici.";
-  if (status === "running" || status === "thinking")
-    return "Claude travaille : il lira tes changements après son action en cours.";
-  return "Claude est au repos : il lira tes changements à ton prochain message dans le terminal.";
+export function handOverHint(
+  status: AgentStatus | undefined,
+  listening: number,
+  locale: Locale = DEFAULT_LOCALE,
+): string {
+  const m = MESSAGES[locale];
+  if (listening > 0) return m.hintListening;
+  if (status === undefined) return m.hintNoSession;
+  if (status === "running" || status === "thinking") return m.hintWorking;
+  return m.hintIdle;
 }
 
 /** The number of lines the agent would be told now: the same digest it will read. */
@@ -48,16 +55,78 @@ export function recentTurns(session: Session | undefined, max: number): SessionT
 
 const MAX_LINE = 90;
 
-export function describeEvent(e: Recorded): string {
-  const who = WHO[e.actor];
-  const you = e.actor === "human";
-  const verb = (second: string, third: string): string => `${who} ${you ? second : third}`;
-  return clip(wording(e, verb, you));
+/** One line of history, in the reader's language. */
+export function describeEvent(e: Recorded, locale: Locale = DEFAULT_LOCALE): string {
+  return clip(WORDING[locale](e));
 }
 
-const WHO: Record<Actor, string> = { human: "Tu", agent: "Claude", system: "Vico" };
+const WORDING: Record<Locale, (e: Recorded) => string> = { en: english, fr: french };
 
-function wording(e: Recorded, verb: (second: string, third: string) => string, you: boolean): string {
+function english(e: Recorded): string {
+  const you = e.actor === "human";
+  const who = { human: "You", agent: "Claude", system: "Vico" }[e.actor];
+  /** `You add`, `Claude adds`. */
+  const does = (verb: string, third = `${verb}s`): string => `${who} ${you ? verb : third}`;
+  switch (e.event) {
+    case "BoardCreated":
+      return `${does("create")} the board “${e.title}”`;
+    case "BoardRetitled":
+      return `${does("rename")} the board to “${e.title}”`;
+    case "BoardRemoved":
+      return `${does("remove")} the board “${e.title}”`;
+    case "ElementAdded":
+      return `${does("add")} ${e.id} “${e.label}”`;
+    case "ElementRenamed":
+      return `${does("rename")} ${e.id} to “${e.label}”`;
+    case "ElementAnnotated":
+      return `${does("detail")} ${e.id}`;
+    case "ElementMoved":
+      return `${does("move")} ${e.id}`;
+    case "ElementRemoved":
+      return `${does("remove")} ${e.id}`;
+    case "ColumnInserted":
+      return `${does("insert")} a column at ${e.at}`;
+    case "EdgeAdded":
+      return `${does("link")} ${e.src} → ${e.dst}`;
+    case "EdgeRemoved":
+      return `${does("remove")} the link ${e.src} → ${e.dst}`;
+    case "FocusSet":
+      return `${does("put")} the focus on ${e.ids.join(", ")}${e.reason ? `: ${e.reason}` : ""}`;
+    case "FocusCleared":
+      return `${does("clear")} the focus`;
+    case "NoteAdded":
+      return `${does("note")}${e.target ? ` on ${e.target}` : ""}: ${e.text}`;
+    case "NoteResolved":
+      return `${does("resolve")} the note ${e.id}`;
+    case "TurnPassed": {
+      const message = e.message ? `: ${e.message}` : "";
+      if (e.to === "agent") return `${does("hand")} over to Claude${message}`;
+      return you ? `You keep the turn${message}` : `Claude hands over to you${message}`;
+    }
+    case "SessionStarted":
+      return "Session started";
+    case "PromptSubmitted":
+      return `Prompt: ${e.text}`;
+    case "ToolStarted":
+      return `Claude runs ${e.tool} ${e.summary}`.trim();
+    case "ToolFinished":
+      return e.ok ? "Tool finished" : "Tool failed";
+    case "TodosUpdated":
+      return "Claude updates its tasks";
+    case "AgentNotified":
+      return `Claude is waiting for you: ${e.message}`;
+    case "TurnEnded":
+      return "Claude ended its turn";
+    case "ChangesDelivered":
+      return "Claude read your changes";
+  }
+}
+
+function french(e: Recorded): string {
+  const you = e.actor === "human";
+  const who = { human: "Tu", agent: "Claude", system: "Vico" }[e.actor];
+  /** `Tu ajoutes`, `Claude ajoute`. */
+  const verb = (second: string, third: string): string => `${who} ${you ? second : third}`;
   switch (e.event) {
     case "BoardCreated":
       return `${verb("crées", "crée")} le tableau « ${e.title} »`;

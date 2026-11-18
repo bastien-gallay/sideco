@@ -12,6 +12,7 @@ import { toIndexHtml } from "../domain/export/html.ts";
 import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.ts";
 import { fromModel } from "../domain/export/model.ts";
 import { FORMATS } from "../domain/formats.ts";
+import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale, WORDS } from "../domain/i18n.ts";
 import { type Board, findBoard, latestSession, replay, type Workspace } from "../domain/workspace.ts";
 import { openJournal } from "../server/journal.ts";
 import { DEFAULT_PORT, dataDir, start } from "../server/start.ts";
@@ -45,7 +46,7 @@ const HELP = `vico — a visual companion for Claude Code
 
   vico open                         start the companion if needed and show the page (a page already open is left alone)
   vico url                          print its address
-  vico serve [--port N]             run it in the foreground
+  vico serve [--port N] [--lang L]  run it in the foreground
   vico stop                         stop the companion; the journal stays
   vico init                         create a workspace (.vico/) here
   vico status                       boards, sessions, server
@@ -71,11 +72,14 @@ Work with the human
   vico wait [--timeout SECONDS]     block until the human hands it back, then print their changes
 
 Share
-  vico export [BOARD] --format md|html|svg|mermaid|json [-o FILE]
+  vico export [BOARD] --format md|html|svg|mermaid|json [-o FILE] [--lang L]
   vico import FILE [--id ID]        a model.json (faceto files load as they are)
-  vico publish [--out DIR]          every board as a static site
+  vico publish [--out DIR] [--lang L]  every board as a static site
 
 Options: --as human|agent   --session ID   --board ID
+
+Language: this terminal speaks English. The page and the exports are in English too,
+or in French with --lang fr or VICO_LANG=fr; in the page, each reader picks their own.
 `;
 
 /** Every verb that is not a board command; with `BOARD_VERBS`, the whole CLI. */
@@ -266,6 +270,19 @@ function setting(name: string): string | undefined {
   return process.env[name] || undefined;
 }
 
+/**
+ * The language of what a human will read (an export, the page a companion
+ * opens in): `--lang`, else `$VICO_LANG`, else English. What the agent reads
+ * on this terminal stays English.
+ */
+function language(args: Args): Locale {
+  const asked = args.flags.get("lang");
+  if (asked === undefined) return asLocale(setting("VICO_LANG")) ?? DEFAULT_LOCALE;
+  const locale = asLocale(asked);
+  if (!locale) throw new UsageError(`--lang is one of: ${LOCALES.join(", ")}`);
+  return locale;
+}
+
 const GLOBAL_FLAGS = new Set(["--as", "--session"]);
 
 /** True for `--as`/`--session` and their values, which are not part of the command itself. */
@@ -315,7 +332,7 @@ async function hook(rewake: boolean): Promise<number> {
 async function serveForeground(given: string, args: Args): Promise<number> {
   const root = initRoot(given);
   const port = Number(args.flags.get("port") ?? setting("VICO_PORT") ?? DEFAULT_PORT);
-  const running = await start(root, port, openBrowser);
+  const running = await start(root, port, { show: openBrowser, locale: language(args) });
   console.log(`vico is serving ${root}\n  ${running.url}`);
   const stop = (): void => {
     running.stop();
@@ -340,8 +357,8 @@ function formatsText(): string {
         : f.layout === "columns"
           ? `place with --lane ${f.lanes.map((l) => l.id).join("|")}`
           : "placed by their links (--from ID)";
-    const types = f.types.map((t) => `    ${t.id.padEnd(10)} ${t.prefix}  ${t.hint}`).join("\n");
-    return `${f.id} — ${f.name}: ${f.purpose}\n  ${place}\n${types}`;
+    const types = f.types.map((t) => `    ${t.id.padEnd(10)} ${t.prefix}  ${t.hint.en}`).join("\n");
+    return `${f.id} — ${f.name.en}: ${f.purpose.en}\n  ${place}\n${types}`;
   }).join("\n\n");
 }
 
@@ -375,7 +392,7 @@ function exportOne(ws: Workspace, args: Args): number {
   const board = chooseBoard(ws, args.positional[0] ?? args.flags.get("board"));
   const format = EXPORT_FORMATS.find((f) => f === (args.flags.get("format") ?? "md"));
   if (!format) throw new UsageError(`--format is one of: ${EXPORT_FORMATS.join(", ")}`);
-  const text = exportBoard(board, format, { exportedAt: new Date().toISOString() });
+  const text = exportBoard(board, format, { exportedAt: new Date().toISOString(), locale: language(args) });
   const out = args.flags.get("out");
   if (out) {
     writeFileSync(out, text);
@@ -388,7 +405,8 @@ function exportOne(ws: Workspace, args: Args): number {
 
 async function publish(root: string, ws: Workspace, args: Args): Promise<number> {
   const out = resolve(args.flags.get("out") ?? join(dataDir(root), "site"));
-  const meta = { exportedAt: new Date().toISOString() };
+  const locale = language(args);
+  const meta = { exportedAt: new Date().toISOString(), locale };
   mkdirSync(out, { recursive: true });
   for (const board of ws.boards) {
     for (const format of EXPORT_FORMATS) {
@@ -402,7 +420,7 @@ async function publish(root: string, ws: Workspace, args: Args): Promise<number>
     format: b.format,
     elements: b.elements.length,
   }));
-  writeFileSync(join(out, "index.html"), toIndexHtml("Tableaux Vico", entries, meta));
+  writeFileSync(join(out, "index.html"), toIndexHtml(WORDS[locale].site, entries, meta));
   // Publishing only writes files; a companion out of reach just leaves the address unsaid.
   const server =
     out === join(dataDir(root), "site") ? await findServer(root).catch(() => undefined) : undefined;
