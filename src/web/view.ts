@@ -466,3 +466,15 @@ export function addOffers(board: Board, target: Target, locale: Locale = DEFAULT
       : [],
   );
 }
+
+/** A label as it is kept: on one line, single-spaced. */
+export const oneLine = (text: string): string => text.replace(/\s+/g, " ").trim();
+
+/** A detail or a note as it is kept: its lines, each single-spaced, with no more than one empty line in a row. */
+export const keptLines = (text: string): string =>
+  text
+    .split("\n")
+    .map(oneLine)
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();

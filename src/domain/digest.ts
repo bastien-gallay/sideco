@@ -27,7 +27,7 @@ export function describeBoard(board: Board): string {
   const show = (id: string): string => {
     const e = findElement(board, id);
     if (!e) return id;
-    return `  ${e.id} ${e.type} ${quote(e.label)}${e.done ? " ✓ done" : ""}${e.detail ? ` — ${e.detail}` : ""}`;
+    return `  ${e.id} ${e.type} ${quote(e.label)}${e.done ? " ✓ done" : ""}${e.detail ? ` — ${under(e.detail)}` : ""}`;
   };
 
   if (board.elements.length === 0) lines.push("(empty)");
@@ -364,7 +364,7 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
     case "moved":
       return movedLine(ws, boardId, change.id, change.from);
     case "annotated":
-      return `~ ${change.id} detail: ${change.detail || "(cleared)"}`;
+      return `~ ${change.id} detail: ${under(change.detail) || "(cleared)"}`;
     case "marked":
       return `~ ${change.id} ${change.done ? "marked done" : "no longer done"}`;
     case "removed":
@@ -468,6 +468,11 @@ function render({ ws, gone, passed, words }: Net, told: { board: string; line: s
   if (passed)
     lines.push(message ? `The human passed you the turn: ${message}` : "The human passed you the turn.");
   return lines.join("\n");
+}
+
+/** A text of several lines, its later lines set under the line that carries it. */
+function under(text: string): string {
+  return text.replace(/\n/g, "\n      ");
 }
 
 function quote(text: string): string {

@@ -90,3 +90,11 @@ describe("marking a card done", () => {
     expect(findElement(back.board(), "T2")?.done).toBeUndefined();
   });
 });
+
+describe("a detail kept on several lines", () => {
+  test("the agent reads it under its card", () => {
+    const t = table(KANBAN);
+    t.do({ kind: "annotate", board: "sprint", id: "T1", detail: "une ligne\nune autre" });
+    expect(describeBoard(t.board())).toContain("— une ligne\n      une autre");
+  });
+});

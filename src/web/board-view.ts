@@ -11,7 +11,7 @@ import type { Board } from "../domain/workspace.ts";
 import { h, svg } from "./dom.ts";
 import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
-import { addOffers } from "./view.ts";
+import { addOffers, keptLines, oneLine } from "./view.ts";
 
 const DRAG_THRESHOLD = 4;
 const ZOOMS = [0.5, 0.67, 0.8, 1, 1.25, 1.5];
@@ -20,6 +20,8 @@ interface Editing {
   /** The text the editor opened with, as it would be saved: leaving it as it was saves nothing. */
   initial: string;
   commit(value: string): void;
+  /** How the words are kept: on one line for a label, line by line for a detail. */
+  tidy(text: string): string;
 }
 
 /**
@@ -27,9 +29,6 @@ interface Editing {
  * corner the note count leaves free, with its words for a pointer resting on it.
  */
 const UNREAD_MARK = `<g class="card-unread"><title>${esc(t.unread)}</title><circle cx="2" cy="2" r="5"/></g>`;
-
-/** A label or a detail as it is kept: on one line, single-spaced. */
-const tidy = (text: string): string => text.replace(/\s+/g, " ").trim();
 
 export interface BoardView {
   /** `unread` lists the cards that carry a change Claude has not read. */
@@ -267,6 +266,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     placeholder: string,
     colours: { fill: string; ink: string },
     commit: (value: string) => void,
+    tidy: (text: string) => string = oneLine,
   ): void {
     const frame = host.getBoundingClientRect();
     editor.value = value;
@@ -278,7 +278,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     editor.style.background = colours.fill;
     editor.style.color = colours.ink;
     editor.hidden = false;
-    editing = { initial: tidy(value), commit };
+    editing = { initial: tidy(value), commit, tidy };
     tools.hidden = true;
     paintOffers();
     editor.focus();
@@ -290,7 +290,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     if (!current) return;
     editing = undefined;
     editor.hidden = true;
-    const value = tidy(editor.value);
+    const value = current.tidy(editor.value);
     if (save && value !== "" && value !== current.initial) current.commit(value);
     changed();
   }
@@ -338,6 +338,7 @@ export function mountBoard(host: HTMLElement): BoardView {
       (detail) => {
         void send({ kind: "annotate", board: boardId, id, detail });
       },
+      keptLines,
     );
   }
 
@@ -347,9 +348,16 @@ export function mountBoard(host: HTMLElement): BoardView {
     const boardId = board.id;
     const box = node.g.getBoundingClientRect();
     const below = new DOMRect(box.left, box.bottom + 6, 260, 96);
-    openEditor(below, "", t.noteOnPlaceholder(id), { fill: "var(--surface)", ink: "var(--ink)" }, (text) => {
-      void send({ kind: "note", board: boardId, text, target: id });
-    });
+    openEditor(
+      below,
+      "",
+      t.noteOnPlaceholder(id),
+      { fill: "var(--surface)", ink: "var(--ink)" },
+      (text) => {
+        void send({ kind: "note", board: boardId, text, target: id });
+      },
+      keptLines,
+    );
   }
 
   function beginLink(id: string): void {

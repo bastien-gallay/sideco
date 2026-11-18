@@ -1028,6 +1028,23 @@ describe("reopening a card without changing it", () => {
     expect((await workspace()).seq).toBe(before);
     expect((await elementOf("ajout-case", "E1"))?.detail).toBe(detail);
   });
+
+  test("a detail typed on several lines keeps its lines", async () => {
+    const editor = page.locator("textarea.card-editor");
+    await card("E1").click();
+    await page.locator(".card-tools button", { hasText: "Detail" }).click();
+    await editor.waitFor({ state: "visible" });
+    await editor.fill("Première  ligne");
+    await editor.press("Shift+Enter");
+    await editor.pressSequentially("seconde ligne");
+    await editor.press("Enter");
+    await editor.waitFor({ state: "hidden" });
+    await until(
+      "the detail is kept line by line",
+      async () => (await elementOf("ajout-case", "E1"))?.detail === "Première ligne\nseconde ligne",
+    );
+    await page.keyboard.press("Escape");
+  });
 });
 
 describe("tidying up", () => {

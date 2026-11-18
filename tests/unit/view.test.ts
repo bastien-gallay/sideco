@@ -14,6 +14,8 @@ import {
   historyStep,
   historyStopAt,
   historyStops,
+  keptLines,
+  oneLine,
   pendingChanges,
   recentTurns,
   redoTarget,
@@ -590,5 +592,17 @@ describe("addOffers: a + in the free room under the pointer, one per kind of car
   test("nothing is offered off the board, nor on a flow", () => {
     expect(addOffers(table(KANBAN).board(), { kind: "none" })).toEqual([]);
     expect(addOffers(table(FLOW).board(), { kind: "cell", col: 1, type: "step" })).toEqual([]);
+  });
+});
+
+describe("what is typed on a card is kept tidy", () => {
+  test("a label is kept on one line, single-spaced", () => {
+    expect(oneLine("  Commande \n  passée  ")).toBe("Commande passée");
+  });
+
+  test("a detail keeps its lines: each one single-spaced, and no more than one empty line in a row", () => {
+    expect(keptLines("  - un  point \n- un autre\n\n\n\nFin  \n")).toBe("- un point\n- un autre\n\nFin");
+    expect(keptLines("une seule   ligne")).toBe("une seule ligne");
+    expect(keptLines(" \n \n")).toBe("");
   });
 });
