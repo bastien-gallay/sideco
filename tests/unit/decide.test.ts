@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { CommandError } from "../../src/domain/commands.ts";
 import { threads } from "../../src/domain/workspace.ts";
-import { FLOW, KANBAN, ORDERING, table } from "../support.ts";
+import { FLOW, KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 describe("boards", () => {
   test("a board is created once; a second creation with the same id is refused", () => {
@@ -308,5 +308,47 @@ describe("a command that changes nothing leaves no trace", () => {
     const trail = t.board().trails.human?.undo.length;
     t.do({ kind: "rename", board: "commande", id: "E1", label: "Commande validée" }, "human");
     expect(t.board().trails.human?.undo.length).toBe(trail);
+  });
+});
+
+describe("ordering the cards of one cell of a timeline", () => {
+  const STORIES = `
+board new "Carte" --format story-map --id carte
+add story "Première" --col 1
+add story "Deuxième" --col 1
+add story "Troisième" --col 1
+add story "Ailleurs" --col 2
+add task "Une tâche" --col 1
+`;
+  const cell = (t: Table, col: number): string[] =>
+    t
+      .board()
+      .elements.filter((e) => e.type === "story" && e.col === col)
+      .map((e) => e.id);
+
+  test("`move ID --before ID` places a card before another one of its cell, without naming the column", () => {
+    const t = table(STORIES).script("move S3 --before S1");
+    expect(cell(t, 1)).toEqual(["S3", "S1", "S2"]);
+    expect(t.events.at(-1)).toMatchObject({ event: "ElementMoved", id: "S3", col: 1, before: "S1" });
+  });
+
+  test("with a column, the card changes column and takes its place there", () => {
+    const t = table(STORIES).script("move S4 --col 1 --before S2");
+    expect(cell(t, 1)).toEqual(["S1", "S4", "S2", "S3"]);
+    expect(cell(t, 2)).toEqual([]);
+  });
+
+  test("the card named must share the cell: same column, same row", () => {
+    const t = table(STORIES);
+    expect(() => t.script("move S1 --col 1 --before S4")).toThrow("S4 is not in column 1");
+    expect(() => t.script("move S1 --before T1")).toThrow("T1 is not a story");
+    expect(() => t.script("move S1 --before S1")).toThrow("cannot be placed before itself");
+    expect(() => t.script("move S1 --before S9")).toThrow("S9");
+  });
+
+  test("undo puts the card back where it was", () => {
+    const t = table(STORIES).script("move S3 --before S1", "human");
+    t.do({ kind: "undo", board: "carte" }, "human");
+    expect(cell(t, 1)).toEqual(["S1", "S2", "S3"]);
   });
 });

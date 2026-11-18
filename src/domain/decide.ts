@@ -206,9 +206,7 @@ function move(board: Board, format: Format, cmd: Extract<Command, { kind: "move"
   switch (format.layout) {
     case "timeline":
       refuse(cmd.lane, "lane", format, "elements move between columns");
-      refuse(cmd.before, "before", format, "elements move between columns");
-      if (cmd.col === undefined) throw new CommandError(`moving ${el.id} needs a column`);
-      return { event: "ElementMoved", board: board.id, id: el.id, col: cmd.col, lane: el.lane };
+      return moveInTimeline(board, el, cmd);
     case "columns": {
       refuse(cmd.col, "col", format, "elements move between lanes");
       const lane = requireLane(format, cmd.lane ?? el.lane);
@@ -307,4 +305,20 @@ function decideOnSession(ws: Workspace, cmd: SessionCommand, ctx: Context): Vico
     case "delivered":
       return [{ event: "ChangesDelivered", upTo: cmd.upTo }];
   }
+}
+
+/**
+ * To a column, last in its cell; or before a card of that cell, which says the
+ * column when none is named. A cell is a column and a row: the cards of one type.
+ */
+function moveInTimeline(board: Board, el: Element, cmd: Extract<Command, { kind: "move" }>): BoardEvent {
+  const anchor = cmd.before === undefined ? undefined : requireElement(board, cmd.before);
+  const col = cmd.col ?? anchor?.col;
+  if (col === undefined) throw new CommandError(`moving ${el.id} needs a column`);
+  if (anchor) {
+    if (anchor.id === el.id) throw new CommandError(`${el.id} cannot be placed before itself`);
+    if (anchor.type !== el.type) throw new CommandError(`${anchor.id} is not a ${el.type}, like ${el.id}`);
+    if (anchor.col !== col) throw new CommandError(`${anchor.id} is not in column ${col}`);
+  }
+  return { event: "ElementMoved", board: board.id, id: el.id, col, lane: el.lane, before: anchor?.id };
 }

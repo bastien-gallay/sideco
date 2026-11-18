@@ -60,7 +60,7 @@ Model (BOARD defaults to the only board, or --board ID, or $VICO_BOARD)
   vico show [BOARD]                 a board as text
   vico add TYPE "Label" [--col N | --lane L] [--id E1] [--from ID [--edge "label"]] [--detail "…"]
   vico rename ID "Label"            vico detail ID "Text"
-  vico move ID --col N | --lane L [--before ID]
+  vico move ID --col N | --lane L [--before ID]   (--before alone: before that card, in its cell)
   vico done ID                      vico undone ID
   vico rm ID                        vico insert-col N
   vico link SRC DST ["label"]       vico unlink SRC DST

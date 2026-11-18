@@ -108,7 +108,7 @@ vico board new "Title" [--format F] [--id ID]
 vico board rm ID                  (removes the board; its history stays)
 vico add TYPE "Label" [--col N | --lane L] [--from ID [--edge "label"]] [--detail "…"]
 vico rename ID "Label"            vico detail ID "Text"
-vico move ID --col N | --lane L [--before ID]
+vico move ID --col N | --lane L [--before ID]   # --before alone: before that card, in its cell
 vico rm ID                        vico insert-col N
 vico done ID                      vico undone ID
 vico link SRC DST ["label"]       vico unlink SRC DST
