@@ -6,6 +6,7 @@ import {
   describeEvent,
   discussions,
   handOverHint,
+  handOverNotice,
   pendingCount,
   recentTurns,
   redoTarget,
@@ -77,6 +78,29 @@ describe("handOverHint says when Claude will see the changes", () => {
     );
     expect(handOverHint(undefined, 0)).toBe(
       "No session linked: Claude will read your changes when a session starts here.",
+    );
+  });
+});
+
+describe("handOverNotice says, right after a hand-over, why nothing moves in the terminal", () => {
+  test("nothing to add when Claude listens: it resumes at once", () => {
+    expect(handOverNotice("idle", 1)).toBeUndefined();
+  });
+  test("Claude at rest reads it only at the next terminal message", () => {
+    expect(handOverNotice("idle", 0)).toBe(
+      "Handed over. Claude is not listening: it will read this at your next message in the terminal.",
+    );
+    expect(handOverNotice("waiting", 0)).toBe(handOverNotice("idle", 0));
+    expect(handOverNotice("idle", 0, "fr")).toBe(
+      "Main passée. Claude n'écoute pas : il la lira à ton prochain message dans le terminal.",
+    );
+  });
+  test("Claude at work reads it after its current action; without a session, when one starts", () => {
+    expect(handOverNotice("running", 0)).toBe(
+      "Handed over. Claude is working: it will read this after its current action.",
+    );
+    expect(handOverNotice(undefined, 0)).toBe(
+      "Handed over. No session linked: Claude will read this when a session starts here.",
     );
   });
 });

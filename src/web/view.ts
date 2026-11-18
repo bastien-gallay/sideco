@@ -62,6 +62,22 @@ export function recentTurns(session: Session | undefined, max: number): SessionT
   return session ? session.turns.slice(-max) : [];
 }
 
+/**
+ * What the page says right after a hand-over that Claude will not read at once:
+ * the page cannot wake a terminal at rest, so it says what will.
+ */
+export function handOverNotice(
+  status: AgentStatus | undefined,
+  listening: number,
+  locale: Locale = DEFAULT_LOCALE,
+): string | undefined {
+  const m = MESSAGES[locale];
+  if (listening > 0) return undefined;
+  if (status === undefined) return m.handedOverNoSession;
+  if (status === "running" || status === "thinking") return m.handedOverWorking;
+  return m.handedOverIdle;
+}
+
 const MAX_LINE = 90;
 
 /** One line of history, in the reader's language. */

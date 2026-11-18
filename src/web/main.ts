@@ -32,6 +32,7 @@ import {
   describeEvent,
   discussions,
   handOverHint,
+  handOverNotice,
   pendingCount,
   recentTurns,
   redoTarget,
@@ -557,8 +558,12 @@ const paintTurn = region(turnBar, (m: TurnModel) => {
   });
   const pass = (event: Event): void => {
     event.preventDefault();
-    if (m.board)
-      void send({ kind: "pass", board: m.board, to: "agent", message: message.value.trim() || undefined });
+    if (!m.board) return;
+    void send({ kind: "pass", board: m.board, to: "agent", message: message.value.trim() || undefined });
+    message.value = "";
+    // The page cannot wake a terminal at rest: say what will make Claude read this.
+    const notice = handOverNotice(latestSession(state.live)?.status, state.listening, locale);
+    if (notice) say(notice);
   };
   const count = m.pending === 0 ? t.upToDate : t.pending(m.pending);
   return [

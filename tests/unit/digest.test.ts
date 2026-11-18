@@ -201,6 +201,17 @@ describe("describeChanges", () => {
     });
   });
 
+  test("a word said at a hand-over is not erased by handing over again without one", () => {
+    const t = table(ORDERING);
+    const mark = t.seq;
+    t.do({ kind: "pass", board: "commande", to: "agent", message: "j'ai répondu aux notes" }, "human");
+    t.do({ kind: "pass", board: "commande", to: "agent" }, "human");
+    expect(changes(t, mark)).toBe("The human passed you the turn: j'ai répondu aux notes");
+    t.do({ kind: "pass", board: "commande", to: "agent", message: "et S20 ?" }, "human");
+    t.do({ kind: "pass", board: "commande", to: "agent", message: "et S20 ?" }, "human");
+    expect(changes(t, mark)).toBe("The human passed you the turn: j'ai répondu aux notes / et S20 ?");
+  });
+
   test("changes are grouped by board", () => {
     const t = table(ORDERING).script(KANBAN);
     const mark = t.seq;

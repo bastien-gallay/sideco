@@ -25,6 +25,9 @@ export interface Messages {
   hintNoSession: string;
   hintWorking: string;
   hintIdle: string;
+  handedOverNoSession: string;
+  handedOverWorking: string;
+  handedOverIdle: string;
 
   // The header.
   boardShown: string;
@@ -154,6 +157,10 @@ const en: Messages = {
   hintNoSession: "No session linked: Claude will read your changes when a session starts here.",
   hintWorking: "Claude is working: it will read your changes after its current action.",
   hintIdle: "Claude is idle: it will read your changes at your next message in the terminal.",
+  handedOverNoSession: "Handed over. No session linked: Claude will read this when a session starts here.",
+  handedOverWorking: "Handed over. Claude is working: it will read this after its current action.",
+  handedOverIdle:
+    "Handed over. Claude is not listening: it will read this at your next message in the terminal.",
 
   boardShown: "Board shown",
   newBoardButton: "+ Board",
@@ -272,6 +279,9 @@ const fr: Messages = {
   hintNoSession: "Aucune session reliée : Claude lira tes changements quand une session démarrera ici.",
   hintWorking: "Claude travaille : il lira tes changements après son action en cours.",
   hintIdle: "Claude est au repos : il lira tes changements à ton prochain message dans le terminal.",
+  handedOverNoSession: "Main passée. Aucune session reliée : Claude la lira quand une session démarrera ici.",
+  handedOverWorking: "Main passée. Claude travaille : il la lira après son action en cours.",
+  handedOverIdle: "Main passée. Claude n'écoute pas : il la lira à ton prochain message dans le terminal.",
 
   boardShown: "Tableau affiché",
   newBoardButton: "+ Tableau",

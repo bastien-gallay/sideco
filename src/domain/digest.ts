@@ -127,7 +127,8 @@ export function describeChanges(events: readonly Recorded[], after: number, by: 
   /** What was pending about a removed board, kept for the case it comes back. */
   const shelved = new Map<string, Shelf>();
   let passed = false;
-  let message: string | undefined;
+  /** Every word said while handing over, once each: a later hand-over does not erase an earlier word. */
+  const words: string[] = [];
 
   /** A removed board takes every pending line about it along, whoever removed it. */
   const shelve = (board: string): void => {
@@ -272,7 +273,7 @@ export function describeChanges(events: readonly Recorded[], after: number, by: 
         case "TurnPassed":
           if (e.to === "agent") {
             passed = true;
-            message = e.message;
+            if (e.message && !words.includes(e.message)) words.push(e.message);
           }
           break;
       }
@@ -286,7 +287,7 @@ export function describeChanges(events: readonly Recorded[], after: number, by: 
     else entries.delete(key);
   }
   return {
-    text: render(ws, gone, [...entries.values()], passed, message),
+    text: render(ws, gone, [...entries.values()], passed, words.join(" / ") || undefined),
     count: entries.size,
     upTo: ws.seq,
     passed,

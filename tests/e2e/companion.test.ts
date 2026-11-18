@@ -338,6 +338,19 @@ describe("the human edits, the agent is told", () => {
       () => document.querySelector(".pending strong")?.textContent === "Claude is up to date",
     );
   });
+
+  test("handing over while Claude is not listening says what will make it read", async () => {
+    await page.locator(".pass input").fill("Un mot pour plus tard");
+    await page.locator(".pass input").press("Enter");
+    await page.locator(".toast", { hasText: "Handed over." }).waitFor();
+    expect(await page.locator(".toast").textContent()).toContain("at your next message in the terminal");
+    expect(await page.locator(".pass input").inputValue()).toBe("");
+    // Handing over again without a word does not erase the word already said.
+    await page.locator(".pass button").click();
+    await until("Claude would be told the word", async () =>
+      (await pending()).includes("The human passed you the turn: Un mot pour plus tard"),
+    );
+  });
 });
 
 describe("history", () => {
@@ -376,8 +389,8 @@ describe("other workshops", () => {
       ].join("\n"),
     );
     // The human stays on their board; a line says a new one exists.
-    await page.locator(".toast").waitFor({ state: "visible" });
-    expect(await page.locator(".toast").textContent()).toStartWith("Claude created the board “Sprint 12”");
+    // Another message may still be up: wait for this one, not for any.
+    await page.locator(".toast", { hasText: "Claude created the board “Sprint 12”" }).waitFor();
     expect(page.url()).toEndWith("#/b/commande");
     await page.locator(".board-picker select").selectOption("sprint");
     await card("T3").waitFor();
