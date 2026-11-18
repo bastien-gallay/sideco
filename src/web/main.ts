@@ -11,7 +11,7 @@ import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import { findBoard, latestSession } from "../domain/workspace.ts";
 import { mountBoard } from "./board-view.ts";
-import { clock, h, region } from "./dom.ts";
+import { clock, h, type Props, region } from "./dom.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
 import { MESSAGES } from "./messages.ts";
 import {
@@ -375,6 +375,24 @@ interface NotesModel {
   unread: string[];
 }
 
+/** A field for a few words that may run over several lines: Enter sends them, Shift+Enter breaks the line. */
+function wordsField(props: Props, words: string, oninput: (words: string) => void): HTMLTextAreaElement {
+  const field = h("textarea", {
+    class: "words",
+    rows: 1,
+    maxlength: 1000,
+    ...props,
+    oninput: () => oninput(field.value),
+  });
+  field.value = words;
+  field.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+    event.preventDefault();
+    field.form?.requestSubmit();
+  });
+  return field;
+}
+
 /** Replies being typed, per discussion: they survive a repaint, such as Claude answering meanwhile. */
 const drafts = new Map<string, string>();
 const draftKey = (board: string, thread: string): string => `${board}/${thread}`;
@@ -383,15 +401,11 @@ const paintThreads = region(notes, (m: NotesModel) => {
   if (!m.board) return [];
   const boardId = m.board;
   const key = draftKey(boardId, "new");
-  const input = h("input", {
-    type: "text",
-    name: "note",
-    placeholder: t.notePlaceholder,
-    "aria-label": t.newNote,
-    maxlength: 1000,
-    value: drafts.get(key) ?? "",
-    oninput: () => drafts.set(key, input.value),
-  });
+  const input = wordsField(
+    { name: "note", placeholder: t.notePlaceholder, "aria-label": t.newNote },
+    drafts.get(key) ?? "",
+    (words) => drafts.set(key, words),
+  );
   const add = (event: Event): void => {
     event.preventDefault();
     const text = input.value.trim();
@@ -415,18 +429,14 @@ const paintThreads = region(notes, (m: NotesModel) => {
 function threadItem(boardId: string, thread: Discussion, m: NotesModel): HTMLElement {
   const on = thread.on;
   const key = draftKey(boardId, thread.id);
-  const field = h("input", {
-    type: "text",
-    name: `reply-${thread.id}`,
-    placeholder: t.replyPlaceholder,
-    "aria-label": t.replyTo(thread.id),
-    maxlength: 1000,
-    value: drafts.get(key) ?? "",
-    oninput: () => {
-      drafts.set(key, field.value);
+  const field = wordsField(
+    { name: `reply-${thread.id}`, placeholder: t.replyPlaceholder, "aria-label": t.replyTo(thread.id) },
+    drafts.get(key) ?? "",
+    (words) => {
+      drafts.set(key, words);
       offer();
     },
-  });
+  );
   const closing = h("button", { type: "button", class: "quiet thread-resolve" });
   /** The closing button says what it will do with the words in the field. */
   const offer = (): void => {
@@ -501,10 +511,10 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel): HTMLEle
 /** Repaints the discussions without taking the keyboard from a reply being typed. */
 function paintNotes(model: NotesModel): void {
   const active = document.activeElement;
-  const typing = active instanceof HTMLInputElement && notes.contains(active) ? active : undefined;
+  const typing = active instanceof HTMLTextAreaElement && notes.contains(active) ? active : undefined;
   paintThreads(model);
   if (!typing || typing.isConnected) return;
-  const again = notes.querySelector<HTMLInputElement>(`input[name="${typing.name}"]`);
+  const again = notes.querySelector<HTMLTextAreaElement>(`textarea[name="${typing.name}"]`);
   if (!again) return;
   again.value = typing.value;
   again.focus();

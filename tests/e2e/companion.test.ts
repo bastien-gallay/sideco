@@ -751,7 +751,7 @@ describe("talking it through, note by note", () => {
   const BOARD = "fil";
   const thread = (id: string) => page.locator(`.notes .thread[data-thread="${id}"]`);
   const said = (id: string) => thread(id).locator(".thread-notes > li");
-  const replyField = (id: string) => thread(id).locator(".thread-reply input");
+  const replyField = (id: string) => thread(id).locator(".thread-reply [name^=reply-]");
   const badge = (id: string) => card(id).locator(".card-notes text");
 
   test("a note says which card it is about, who wrote it and who is waited for", async () => {
@@ -772,11 +772,20 @@ describe("talking it through, note by note", () => {
   });
 
   test("the human answers in the thread, and Claude is told which note the answer is to", async () => {
+    // Several lines in one answer: Shift+Enter breaks the line, Enter sends.
     await replyField("N1").fill("L'entrepôt");
+    await replyField("N1").press("Shift+Enter");
+    await replyField("N1").pressSequentially("de Lyon");
     await replyField("N1").press("Enter");
     await said("N1").nth(1).waitFor();
     expect(await said("N1").nth(1).locator(".thread-author").textContent()).toBe("You");
-    expect(await said("N1").nth(1).locator("p").textContent()).toBe("L'entrepôt");
+    expect(await said("N1").nth(1).locator("p").textContent()).toBe("L'entrepôt\nde Lyon");
+    expect(
+      await said("N1")
+        .nth(1)
+        .locator("p")
+        .evaluate((p) => getComputedStyle(p).whiteSpace),
+    ).toBe("pre-wrap");
     expect(await thread("N1").locator(".thread-waits").textContent()).toBe("Awaits Claude");
     expect(await replyField("N1").inputValue()).toBe("");
     // Still one discussion on the card, and two on the board.
@@ -791,7 +800,7 @@ describe("talking it through, note by note", () => {
     await said("N1").nth(2).waitFor();
     expect(await said("N1").allTextContents()).toEqual([
       "ClaudeN1Qui réserve ?",
-      "YouN3L'entrepôt",
+      "YouN3L'entrepôt\nde Lyon",
       "ClaudeN4Toujours l'entrepôt ?",
     ]);
     expect(await thread("N1").locator(".thread-waits").textContent()).toBe("Awaits your answer");
@@ -866,7 +875,7 @@ describe("what Claude has not read yet", () => {
     expect(await card("E1").getAttribute("aria-label")).toEndWith(WORDS);
     expect(await cardMark("E2").count()).toBe(0);
 
-    const reply = page.locator(`.notes .thread[data-thread="N1"] .thread-reply input`);
+    const reply = page.locator(`.notes .thread[data-thread="N1"] .thread-reply [name^=reply-]`);
     await reply.fill("La compta");
     await reply.press("Enter");
     await threadMark("N1").waitFor();
@@ -1141,7 +1150,7 @@ describe("tidying up", () => {
   test("a reply typed and not sent keeps the tab from reloading: it offers to, and the reply stays", async () => {
     const before = problems.length;
     await agent('note "Et ensuite ?"', "flux-vico");
-    const reply = page.locator(".notes .thread-reply input");
+    const reply = page.locator(".notes .thread-reply [name^=reply-]");
     await reply.fill("Je cherche encore");
     await mark();
     // Back to the page that opens in English: another build again.
@@ -1163,7 +1172,7 @@ describe("tidying up", () => {
 
   test("the reply once sent, the tab reloads without being asked: nothing is left to lose", async () => {
     const before = problems.length;
-    const reply = page.locator(".notes .thread-reply input");
+    const reply = page.locator(".notes .thread-reply [name^=reply-]");
     await reply.fill("Trouvé");
     await mark();
     await restart("fr");

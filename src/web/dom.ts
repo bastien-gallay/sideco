@@ -1,7 +1,7 @@
 /** The few DOM helpers the page needs; no framework. */
 
 type Child = Node | string | false | null | undefined;
-type Props = Record<string, string | number | boolean | EventListener | undefined>;
+export type Props = Record<string, string | number | boolean | EventListener | undefined>;
 
 /** Creates an element. `on*` props are listeners, `class` and the rest are attributes. */
 export function h<K extends keyof HTMLElementTagNameMap>(

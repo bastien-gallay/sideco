@@ -157,6 +157,19 @@ input[type="text"] {
   min-width: 0;
 }
 
+/* A few words that may run over several lines: one line tall, then as tall as what is typed. */
+.words {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 5px 8px;
+  flex: 1;
+  min-width: 0;
+  max-height: 9lh;
+  resize: none;
+  field-sizing: content;
+}
+
 :focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: 1px;
@@ -495,6 +508,11 @@ input[type="text"] {
   list-style: none;
 }
 
+/* What was typed on several lines is read on several lines. */
+.thread-notes p {
+  white-space: pre-wrap;
+}
+
 .thread-notes li {
   padding: 5px 8px;
   border-radius: 6px;
@@ -532,9 +550,9 @@ input[type="text"] {
   gap: 4px;
 }
 
-.thread-reply input {
-  flex: 1;
-  min-width: 0;
+.thread-reply,
+.note-form {
+  align-items: flex-end;
 }
 
 .thread-foot {
@@ -577,10 +595,6 @@ input[type="text"] {
   display: flex;
   gap: 4px;
   margin-top: 10px;
-}
-
-.note-form input {
-  flex: 1;
 }
 
 /* ── Stage ────────────────────────────────────────────────────────────────── */
