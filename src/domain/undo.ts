@@ -88,6 +88,8 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
           },
         ]
       );
+    case "ColumnMoved":
+      return [{ event: "ColumnMoved", board: b, from: e.to, to: e.from }];
     case "EdgeAdded": {
       const was = board.edges.find((edge) => edge.src === e.src && edge.dst === e.dst);
       return was
@@ -148,22 +150,25 @@ export function supersede(board: Board, e: Happened): void {
   }
 }
 
-/** A new empty column shifts the ones after it: the places the trails remember shift with them. */
-export function shiftColumns(board: Board, at: number): void {
+/** Columns renumbered, by an insertion or a move: the places the trails remember follow them. */
+export function remapColumns(board: Board, renumber: (col: number) => number): void {
   for (const trail of Object.values(board.trails)) {
     for (const gesture of [...trail.undo, ...trail.redo]) {
-      for (const back of gesture.inverse) if ("col" in back && back.col >= at) back.col += 1;
+      for (const back of gesture.inverse) if ("col" in back) back.col = renumber(back.col);
     }
   }
 }
 
-/** What an event writes: a property of an element (`E1.label`), all of it (`E1.*`), a link, the title. */
+/** What an event writes: a property of an element (`E1.label`), all of it (`E1.*`), a link, the title, the order of the columns. */
 function writes(e: BoardEvent): string[] {
   switch (e.event) {
     case "BoardRetitled":
       return ["title"];
     case "LaneNamed":
       return [`lane:${e.lane}`];
+    case "ColumnInserted":
+    case "ColumnMoved":
+      return ["columns"];
     case "ElementRenamed":
       return [`${e.id}.label`];
     case "ElementAnnotated":

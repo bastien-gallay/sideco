@@ -7,6 +7,7 @@ import type { Actor, BoardEvent, Todo, VicoEvent } from "./events.ts";
 import { type ElementType, type Format, findFormat, findType, NOTE_PREFIX } from "./formats.ts";
 import {
   type Board,
+  columnAfterMove,
   type Element,
   findBoard,
   findElement,
@@ -95,6 +96,16 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       if (format.layout !== "timeline")
         throw new CommandError(`${format.name.en} boards have no columns to insert`);
       return { events: [{ event: "ColumnInserted", board: b, at: cmd.at }] };
+    case "move-column": {
+      if (format.layout !== "timeline")
+        throw new CommandError(`${format.name.en} boards have no columns to move`);
+      const last = lastColumn(board);
+      for (const col of [cmd.from, cmd.to])
+        if (col > last) throw new CommandError(`no column ${col}: the last one is ${last}`);
+      if (board.elements.every((el) => columnAfterMove(el.col, cmd.from, cmd.to) === el.col))
+        return unchanged();
+      return { events: [{ event: "ColumnMoved", board: b, from: cmd.from, to: cmd.to }] };
+    }
     case "link":
       requireElement(board, cmd.src);
       requireElement(board, cmd.dst);

@@ -76,6 +76,7 @@ describe("boardAction", () => {
     ["move T1 --lane doing --before T2", { kind: "move", board: "b", id: "T1", lane: "doing", before: "T2" }],
     ["rm E1", { kind: "remove", board: "b", id: "E1" }],
     ["insert-col 2", { kind: "insert-column", board: "b", at: 2 }],
+    ["move-col 3 1", { kind: "move-column", board: "b", from: 3, to: 1 }],
     ['link E1 P1 "déclenche"', { kind: "link", board: "b", src: "E1", dst: "P1", label: "déclenche" }],
     ["unlink E1 P1", { kind: "unlink", board: "b", src: "E1", dst: "P1" }],
     ['focus E1 P1 --why "à revoir"', { kind: "focus", board: "b", ids: ["E1", "P1"], reason: "à revoir" }],
@@ -159,6 +160,8 @@ describe("boardAction", () => {
     ["rename", "`rename` needs an id"],
     ["add event A --col deux", '--col takes a whole number, got "deux"'],
     ["insert-col x", 'insert-col takes a whole number, got "x"'],
+    ["move-col 2 x", 'move-col takes whole numbers, got "x"'],
+    ["move-col 2", "`move-col` needs the number it takes"],
     ["board list", "usage: board new"],
     ["dance", 'unknown command "dance"'],
   ])("%s → %s", (line, message) => {

@@ -6,7 +6,7 @@
  * way to get a workspace for a past moment.
  */
 import type { Actor, Recorded, Todo } from "./events.ts";
-import { invert, remember as rememberGesture, shiftColumns, supersede, type Trails } from "./undo.ts";
+import { invert, remapColumns, remember as rememberGesture, supersede, type Trails } from "./undo.ts";
 
 export interface Element {
   id: string;
@@ -144,6 +144,14 @@ export function findSession(ws: Workspace, id: string): Session | undefined {
 /** The session the agent most recently acted in, if any. */
 export function latestSession(ws: Workspace): Session | undefined {
   return ws.sessions.reduce<Session | undefined>((a, s) => (a && a.lastSeq > s.lastSeq ? a : s), undefined);
+}
+
+/** The number a column carries once the column `from` has moved to `to`: the ones it passes close the gap. */
+export function columnAfterMove(col: number, from: number, to: number): number {
+  if (col === from) return to;
+  if (from < to && col > from && col <= to) return col - 1;
+  if (to < from && col >= to && col < from) return col + 1;
+  return col;
 }
 
 /** The highest column in use; 0 on an empty board, since columns are numbered from 1. */
@@ -289,8 +297,14 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
     }
     case "ColumnInserted":
       for (const el of board.elements) if (el.col >= e.at) el.col += 1;
-      shiftColumns(board, e.at);
+      remapColumns(board, (col) => (col >= e.at ? col + 1 : col));
       break;
+    case "ColumnMoved": {
+      const moved = (col: number): number => columnAfterMove(col, e.from, e.to);
+      for (const el of board.elements) el.col = moved(el.col);
+      remapColumns(board, moved);
+      break;
+    }
     case "EdgeAdded":
       board.edges = board.edges.filter((edge) => !(edge.src === e.src && edge.dst === e.dst));
       board.edges.push({ src: e.src, dst: e.dst, label: e.label, by: e.by ?? e.actor });

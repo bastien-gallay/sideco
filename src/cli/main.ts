@@ -63,6 +63,7 @@ Model (BOARD defaults to the only board, or --board ID, or $VICO_BOARD)
   vico move ID --col N | --lane L [--before ID]   (--before alone: before that card, in its cell)
   vico done ID                      vico undone ID
   vico rm ID                        vico insert-col N
+  vico move-col FROM TO             a column takes the number TO, its cards with it
   vico lane LANE "Name"             call a lane of this board your own way
   vico link SRC DST ["label"]       vico unlink SRC DST
   vico focus [ID…] [--why "…"]      no id clears the focus

@@ -167,6 +167,12 @@ export function boardAction(tokens: readonly string[], board: string | undefined
       if (!/^\d+$/.test(at)) throw new UsageError(`insert-col takes a whole number, got "${at}"`);
       return { command: { kind: "insert-column", board: target(), at: Number(at) } };
     }
+    case "move-col": {
+      const [from, to] = [need(0, "the number of the column to move"), need(1, "the number it takes")];
+      for (const raw of [from, to])
+        if (!/^\d+$/.test(raw)) throw new UsageError(`move-col takes whole numbers, got "${raw}"`);
+      return { command: { kind: "move-column", board: target(), from: Number(from), to: Number(to) } };
+    }
     case "link":
       return {
         command: {
@@ -223,6 +229,7 @@ export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "move",
   "rm",
   "insert-col",
+  "move-col",
   "link",
   "unlink",
   "focus",

@@ -121,6 +121,7 @@ type Change =
   | { kind: "marked"; id: string; done: boolean }
   | { kind: "removed"; id: string; type: string; label: string }
   | { kind: "column-inserted"; at: number }
+  | { kind: "column-moved"; from: number; to: number }
   | { kind: "linked"; src: string; dst: string; label?: string }
   | { kind: "unlinked"; src: string; dst: string }
   | { kind: "focused"; ids: string[]; reason?: string }
@@ -287,6 +288,9 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
         case "ColumnInserted":
           put("column", String(e.seq), { kind: "column-inserted", at: e.at });
           break;
+        case "ColumnMoved":
+          put("column", String(e.seq), { kind: "column-moved", from: e.from, to: e.to });
+          break;
         case "EdgeAdded":
           entries.delete(k("unlink", `${e.src}>${e.dst}`));
           put("link", `${e.src}>${e.dst}`, { kind: "linked", src: e.src, dst: e.dst, label: e.label });
@@ -380,6 +384,13 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
       return `− ${change.id} ${change.type} ${quote(change.label)} removed`;
     case "column-inserted":
       return `+ empty column inserted at ${change.at} (columns from ${change.at} shifted right)`;
+    case "column-moved": {
+      const [first, last] =
+        change.from < change.to ? [change.from + 1, change.to] : [change.to, change.from - 1];
+      const passed = first === last ? `column ${first}` : `columns ${first} to ${last}`;
+      const way = change.from < change.to ? "left" : "right";
+      return `~ column ${change.from} moved to ${change.to} with its cards (${passed} shifted ${way})`;
+    }
     case "linked":
       return `+ link ${change.src} -> ${change.dst}${change.label ? ` ${quote(change.label)}` : ""}`;
     case "unlinked":
@@ -422,6 +433,7 @@ function named(change: Change): { elements: string[]; thread?: string } {
     case "board-removed":
     case "board-restored":
     case "column-inserted":
+    case "column-moved":
       return { elements: [] };
   }
 }

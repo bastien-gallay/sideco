@@ -86,6 +86,8 @@ type BoardFact =
       edges: KeptEdge[];
     }
   | { event: "ColumnInserted"; board: string; at: number }
+  /** The column numbered `from` takes the number `to`, its cards with it; the columns it passes close the gap. */
+  | { event: "ColumnMoved"; board: string; from: number; to: number }
   /** `by` is set when a link returns: it keeps the author it had. */
   | { event: "EdgeAdded"; board: string; src: string; dst: string; label?: string; by?: Actor }
   | { event: "EdgeRemoved"; board: string; src: string; dst: string }
@@ -136,6 +138,7 @@ const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "ElementRemoved",
   "ElementRestored",
   "ColumnInserted",
+  "ColumnMoved",
   "EdgeAdded",
   "EdgeRemoved",
   "FocusSet",
