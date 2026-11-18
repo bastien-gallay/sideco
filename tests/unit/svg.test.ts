@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
 import { cardMarkup, esc, sceneToSvg } from "../../src/domain/render/svg.ts";
-import { FLOW, KANBAN, ORDERING, table } from "../support.ts";
+import { FLOW, IMPACT_EFFORT, KANBAN, ORDERING, table } from "../support.ts";
 
 const svgOf = (script: string): string => {
   const board = table(script).board();
@@ -14,6 +14,14 @@ test("text is escaped wherever it lands", () => {
   expect(svg).not.toContain("<script>");
   expect(svg).toContain("&lt;script&gt;");
   expect(svg).toContain('aria-label="A &lt;b&gt; &amp; &quot;c&quot;"');
+});
+
+test("a lane that says what it stands for is drawn on two lines: its name, then that", () => {
+  const svg = svgOf(IMPACT_EFFORT);
+  expect(count(svg, '<text class="lane-hint"')).toBe(4);
+  expect(svg).toContain(">High impact · low effort</text>");
+  // The others keep their single line.
+  expect(svgOf(KANBAN)).not.toContain('<text class="lane-hint"');
 });
 
 test.each([

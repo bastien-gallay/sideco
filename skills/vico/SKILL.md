@@ -94,8 +94,11 @@ vico wait
 | where the work stands, what blocks it | `kanban` | `--lane todo`, `doing` or `done` |
 | which journey, what ships first | `story-map` | `--col N` |
 | what to keep, stop, try | `retro` | `--lane keep`, `drop` or `try` |
+| what to do first, for what it brings and costs | `impact-effort` | `--lane quick`, `bet`, `fill` or `avoid` |
 
-`vico formats` lists every element type with its id prefix.
+`vico formats` lists every element type with its id prefix, and what each lane
+of `impact-effort` stands for (`quick` is high impact for a low effort, `avoid`
+the reverse).
 
 ## Commands
 

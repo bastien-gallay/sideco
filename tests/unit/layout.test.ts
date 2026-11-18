@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { rankNodes } from "../../src/domain/layout/graph.ts";
 import { type Card, layoutBoard, locate, type Scene, vacancy } from "../../src/domain/layout/index.ts";
 import { CARD_H, CARD_MIN_H, CARD_W, cardHeight, wrap } from "../../src/domain/layout/scene.ts";
-import { FLOW, KANBAN, ORDERING, table } from "../support.ts";
+import { FLOW, IMPACT_EFFORT, KANBAN, ORDERING, table } from "../support.ts";
 
 const card = (scene: Scene, id: string): Card => {
   const found = scene.cards.find((c) => c.id === id);
@@ -249,6 +249,26 @@ describe("columns layout", () => {
 
   test("one lane per column, with its count", () => {
     expect(scene.bands.map((b) => `${b.id}:${b.count}`)).toEqual(["todo:2", "doing:2", "done:1"]);
+  });
+
+  test("a lane that says what it stands for carries it to the scene, in the reader's language", () => {
+    const priorities = table(IMPACT_EFFORT).board();
+    const hints = (locale?: "en" | "fr"): (string | undefined)[] =>
+      layoutBoard(priorities, locale).bands.map((b) => b.hint);
+    expect(hints()).toEqual([
+      "High impact · low effort",
+      "High impact · high effort",
+      "Low impact · low effort",
+      "Low impact · high effort",
+    ]);
+    expect(hints("fr")).toEqual([
+      "Impact fort · effort faible",
+      "Impact fort · effort fort",
+      "Impact faible · effort faible",
+      "Impact faible · effort fort",
+    ]);
+    // A lane whose name says it all, as in a kanban, carries none.
+    expect(scene.bands.map((b) => b.hint)).toEqual([undefined, undefined, undefined]);
   });
 
   test("cards stack in board order inside their lane", () => {

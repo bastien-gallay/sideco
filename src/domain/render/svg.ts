@@ -15,6 +15,7 @@ export const SVG_STYLE = `
 .lane-bg { fill: var(--vico-lane, #F3F4F6); }
 .lane-label { fill: var(--vico-ink, #1F2328); font-size: 13px; font-weight: 600; }
 .lane-count { fill: var(--vico-faint, #8C959F); font-size: 12px; text-anchor: end; }
+.lane-hint { fill: var(--vico-muted, #59636E); font-size: 11px; }
 .conn path { fill: none; stroke: var(--vico-conn, #6E7781); stroke-width: 1.5; }
 .conn-label { fill: var(--vico-muted, #59636E); font-size: 11px; paint-order: stroke; stroke: var(--vico-bg, #FFFFFF); stroke-width: 4px; stroke-linejoin: round; }
 .vico-arrow { fill: var(--vico-conn, #6E7781); }
@@ -63,9 +64,12 @@ export function bandMarkup(b: Band): string {
   }
 }
 
-/** Across the top of a lane: its name, and how many cards it holds. */
+/** Across the top of a lane: its name, how many cards it holds, and what it stands for when it says so. */
 function laneHeading(b: Band): string {
-  return `<text class="lane-label" x="${b.x + 14}" y="${b.y + 27}">${esc(b.label)}</text><text class="lane-count" x="${b.x + b.w - 14}" y="${b.y + 27}">${b.count ?? 0}</text>`;
+  // The name moves up to leave the second line to the hint.
+  const y = b.y + (b.hint ? 21 : 27);
+  const hint = b.hint ? `<text class="lane-hint" x="${b.x + 14}" y="${b.y + 37}">${esc(b.hint)}</text>` : "";
+  return `<text class="lane-label" x="${b.x + 14}" y="${y}">${esc(b.label)}</text><text class="lane-count" x="${b.x + b.w - 14}" y="${y}">${b.count ?? 0}</text>${hint}`;
 }
 
 export function connectorMarkup(c: Connector): string {

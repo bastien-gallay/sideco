@@ -185,6 +185,16 @@ add command "Pay" --col 3 --from @placed
     }
   });
 
+  test("formats lists the workshops, and what each lane of impact / effort stands for", async () => {
+    const listed = (await vico(["formats"])).out;
+    expect(listed).toContain("impact-effort — Impact / Effort: ");
+    expect(listed).toContain("place with --lane quick|bet|fill|avoid");
+    expect(listed).toContain("    quick      Quick wins: High impact · low effort");
+    expect(listed).toContain("    avoid      Avoid: Low impact · high effort");
+    // A lane whose name says it all is not spelled out.
+    expect(listed).not.toContain("    todo ");
+  });
+
   test("show prints the board as the agent reads it", async () => {
     const shown = (await vico(["show"])).out;
     expect(shown).toContain("Passage de commande");

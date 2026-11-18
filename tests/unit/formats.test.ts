@@ -35,6 +35,25 @@ test("format ids are unique and found by id", () => {
   expect(findFormat("nope")).toBeUndefined();
 });
 
+describe("impact / effort", () => {
+  const format = findFormat("impact-effort");
+
+  test("sorts one kind of card into four lanes, from what to do first to what to leave", () => {
+    expect(format?.layout).toBe("columns");
+    expect(format?.lanes.map((l) => l.id)).toEqual(["quick", "bet", "fill", "avoid"]);
+    expect(format?.types.map((t) => [t.id, t.prefix])).toEqual([["item", "I"]]);
+  });
+
+  test("each lane says the impact and the effort it stands for: the four are a 2 × 2 unfolded", () => {
+    expect(format?.lanes.map((l) => l.hint?.en)).toEqual([
+      "High impact · low effort",
+      "High impact · high effort",
+      "Low impact · low effort",
+      "Low impact · high effort",
+    ]);
+  });
+});
+
 test("an element id names its type through its prefix", () => {
   const storming = findFormat("event-storming");
   if (!storming) throw new Error("event-storming is missing");

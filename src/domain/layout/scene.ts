@@ -36,6 +36,8 @@ export interface Band {
   /** The colour of the stickies this band holds, when it holds one kind. */
   swatch?: string;
   count?: number;
+  /** What a lane stands for, when its name alone does not say it. */
+  hint?: string;
 }
 
 export interface Connector {

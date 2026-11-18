@@ -358,8 +358,12 @@ function formatsText(): string {
         : f.layout === "columns"
           ? `place with --lane ${f.lanes.map((l) => l.id).join("|")}`
           : "placed by their links (--from ID)";
-    const types = f.types.map((t) => `    ${t.id.padEnd(10)} ${t.prefix}  ${t.hint.en}`).join("\n");
-    return `${f.id} — ${f.name.en}: ${f.purpose.en}\n  ${place}\n${types}`;
+    // A lane is spelled out only when its name does not say what it stands for.
+    const lanes = f.lanes.flatMap((l) =>
+      l.hint ? [`    ${l.id.padEnd(10)} ${l.label.en}: ${l.hint.en}`] : [],
+    );
+    const types = f.types.map((t) => `    ${t.id.padEnd(10)} ${t.prefix}  ${t.hint.en}`);
+    return [`${f.id} — ${f.name.en}: ${f.purpose.en}`, `  ${place}`, ...lanes, ...types].join("\n");
   }).join("\n\n");
 }
 

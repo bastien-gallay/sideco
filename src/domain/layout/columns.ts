@@ -46,6 +46,7 @@ export function layoutColumns(
       kind: "lane",
       id: lane.id,
       label: lane.label[locale],
+      hint: lane.hint?.[locale],
       x,
       y: MARGIN,
       w: LANE_W,

@@ -75,6 +75,13 @@ add task "Publier"
 add blocker "Port bloqué en bac à sable" --lane doing
 `;
 
+export const IMPACT_EFFORT = `
+board new "Priorités" --format impact-effort --id priorites
+add item "Insérer une colonne" --lane quick
+add item "Canevas libre" --lane bet
+add item "Icône du type" --lane fill
+`;
+
 export const FLOW = `
 board new "Livraison" --format flow --id livraison
 add step "Recevoir la commande"

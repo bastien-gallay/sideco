@@ -137,6 +137,7 @@ describe("first look", () => {
       "Kanban",
       "Story Mapping",
       "Retrospective",
+      "Impact / Effort",
     ]);
     expect(await status().textContent()).toBe("No Claude Code session linked");
     await shot("01-empty");
@@ -491,6 +492,41 @@ describe("other workshops", () => {
     const board = (await workspace()).boards.find((b) => b.id === "livraison");
     expect(board?.edges.some((e) => e.src === "S2" && e.dst === "O2")).toBe(true);
     await shot("08-flow");
+  });
+
+  test("impact / effort: four lanes say the impact and the effort they stand for, and a drag re-sorts", async () => {
+    await agent(
+      [
+        'board new "Priorités" --format impact-effort --id priorites',
+        'add item "Insérer une colonne" --lane quick',
+        'add item "Icône du type" --lane quick',
+        'add item "Canevas libre" --lane fill',
+      ].join("\n"),
+    );
+    await page.locator(".board-picker select").selectOption("priorites");
+    await card("I3").waitFor();
+    expect(await page.locator(".palette h2").textContent()).toBe("Impact / Effort");
+    expect(await page.locator(".lane-label").allTextContents()).toEqual([
+      "Quick wins",
+      "Big bets",
+      "Fill-ins",
+      "Avoid",
+    ]);
+    expect(await page.locator(".lane-hint").allTextContents()).toEqual([
+      "High impact · low effort",
+      "High impact · high effort",
+      "Low impact · low effort",
+      "Low impact · high effort",
+    ]);
+
+    // A big bet is one lane to the right of the quick wins.
+    const quick = await centre("I1");
+    const fill = await centre("I3");
+    await dragTo("I3", (quick.x + fill.x) / 2, quick.y + 120);
+    await until("I3 is a big bet", async () => (await elementOf("priorites", "I3"))?.lane === "bet");
+    expect(await pending()).toContain("→ I3 moved lane fill → bet");
+    await settled("I3");
+    await shot("19-impact-effort");
   });
 
   test("a new board from the page: pick a workshop, name it, start", async () => {

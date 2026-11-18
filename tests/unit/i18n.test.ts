@@ -30,7 +30,7 @@ describe.each(FORMATS.map((f) => [f.id, f] as const))("format %s", (_id, format)
       format.name,
       format.purpose,
       ...format.types.flatMap((t) => [t.label, t.hint]),
-      ...format.lanes.map((l) => l.label),
+      ...format.lanes.flatMap((l) => (l.hint ? [l.label, l.hint] : [l.label])),
     ];
     for (const text of texts) for (const locale of LOCALES) expect(text[locale].trim()).not.toBe("");
   });

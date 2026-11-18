@@ -32,6 +32,8 @@ export interface ElementType {
 export interface Lane {
   id: string;
   label: Text;
+  /** What the lane stands for, under its name, when the name alone does not say it. */
+  hint?: Text;
 }
 
 export interface Format {
@@ -286,7 +288,55 @@ const RETRO: Format = {
   ],
 };
 
-export const FORMATS: readonly Format[] = [EVENT_STORMING, FLOW, KANBAN, STORY_MAP, RETRO];
+/**
+ * The 2 × 2 of impact against effort, unfolded into its four quadrants: lanes
+ * exist, a plane where a card sits at its own impact and effort does not yet.
+ * Left to right is the order to take them in.
+ */
+const IMPACT_EFFORT: Format = {
+  id: "impact-effort",
+  name: t("Impact / Effort", "Impact / Effort"),
+  purpose: t(
+    "What do we do first, for what it brings and what it costs?",
+    "Que fait-on d'abord, pour ce que ça rapporte et ce que ça coûte ?",
+  ),
+  layout: "columns",
+  lanes: [
+    {
+      id: "quick",
+      label: t("Quick wins", "Gains rapides"),
+      hint: t("High impact · low effort", "Impact fort · effort faible"),
+    },
+    {
+      id: "bet",
+      label: t("Big bets", "Gros paris"),
+      hint: t("High impact · high effort", "Impact fort · effort fort"),
+    },
+    {
+      id: "fill",
+      label: t("Fill-ins", "Remplissage"),
+      hint: t("Low impact · low effort", "Impact faible · effort faible"),
+    },
+    {
+      id: "avoid",
+      label: t("Avoid", "À éviter"),
+      hint: t("Low impact · high effort", "Impact faible · effort fort"),
+    },
+  ],
+  types: [
+    {
+      id: "item",
+      label: t("Item", "Sujet"),
+      prefix: "I",
+      fill: "#FCEFA1",
+      ink: DARK,
+      shape: "sticky",
+      hint: t("Something we could do", "Une chose qu'on pourrait faire"),
+    },
+  ],
+};
+
+export const FORMATS: readonly Format[] = [EVENT_STORMING, FLOW, KANBAN, STORY_MAP, RETRO, IMPACT_EFFORT];
 
 /** The prefix reserved for notes, on every board. */
 export const NOTE_PREFIX = "N";
