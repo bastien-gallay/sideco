@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
-import { cardMarkup, esc, sceneToSvg } from "../../src/domain/render/svg.ts";
+import { bandMarkup, cardMarkup, esc, sceneToSvg } from "../../src/domain/render/svg.ts";
 import { FLOW, IMPACT_EFFORT, KANBAN, ORDERING, table } from "../support.ts";
 
 const svgOf = (script: string): string => {
@@ -22,6 +22,20 @@ test("a lane that says what it stands for is drawn on two lines: its name, then 
   expect(svg).toContain(">High impact · low effort</text>");
   // The others keep their single line.
   expect(svgOf(KANBAN)).not.toContain('<text class="lane-hint"');
+
+  // The name moves up, its count with it, and the second line still ends above the first card.
+  const scene = layoutBoard(table(IMPACT_EFFORT).board());
+  const [lane] = scene.bands;
+  const [first] = scene.cards;
+  if (!lane || !first) throw new Error("the board has a lane and a card");
+  const baseline = (markup: string, cls: string): number =>
+    Number(markup.match(new RegExp(`class="${cls}" x="[^"]+" y="([^"]+)"`))?.[1]);
+  const said = bandMarkup(lane);
+  const plain = bandMarkup({ ...lane, hint: undefined });
+  expect(baseline(said, "lane-label")).toBeLessThan(baseline(plain, "lane-label"));
+  expect(baseline(said, "lane-count")).toBe(baseline(said, "lane-label"));
+  expect(baseline(said, "lane-hint") - baseline(said, "lane-label")).toBeGreaterThanOrEqual(14);
+  expect(baseline(said, "lane-hint")).toBeLessThan(first.y);
 });
 
 test.each([

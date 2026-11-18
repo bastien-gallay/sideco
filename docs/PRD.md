@@ -42,7 +42,7 @@ Rédigé le 2026-11-17. Niveau de preuve : ✅ lu sur une source primaire, ⚠�
 | --- | --- | --- |
 | Base commune visuelle, comme en atelier | Tableau partagé, chacun pose et déplace des post-its, auteur marqué sur chacun | ✅ |
 | Un problème à la fois | Un tableau = une question ; focus posé par l'agent avec sa raison | ✅ |
-| Nombreux types d'ateliers | 5 ateliers livrés, définis comme des données | ✅ |
+| Nombreux types d'ateliers | 6 ateliers livrés, définis comme des données | ✅ |
 | Suivi visuel du terminal | Fil de session : état de l'agent, prompts, outils lancés, tâches | ✅ |
 | Voir les modifications en direct | Hooks → journal → SSE → page, sans rechargement | ✅ à la granularité de l'outil |
 | Historiser, sur plusieurs sessions | Journal persistant, curseur d'historique | ✅ |
@@ -115,7 +115,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 
 ### 5.1 Parcours de référence
 
-1. Le développeur lance `vico open` : la page s'ouvre, vide, et propose cinq ateliers.
+1. Le développeur lance `vico open` : la page s'ouvre, vide, et propose six ateliers.
 2. Il demande à Claude un event storming du passage de commande.
 3. Claude crée le tableau en un lot ; les post-its apparaissent pendant qu'il continue à lire le code.
 4. Le développeur renomme un événement, en déplace un autre, épingle une note, puis clique « Hand over to Claude ».
@@ -259,7 +259,7 @@ Source : code.claude.com/docs/en/hooks, lue le 2026-11-17 (limite de 10 000 cara
 | Mise en page | Position sémantique | Ateliers livrés |
 | --- | --- | --- |
 | Chronologie | type (ligne) × étape (colonne, à partir de 1) | Event Storming, Story Mapping |
-| Colonnes | colonne nommée + rang | Kanban, Rétrospective |
+| Colonnes | colonne nommée + rang | Kanban, Rétrospective, Impact / Effort |
 | Graphe | aucune : déduite des liens | Flux |
 
 Un atelier déclare ses types (libellé, préfixe d'identifiant, couleur, forme), sa mise en page et ses colonnes. L'ajouter ne demande aucun code de rendu.

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { describeBoard, describeChanges } from "../../src/domain/digest.ts";
-import { FLOW, KANBAN, ORDERING, type Table, table } from "../support.ts";
+import { FLOW, IMPACT_EFFORT, KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 const human = (t: Table, script: string): Table => t.script(script, "human");
 const changes = (t: Table, after: number): string => describeChanges(t.events, after).text;
@@ -35,6 +35,18 @@ describe("describeBoard", () => {
         "focus: H1 — à trancher",
       ].join("\n"),
     );
+  });
+
+  test("a lane that says what it stands for says it to the agent too", () => {
+    const lanes = describeBoard(table(IMPACT_EFFORT).board())
+      .split("\n")
+      .filter((line) => line.startsWith("lane "));
+    expect(lanes).toEqual([
+      "lane quick (Quick wins: High impact · low effort)",
+      "lane bet (Big bets: High impact · high effort)",
+      "lane fill (Fill-ins: Low impact · low effort)",
+      "lane avoid (Avoid: Low impact · high effort)",
+    ]);
   });
 
   test("columns read lane by lane, in stacking order", () => {
