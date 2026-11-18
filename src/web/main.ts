@@ -422,8 +422,17 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel): HTMLEle
     "aria-label": t.replyTo(thread.id),
     maxlength: 1000,
     value: drafts.get(key) ?? "",
-    oninput: () => drafts.set(key, field.value),
+    oninput: () => {
+      drafts.set(key, field.value);
+      offer();
+    },
   });
+  const closing = h("button", { type: "button", class: "quiet thread-resolve" });
+  /** The closing button says what it will do with the words in the field. */
+  const offer = (): void => {
+    closing.textContent = field.value.trim() ? t.replyAndResolve : t.resolve;
+  };
+  offer();
   /** The answer being typed, taken out of the field: said once, by whoever asks for it. */
   const typed = (): Command[] => {
     const text = field.value.trim();
@@ -437,7 +446,7 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel): HTMLEle
     if (saying.length > 0) void send(...saying);
   };
   // Closing with an answer still in the field says it first: nothing typed is lost.
-  const resolve = (): void => void send(...typed(), { kind: "resolve", board: boardId, id: thread.id });
+  closing.onclick = () => void send(...typed(), { kind: "resolve", board: boardId, id: thread.id });
   return h(
     "li",
     {
@@ -484,16 +493,7 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel): HTMLEle
       "div",
       { class: "thread-foot" },
       h("span", { class: `thread-waits waits-${thread.waits}` }, t.waits[thread.waits]),
-      m.live &&
-        h(
-          "button",
-          {
-            type: "button",
-            class: "quiet thread-resolve",
-            onclick: resolve,
-          },
-          t.resolve,
-        ),
+      m.live && closing,
     ),
   );
 }

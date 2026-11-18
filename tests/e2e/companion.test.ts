@@ -828,8 +828,15 @@ describe("talking it through, note by note", () => {
   });
 
   test("closing a thread with an answer typed but not sent says it first: nothing typed is lost", async () => {
+    const resolve = thread("N2").locator(".thread-resolve");
+    expect(await resolve.textContent()).toBe("Resolve");
     await replyField("N2").fill("Réponse de dernière minute");
-    await thread("N2").locator(".thread-resolve").click();
+    // The button says what it will do with the words in the field.
+    await until("the button offers both", async () => (await resolve.textContent()) === "Reply and resolve");
+    await replyField("N2").fill("  ");
+    await until("the button only closes", async () => (await resolve.textContent()) === "Resolve");
+    await replyField("N2").fill("Réponse de dernière minute");
+    await resolve.click();
     await thread("N2").waitFor({ state: "detached" });
     const told = await pending();
     expect(told).toContain("to N2: Réponse de dernière minute");

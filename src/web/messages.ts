@@ -74,6 +74,7 @@ export interface Messages {
   newNote: string;
   addNote: string;
   resolve: string;
+  replyAndResolve: string;
   focus: (ids: string) => string;
   clearFocus: string;
 
@@ -221,6 +222,7 @@ const en: Messages = {
   newNote: "New note",
   addNote: "Add note",
   resolve: "Resolve",
+  replyAndResolve: "Reply and resolve",
   focus: (ids) => `Focus: ${ids}`,
   clearFocus: "Clear the focus",
 
@@ -353,6 +355,7 @@ const fr: Messages = {
   newNote: "Nouvelle note",
   addNote: "Noter",
   resolve: "Résoudre",
+  replyAndResolve: "Répondre et résoudre",
   focus: (ids) => `Focus : ${ids}`,
   clearFocus: "Lever le focus",
 
