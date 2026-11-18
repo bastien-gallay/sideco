@@ -162,10 +162,11 @@ async function run(verb: string, rest: string[]): Promise<number> {
       console.log((await ensureServer(root)).url);
       return 0;
     case "open": {
+      const restarted = !(await findServer(root)) && read().seq > 0;
       const server = await ensureServer(root);
       console.log(server.url);
       // Safe to repeat, so an agent can run it before modelling: a page already open is left alone.
-      if ((await watchers(server)) > 0) {
+      if (await watched(server, restarted ? pageReturnMs() : 0)) {
         console.log("already open in the browser");
         return 0;
       }
@@ -346,6 +347,27 @@ async function serveForeground(given: string, args: Args): Promise<number> {
 }
 
 /** How many pages follow this companion right now. */
+/**
+ * How long a page left open takes to find a companion that was started again:
+ * the browser retries its stream a few seconds after losing it.
+ */
+const PAGE_RETURN_MS = 8000;
+
+function pageReturnMs(): number {
+  const asked = Number(process.env.VICO_PAGE_RETURN_MS);
+  return Number.isFinite(asked) && asked >= 0 && process.env.VICO_PAGE_RETURN_MS ? asked : PAGE_RETURN_MS;
+}
+
+/** Whether a page shows the board, looking again for up to `withinMs`: time for one left open to come back. */
+async function watched(server: Server, withinMs: number): Promise<boolean> {
+  const until = Date.now() + withinMs;
+  for (;;) {
+    if ((await watchers(server)) > 0) return true;
+    if (Date.now() >= until) return false;
+    await Bun.sleep(200);
+  }
+}
+
 async function watchers(server: Server): Promise<number> {
   return (await get<{ watching?: number }>(server, "/health", 1000)).watching ?? 0;
 }

@@ -30,7 +30,7 @@ Demande ensuite, dans le terminal : « modélisons le passage de commande sur le
 | --- | --- | --- |
 | Créer l'espace de travail `.vico/` | Claude | `vico open`, première étape du skill |
 | Démarrer le compagnon | Claude, ou le plugin au début de chaque session suivante | `vico open`, hook `SessionStart` |
-| Ouvrir la page dans ton navigateur | Claude | `vico open` ; une page déjà ouverte est laissée telle quelle |
+| Ouvrir la page dans ton navigateur | Claude | `vico open` ; une page déjà ouverte est laissée telle quelle, y compris après un redémarrage du compagnon : la commande attend jusqu'à 8 s que l'onglet resté ouvert se reconnecte avant d'en ouvrir un autre |
 | Poser les premiers post-its | Claude | `vico apply` |
 
 Tu peux aussi l'ouvrir toi-même, à tout moment : `/chemin/vers/visual-companion/bin/vico open`. La variable `BROWSER` choisit le navigateur.
@@ -235,7 +235,7 @@ bun run typecheck && bun run lint
 | Niveau | Ce qu'il prouve | Tests | Hors bac à sable |
 | --- | --- | --- | --- |
 | Unitaire | Règles du domaine, mise en page, exports, hooks, contrat du plugin, textes des deux langues, annulation, fils de discussion, hauteur des cartes, écoute longue, « + » au survol, commande sans effet, fin de session, noms dans un lot, arrêts de l'historique, marque « non lu », empreinte de la page | 542 | non |
-| Intégration | `bin/vico` de bout en bout : serveur, lots, attente, hooks par stdin, publication, suppression, ouverture de la page, langue des exports et de la page servie, réponse à une note, fin de session, noms dans un lot | 39 | oui (port local) |
+| Intégration | `bin/vico` de bout en bout : serveur, lots, attente, hooks par stdin, publication, suppression, ouverture de la page, langue des exports et de la page servie, réponse à une note, fin de session, noms dans un lot | 41 | oui (port local) |
 | Bout en bout | La page dans Chrome : ajout, glisser, renommer, notes, historique, passage de main, suppression (par Claude et depuis la page), redémarrage, bascule de langue, annuler / rétablir, fils de discussion, passage de main sans écoute, « + » au survol, carte rouverte sans changement, fil clos avec une réponse en cours, historique du tableau affiché, marque « non lu », page rechargée après une mise à jour | 53 | oui (navigateur) |
 
 <sub>Source : exécution du 2026-11-18 sur cette machine (Bun 1.4.4, macOS).</sub>

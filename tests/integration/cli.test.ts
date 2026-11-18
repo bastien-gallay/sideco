@@ -469,6 +469,56 @@ describe("opening the page, by the agent as well as the human", () => {
     await stream.body?.cancel().catch(() => {});
   });
 
+  /** The address the companion of `dir` left for its clients, once it has started. */
+  async function addressOf(dir: string): Promise<string> {
+    const note = join(dir, ".vico", "server.json");
+    for (let attempt = 0; attempt < 100; attempt++) {
+      if (existsSync(note)) {
+        const { url: address } = JSON.parse(readFileSync(note, "utf8")) as { url: string };
+        if (
+          await fetch(`${address}/health`)
+            .then((r) => r.ok)
+            .catch(() => false)
+        )
+          return address;
+      }
+      await Bun.sleep(50);
+    }
+    throw new Error("the companion did not start");
+  }
+
+  test("after a restart, open waits for the page left open to come back instead of opening another", () =>
+    elsewhere(async (dir) => {
+      await vico(["open"], { cwd: dir, env: recorder(dir) });
+      await vico(["board", "new", "Atelier"], { cwd: dir });
+      await vico(["stop"], { cwd: dir });
+      expect(visited(dir)).toHaveLength(1);
+
+      // The companion is down; the tab is still there and will reconnect a moment after it is back.
+      const opening = vico(["open"], { cwd: dir, env: recorder(dir) });
+      const address = await addressOf(dir);
+      await Bun.sleep(600);
+      const page = new AbortController();
+      const stream = await fetch(`${address}/api/events`, { signal: page.signal });
+      expect(await opening).toEqual({ code: 0, out: `${address}\nalready open in the browser`, err: "" });
+      expect(visited(dir)).toHaveLength(1);
+      page.abort();
+      await stream.body?.cancel().catch(() => {});
+    }));
+
+  test("after a restart with no page left, open shows one once the wait is over", () =>
+    elsewhere(async (dir) => {
+      await vico(["open"], { cwd: dir, env: recorder(dir) });
+      await vico(["board", "new", "Atelier"], { cwd: dir });
+      await vico(["stop"], { cwd: dir });
+      const env = { ...recorder(dir), VICO_PAGE_RETURN_MS: "400" };
+      const began = Date.now();
+      const ran = await vico(["open"], { cwd: dir, env });
+      expect(ran.out).toEndWith("opened in the browser");
+      expect(Date.now() - began).toBeGreaterThanOrEqual(400);
+      expect(visited(dir)).toHaveLength(2);
+    }));
+
   test("a shell that may not open a browser has the companion do it", () =>
     elsewhere(async (dir) => {
       // The companion starts where a browser opens, as the plugin's hook starts it outside the sandbox.
