@@ -11,7 +11,7 @@ import { join, relative } from "node:path";
 import { captureCommands, captureDiagrams } from "../domain/capture.ts";
 import { LIMITS } from "../domain/commands.ts";
 import type { WireCommand } from "./argv.ts";
-import { ensureServer, findRoot, findServer, get, post, type Server } from "./client.ts";
+import { ensureServer, findRoot, findServer, get, listen, post, type Server } from "./client.ts";
 
 type Input = Record<string, unknown>;
 
@@ -26,13 +26,18 @@ export const HOOK_EVENTS = [
   "TaskCompleted",
   "Notification",
   "Stop",
+  "SessionEnd",
 ] as const;
 
 /** Where the `vico` launcher lives, so a session can call it by name. */
 const BIN_DIR = join(import.meta.dir, "..", "..", "bin");
 
 const HOOK_TIMEOUT_MS = 1500;
-const REWAKE_WAIT_MS = 25 * 60 * 1000;
+/**
+ * How long a session at rest stays reachable from the page: a working day, lunch
+ * and meetings included. `hooks/hooks.json` gives the parked hook a little more.
+ */
+export const REWAKE_WAIT_MS = 12 * 60 * 60 * 1000;
 /** Claude Code caps the context a hook may add at 10 000 characters. */
 export const CONTEXT_LIMIT = 9000;
 
@@ -132,6 +137,9 @@ async function react(
       await send([{ kind: "turn-end" }]);
       await capture(server, session, str(input.last_assistant_message) ?? "");
       return QUIET;
+    case "SessionEnd":
+      await send([{ kind: "session-end" }]);
+      return QUIET;
     default:
       return QUIET;
   }
@@ -151,11 +159,7 @@ function unattended(env: Record<string, string | undefined>): boolean {
  * changed. Only while a page is open: nobody else can hand over.
  */
 async function rewakeOnTurn(server: Server, session: string): Promise<HookResult> {
-  const waited = await get<{ outcome: string; text: string }>(
-    server,
-    `/api/wait?session=${encodeURIComponent(session)}&timeout=${REWAKE_WAIT_MS}&watched=1`,
-    0,
-  );
+  const waited = await listen(server, session, REWAKE_WAIT_MS, true);
   if (waited.outcome !== "passed") return QUIET;
   return { exitCode: 2, stderr: frameChanges(waited.text) };
 }

@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BOARD_VERBS } from "../../src/cli/argv.ts";
 import type { Server } from "../../src/cli/client.ts";
-import { HOOK_EVENTS, runHook } from "../../src/cli/hook.ts";
+import { HOOK_EVENTS, REWAKE_WAIT_MS, runHook } from "../../src/cli/hook.ts";
 import { CLI_VERBS } from "../../src/cli/main.ts";
 import { LOCALES } from "../../src/domain/i18n.ts";
 import { handler } from "../../src/server/http.ts";
@@ -73,7 +73,11 @@ describe("hooks/hooks.json", () => {
     const waking = entries(hooksFile()).filter(([, hook]) => hook.asyncRewake);
     expect(waking.map(([event]) => event)).toEqual(["Stop"]);
     expect(waking[0]?.[1].command).toEndWith("hook --rewake");
-    expect(waking[0]?.[1].timeout).toBeGreaterThan(25 * 60);
+    expect((waking[0]?.[1].timeout ?? 0) * 1000).toBeGreaterThan(REWAKE_WAIT_MS);
+  });
+
+  test("the parked hook listens for a working day: a lunch or a meeting does not close it", () => {
+    expect(REWAKE_WAIT_MS).toBeGreaterThanOrEqual(8 * 60 * 60 * 1000);
   });
 });
 

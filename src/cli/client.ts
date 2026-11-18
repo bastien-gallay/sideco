@@ -178,6 +178,39 @@ export async function get<T>(server: Server, path: string, timeoutMs = 5000): Pr
   return body;
 }
 
+/**
+ * The longest one request stays open. The runtime gives up on a request left
+ * silent for too long (a TimeoutError at 360 s, measured with Bun 1.4.4), so a
+ * longer wait is made of several of these.
+ */
+export const WAIT_LEG_MS = 4 * 60 * 1000;
+
+export interface Waited {
+  outcome: string;
+  text: string;
+}
+
+/**
+ * Listens for the human's hand-over for up to `totalMs`, one long poll after
+ * another. Ends early on any answer but "timeout": the turn was passed, the
+ * session moved on, or (`watched`) no page is open to pass it from.
+ */
+export async function listen(
+  server: Server,
+  session: string,
+  totalMs: number,
+  watched = false,
+): Promise<Waited> {
+  const query = `session=${encodeURIComponent(session)}${watched ? "&watched=1" : ""}`;
+  let left = Math.max(0, Math.round(totalMs));
+  for (;;) {
+    const leg = Math.min(left, WAIT_LEG_MS);
+    const waited = await get<Waited>(server, `/api/wait?${query}&timeout=${leg}`, 0);
+    left -= leg;
+    if (waited.outcome !== "timeout" || left <= 0) return waited;
+  }
+}
+
 async function answer<T>(response: Response): Promise<T> {
   try {
     return (await response.json()) as T;

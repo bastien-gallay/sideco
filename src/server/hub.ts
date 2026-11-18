@@ -85,7 +85,8 @@ export class Hub {
   private announce(event: Recorded): void {
     for (const listener of this.listeners) listener(event);
     if (event.event === "TurnPassed" && event.to === "agent") this.settleAll("passed");
-    if (event.event === "PromptSubmitted" && event.session) this.settle(event.session, "released");
+    const movedOn = event.event === "PromptSubmitted" || event.event === "SessionEnded";
+    if (movedOn && event.session) this.settle(event.session, "released");
   }
 
   subscribe(listener: Listener): () => void {

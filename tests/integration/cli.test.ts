@@ -293,6 +293,23 @@ describe("Claude Code hooks, through stdin as Claude Code calls them", () => {
     await stream.body?.cancel().catch(() => {});
   });
 
+  test("the SessionEnd hook frees a parked hook, within the 1.5 s Claude Code gives a plugin", async () => {
+    const page = new AbortController();
+    const stream = await fetch(`${url}/api/events`, { signal: page.signal });
+    const parked = hook({ hook_event_name: "Stop" }, {}, true);
+    await Bun.sleep(600);
+    const started = performance.now();
+    const ended = await hook({ hook_event_name: "SessionEnd", reason: "prompt_input_exit" });
+    const took = performance.now() - started;
+    console.log(`SessionEnd hook, through the launcher: ${Math.round(took)} ms`);
+    expect(ended).toEqual({ code: 0, out: "", err: "" });
+    expect(took).toBeLessThan(1500);
+    expect(await parked).toEqual({ code: 0, out: "", err: "" });
+    expect((await vico(["status"])).out).toContain("session    s1 is ended");
+    page.abort();
+    await stream.body?.cancel().catch(() => {});
+  });
+
   test("garbage on stdin never breaks the session", async () => {
     expect(await vico(["hook"], { stdin: "not json" })).toEqual({ code: 0, out: "", err: "" });
     expect(await vico(["hook"], { stdin: "[]" })).toEqual({ code: 0, out: "", err: "" });

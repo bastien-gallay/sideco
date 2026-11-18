@@ -18,7 +18,9 @@ import {
   findRoot,
   findServer,
   initRoot,
+  listen,
   showPage,
+  WAIT_LEG_MS,
 } from "../../src/cli/client.ts";
 
 let dir: string;
@@ -129,4 +131,40 @@ test("showPage asks the companion to open its page, and takes any other answer a
     throw new Error("connection refused");
   }) as unknown as Fetch;
   expect(await showPage({ url, fetch: unreachable })).toBe(false);
+});
+
+/** A companion whose long poll answers these outcomes in turn, and notes how long each call asked for. */
+function polled(outcomes: string[], asked: number[]): Fetch {
+  return (async (input: string | URL | Request) => {
+    const url = new URL(String(input));
+    asked.push(Number(url.searchParams.get("timeout")));
+    const outcome = outcomes.shift() ?? "timeout";
+    return Response.json({ outcome, text: outcome === "passed" ? "The human passed you the turn." : "" });
+  }) as Fetch;
+}
+
+test("listening longer than a request can stay open is done in legs, each short enough", async () => {
+  const asked: number[] = [];
+  const url = "http://127.0.0.1:4747";
+  const waited = await listen({ url, fetch: polled(["timeout", "timeout", "passed"], asked) }, "s1", 540_000);
+  expect(waited).toEqual({ outcome: "passed", text: "The human passed you the turn." });
+  expect(asked).toEqual([WAIT_LEG_MS, WAIT_LEG_MS, 540_000 - 2 * WAIT_LEG_MS]);
+  // The runtime gives up on a request left silent for 360 s (measured, Bun 1.4.4): a leg ends well before.
+  expect(WAIT_LEG_MS).toBeLessThan(300_000);
+});
+
+test("listening stops at its time, and at once when the session moves on", async () => {
+  const asked: number[] = [];
+  const url = "http://127.0.0.1:4747";
+  expect(await listen({ url, fetch: polled([], asked) }, "s1", 300_000)).toEqual({
+    outcome: "timeout",
+    text: "",
+  });
+  expect(asked.reduce((sum, ms) => sum + ms, 0)).toBe(300_000);
+  asked.length = 0;
+  expect((await listen({ url, fetch: polled(["released"], asked) }, "s1", 540_000)).outcome).toBe("released");
+  expect(asked).toHaveLength(1);
+  asked.length = 0;
+  expect((await listen({ url, fetch: polled([], asked) }, "s1", 5_000)).outcome).toBe("timeout");
+  expect(asked).toEqual([5_000]);
 });

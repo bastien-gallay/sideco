@@ -31,6 +31,8 @@ export function agentStatus(
   if (listening > 0) return { tone: "listening", text: m.listening };
   if (!session) return { tone: "off", text: m.noSession };
   switch (session.status) {
+    case "ended":
+      return { tone: "off", text: m.noSession };
     case "idle":
       return { tone: "idle", text: m.idle };
     case "thinking":
@@ -50,7 +52,7 @@ export function handOverHint(
 ): string {
   const m = MESSAGES[locale];
   if (listening > 0) return m.hintListening;
-  if (status === undefined) return m.hintNoSession;
+  if (status === undefined || status === "ended") return m.hintNoSession;
   if (status === "running" || status === "thinking") return m.hintWorking;
   return m.hintIdle;
 }
@@ -75,7 +77,7 @@ export function handOverNotice(
 ): string | undefined {
   const m = MESSAGES[locale];
   if (listening > 0) return undefined;
-  if (status === undefined) return m.handedOverNoSession;
+  if (status === undefined || status === "ended") return m.handedOverNoSession;
   if (status === "running" || status === "thinking") return m.handedOverWorking;
   return m.handedOverIdle;
 }
@@ -163,6 +165,8 @@ function english(e: Recorded): string {
       return `Claude is waiting for you: ${e.message}`;
     case "TurnEnded":
       return "Claude ended its turn";
+    case "SessionEnded":
+      return "Session ended";
     case "ChangesDelivered":
       return "Claude read your changes";
   }
@@ -230,6 +234,8 @@ function french(e: Recorded): string {
       return `Claude t'attend : ${e.message}`;
     case "TurnEnded":
       return "Claude a fini son tour";
+    case "SessionEnded":
+      return "Session terminée";
     case "ChangesDelivered":
       return "Claude a lu tes changements";
   }

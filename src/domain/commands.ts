@@ -51,6 +51,7 @@ export type Command =
   | { kind: "task-completed"; id: string }
   | { kind: "notify"; message: string }
   | { kind: "turn-end" }
+  | { kind: "session-end" }
   | { kind: "delivered"; upTo: number };
 
 export type CommandKind = Command["kind"];
@@ -203,6 +204,7 @@ export function parseCommand(input: unknown): Command {
     case "notify":
       return { kind, message: text(f, "message", LIMITS.note) };
     case "turn-end":
+    case "session-end":
       return { kind };
     case "delivered":
       return { kind, upTo: whole(f, "upTo", 0, Number.MAX_SAFE_INTEGER) };

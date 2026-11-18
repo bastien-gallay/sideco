@@ -72,6 +72,16 @@ describe("the agent's status follows the session events", () => {
     expect(t.ws.sessions[0]?.turns[0]?.tools[0]?.status).toBe("ok");
   });
 
+  test("a session that ends is no longer one to hand over to, until it is resumed", () => {
+    const t = session();
+    t.do({ kind: "prompt", text: "go" }, "agent", "s1");
+    t.do({ kind: "session-end" }, "agent", "s1");
+    expect(t.ws.sessions[0]?.status).toBe("ended");
+    expect(t.ws.sessions[0]?.turns[0]?.ended).toBe(true);
+    t.do({ kind: "session-start", cwd: "/repo" }, "agent", "s1");
+    expect(t.ws.sessions[0]?.status).toBe("idle");
+  });
+
   test("the latest session is the one that acted last", () => {
     const t = session();
     t.do({ kind: "session-start" }, "agent", "s2");

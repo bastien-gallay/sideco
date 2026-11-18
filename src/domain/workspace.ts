@@ -89,7 +89,8 @@ export interface SessionTurn {
   ended: boolean;
 }
 
-export type AgentStatus = "idle" | "thinking" | "running" | "waiting";
+/** `ended`: the terminal session is over; it comes back to `idle` if it is resumed. */
+export type AgentStatus = "idle" | "thinking" | "running" | "waiting" | "ended";
 
 export interface Session {
   id: string;
@@ -354,6 +355,7 @@ function applyToSession(ws: Workspace, e: Recorded & { session: string }): void 
   switch (e.event) {
     case "SessionStarted":
       session.cwd = e.cwd;
+      if (session.status === "ended") setStatus(session, "idle");
       break;
     case "PromptSubmitted":
       session.turns.push({ prompt: e.text, startedSeq: e.seq, startedAt: e.ts, tools: [], ended: false });
@@ -378,11 +380,12 @@ function applyToSession(ws: Workspace, e: Recorded & { session: string }): void 
       setStatus(session, "waiting", e.message);
       break;
     case "TurnEnded":
-      if (turn) {
-        turn.ended = true;
-        for (const t of turn.tools) if (t.status === "running") t.status = "ok";
-      }
+      closeTurn(turn);
       setStatus(session, "idle");
+      break;
+    case "SessionEnded":
+      closeTurn(turn);
+      setStatus(session, "ended");
       break;
     case "ChangesDelivered":
       session.deliveredUpTo = Math.max(session.deliveredUpTo, e.upTo);
@@ -395,6 +398,12 @@ function openTurn(session: Session, e: Recorded): SessionTurn {
   const turn: SessionTurn = { prompt: "", startedSeq: e.seq, startedAt: e.ts, tools: [], ended: false };
   session.turns.push(turn);
   return turn;
+}
+
+function closeTurn(turn: SessionTurn | undefined): void {
+  if (!turn) return;
+  turn.ended = true;
+  for (const t of turn.tools) if (t.status === "running") t.status = "ok";
 }
 
 function setStatus(session: Session, status: AgentStatus, detail?: string): void {

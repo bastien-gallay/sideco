@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseBatch } from "../../src/cli/argv.ts";
-import type { Server } from "../../src/cli/client.ts";
+import { type Server, WAIT_LEG_MS } from "../../src/cli/client.ts";
 import { CONTEXT_LIMIT, type HookResult, runHook, summarize } from "../../src/cli/hook.ts";
 import { parseCommand } from "../../src/domain/commands.ts";
 import type { Actor } from "../../src/domain/events.ts";
@@ -255,12 +255,43 @@ describe("bringing the human's changes back to the agent", () => {
     expect(woken.stdout).toBeUndefined();
   });
 
+  test("an agent idle for long stays parked: one short request after another, until the hand-over", async () => {
+    const asked: number[] = [];
+    const answers = ["timeout", "timeout", "passed"];
+    const slow: Server = {
+      url: BASE,
+      fetch: async (url) => {
+        const query = new URL(String(url)).searchParams;
+        expect(query.get("watched")).toBe("1");
+        asked.push(Number(query.get("timeout")));
+        const outcome = answers.shift() ?? "timeout";
+        return Response.json({ outcome, text: outcome === "passed" ? "The human passed you the turn." : "" });
+      },
+    };
+    const input = { session_id: "s1", cwd: "/repo", hook_event_name: "Stop" };
+    const woken = await runHook(input, {}, true, async () => slow);
+    expect(woken.exitCode).toBe(2);
+    expect(woken.stderr).toContain("The human passed you the turn.");
+    expect(asked).toEqual([WAIT_LEG_MS, WAIT_LEG_MS, WAIT_LEG_MS]);
+  });
+
   test("a parked hook leaves quietly when the human types in the terminal instead", async () => {
     hub.subscribe(() => {});
     const parked = fire("Stop", {}, { rewake: true });
     await Bun.sleep(5);
     await fire("UserPromptSubmit", { prompt: "je reprends ici" });
     expect(await parked).toEqual(QUIET);
+  });
+
+  test("a parked hook leaves quietly when the session ends: nobody is left to wake", async () => {
+    hub.subscribe(() => {});
+    const parked = fire("Stop", {}, { rewake: true });
+    await Bun.sleep(5);
+    expect(hub.listening).toBe(1);
+    await fire("SessionEnd", { reason: "prompt_input_exit" });
+    expect(await parked).toEqual(QUIET);
+    expect(hub.listening).toBe(0);
+    expect(hub.workspace.sessions[0]?.status).toBe("ended");
   });
 
   test("parking records nothing: the turn end is the other Stop hook's job", async () => {

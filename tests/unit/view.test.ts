@@ -42,6 +42,14 @@ describe("agentStatus says what Claude is doing, in words", () => {
     });
   });
 
+  test("a session that ended is no session: the page says none is linked", () => {
+    const t = withSession();
+    t.do({ kind: "session-end" }, "agent", "s1");
+    expect(agentStatus(session(t), 0)).toEqual({ tone: "off", text: "No Claude Code session linked" });
+    expect(handOverHint("ended", 0)).toBe(handOverHint(undefined, 0));
+    expect(handOverNotice("ended", 0)).toBe(handOverNotice(undefined, 0));
+  });
+
   test("listening wins: an agent blocked on the board waits for the hand-over", () => {
     const t = withSession();
     t.do({ kind: "tool-start", call: "c1", tool: "Bash", summary: "vico wait" }, "agent", "s1");

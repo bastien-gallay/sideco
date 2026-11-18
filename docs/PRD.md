@@ -148,6 +148,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F20 | Ajouter là où l'on pointe : un « + » apparaît au survol d'une case ou d'une colonne, un par type possible, et la carte se pose à cet endroit (S1 du story map du 2026-11-18) | ✅ |
 | F21 | Cartes à la hauteur de leur libellé, de 48 à 88 px ; piles, rangées et zones de dépôt suivent (S22) | ✅ |
 | F22 | Une commande qui ne change rien (même libellé, même détail, même titre) n'enregistre rien ; rouvrir une carte dans la page sans la modifier n'envoie rien (S5) | ✅ |
+| F23 | Claude au repos reste joignable depuis la page une journée de travail (12 h après son dernier tour) ; la fermeture de la session libère l'écoute, et la page dit alors qu'aucune session n'est reliée | ✅ testé ; ⚠️ pas encore essayé en session réelle au-delà de quelques minutes |
 
 ### 5.3 Exigences de qualité
 
@@ -313,6 +314,8 @@ Hors MVP, assumé : dessin libre, images, curseurs multiples, comptes, synchroni
 | Repère | Risque | Parade |
 | --- | --- | --- |
 | R1 | ✅ `asyncRewake` sur `Stop` réveille bien une session interactive au repos (essai réel du 2026-11-17, Claude Code 2.1.326). Revers constaté : un hook en attente empêche `claude -p` de se terminer | Le hook n'attend que si une page est ouverte, et jamais dans une session sans interface |
+| R1b | Le client HTTP de Bun abandonne une requête restée muette (`TimeoutError` à 360 s, mesuré le 2026-11-18 avec Bun 1.4.4) : `vico wait` au-delà de 6 min plantait, et le hook de réveil s'éteignait sans rien dire après 6 min de repos | L'écoute se fait par requêtes de 4 min enchaînées (`listen`) ; ⚠️ réveil après plus de 6 min de repos à réessayer en session réelle |
+| R1c | Essai du 2026-11-18 : un passage de main 4 h 10 après le dernier tour n'a réveillé personne, l'écoute ne durait que 25 min. La doc de Claude Code ne donne pas de plafond au `timeout` d'un hook, et ne dit pas ce que devient un hook parqué à la fermeture d'une session interactive ni à la compaction | Écoute de 12 h (`REWAKE_WAIT_MS`, `timeout` du hook à 43 500 s) ; hook `SessionEnd` qui libère l'écoute (20 ms mesurés, pour 1,5 s accordée à un plugin) ; ⚠️ à observer en session réelle : tenue sur plusieurs heures, et effet d'une compaction |
 | R2 | ⚠️ Le schéma de `TodoWrite` n'est pas documenté dans la page des hooks : le panneau de tâches peut se vider sans prévenir à une mise à jour de Claude Code (`src/cli/hook.ts`) | Lecture défensive ; `TaskCreated` et `TaskCompleted`, documentés, en second |
 | R3 | Le contenu du tableau sert de vecteur d'injection | Boucle locale, origine vérifiée, cadrage du texte injecté |
 | R4 | Le journal grossit (une ligne par outil lancé) | Résumés courts, sorties d'outil jamais stockées ; compaction plus tard |

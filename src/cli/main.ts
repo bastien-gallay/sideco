@@ -34,6 +34,7 @@ import {
   findServer,
   get,
   initRoot,
+  listen,
   type Posted,
   post,
   type Server,
@@ -211,11 +212,7 @@ async function run(verb: string, rest: string[]): Promise<number> {
     }
     case "wait": {
       const seconds = Number(args.flags.get("timeout") ?? 540);
-      const waited = await get<{ outcome: string; text: string }>(
-        server,
-        `/api/wait?session=${encodeURIComponent(session ?? "cli")}&timeout=${Math.round(seconds * 1000)}`,
-        0,
-      );
+      const waited = await listen(server, session ?? "cli", seconds * 1000);
       console.log(
         waited.outcome === "passed"
           ? waited.text

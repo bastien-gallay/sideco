@@ -101,7 +101,18 @@
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook --rewake",
             "asyncRewake": true,
-            "timeout": 1800
+            "timeout": 43500
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook",
+            "timeout": 5
           }
         ]
       }

@@ -299,6 +299,8 @@ function decideOnSession(ws: Workspace, cmd: SessionCommand, ctx: Context): Vico
       return [{ event: "AgentNotified", message: cmd.message }];
     case "turn-end":
       return [{ event: "TurnEnded" }];
+    case "session-end":
+      return [{ event: "SessionEnded" }];
     case "delivered":
       return [{ event: "ChangesDelivered", upTo: cmd.upTo }];
   }

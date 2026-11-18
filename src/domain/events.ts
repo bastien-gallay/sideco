@@ -101,6 +101,7 @@ export type SessionEvent =
   | { event: "TodosUpdated"; todos: Todo[] }
   | { event: "AgentNotified"; message: string }
   | { event: "TurnEnded" }
+  | { event: "SessionEnded" }
   | { event: "ChangesDelivered"; upTo: number };
 
 export type VicoEvent = BoardEvent | SessionEvent;
@@ -146,6 +147,7 @@ const SESSION_EVENTS: ReadonlySet<string> = new Set<SessionEvent["event"]>([
   "TodosUpdated",
   "AgentNotified",
   "TurnEnded",
+  "SessionEnded",
   "ChangesDelivered",
 ]);
 
