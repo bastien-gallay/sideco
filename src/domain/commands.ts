@@ -35,6 +35,10 @@ export type Command =
   | { kind: "note"; board: string; text: string; target?: string }
   | { kind: "resolve"; board: string; id: string }
   | { kind: "pass"; board: string; to: "agent" | "human"; message?: string }
+  /** Takes back the caller's last gesture on the board; the board may be one they just removed. */
+  | { kind: "undo"; board: string }
+  /** Puts back what the caller's last undo took. */
+  | { kind: "redo"; board: string }
   | { kind: "session-start"; cwd?: string }
   | { kind: "prompt"; text: string }
   | { kind: "tool-start"; call: string; tool: string; summary: string }
@@ -169,6 +173,9 @@ export function parseCommand(input: unknown): Command {
         to: oneOf(f, "to", ["agent", "human"] as const),
         message: optional(f, "message", (x, k) => text(x, k, LIMITS.note)),
       };
+    case "undo":
+    case "redo":
+      return { kind, board: boardId(f) };
     case "session-start":
       return { kind, cwd: optional(f, "cwd", (x, k) => text(x, k, 1000)) };
     case "prompt":

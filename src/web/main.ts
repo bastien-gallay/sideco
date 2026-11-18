@@ -26,7 +26,15 @@ import {
   state,
   travelTo,
 } from "./store.ts";
-import { agentStatus, describeEvent, handOverHint, pendingCount, recentTurns } from "./view.ts";
+import {
+  agentStatus,
+  describeEvent,
+  handOverHint,
+  pendingCount,
+  recentTurns,
+  redoTarget,
+  undoTarget,
+} from "./view.ts";
 
 const TURNS_SHOWN = 4;
 const TOOLS_SHOWN = 8;
@@ -47,6 +55,7 @@ document.head.prepend(h("style", {}, SVG_STYLE));
 const boardPicker = h("div", { class: "board-picker" });
 const statusPill = h("div", { class: "status", role: "status", "aria-live": "polite" });
 const zoomLabel = h("span", { class: "zoom-label" }, "100 %");
+const undoGroup = h("div", { class: "undo" });
 const exportMenu = h("details", { class: "menu" });
 const banner = h("div", { class: "banner", hidden: true });
 const palette = h("section", { class: "palette", "aria-label": t.palette });
@@ -91,6 +100,7 @@ app.append(
     { class: "top" },
     h("strong", { class: "brand" }, "Vico"),
     boardPicker,
+    undoGroup,
     statusPill,
     h(
       "div",
@@ -174,6 +184,36 @@ const paintBoardPicker = region(boardPicker, (m: BoardPickerModel) => {
       ),
   ];
 });
+
+/** As the reader's keyboard writes them: ⌘ on a Mac, Ctrl elsewhere. */
+const SHORTCUTS = /Mac|iPhone|iPad/.test(navigator.platform)
+  ? { undo: "⌘Z", redo: "⇧⌘Z" }
+  : { undo: "Ctrl+Z", redo: locale === "fr" ? "Ctrl+Maj+Z" : "Ctrl+Shift+Z" };
+
+const paintUndo = region(undoGroup, (m: { undo: boolean; redo: boolean }) => [
+  h(
+    "button",
+    {
+      type: "button",
+      title: t.undo(SHORTCUTS.undo),
+      "aria-label": t.undo(SHORTCUTS.undo),
+      disabled: !m.undo,
+      onclick: () => void undo(),
+    },
+    t.undoAction,
+  ),
+  h(
+    "button",
+    {
+      type: "button",
+      title: t.redo(SHORTCUTS.redo),
+      "aria-label": t.redo(SHORTCUTS.redo),
+      disabled: !m.redo,
+      onclick: () => void redo(),
+    },
+    t.redoAction,
+  ),
+]);
 
 const paintStatus = region(statusPill, (m: { tone: string; text: string; connected: boolean }) => [
   h("span", { class: `dot tone-${m.connected ? m.tone : "off"}`, "aria-hidden": "true" }),
@@ -486,16 +526,57 @@ async function copyMermaid(): Promise<void> {
   exportMenu.open = false;
 }
 
+/**
+ * Takes back the human's latest gesture: on the board shown, or the removal of a
+ * board if that came after. Claude's gestures are never theirs to undo.
+ */
+async function undo(): Promise<void> {
+  const board = isLive() ? undoTarget(state.live, state.boardId ?? undefined) : undefined;
+  if (board) await send({ kind: "undo", board });
+}
+
+async function redo(): Promise<void> {
+  const board = isLive() ? redoTarget(state.live, state.boardId ?? undefined) : undefined;
+  if (board) await send({ kind: "redo", board });
+}
+
+/** A text being typed has its own undo, and a question asked in a dialog comes first. */
+function typing(target: EventTarget | null): boolean {
+  if (document.querySelector("dialog[open]")) return true;
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
+  );
+}
+
+window.addEventListener("keydown", (event) => {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || typing(event.target)) return;
+  const key = event.key.toLowerCase();
+  if (key === "z") void (event.shiftKey ? redo() : undo());
+  else if (key === "y" && !event.shiftKey) void redo();
+  else return;
+  event.preventDefault();
+});
+
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
-function say(text: string): void {
-  toast.textContent = text;
-  toast.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
+/** Says one thing, briefly. With an `offer`, it stays longer: there is something to press. */
+function say(text: string, offer?: { label: string; run: () => void }): void {
+  const hide = (): void => {
     toast.hidden = true;
     state.error = null;
-  }, 5000);
+  };
+  toast.replaceChildren(text);
+  if (offer) {
+    const take = (): void => {
+      hide();
+      offer.run();
+    };
+    toast.append(h("button", { type: "button", onclick: take }, offer.label));
+  }
+  toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hide, offer ? 10000 : 5000);
 }
 
 function openNewBoard(formatId = "event-storming"): void {
@@ -547,16 +628,17 @@ function openNewBoard(formatId = "event-storming"): void {
 }
 
 /**
- * Removing a board is the one gesture the page cannot take back, so it asks
- * first, and the answer that keeps the board has the focus.
+ * Removing a board takes it from Claude too, so the page asks first, and the
+ * answer that keeps the board has the focus. Once removed, undoing is offered at once.
  */
 function askToRemove(id: string): void {
   const board = findBoard(state.live, id);
   if (!board || !isLive()) return;
   const keep = h("button", { type: "button", class: "quiet", onclick: () => removal.close() }, t.cancel);
   const remove = async (): Promise<void> => {
-    await send({ kind: "remove-board", board: id });
+    const done = await send({ kind: "remove-board", board: id });
     removal.close();
+    if (done) say(t.boardRemoved(board.title), { label: t.undoAction, run: () => void undo() });
   };
   removal.replaceChildren(
     h("h2", {}, t.removeBoardQuestion(board.title)),
@@ -598,6 +680,11 @@ function render(): void {
   });
   paintStatus({ ...agentStatus(session, live ? state.listening : 0, locale), connected: state.connected });
   paintExport({ board: board?.id });
+  const mine = live ? (state.boardId ?? undefined) : undefined;
+  paintUndo({
+    undo: live && undoTarget(state.live, mine) !== undefined,
+    redo: live && redoTarget(state.live, mine) !== undefined,
+  });
   paintPalette({
     format: board?.format,
     live,

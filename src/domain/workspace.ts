@@ -6,6 +6,7 @@
  * way to get a workspace for a past moment.
  */
 import type { Actor, Recorded, Todo } from "./events.ts";
+import { invert, remember as rememberGesture, shiftColumns, supersede, type Trails } from "./undo.ts";
 
 export interface Element {
   id: string;
@@ -55,6 +56,8 @@ export interface Board {
   minted: Record<string, number>;
   /** Ids of removed elements. With the ids in use, they are every id ever given: none is given twice. */
   retired: string[];
+  /** Per author, the gestures they can still take back on this board, and put back. */
+  trails: Trails;
   createdSeq: number;
   changedSeq: number;
 }
@@ -92,13 +95,16 @@ export interface Session {
 }
 
 export interface Workspace {
+  /** In the order they were created. */
   boards: Board[];
+  /** Removed boards, kept aside as they were: undoing the removal brings one back. */
+  removed: Board[];
   sessions: Session[];
   seq: number;
 }
 
 export function emptyWorkspace(): Workspace {
-  return { boards: [], sessions: [], seq: 0 };
+  return { boards: [], removed: [], sessions: [], seq: 0 };
 }
 
 export function replay(events: readonly Recorded[]): Workspace {
@@ -143,6 +149,8 @@ export function apply(ws: Workspace, e: Recorded): void {
 
 function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): void {
   if (e.event === "BoardCreated") {
+    // The id is taken again: the board that had it can no longer come back.
+    ws.removed = ws.removed.filter((b) => b.id !== e.board);
     ws.boards.push({
       id: e.board,
       title: e.title,
@@ -154,15 +162,30 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
       turn: null,
       minted: {},
       retired: [],
+      trails: {},
       createdSeq: e.seq,
       changedSeq: e.seq,
     });
     return;
   }
+  if (e.event === "BoardRestored") {
+    const back = ws.removed.find((b) => b.id === e.board);
+    if (!back || findBoard(ws, e.board)) return;
+    const inverse = invert(back, e);
+    ws.removed.splice(ws.removed.indexOf(back), 1);
+    ws.boards.push(back);
+    ws.boards.sort((a, b) => a.createdSeq - b.createdSeq);
+    back.changedSeq = e.seq;
+    if (inverse) rememberGesture(back, e, inverse);
+    return;
+  }
   const board = findBoard(ws, e.board);
   if (!board) return;
+  const inverse = invert(board, e);
   if (e.event === "BoardRemoved") {
     ws.boards.splice(ws.boards.indexOf(board), 1);
+    ws.removed.push(board);
+    if (inverse) rememberGesture(board, e, inverse);
     return;
   }
   board.changedSeq = e.seq;
@@ -213,12 +236,37 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
         board.focus = ids.length > 0 ? { ...board.focus, ids } : null;
       }
       break;
+    case "ElementRestored": {
+      if (findElement(board, e.id)) break;
+      board.retired = board.retired.filter((id) => id !== e.id);
+      const el: Element = {
+        id: e.id,
+        type: e.type,
+        label: e.label,
+        detail: e.detail,
+        col: e.col,
+        lane: e.lane,
+        by: e.by,
+        addedSeq: e.addedSeq,
+        changedSeq: e.seq,
+      };
+      board.elements.push(el);
+      restack(board, el, e.before);
+      // A link comes back only if its other end is still there, and no newer link took its place.
+      for (const edge of e.edges) {
+        const known = board.edges.some((other) => other.src === edge.src && other.dst === edge.dst);
+        if (!known && findElement(board, edge.src) && findElement(board, edge.dst))
+          board.edges.push({ ...edge });
+      }
+      break;
+    }
     case "ColumnInserted":
       for (const el of board.elements) if (el.col >= e.at) el.col += 1;
+      shiftColumns(board, e.at);
       break;
     case "EdgeAdded":
       board.edges = board.edges.filter((edge) => !(edge.src === e.src && edge.dst === e.dst));
-      board.edges.push({ src: e.src, dst: e.dst, label: e.label, by: e.actor });
+      board.edges.push({ src: e.src, dst: e.dst, label: e.label, by: e.by ?? e.actor });
       break;
     case "EdgeRemoved":
       board.edges = board.edges.filter((edge) => !(edge.src === e.src && edge.dst === e.dst));
@@ -249,6 +297,8 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
       board.turn = { to: e.to, message: e.message, seq: e.seq };
       break;
   }
+  if (inverse) rememberGesture(board, e, inverse);
+  supersede(board, e);
 }
 
 function remember(board: Board, id: string): void {

@@ -145,6 +145,12 @@ function announce(event: Recorded): void {
     leaveMissingBoard();
     return;
   }
+  if (event.event === "BoardRestored") {
+    // The human took their removal back: they return to the board they were on.
+    if (event.actor === "human") openBoard(event.board);
+    else state.notice = t.agentRestoredBoard(event.title);
+    return;
+  }
   if (event.event !== "BoardCreated") return;
   if (state.boardId === null) openBoard(event.board);
   else if (event.actor === "agent" && event.board !== state.boardId)

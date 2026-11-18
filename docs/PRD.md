@@ -19,6 +19,7 @@ Rédigé le 2026-11-17. Niveau de preuve : ✅ lu sur une source primaire, ⚠�
 | D9 | Confidentialité | − un journal unique | + `boards.jsonl` versionnable, `sessions.jsonl` local |
 | D10 | Publication | − service hébergé | + site statique généré, servi en local ou ailleurs |
 | D11 | Langue | − interface en français seulement ; − langue inscrite dans le journal | + anglais par défaut, français au choix du lecteur ; l'agent lit toujours de l'anglais |
+| D12 | Annulation | − pile gardée par la page, perdue au rechargement ; − réécrire ou tronquer le journal | + événements inverses ajoutés au journal, marqués du geste qu'ils annulent ; une piste par auteur, projetée comme le reste ; une annulation n'écrase jamais un changement ultérieur de l'autre auteur : aujourd'hui le geste quitte la piste sans le dire ; cible décidée le 2026-11-18 : aucune surprise, demander confirmation (B8) |
 
 ## 1. Problème et public
 
@@ -141,6 +142,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F15 | Ateliers définis par la communauté dans des fichiers | ❌ plus tard |
 | F16 | Plusieurs humains ou plusieurs agents sur un même tableau | ❌ plus tard |
 | F17 | Page, dessin et exports en anglais par défaut, en français au choix du lecteur (sélecteur de la page, `--lang`, `VICO_LANG`) ; le texte lu par l'agent reste en anglais | ✅ |
+| F18 | Annuler et rétablir ses propres gestes dans la page (`Undo`, `Redo`, raccourcis), tableau supprimé compris ; l'agent n'est informé que du résultat net | ✅ |
 
 ### 5.3 Exigences de qualité
 
@@ -275,7 +277,7 @@ Un atelier déclare ses types (libellé, préfixe d'identifiant, couleur, forme)
 
 Hors MVP, assumé : dessin libre, images, curseurs multiples, comptes, synchronisation distante.
 
-**Traiter** « Ensuite » et « Manques connus » avant toute nouvelle idée : priorité donnée le 2026-11-18. Ordre arrêté le même jour, du prochain au dernier : L1, L6, B5, L2, B7, L3, B3, B1, B4, B2, L4, B6. Le kanban « backlog » de Vico porte l'ordre courant ; il n'est pas versionné pour l'instant.
+**Traiter** « Ensuite » et « Manques connus » avant toute nouvelle idée : priorité donnée le 2026-11-18. Ordre arrêté le même jour, du prochain au dernier : L1, L6, B5, L2, B7, L3, B3, B1, B4, B2, L4, B6. B8 et B9, ajoutés le 2026-11-18, sont en fin de liste, pas encore ordonnés. Le kanban « backlog » de Vico porte l'ordre courant ; il n'est pas versionné pour l'instant.
 
 | Repère | Ensuite |
 | --- | --- |
@@ -283,17 +285,19 @@ Hors MVP, assumé : dessin libre, images, curseurs multiples, comptes, synchroni
 | B2 | Flux de texte en direct par l'API mod |
 | B3 | Ateliers en fichiers (F15) |
 | B4 | Capture des diagrammes de séquence et des tables |
-| B5 | Annuler / rétablir |
+| B5 | ✅ Annuler / rétablir, livré le 2026-11-18 (F18, D12). Notes, passage de main et insertion de colonne restent non annulables : ni urgent ni important (décision du 2026-11-18) |
 | B6 | Binaire unique |
 | B7 | Diff « depuis ma dernière visite » |
+| B8 | Annulation sans surprise : quand le geste à annuler a été modifié ailleurs que sur la page ouverte, la page demande confirmation au lieu de passer au geste précédent |
+| B9 | `vico undo` pour Claude, avec des précautions ; modèle à étudier : `git revert` (geste nommé, effet montré avant d'écrire, refus en cas de conflit) |
 
 | Repère | Manque connu | Conséquence aujourd'hui |
 | --- | --- | --- |
-| L1 | ✅ Levé le 2026-11-18 : bouton `Remove` à côté du choix du tableau, avec confirmation | Reste : la page ne sait pas restaurer un tableau supprimé (voir B5) |
+| L1 | ✅ Levé le 2026-11-18 : bouton `Remove` à côté du choix du tableau, avec confirmation | ✅ Rien : `Undo` restaure le tableau supprimé (B5) |
 | L2 | Seule la session la plus récente est affichée | Deux sessions Claude Code dans le même projet : une seule est suivie |
 | L3 | Le compagnon reste en marche après la fin de la session | L'arrêter avec `vico stop` |
 | L4 | Deux branches qui écrivent dans `boards.jsonl` | ⚠️ Conflit de fusion probable, non essayé ; vérification : fusionner deux branches qui ont chacune ajouté des événements |
-| L6 | Premier `vico open` d'un projet sous bac à sable | ⚠️ Non observé en vrai : le démarrage serait refusé avec `this shell may not start the companion` (vérifié en test unitaire seulement) |
+| L6 | Premier `vico open` d'un projet sous bac à sable | ✅ Observé le 2026-11-18 avec `allowLocalBinding` : espace de travail créé, compagnon démarré, écritures acceptées ; seule l'ouverture de la page échoue, avec la consigne de relancer hors bac à sable. ⚠️ Bac à sable par défaut (sans `allowLocalBinding`) : toujours non observé, refus attendu avec `this shell may not start the companion` (test unitaire seulement) ; vérification : retirer le réglage le temps d'un essai |
 
 <sub>Source : backlog présenté en session le 2026-11-18 ; L1 à L3 : `src/web/main.ts`, `src/domain/workspace.ts` (`latestSession`), `src/cli/main.ts` (`stop`) ; L5 n'est pas une tâche mais un risque : voir R2.</sub>
 

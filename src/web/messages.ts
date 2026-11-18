@@ -30,6 +30,12 @@ export interface Messages {
   newBoardButton: string;
   zoomOut: string;
   zoomIn: string;
+  /** The tooltip of Undo and of Redo; `keys` is the shortcut as the reader's keyboard writes it. */
+  undo: (keys: string) => string;
+  redo: (keys: string) => string;
+  /** The words on the two buttons; the first also offers to take a board removal back. */
+  undoAction: string;
+  redoAction: string;
   export: string;
   exportAs: Record<ExportFormat, string>;
   copyMermaid: string;
@@ -114,6 +120,9 @@ export interface Messages {
   // News the agent made while the human looked elsewhere.
   agentRemovedBoard: (title: string) => string;
   agentCreatedBoard: (title: string) => string;
+  agentRestoredBoard: (title: string) => string;
+  /** Said to the reader who just removed a board, beside the offer to undo. */
+  boardRemoved: (title: string) => string;
 
   /** Between a label and what follows it: French puts a space before the colon. */
   colon: string;
@@ -142,6 +151,10 @@ const en: Messages = {
   newBoardButton: "+ Board",
   zoomOut: "Zoom out",
   zoomIn: "Zoom in",
+  undo: (keys) => `Undo your last change (${keys})`,
+  redo: (keys) => `Redo (${keys})`,
+  undoAction: "Undo",
+  redoAction: "Redo",
   export: "Export",
   exportAs: {
     md: "Markdown (design note)",
@@ -187,7 +200,7 @@ const en: Messages = {
   removeBoard: (title) => `Remove the board “${title}”`,
   removeBoardQuestion: (title) => `Remove the board “${title}”?`,
   removeBoardConsequence: (elements) =>
-    `${elements === 0 ? "It is empty." : `It holds ${elements} element${plural(elements)}.`} It leaves the page, for you and for Claude. Its history stays in the journal, but the page cannot bring it back.`,
+    `${elements === 0 ? "It is empty." : `It holds ${elements} element${plural(elements)}.`} It leaves the page, for you and for Claude. Undo brings it back.`,
 
   sessionPanel: "Claude Code session",
   session: "Session",
@@ -222,6 +235,8 @@ const en: Messages = {
   removeLink: "Remove the link",
 
   agentRemovedBoard: (title) => `Claude removed the board “${title}”.`,
+  agentRestoredBoard: (title) => `Claude restored the board “${title}”.`,
+  boardRemoved: (title) => `Board “${title}” removed.`,
   agentCreatedBoard: (title) => `Claude created the board “${title}”: it is in the board list, at the top.`,
 
   colon: ":",
@@ -248,6 +263,10 @@ const fr: Messages = {
   newBoardButton: "+ Tableau",
   zoomOut: "Dézoomer",
   zoomIn: "Zoomer",
+  undo: (keys) => `Annuler ton dernier changement (${keys})`,
+  redo: (keys) => `Rétablir (${keys})`,
+  undoAction: "Annuler",
+  redoAction: "Rétablir",
   export: "Exporter",
   exportAs: {
     md: "Markdown (note de conception)",
@@ -294,7 +313,7 @@ const fr: Messages = {
   removeBoard: (title) => `Supprimer le tableau « ${title} »`,
   removeBoardQuestion: (title) => `Supprimer le tableau « ${title} » ?`,
   removeBoardConsequence: (elements) =>
-    `${elements === 0 ? "Il est vide." : `Il contient ${elements} élément${plural(elements)}.`} Il quitte la page, pour toi comme pour Claude. Son histoire reste dans le journal, mais la page ne sait pas le restaurer.`,
+    `${elements === 0 ? "Il est vide." : `Il contient ${elements} élément${plural(elements)}.`} Il quitte la page, pour toi comme pour Claude. Annuler le fait revenir.`,
 
   sessionPanel: "Session Claude Code",
   session: "Session",
@@ -330,6 +349,8 @@ const fr: Messages = {
   removeLink: "Supprimer le lien",
 
   agentRemovedBoard: (title) => `Claude a supprimé le tableau « ${title} ».`,
+  agentRestoredBoard: (title) => `Claude a restauré le tableau « ${title} ».`,
+  boardRemoved: (title) => `Tableau « ${title} » supprimé.`,
   agentCreatedBoard: (title) =>
     `Claude a créé le tableau « ${title} » : il est dans la liste des tableaux, en haut.`,
 

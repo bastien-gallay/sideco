@@ -23,7 +23,7 @@ test("an element remembers who added it and when it last changed", () => {
 
 test("an event for a board that does not exist is ignored, not fatal", () => {
   const ws = replay([{ seq: 1, ts: "t", actor: "agent", event: "ElementRemoved", board: "ghost", id: "E1" }]);
-  expect(ws).toEqual({ boards: [], sessions: [], seq: 1 });
+  expect(ws).toEqual({ boards: [], removed: [], sessions: [], seq: 1 });
 });
 
 describe("the agent's status follows the session events", () => {

@@ -65,8 +65,10 @@ body {
   color: var(--ink);
 }
 
+/* One column as wide as the window, never as wide as its widest row: a row that is too long gives way inside. */
 #app {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   height: 100%;
 }
@@ -185,7 +187,7 @@ input[type="text"] {
   min-width: 0;
 }
 
-/* Offered, never advertised: the one gesture the page cannot take back. */
+/* Offered, never advertised: it takes the board from Claude too. */
 .board-picker .remove-board {
   color: var(--muted);
 }
@@ -194,9 +196,16 @@ input[type="text"] {
   color: var(--danger);
 }
 
+/* The title gives way first when the window narrows; the words on the buttons never wrap. */
 .board-picker select {
+  min-width: 0;
   max-width: 280px;
   font-weight: 600;
+}
+
+.board-picker button,
+.undo button {
+  flex: none;
 }
 
 .status {
@@ -262,6 +271,12 @@ input[type="text"] {
 .zoom button {
   width: 28px;
   padding: 3px 0;
+}
+
+.undo {
+  display: flex;
+  flex: none;
+  gap: 4px;
 }
 
 .zoom-label {
@@ -933,6 +948,19 @@ legend {
   transform: translateX(-50%);
 }
 
+.toast button {
+  margin-left: 12px;
+  padding: 2px 10px;
+  border-color: currentColor;
+  background: transparent;
+  color: inherit;
+  font-weight: 600;
+}
+
+.toast button:hover:not(:disabled) {
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+
 /* ── Narrow windows: the board keeps the room ─────────────────────────────── */
 
 @media (max-width: 1000px) {
@@ -942,6 +970,15 @@ legend {
 
   .right {
     display: none;
+  }
+
+  /* The session panel is gone: the status in the header is all that says what Claude does. It keeps its room. */
+  .zoom-label {
+    display: none;
+  }
+
+  .board-picker select {
+    max-width: 160px;
   }
 
   .bottom {

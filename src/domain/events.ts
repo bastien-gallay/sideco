@@ -17,12 +17,37 @@ export interface Todo {
   status: "pending" | "in_progress" | "completed";
 }
 
+/**
+ * How a board event relates to the gesture it belongs to. A gesture is what one
+ * command did; undo and redo answer it with ordinary events that carry its seq.
+ */
+export interface Lineage {
+  /** This event takes back the gesture that ended at this seq. */
+  undoes?: number;
+  /** This event puts back what the undo that ended at this seq took. */
+  redoes?: number;
+  /** Same gesture as the event before it: one undo takes them back together. */
+  joined?: true;
+}
+
+/** A link as it stood when its element was removed. */
+export interface KeptEdge {
+  src: string;
+  dst: string;
+  label?: string;
+  by: Actor;
+}
+
 /** What happened on a board. Positions are semantic (`col`, `lane`), never pixels. */
-export type BoardEvent =
+export type BoardEvent = Lineage & BoardFact;
+
+type BoardFact =
   | { event: "BoardCreated"; board: string; title: string; format: string }
   | { event: "BoardRetitled"; board: string; title: string }
   /** The board leaves the workspace; the journal keeps its history. `title` is what it was called. */
   | { event: "BoardRemoved"; board: string; title: string }
+  /** A removed board comes back as it was: only undoing its removal says this. */
+  | { event: "BoardRestored"; board: string; title: string }
   | {
       event: "ElementAdded";
       board: string;
@@ -37,8 +62,28 @@ export type BoardEvent =
   | { event: "ElementAnnotated"; board: string; id: string; detail: string }
   | { event: "ElementMoved"; board: string; id: string; col: number; lane: string; before?: string }
   | { event: "ElementRemoved"; board: string; id: string }
+  /**
+   * A removed element comes back under its id, the one case where an id returns.
+   * The event carries the element whole: who added it, when, where it sat
+   * (`before` is the element that followed it) and the links it had.
+   */
+  | {
+      event: "ElementRestored";
+      board: string;
+      id: string;
+      type: string;
+      label: string;
+      col: number;
+      lane: string;
+      detail?: string;
+      by: Actor;
+      addedSeq: number;
+      before?: string;
+      edges: KeptEdge[];
+    }
   | { event: "ColumnInserted"; board: string; at: number }
-  | { event: "EdgeAdded"; board: string; src: string; dst: string; label?: string }
+  /** `by` is set when a link returns: it keeps the author it had. */
+  | { event: "EdgeAdded"; board: string; src: string; dst: string; label?: string; by?: Actor }
   | { event: "EdgeRemoved"; board: string; src: string; dst: string }
   | { event: "FocusSet"; board: string; ids: string[]; reason?: string }
   | { event: "FocusCleared"; board: string }
@@ -75,11 +120,13 @@ const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "BoardCreated",
   "BoardRetitled",
   "BoardRemoved",
+  "BoardRestored",
   "ElementAdded",
   "ElementRenamed",
   "ElementAnnotated",
   "ElementMoved",
   "ElementRemoved",
+  "ElementRestored",
   "ColumnInserted",
   "EdgeAdded",
   "EdgeRemoved",

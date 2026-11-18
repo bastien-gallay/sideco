@@ -4,9 +4,15 @@
  * No DOM here, so the wording is tested like any other rule.
  */
 import { describeChanges } from "../domain/digest.ts";
-import type { Recorded } from "../domain/events.ts";
+import type { Actor, Recorded } from "../domain/events.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
-import type { AgentStatus, Session, SessionTurn } from "../domain/workspace.ts";
+import {
+  type AgentStatus,
+  findBoard,
+  type Session,
+  type SessionTurn,
+  type Workspace,
+} from "../domain/workspace.ts";
 import { MESSAGES } from "./messages.ts";
 
 export type Tone = "off" | "idle" | "busy" | "waiting" | "listening";
@@ -57,10 +63,22 @@ const MAX_LINE = 90;
 
 /** One line of history, in the reader's language. */
 export function describeEvent(e: Recorded, locale: Locale = DEFAULT_LOCALE): string {
-  return clip(WORDING[locale](e));
+  return clip(WORDING[locale](e) + answered(e, locale));
 }
 
 const WORDING: Record<Locale, (e: Recorded) => string> = { en: english, fr: french };
+
+const ANSWERS: Record<Locale, { undo: string; redo: string }> = {
+  en: { undo: " (undo)", redo: " (redo)" },
+  fr: { undo: " (annulation)", redo: " (rétablissement)" },
+};
+
+/** Says that the line takes an earlier gesture back, or puts it back. */
+function answered(e: Recorded, locale: Locale): string {
+  if (!("board" in e)) return "";
+  if (e.undoes !== undefined) return ANSWERS[locale].undo;
+  return e.redoes !== undefined ? ANSWERS[locale].redo : "";
+}
 
 function english(e: Recorded): string {
   const you = e.actor === "human";
@@ -74,6 +92,8 @@ function english(e: Recorded): string {
       return `${does("rename")} the board to “${e.title}”`;
     case "BoardRemoved":
       return `${does("remove")} the board “${e.title}”`;
+    case "BoardRestored":
+      return `${does("restore")} the board “${e.title}”`;
     case "ElementAdded":
       return `${does("add")} ${e.id} “${e.label}”`;
     case "ElementRenamed":
@@ -84,6 +104,8 @@ function english(e: Recorded): string {
       return `${does("move")} ${e.id}`;
     case "ElementRemoved":
       return `${does("remove")} ${e.id}`;
+    case "ElementRestored":
+      return `${does("restore")} ${e.id} “${e.label}”`;
     case "ColumnInserted":
       return `${does("insert")} a column at ${e.at}`;
     case "EdgeAdded":
@@ -134,6 +156,8 @@ function french(e: Recorded): string {
       return `${verb("renommes", "renomme")} le tableau en « ${e.title} »`;
     case "BoardRemoved":
       return `${verb("supprimes", "supprime")} le tableau « ${e.title} »`;
+    case "BoardRestored":
+      return `${verb("restaures", "restaure")} le tableau « ${e.title} »`;
     case "ElementAdded":
       return `${verb("ajoutes", "ajoute")} ${e.id} « ${e.label} »`;
     case "ElementRenamed":
@@ -144,6 +168,8 @@ function french(e: Recorded): string {
       return `${verb("déplaces", "déplace")} ${e.id}`;
     case "ElementRemoved":
       return `${verb("supprimes", "supprime")} ${e.id}`;
+    case "ElementRestored":
+      return `${verb("restaures", "restaure")} ${e.id} « ${e.label} »`;
     case "ColumnInserted":
       return `${verb("insères", "insère")} une colonne en ${e.at}`;
     case "EdgeAdded":
@@ -185,4 +211,36 @@ function french(e: Recorded): string {
 function clip(text: string): string {
   const line = text.replace(/\s+/g, " ").trim();
   return line.length > MAX_LINE ? `${line.slice(0, MAX_LINE - 1)}…` : line;
+}
+
+/**
+ * The board an Undo from the page acts on: the one shown, unless the reader
+ * removed a board since their last gesture there. Their latest gesture goes first.
+ */
+export function undoTarget(
+  ws: Workspace,
+  shown: string | undefined,
+  by: Actor = "human",
+): string | undefined {
+  const last = (boardId: string | undefined): number =>
+    (boardId && findBoard(ws, boardId)?.trails[by]?.undo.at(-1)?.seq) || 0;
+  let target = last(shown) > 0 ? shown : undefined;
+  let latest = last(shown);
+  for (const board of ws.removed) {
+    const removal = board.trails[by]?.undo.at(-1);
+    if (removal?.inverse[0]?.event !== "BoardRestored" || removal.seq < latest) continue;
+    target = board.id;
+    latest = removal.seq;
+  }
+  return target;
+}
+
+/** The board a Redo from the page acts on: the one shown, when the reader has something to put back. */
+export function redoTarget(
+  ws: Workspace,
+  shown: string | undefined,
+  by: Actor = "human",
+): string | undefined {
+  const board = shown ? findBoard(ws, shown) : undefined;
+  return board?.trails[by]?.redo.length ? board.id : undefined;
 }

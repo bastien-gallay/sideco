@@ -30,10 +30,20 @@ type BoardCommand = Extract<Command, { board: string }>;
 type SessionCommand = Exclude<Command, { board: string }>;
 
 export function decide(ws: Workspace, cmd: Command, ctx: Context): Decision {
-  return "board" in cmd ? decideOnBoard(ws, cmd) : { events: decideOnSession(ws, cmd, ctx) };
+  if (!("board" in cmd)) return { events: decideOnSession(ws, cmd, ctx) };
+  const decision = decideOnBoard(ws, cmd, ctx);
+  // What one command does is one gesture: one undo takes all of it back.
+  const events = decision.events.map((e, i): BoardEvent => (i === 0 ? e : { ...e, joined: true }));
+  return { ...decision, events };
 }
 
-function decideOnBoard(ws: Workspace, cmd: BoardCommand): Decision {
+interface BoardDecision {
+  events: BoardEvent[];
+  minted?: string;
+}
+
+function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDecision {
+  if (cmd.kind === "undo" || cmd.kind === "redo") return { events: reverse(ws, cmd, ctx.actor) };
   if (cmd.kind === "create-board") {
     if (findBoard(ws, cmd.board)) {
       throw new CommandError(`board "${cmd.board}" already exists; write to it, or choose another id`);
@@ -43,10 +53,7 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand): Decision {
   }
 
   const board = findBoard(ws, cmd.board);
-  if (!board) {
-    const known = ws.boards.map((b) => b.id).join(", ") || "none yet";
-    throw new CommandError(`no board "${cmd.board}" (boards: ${known})`);
-  }
+  if (!board) throw noBoard(ws, cmd.board);
   const format = requireFormat(board.format);
   const b = board.id;
 
@@ -109,7 +116,28 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand): Decision {
   }
 }
 
-function add(board: Board, format: Format, cmd: Extract<Command, { kind: "add" }>): Decision {
+function noBoard(ws: Workspace, id: string): CommandError {
+  const known = ws.boards.map((b) => b.id).join(", ") || "none yet";
+  return new CommandError(`no board "${id}" (boards: ${known})`);
+}
+
+/**
+ * Undo and redo say again what the board kept as the way back, marked with the
+ * gesture they answer. On a removed board, the only thing to take back is the removal.
+ */
+function reverse(ws: Workspace, cmd: { kind: "undo" | "redo"; board: string }, actor: Actor): BoardEvent[] {
+  const live = findBoard(ws, cmd.board);
+  const board = live ?? ws.removed.find((b) => b.id === cmd.board);
+  if (!board) throw noBoard(ws, cmd.board);
+  const gesture = board.trails[actor]?.[cmd.kind].at(-1);
+  if (!gesture || (!live && gesture.inverse[0]?.event !== "BoardRestored")) {
+    throw new CommandError(`nothing to ${cmd.kind} on "${board.id}"`);
+  }
+  const answers = cmd.kind === "undo" ? { undoes: gesture.seq } : { redoes: gesture.seq };
+  return gesture.inverse.map((e): BoardEvent => ({ ...e, ...answers }));
+}
+
+function add(board: Board, format: Format, cmd: Extract<Command, { kind: "add" }>): BoardDecision {
   const type = findType(format, cmd.type);
   if (!type) {
     const allowed = format.types.map((t) => t.id).join(", ");

@@ -512,6 +512,96 @@ describe("the reader's language", () => {
   });
 });
 
+describe("taking a gesture back", () => {
+  const BOARD = "retour";
+  const undo = () => page.locator(".undo button").first();
+  const redo = () => page.locator(".undo button").last();
+  const labelOf = async (id: string): Promise<string | undefined> => (await elementOf(BOARD, id))?.label;
+  /** The page offers only what it has been told: wait for it, as a hand on the keyboard would. */
+  const offered = (button: ReturnType<typeof undo>): Promise<void> =>
+    until("the page offers it", async () => !(await button.isDisabled()));
+
+  test("Undo and Redo are offered once the human has done something, and only then", async () => {
+    await agent(
+      `board new "Retour" --id ${BOARD}\nadd event "Commande passée" --col 1\nadd event "Stock réservé" --col 2\nlink E1 E2`,
+    );
+    await page.locator(".board-picker select").selectOption(BOARD);
+    // The board shown before also had an E1: wait for this one's label, not for any card.
+    await card("E1").getByText("Commande passée").waitFor();
+    expect(await undo().getAttribute("aria-label")).toStartWith("Undo");
+    expect(await undo().isDisabled()).toBe(true);
+    expect(await redo().isDisabled()).toBe(true);
+
+    await card("E1").dblclick();
+    await typeInEditor("Validée");
+    await until("the rename reached the journal", async () => (await labelOf("E1")) === "Validée");
+    await until("Undo is offered", async () => !(await undo().isDisabled()));
+    await shot("13-undo");
+
+    await undo().click();
+    await until("the label is back", async () => (await labelOf("E1")) === "Commande passée");
+    await card("E1").getByText("Commande passée").waitFor();
+    await until("Redo is offered", async () => !(await redo().isDisabled()));
+    expect(await undo().isDisabled()).toBe(true);
+    await redo().click();
+    await until("the rename is back", async () => (await labelOf("E1")) === "Validée");
+  });
+
+  test("the keyboard does the same, and leaves a text being typed alone", async () => {
+    await offered(undo());
+    await page.keyboard.press("Control+z");
+    await until("Ctrl+Z took the rename back", async () => (await labelOf("E1")) === "Commande passée");
+    await offered(redo());
+    await page.keyboard.press("Control+Shift+z");
+    await until("Ctrl+Shift+Z put it back", async () => (await labelOf("E1")) === "Validée");
+
+    await card("E2").dblclick();
+    const editor = page.locator("textarea.card-editor");
+    await editor.waitFor({ state: "visible" });
+    const before = (await workspace()).seq;
+    await editor.press("Control+z");
+    await Bun.sleep(150);
+    expect((await workspace()).seq).toBe(before);
+    await editor.press("Escape");
+  });
+
+  test("a removed card comes back under its id, with its link", async () => {
+    await card("E2").focus();
+    await page.keyboard.press("Delete");
+    await until("E2 is gone", async () => (await elementOf(BOARD, "E2")) === undefined);
+    await card("E2").waitFor({ state: "detached" });
+    await page.keyboard.press("Control+z");
+    await until("E2 is back", async () => (await elementOf(BOARD, "E2"))?.by === "agent");
+    await card("E2").waitFor();
+    const board = (await workspace()).boards.find((b) => b.id === BOARD);
+    expect(board?.edges.map((e) => `${e.src}>${e.dst}`)).toEqual(["E1>E2"]);
+  });
+
+  test("a removed board is offered back at once, and comes back whole", async () => {
+    const sheet = page.locator("dialog.remove-board");
+    await page.locator(".board-picker button.remove-board").click();
+    expect(await sheet.locator("p").textContent()).toContain("Undo brings it back");
+    await sheet.locator("button.danger").click();
+    await until("the board is gone", async () => !(await workspace()).boards.some((b) => b.id === BOARD));
+
+    const offer = page.locator(".toast button");
+    await offer.waitFor();
+    expect(await page.locator(".toast").textContent()).toContain("Board “Retour” removed");
+    await shot("14-undo-removed-board");
+    await offer.click();
+    await until("the board is back", async () => (await workspace()).boards.some((b) => b.id === BOARD));
+    await until("the page shows it again", async () => page.url().endsWith(`#/b/${BOARD}`));
+    await card("E2").waitFor();
+    expect(await labelOf("E1")).toBe("Validée");
+
+    // Net of the back-and-forth, Claude is told one thing: the rename that stands.
+    const told = await pending();
+    expect(told).toContain('~ E1 renamed "Commande passée" → "Validée"');
+    expect(told).not.toContain("removed");
+    expect(told).not.toContain("restored");
+  });
+});
+
 describe("tidying up", () => {
   const listed = (): Promise<string[]> =>
     page
@@ -602,6 +692,21 @@ describe("look", () => {
     await page.setViewportSize({ width: 900, height: 700 });
     expect(await page.locator(".right").isVisible()).toBe(false);
     expect(await page.locator(".pass button").isVisible()).toBe(true);
+    // The header gives way inside: the board title shrinks, the words on the buttons stay whole.
+    const header = await page.evaluate(() => {
+      const box = (selector: string): DOMRect | undefined =>
+        document.querySelector(selector)?.getBoundingClientRect();
+      return {
+        fits: (box(".top .language")?.right ?? Number.NaN) <= window.innerWidth,
+        // With the session panel hidden, the status must still be read whole.
+        status: ((text) => (text ? text.scrollWidth <= text.clientWidth : false))(
+          document.querySelector(".status-text"),
+        ),
+        // A button whose words wrapped would be two lines tall.
+        oneLine: (box(".undo button")?.height ?? Number.NaN) < 36,
+      };
+    });
+    expect(header).toEqual({ fits: true, status: true, oneLine: true });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     // The page is one screen: the hand-over bar stays whole and in view, nothing scrolls but the regions.
     await page.evaluate(

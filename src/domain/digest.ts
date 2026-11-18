@@ -78,6 +78,21 @@ interface Entry {
   line: string;
 }
 
+interface Shelf {
+  entries: [string, Entry][];
+  moves: [string, { board: string; id: string; from: Origin }][];
+  origin: [string, Origin][];
+  added: string[];
+  made: boolean;
+}
+
+/** Removes and returns what `map` holds about a board: every key starts with the board's id. */
+function take<V>(map: Map<string, V>, board: string): [string, V][] {
+  const taken = [...map].filter(([key]) => key.startsWith(`${board}/`));
+  for (const [key] of taken) map.delete(key);
+  return taken;
+}
+
 /** Where an element was, and what it said, when the reader last saw it. */
 interface Origin {
   label: string;
@@ -99,24 +114,58 @@ export function describeChanges(events: readonly Recorded[], after: number, by: 
   const made = new Set<string>();
   /** Boards the reader knew that `by` removed, with the title they had. */
   const gone = new Map<string, string>();
+  /** Boards that were already removed when the reader last looked. */
+  const absent = new Set<string>();
+  /** What was pending about a removed board, kept for the case it comes back. */
+  const shelved = new Map<string, Shelf>();
   let passed = false;
   let message: string | undefined;
 
   /** A removed board takes every pending line about it along, whoever removed it. */
-  const forget = (board: string): void => {
-    for (const [key, entry] of entries) if (entry.board === board) entries.delete(key);
-    for (const [key, move] of moves) if (move.board === board) moves.delete(key);
-    for (const key of added) if (key.startsWith(`${board}/`)) added.delete(key);
-    for (const key of origin.keys()) if (key.startsWith(`${board}/`)) origin.delete(key);
+  const shelve = (board: string): void => {
+    const mine = [...added].filter((key) => key.startsWith(`${board}/`));
+    for (const key of mine) added.delete(key);
+    shelved.set(board, {
+      entries: take(entries, board),
+      moves: take(moves, board),
+      origin: take(origin, board),
+      added: mine,
+      made: made.delete(board),
+    });
+  };
+  /** A restored board is back with what was pending about it. */
+  const unshelve = (board: string): void => {
+    const shelf = shelved.get(board);
+    if (!shelf) return;
+    shelved.delete(board);
+    for (const [key, entry] of shelf.entries) entries.set(key, entry);
+    for (const [key, move] of shelf.moves) moves.set(key, move);
+    for (const [key, first] of shelf.origin) origin.set(key, first);
+    for (const key of shelf.added) added.add(key);
+    if (shelf.made) made.add(board);
   };
 
   for (const e of events) {
+    const mine = e.seq > after && e.actor === by;
+    if (e.event === "BoardCreated") {
+      shelved.delete(e.board);
+      absent.delete(e.board);
+    }
     if (e.event === "BoardRemoved") {
-      const mine = e.seq > after && e.actor === by;
-      if (mine && !made.delete(e.board)) gone.set(e.board, e.title);
-      forget(e.board);
+      if (e.seq <= after) absent.add(e.board);
+      // Restored and removed again since the reader looked: for them, it never came back.
+      const news = !entries.delete(`${e.board}/restored/`) && !made.has(e.board);
+      shelve(e.board);
+      if (mine && news) gone.set(e.board, e.title);
       if (gone.has(e.board)) entries.set(`${e.board}/removed/`, { board: e.board, line: "− board removed" });
-    } else if (e.seq > after && e.actor === by && "board" in e) {
+    } else if (e.event === "BoardRestored") {
+      if (e.seq <= after) absent.delete(e.board);
+      unshelve(e.board);
+      entries.delete(`${e.board}/removed/`);
+      gone.delete(e.board);
+      if (mine && absent.has(e.board))
+        entries.set(`${e.board}/restored/`, { board: e.board, line: "+ board restored" });
+    } else if (mine && "board" in e) {
       const board = findBoard(ws, e.board);
       const k = (kind: string, id: string): string => `${e.board}/${kind}/${id}`;
       const put = (kind: string, id: string, line: string): void => {
@@ -165,8 +214,13 @@ export function describeChanges(events: readonly Recorded[], after: number, by: 
         case "ElementRemoved":
           for (const kind of ["add", "rename", "move", "detail"]) entries.delete(k(kind, e.id));
           moves.delete(k("move", e.id));
-          if (added.delete(k("el", e.id))) break;
+          if (added.delete(k("el", e.id)) || entries.delete(k("restore", e.id))) break;
           if (el) put("remove", e.id, `− ${e.id} ${el.type} ${quote(el.label)} removed`);
+          break;
+        case "ElementRestored":
+          // Removed and restored since the reader looked: no news. Otherwise it is back, and they are told where.
+          if (!entries.delete(k("remove", e.id)))
+            put("restore", e.id, `${addedLine(ws, e.board, e.id, e.type, e.label, e.col, e.lane)} restored`);
           break;
         case "ColumnInserted":
           put(

@@ -49,13 +49,16 @@ vico wait
 
 - **Ids come from Vico.** Each `add` prints the id it minted (`E1`, `C2`);
   `vico apply` prints them in order. Do not guess an id: read it from the
-  output or from `vico show`. A removed id is never used again.
+  output or from `vico show`. A removed id is never used again, unless the
+  user brings the element back.
 - **Positions are semantic**, never pixels: a column (`--col N`), a lane
   (`--lane doing`), or a link (`--from S1`). The layout is computed.
 - **A batch is all or nothing.** One bad line and nothing is applied; the
   error names the line.
 - **The user's edits win.** Do not undo a rename, a move or a removal they
-  made. If you disagree, say why in the terminal or pin a note.
+  made. If you disagree, say why in the terminal or pin a note. They can
+  undo their own gestures in the page: you are told the net result, and
+  `restored` marks an element or a board they brought back, id unchanged.
 - **Labels are short** (six words or fewer). Rules, examples and sources go
   in the detail: `vico detail E1 "…"`.
 - **One question at a time.** A hand-over carries a single question; a

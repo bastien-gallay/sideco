@@ -1,7 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { LOCALES } from "../../src/domain/i18n.ts";
 import { MESSAGES, pickLocale } from "../../src/web/messages.ts";
-import { agentStatus, describeEvent, handOverHint, pendingCount, recentTurns } from "../../src/web/view.ts";
+import {
+  agentStatus,
+  describeEvent,
+  handOverHint,
+  pendingCount,
+  recentTurns,
+  redoTarget,
+  undoTarget,
+} from "../../src/web/view.ts";
 import { KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 function withSession(script = ORDERING): Table {
@@ -203,7 +211,7 @@ describe("the page's own words", () => {
     expect(MESSAGES.fr.handOver).toBe("Passer la main à Claude");
   });
 
-  test("removing a board says what leaves and what stays, before it is done", () => {
+  test("removing a board says what leaves and how it comes back, before it is done", () => {
     expect(MESSAGES.en.removeBoardQuestion("Sprint 12")).toBe("Remove the board “Sprint 12”?");
     expect(MESSAGES.fr.removeBoardQuestion("Sprint 12")).toBe("Supprimer le tableau « Sprint 12 » ?");
     expect(MESSAGES.en.removeBoardConsequence(0)).toStartWith("It is empty. ");
@@ -212,8 +220,21 @@ describe("the page's own words", () => {
     expect(MESSAGES.fr.removeBoardConsequence(3)).toStartWith("Il contient 3 éléments. ");
     for (const locale of LOCALES) {
       expect(MESSAGES[locale].removeBoardConsequence(3)).toContain("Claude");
-      expect(MESSAGES[locale].removeBoardConsequence(3)).toContain("journal");
     }
+    expect(MESSAGES.en.removeBoardConsequence(3)).toEndWith(" Undo brings it back.");
+    expect(MESSAGES.fr.removeBoardConsequence(3)).toEndWith(" Annuler le fait revenir.");
+  });
+
+  test("Undo and Redo name their shortcut, and the removal that can be taken back names the board", () => {
+    expect(MESSAGES.en.undo("Ctrl+Z")).toBe("Undo your last change (Ctrl+Z)");
+    expect(MESSAGES.en.redo("⇧⌘Z")).toBe("Redo (⇧⌘Z)");
+    expect(MESSAGES.fr.undo("⌘Z")).toBe("Annuler ton dernier changement (⌘Z)");
+    expect(MESSAGES.fr.redo("Ctrl+Maj+Z")).toBe("Rétablir (Ctrl+Maj+Z)");
+    expect([MESSAGES.en.undoAction, MESSAGES.en.redoAction]).toEqual(["Undo", "Redo"]);
+    expect([MESSAGES.fr.undoAction, MESSAGES.fr.redoAction]).toEqual(["Annuler", "Rétablir"]);
+    expect(MESSAGES.en.boardRemoved("Sprint 12")).toBe("Board “Sprint 12” removed.");
+    expect(MESSAGES.fr.boardRemoved("Sprint 12")).toBe("Tableau « Sprint 12 » supprimé.");
+    expect(MESSAGES.fr.agentRestoredBoard("Sprint 12")).toBe("Claude a restauré le tableau « Sprint 12 ».");
   });
 
   test("the language is the reader's choice, then the companion's, then English", () => {
@@ -223,5 +244,62 @@ describe("the page's own words", () => {
     expect(pickLocale("klingon", "fr-FR")).toBe("fr");
     expect(pickLocale(null, "")).toBe("en");
     expect(pickLocale(undefined, undefined)).toBe("en");
+  });
+});
+
+describe("the history says when a line takes an earlier one back", () => {
+  const t = table(ORDERING).script('rename E1 "Validée"\nrm H1', "human");
+  const last = (locale: "en" | "fr"): string => describeEvent(t.events.at(-1) as never, locale);
+
+  test("a restored element, an undone rename, a redone one", () => {
+    t.do({ kind: "undo", board: "commande" }, "human");
+    expect(last("en")).toBe("You restore H1 “Et si le stock manque ?” (undo)");
+    expect(last("fr")).toBe("Tu restaures H1 « Et si le stock manque ? » (annulation)");
+    t.do({ kind: "undo", board: "commande" }, "human");
+    expect(last("en")).toBe("You rename E1 to “Commande passée” (undo)");
+    t.do({ kind: "redo", board: "commande" }, "human");
+    expect(last("en")).toBe("You rename E1 to “Validée” (redo)");
+    expect(last("fr")).toBe("Tu renommes E1 en « Validée » (rétablissement)");
+  });
+
+  test("a restored board", () => {
+    t.script("board rm commande").do({ kind: "undo", board: "commande" });
+    expect(last("en")).toBe("Claude restores the board “Passage de commande” (undo)");
+    expect(last("fr")).toBe("Claude restaure le tableau « Passage de commande » (annulation)");
+  });
+});
+
+describe("what Undo and Redo in the page would act on", () => {
+  test("nothing, until the reader has done something on the board shown", () => {
+    const t = table(ORDERING);
+    expect(undoTarget(t.ws, "commande")).toBeUndefined();
+    expect(redoTarget(t.ws, "commande")).toBeUndefined();
+    expect(undoTarget(t.ws, undefined)).toBeUndefined();
+  });
+
+  test("the board shown, for the reader's own gestures only", () => {
+    const t = table(ORDERING).script('rename E1 "Validée"', "human");
+    expect(undoTarget(t.ws, "commande")).toBe("commande");
+    expect(undoTarget(t.ws, "commande", "system")).toBeUndefined();
+    t.do({ kind: "undo", board: "commande" }, "human");
+    expect(undoTarget(t.ws, "commande")).toBeUndefined();
+    expect(redoTarget(t.ws, "commande")).toBe("commande");
+  });
+
+  test("a board the reader just removed, even though another one is shown", () => {
+    const t = table(ORDERING).script(KANBAN).script("move T3 --lane doing", "human");
+    t.script("board rm commande", "human");
+    expect(undoTarget(t.ws, "sprint")).toBe("commande");
+    expect(undoTarget(t.ws, undefined)).toBe("commande");
+    // A later gesture on the board shown comes first; the removal is next in line.
+    t.script("move T4 --lane doing", "human", "sprint");
+    expect(undoTarget(t.ws, "sprint")).toBe("sprint");
+    t.do({ kind: "undo", board: "sprint" }, "human");
+    expect(undoTarget(t.ws, "sprint")).toBe("commande");
+  });
+
+  test("never a board Claude removed", () => {
+    const t = table(ORDERING).script(KANBAN).script("board rm commande", "agent");
+    expect(undoTarget(t.ws, "sprint")).toBeUndefined();
   });
 });
