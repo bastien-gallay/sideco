@@ -87,9 +87,10 @@ function cardMaker(board: Board, format: Format, locale: Locale): (e: Element, x
       fill: type?.fill ?? "#E8EEF4",
       ink: type?.ink ?? "#1F2328",
       shape: type?.shape ?? "box",
-      tip: `${e.id} · ${type?.label[locale] ?? e.type} · ${WORDS[locale].addedBy[e.by]}`,
+      tip: `${e.id} · ${type?.label[locale] ?? e.type} · ${WORDS[locale].addedBy[e.by]}${e.done ? ` · ${WORDS[locale].done}` : ""}`,
       by: e.by,
       hasDetail: Boolean(e.detail),
+      done: e.done === true,
       notes: openNotes.get(e.id) ?? 0,
     };
   };

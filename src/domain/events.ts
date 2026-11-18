@@ -60,6 +60,7 @@ type BoardFact =
     }
   | { event: "ElementRenamed"; board: string; id: string; label: string }
   | { event: "ElementAnnotated"; board: string; id: string; detail: string }
+  | { event: "ElementMarked"; board: string; id: string; done: boolean }
   | { event: "ElementMoved"; board: string; id: string; col: number; lane: string; before?: string }
   | { event: "ElementRemoved"; board: string; id: string }
   /**
@@ -76,6 +77,7 @@ type BoardFact =
       col: number;
       lane: string;
       detail?: string;
+      done?: boolean;
       by: Actor;
       addedSeq: number;
       before?: string;
@@ -126,6 +128,7 @@ const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "ElementAdded",
   "ElementRenamed",
   "ElementAnnotated",
+  "ElementMarked",
   "ElementMoved",
   "ElementRemoved",
   "ElementRestored",

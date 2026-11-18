@@ -21,6 +21,8 @@ export function asLocale(tag: string | null | undefined): Locale | undefined {
 export interface Words {
   /** A card's tooltip: who put it on the board. */
   addedBy: Record<Actor, string>;
+  /** A card's tooltip, and its mark: what it stands for is done. */
+  done: string;
   /** An author, in a table cell. */
   who: Record<Actor, string>;
   step: string;
@@ -51,6 +53,7 @@ export interface Words {
 export const WORDS: Record<Locale, Words> = {
   en: {
     addedBy: { agent: "added by Claude", human: "added by you", system: "added by the system" },
+    done: "done",
     who: { human: "human", agent: "agent", system: "system" },
     step: "Step",
     column: "Column",
@@ -75,6 +78,7 @@ export const WORDS: Record<Locale, Words> = {
   },
   fr: {
     addedBy: { agent: "ajouté par Claude", human: "ajouté par toi", system: "ajouté par le système" },
+    done: "fait",
     who: { human: "humain", agent: "agent", system: "système" },
     step: "Étape",
     column: "Colonne",

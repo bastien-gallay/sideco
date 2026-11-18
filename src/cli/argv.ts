@@ -142,6 +142,9 @@ export function boardAction(tokens: readonly string[], board: string | undefined
       };
     case "detail":
       return { command: { kind: "annotate", board: target(), id: need(0, "an id"), detail: p[1] ?? "" } };
+    case "done":
+    case "undone":
+      return { command: { kind: "mark", board: target(), id: need(0, "an id"), done: verb === "done" } };
     case "move":
       return {
         command: {
@@ -210,6 +213,8 @@ export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "add",
   "rename",
   "detail",
+  "done",
+  "undone",
   "move",
   "rm",
   "insert-col",

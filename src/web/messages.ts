@@ -128,6 +128,9 @@ export interface Messages {
   rename: string;
   detail: string;
   link: string;
+  /** On a card's toolbar: marks what it stands for as done, and takes the mark off. */
+  done: string;
+  notDone: string;
   noteForClaude: string;
   remove: string;
   detailPlaceholder: string;
@@ -265,6 +268,8 @@ const en: Messages = {
   rename: "Rename",
   detail: "Detail",
   link: "Link",
+  done: "Mark done",
+  notDone: "Not done",
   noteForClaude: "Note for Claude",
   remove: "Remove",
   detailPlaceholder: "Detail: rule, example, source…",
@@ -397,6 +402,8 @@ const fr: Messages = {
   rename: "Renommer",
   detail: "Détail",
   link: "Relier",
+  done: "Marquer fait",
+  notDone: "Pas fait",
   noteForClaude: "Note pour Claude",
   remove: "Supprimer",
   detailPlaceholder: "Détail : règle, exemple, source…",

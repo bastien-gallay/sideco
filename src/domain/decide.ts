@@ -76,6 +76,9 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
     case "annotate":
       if ((requireElement(board, cmd.id).detail ?? "") === cmd.detail) return unchanged();
       return { events: [{ event: "ElementAnnotated", board: b, id: cmd.id, detail: cmd.detail }] };
+    case "mark":
+      if ((requireElement(board, cmd.id).done ?? false) === cmd.done) return unchanged();
+      return { events: [{ event: "ElementMarked", board: b, id: cmd.id, done: cmd.done }] };
     case "move":
       return { events: [move(board, format, cmd)] };
     case "remove":

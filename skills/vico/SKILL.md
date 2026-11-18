@@ -110,6 +110,7 @@ vico add TYPE "Label" [--col N | --lane L] [--from ID [--edge "label"]] [--detai
 vico rename ID "Label"            vico detail ID "Text"
 vico move ID --col N | --lane L [--before ID]
 vico rm ID                        vico insert-col N
+vico done ID                      vico undone ID
 vico link SRC DST ["label"]       vico unlink SRC DST
 vico focus [ID…] [--why "…"]      (no id clears the focus)
 vico note "Text" [--on ID]        (opens a thread, on the board or on one element)

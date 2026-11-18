@@ -15,6 +15,7 @@ export interface ModelElement {
   col?: number;
   lane?: string;
   detail?: string;
+  done?: boolean;
 }
 
 export interface Model {
@@ -39,6 +40,7 @@ export function toModel(board: Board): Model {
       ...(layout === "timeline" ? { col: e.col - 1 } : {}),
       ...(layout === "columns" ? { lane: e.lane } : {}),
       ...(e.detail ? { detail: e.detail } : {}),
+      ...(e.done ? { done: true } : {}),
     })),
     edges: board.edges.map((edge) => ({
       src: edge.src,
@@ -67,16 +69,18 @@ export function fromModel(input: unknown, board: string): Command[] {
   const elements = Array.isArray(model.elements) ? model.elements.map(readElement) : [];
   const idFor = idGiver(format, elements);
   for (const e of elements) {
+    const id = e.id ?? idFor(e.type);
     commands.push({
       kind: "add",
       board,
       type: e.type,
       label: e.label,
-      id: e.id ?? idFor(e.type),
+      id,
       col: layout === "timeline" && e.col !== undefined ? e.col + 1 : undefined,
       lane: layout === "columns" ? e.lane : undefined,
       detail: e.detail,
     });
+    if (e.done && id) commands.push({ kind: "mark", board, id, done: true });
   }
   for (const edge of Array.isArray(model.edges) ? model.edges : []) {
     const [src, dst, label] = readEdge(edge);
@@ -118,6 +122,7 @@ function readElement(input: unknown, index: number): ModelElement {
     col: typeof e.col === "number" && Number.isInteger(e.col) && e.col >= 0 ? e.col : undefined,
     lane: typeof e.lane === "string" ? e.lane : undefined,
     detail: typeof e.detail === "string" && e.detail ? e.detail : undefined,
+    done: e.done === true ? true : undefined,
   };
 }
 

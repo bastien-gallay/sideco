@@ -61,6 +61,7 @@ Model (BOARD defaults to the only board, or --board ID, or $VICO_BOARD)
   vico add TYPE "Label" [--col N | --lane L] [--id E1] [--from ID [--edge "label"]] [--detail "…"]
   vico rename ID "Label"            vico detail ID "Text"
   vico move ID --col N | --lane L [--before ID]
+  vico done ID                      vico undone ID
   vico rm ID                        vico insert-col N
   vico link SRC DST ["label"]       vico unlink SRC DST
   vico focus [ID…] [--why "…"]      no id clears the focus

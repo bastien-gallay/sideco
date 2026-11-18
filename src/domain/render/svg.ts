@@ -23,6 +23,8 @@ export const SVG_STYLE = `
 .card-id { font-size: 10px; font-weight: 700; opacity: 0.7; }
 .card-label { font-size: 13px; text-anchor: middle; }
 .card-detail { font-size: 11px; opacity: 0.7; text-anchor: end; }
+.card-done { font-size: 13px; font-weight: 700; }
+.card-label-done { text-decoration: line-through; opacity: 0.65; }
 .card-notes circle { fill: #1A6FAE; stroke: var(--vico-bg, #FFFFFF); stroke-width: 2; }
 .card-notes text { fill: #FFFFFF; font-size: 10px; font-weight: 700; text-anchor: middle; }
 `;
@@ -90,7 +92,8 @@ export function cardMarkup(c: Card): string {
     shapeMarkup(c),
     `<text class="card-id" x="${8 + inset(c)}" y="14" fill="${esc(c.ink)}">${esc(c.id)}</text>`,
     authorMark(c),
-    `<text class="card-label" fill="${esc(c.ink)}">${lines}</text>`,
+    `<text class="${c.done ? "card-label card-label-done" : "card-label"}" fill="${esc(c.ink)}">${lines}</text>`,
+    c.done ? `<text class="card-done" x="${8 + inset(c)}" y="${c.h - 6}" fill="${esc(c.ink)}">✓</text>` : "",
     c.hasDetail
       ? `<text class="card-detail" x="${c.w - 8}" y="${c.h - 7}" fill="${esc(c.ink)}">≡</text>`
       : "",

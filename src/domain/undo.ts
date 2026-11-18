@@ -49,6 +49,8 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
       return el && [{ event: "ElementRenamed", board: b, id: el.id, label: el.label }];
     case "ElementAnnotated":
       return el && [{ event: "ElementAnnotated", board: b, id: el.id, detail: el.detail ?? "" }];
+    case "ElementMarked":
+      return el && [{ event: "ElementMarked", board: b, id: el.id, done: el.done ?? false }];
     case "ElementMoved":
       return (
         el && [
@@ -74,6 +76,7 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
             col: el.col,
             lane: el.lane,
             detail: el.detail,
+            done: el.done,
             by: el.by,
             addedSeq: el.addedSeq,
             before: after(board, el),
@@ -161,6 +164,8 @@ function writes(e: BoardEvent): string[] {
       return [`${e.id}.label`];
     case "ElementAnnotated":
       return [`${e.id}.detail`];
+    case "ElementMarked":
+      return [`${e.id}.done`];
     case "ElementMoved":
       return [`${e.id}.place`];
     case "ElementRemoved":

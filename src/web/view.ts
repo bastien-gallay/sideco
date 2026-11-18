@@ -140,6 +140,8 @@ function english(e: Recorded): string {
       return `${does("rename")} ${e.id} to “${e.label}”`;
     case "ElementAnnotated":
       return `${does("detail")} ${e.id}`;
+    case "ElementMarked":
+      return `${does("mark")} ${e.id} ${e.done ? "done" : "not done"}`;
     case "ElementMoved":
       return `${does("move")} ${e.id}`;
     case "ElementRemoved":
@@ -209,6 +211,8 @@ function french(e: Recorded): string {
       return `${verb("renommes", "renomme")} ${e.id} en « ${e.label} »`;
     case "ElementAnnotated":
       return `${verb("détailles", "détaille")} ${e.id}`;
+    case "ElementMarked":
+      return `${verb("marques", "marque")} ${e.id} comme ${e.done ? "fait" : "non fait"}`;
     case "ElementMoved":
       return `${verb("déplaces", "déplace")} ${e.id}`;
     case "ElementRemoved":

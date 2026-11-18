@@ -219,6 +219,14 @@ export function mountBoard(host: HTMLElement): BoardView {
         element?.detail ? `${t.detail} ≡` : t.detail,
       ),
       h("button", { type: "button", onclick: () => beginLink(id) }, t.link),
+      h(
+        "button",
+        {
+          type: "button",
+          onclick: () => void send({ kind: "mark", board: boardId, id, done: !element?.done }),
+        },
+        element?.done ? t.notDone : t.done,
+      ),
       h("button", { type: "button", onclick: () => noteOn(id) }, t.noteForClaude),
       h(
         "button",
@@ -536,6 +544,13 @@ export function mountBoard(host: HTMLElement): BoardView {
     else if (event.key === " ") choose(id);
     else if (event.key === "Delete" || event.key === "Backspace")
       void send({ kind: "remove", board: board.id, id });
+    else if (event.key.toLowerCase() === "d")
+      void send({
+        kind: "mark",
+        board: board.id,
+        id,
+        done: !board.elements.find((e) => e.id === id)?.done,
+      });
     else if (event.key.toLowerCase() === "l") beginLink(id);
     else if (event.key.toLowerCase() === "n") noteOn(id);
     else return;

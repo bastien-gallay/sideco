@@ -482,6 +482,22 @@ describe("other workshops", () => {
     await shot("07-kanban");
   });
 
+  test("kanban: a task is marked done from its toolbar or the keyboard, and the card shows a tick", async () => {
+    const tick = (id: string) => card(id).locator(".card-done");
+    await card("T2").click();
+    await page.locator(".card-tools button", { hasText: "Mark done" }).click();
+    await tick("T2").waitFor();
+    expect((await elementOf("sprint", "T2"))?.done).toBe(true);
+    expect(await pending()).toContain("~ T2 marked done");
+    await page.locator(".card-tools button", { hasText: "Not done" }).waitFor();
+    await shot("21-done");
+
+    await card("T2").focus();
+    await page.keyboard.press("d");
+    await tick("T2").waitFor({ state: "detached" });
+    expect((await elementOf("sprint", "T2"))?.done).toBeUndefined();
+  });
+
   test("flow: a step added while another is selected is linked to it", async () => {
     await agent(
       [

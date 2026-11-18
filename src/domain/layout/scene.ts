@@ -20,6 +20,8 @@ export interface Card {
   tip: string;
   by: Actor;
   hasDetail: boolean;
+  /** What the card stands for is done. */
+  done: boolean;
   /** Open notes pinned to this card. */
   notes: number;
 }

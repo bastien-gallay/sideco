@@ -32,6 +32,8 @@ export type Command =
     }
   | { kind: "rename"; board: string; id: string; label: string }
   | { kind: "annotate"; board: string; id: string; detail: string }
+  /** Says that what the card stands for is done, or no longer is. */
+  | { kind: "mark"; board: string; id: string; done: boolean }
   | { kind: "move"; board: string; id: string; col?: number; lane?: string; before?: string }
   | { kind: "remove"; board: string; id: string }
   | { kind: "insert-column"; board: string; at: number }
@@ -144,6 +146,8 @@ export function parseCommand(input: unknown): Command {
         id: idOrName(f, "id"),
         detail: text(f, "detail", LIMITS.detail, true),
       };
+    case "mark":
+      return { kind, board: boardId(f), id: idOrName(f, "id"), done: f.done === true };
     case "move":
       return {
         kind,

@@ -13,6 +13,8 @@ export interface Element {
   type: string;
   label: string;
   detail?: string;
+  /** What the card stands for is done; absent while it is not. */
+  done?: boolean;
   col: number;
   lane: string;
   by: Actor;
@@ -231,6 +233,11 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
         el.detail = e.detail || undefined;
       });
       break;
+    case "ElementMarked":
+      touch(board, e.id, e.seq, (el) => {
+        el.done = e.done || undefined;
+      });
+      break;
     case "ElementMoved": {
       const el = touch(board, e.id, e.seq, (moved) => {
         moved.col = e.col;
@@ -256,6 +263,7 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
         type: e.type,
         label: e.label,
         detail: e.detail,
+        done: e.done || undefined,
         col: e.col,
         lane: e.lane,
         by: e.by,

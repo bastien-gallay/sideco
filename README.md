@@ -92,6 +92,7 @@ Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit
 | Dans une frise, survoler entre deux numéros d'étape, cliquer le « + » | Insère une colonne à cet endroit : les étapes suivantes se décalent d'un cran. ⚠️ Ne s'annule pas encore, et aucun raccourci clavier |
 | Double-cliquer une carte | La renomme |
 | Glisser une carte | La change d'étape ou de colonne ; la position reste sémantique, jamais en pixels |
+| Sélectionner une carte, « Mark done » dans sa barre, ou la touche `d` | La marque comme faite : une coche et le libellé barré. Le même geste retire la marque ; Claude le fait par `vico done ID` et `vico undone ID` |
 | Sélectionner une carte | Barre d'actions : renommer, détail, relier, note pour Claude, supprimer |
 | Notes, à gauche | Chaque note ouvre un fil : la carte concernée en tête, les messages dans l'ordre avec leur auteur et leur identifiant, un champ pour répondre, et qui est attendu. Cliquer l'en-tête du fil montre la carte ; sélectionner une carte encadre ses fils. `Resolve` ferme le fil entier, après avoir envoyé la réponse encore dans le champ |
 | Curseur d'historique, en bas | Remonte le temps, en lecture seule, d'un événement du tableau affiché au précédent ; à côté, `Everything` parcourt tout le journal (autres tableaux, session) et `This board` revient au tableau ; `Back to live` revient au présent |
@@ -234,9 +235,9 @@ bun run typecheck && bun run lint
 
 | Niveau | Ce qu'il prouve | Tests | Hors bac à sable |
 | --- | --- | --- | --- |
-| Unitaire | Règles du domaine, mise en page, exports, hooks, contrat du plugin, textes des deux langues, annulation, fils de discussion, hauteur des cartes, écoute longue, « + » au survol, commande sans effet, fin de session, noms dans un lot, arrêts de l'historique, marque « non lu », empreinte de la page | 542 | non |
+| Unitaire | Règles du domaine, mise en page, exports, hooks, contrat du plugin, textes des deux langues, annulation, fils de discussion, hauteur des cartes, écoute longue, « + » au survol, commande sans effet, fin de session, noms dans un lot, arrêts de l'historique, marque « non lu », empreinte de la page | 548 | non |
 | Intégration | `bin/vico` de bout en bout : serveur, lots, attente, hooks par stdin, publication, suppression, ouverture de la page, langue des exports et de la page servie, réponse à une note, fin de session, noms dans un lot | 41 | oui (port local) |
-| Bout en bout | La page dans Chrome : ajout, glisser, renommer, notes, historique, passage de main, suppression (par Claude et depuis la page), redémarrage, bascule de langue, annuler / rétablir, fils de discussion, passage de main sans écoute, « + » au survol, carte rouverte sans changement, fil clos avec une réponse en cours, historique du tableau affiché, marque « non lu », page rechargée après une mise à jour | 53 | oui (navigateur) |
+| Bout en bout | La page dans Chrome : ajout, glisser, renommer, notes, historique, passage de main, suppression (par Claude et depuis la page), redémarrage, bascule de langue, annuler / rétablir, fils de discussion, passage de main sans écoute, « + » au survol, carte rouverte sans changement, fil clos avec une réponse en cours, historique du tableau affiché, marque « non lu », page rechargée après une mise à jour | 54 | oui (navigateur) |
 
 <sub>Source : exécution du 2026-11-18 sur cette machine (Bun 1.4.4, macOS).</sub>
 

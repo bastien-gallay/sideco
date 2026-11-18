@@ -27,7 +27,7 @@ export function describeBoard(board: Board): string {
   const show = (id: string): string => {
     const e = findElement(board, id);
     if (!e) return id;
-    return `  ${e.id} ${e.type} ${quote(e.label)}${e.detail ? ` — ${e.detail}` : ""}`;
+    return `  ${e.id} ${e.type} ${quote(e.label)}${e.done ? " ✓ done" : ""}${e.detail ? ` — ${e.detail}` : ""}`;
   };
 
   if (board.elements.length === 0) lines.push("(empty)");
@@ -116,6 +116,7 @@ type Change =
   /** Judged at the end, against the final board: a later change can put the card back. */
   | { kind: "moved"; id: string; from: Origin }
   | { kind: "annotated"; id: string; detail: string }
+  | { kind: "marked"; id: string; done: boolean }
   | { kind: "removed"; id: string; type: string; label: string }
   | { kind: "column-inserted"; at: number }
   | { kind: "linked"; src: string; dst: string; label?: string }
@@ -265,8 +266,12 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
         case "ElementAnnotated":
           put("detail", e.id, { kind: "annotated", id: e.id, detail: e.detail });
           break;
+        case "ElementMarked":
+          // Marked and cleared since the reader looked, or the reverse: no news.
+          if (!entries.delete(k("done", e.id))) put("done", e.id, { kind: "marked", id: e.id, done: e.done });
+          break;
         case "ElementRemoved":
-          for (const kind of ["add", "rename", "move", "detail"]) entries.delete(k(kind, e.id));
+          for (const kind of ["add", "rename", "move", "detail", "done"]) entries.delete(k(kind, e.id));
           if (added.delete(k("el", e.id)) || entries.delete(k("restore", e.id))) break;
           if (el) put("remove", e.id, { kind: "removed", id: e.id, type: el.type, label: el.label });
           break;
@@ -360,6 +365,8 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
       return movedLine(ws, boardId, change.id, change.from);
     case "annotated":
       return `~ ${change.id} detail: ${change.detail || "(cleared)"}`;
+    case "marked":
+      return `~ ${change.id} ${change.done ? "marked done" : "no longer done"}`;
     case "removed":
       return `− ${change.id} ${change.type} ${quote(change.label)} removed`;
     case "column-inserted":
@@ -388,6 +395,7 @@ function named(change: Change): { elements: string[]; thread?: string } {
     case "renamed":
     case "moved":
     case "annotated":
+    case "marked":
     case "removed":
       return { elements: [change.id] };
     case "linked":
