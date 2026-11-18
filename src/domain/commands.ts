@@ -54,6 +54,9 @@ export type Command =
   /** Puts back what the caller's last undo took. */
   | { kind: "redo"; board: string }
   | { kind: "session-start"; cwd?: string }
+  /** The session takes these boards, or lets go of them: it is told what the human changes on the boards it follows. */
+  | { kind: "follow"; boards: string[] }
+  | { kind: "unfollow"; boards: string[] }
   | { kind: "prompt"; text: string }
   | { kind: "tool-start"; call: string; tool: string; summary: string }
   | { kind: "tool-finish"; call: string; ok: boolean }
@@ -209,6 +212,9 @@ export function parseCommand(input: unknown): Command {
       return { kind, board: boardId(f) };
     case "session-start":
       return { kind, cwd: optional(f, "cwd", (x, k) => text(x, k, 1000)) };
+    case "follow":
+    case "unfollow":
+      return { kind, boards: list(f, "boards").map((board) => boardId({ board })) };
     case "prompt":
       return { kind, text: text(f, "text", LIMITS.prompt, true) };
     case "tool-start":

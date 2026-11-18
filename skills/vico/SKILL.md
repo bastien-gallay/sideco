@@ -28,6 +28,9 @@ each side sees the other's changes within a second.
    If it prints `no hand-over yet`, run it again or carry on with other work.
 7. **Take their edits as input.** A digest of their changes also arrives in
    your context on their next prompt. `vico changes` asks for it explicitly.
+8. **Keep to your boards.** You are told the changes on the boards you follow:
+   those you wrote on or read with `vico show`, and those no other running
+   session follows. Given boards by the user, `vico follow A B`; `vico unfollow A` lets go.
 
 ```sh
 vico open
@@ -96,9 +99,8 @@ vico wait
 | what to keep, stop, try | `retro` | `--lane keep`, `drop` or `try` |
 | what to do first, for what it brings and costs | `impact-effort` | `--lane quick`, `bet`, `fill` or `avoid` |
 
-`vico formats` lists every element type with its id prefix, and what each lane
-of `impact-effort` stands for (`quick` is high impact for a low effort, `avoid`
-the reverse).
+`vico formats` lists every element type with its id prefix, and what each lane of
+`impact-effort` stands for (`quick`: high impact for a low effort; `avoid`: the reverse).
 
 ## Commands
 
@@ -109,8 +111,7 @@ vico board rm ID                  (removes the board; its history stays)
 vico add TYPE "Label" [--col N | --lane L] [--from ID [--edge "label"]] [--detail "…"]
 vico rename ID "Label"            vico detail ID "Text"
 vico move ID --col N | --lane L [--before ID]   # --before alone: before that card, in its cell
-vico rm ID                        vico insert-col N
-vico move-col FROM TO             a column takes the number TO, its cards with it
+vico rm ID       vico insert-col N       vico move-col FROM TO   (the column takes the number TO, with its cards)
 vico lane LANE "Name"             call a lane of this board your own way
 vico done ID                      vico undone ID
 vico link SRC DST ["label"]       vico unlink SRC DST
@@ -120,9 +121,9 @@ vico reply N1 "Text"              vico resolve N1    (answer in a thread; close 
 vico apply [FILE]                 (a batch of the lines above, stdin by default)
   in a batch: add … --alias NAME     (then @NAME for its id on the lines below)
 vico changes                      vico pass ["question"]      vico wait
+vico follow BOARD…                vico unfollow BOARD…        (the boards whose changes you are told)
 vico export [BOARD] --format md|html|svg|mermaid|json [-o FILE]
-vico publish                      vico status                 vico url
-vico open                         vico stop
+vico publish     vico status     vico url     vico open     vico stop
 ```
 
 With several boards, add `--board ID` to a command, or start a batch with

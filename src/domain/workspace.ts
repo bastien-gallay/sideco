@@ -116,11 +116,15 @@ export interface Workspace {
   /** Removed boards, kept aside as they were: undoing the removal brings one back. */
   removed: Board[];
   sessions: Session[];
+  /** Per session, the boards it follows: those it wrote on, and those it said it takes. */
+  follows: Record<string, string[]>;
+  /** Per session, the boards it let go of: not for it, even when nobody else follows them. */
+  left: Record<string, string[]>;
   seq: number;
 }
 
 export function emptyWorkspace(): Workspace {
-  return { boards: [], removed: [], sessions: [], seq: 0 };
+  return { boards: [], removed: [], sessions: [], follows: {}, left: {}, seq: 0 };
 }
 
 export function replay(events: readonly Recorded[]): Workspace {
@@ -167,8 +171,11 @@ export function idNumber(id: string): number {
 
 export function apply(ws: Workspace, e: Recorded): void {
   ws.seq = e.seq;
-  if ("board" in e) applyToBoard(ws, e);
-  else if (e.session) applyToSession(ws, e as Recorded & { session: string });
+  if ("board" in e) {
+    applyToBoard(ws, e);
+    // Writing on a board is following it.
+    if (e.session && e.actor === "agent") follow(ws, e.session, [e.board]);
+  } else if (e.session) applyToSession(ws, e as Recorded & { session: string });
 }
 
 function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): void {
@@ -364,6 +371,27 @@ function restack(board: Board, el: Element, before: string | undefined): void {
   board.elements = rest;
 }
 
+function follow(ws: Workspace, session: string, boards: readonly string[]): void {
+  ws.follows[session] = [...without(ws.follows[session], boards), ...boards];
+  ws.left[session] = without(ws.left[session], boards);
+}
+
+function without(list: readonly string[] | undefined, boards: readonly string[]): string[] {
+  return (list ?? []).filter((board) => !boards.includes(board));
+}
+
+/**
+ * True when what happens on `board` is for `session`: it follows the board; or
+ * no other session still running does, and it did not let go of it.
+ */
+export function concerns(ws: Workspace, session: string, board: string): boolean {
+  if (ws.follows[session]?.includes(board)) return true;
+  if (ws.left[session]?.includes(board)) return false;
+  return !ws.sessions.some(
+    (other) => other.id !== session && other.status !== "ended" && ws.follows[other.id]?.includes(board),
+  );
+}
+
 function applyToSession(ws: Workspace, e: Recorded & { session: string }): void {
   let session = findSession(ws, e.session);
   if (!session) {
@@ -385,6 +413,13 @@ function applyToSession(ws: Workspace, e: Recorded & { session: string }): void 
     case "SessionStarted":
       session.cwd = e.cwd;
       if (session.status === "ended") setStatus(session, "idle");
+      break;
+    case "BoardsFollowed":
+      follow(ws, session.id, e.boards);
+      break;
+    case "BoardsLeft":
+      ws.follows[session.id] = without(ws.follows[session.id], e.boards);
+      ws.left[session.id] = [...without(ws.left[session.id], e.boards), ...e.boards];
       break;
     case "PromptSubmitted":
       session.turns.push({ prompt: e.text, startedSeq: e.seq, startedAt: e.ts, tools: [], ended: false });

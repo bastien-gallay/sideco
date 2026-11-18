@@ -296,6 +296,17 @@ function decideOnSession(ws: Workspace, cmd: SessionCommand, ctx: Context): Vico
   switch (cmd.kind) {
     case "session-start":
       return [{ event: "SessionStarted", cwd: cmd.cwd }];
+    case "follow":
+    case "unfollow": {
+      for (const board of cmd.boards) if (!findBoard(ws, board)) throw noBoard(ws, board);
+      const follows = cmd.kind === "follow";
+      const session = ctx.session;
+      const boards = cmd.boards.filter((board) =>
+        follows ? !ws.follows[session]?.includes(board) : !ws.left[session]?.includes(board),
+      );
+      if (boards.length === 0) return [];
+      return [{ event: follows ? "BoardsFollowed" : "BoardsLeft", boards }];
+    }
     case "prompt":
       return [{ event: "PromptSubmitted", text: cmd.text }];
     case "tool-start":

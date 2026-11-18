@@ -77,6 +77,9 @@ Model (BOARD defaults to the only board, or --board ID, or $VICO_BOARD)
 Work with the human
   vico changes                      what the human changed since you last asked
   vico pass ["message"]             hand the turn to the human
+  vico follow BOARD…                take these boards: you are told what the human changes on the boards you
+                                    follow (those you wrote on or read with \`vico show\`), not on another session's
+  vico unfollow BOARD…              let go of boards, until you write on one again
   vico wait [--timeout SECONDS]     block until the human hands it back, then print their changes
 
 Share
@@ -106,10 +109,23 @@ export const CLI_VERBS: ReadonlySet<string> = new Set([
   "export",
   "publish",
   "changes",
+  "follow",
+  "unfollow",
   "wait",
   "apply",
   "import",
 ]);
+
+/** Reading a board is following it. Said to the companion if one runs; never a reason for `show` to fail. */
+async function followQuietly(root: string, session: string | undefined, board: string): Promise<void> {
+  if (!session) return;
+  try {
+    const server = await findServer(root);
+    if (server) await post(server, "agent", session, [{ kind: "follow", boards: [board] }]);
+  } catch {
+    // The board was shown: that is what was asked.
+  }
+}
 
 export async function main(argv: string[]): Promise<number> {
   const [verb = "help", ...rest] = argv;
@@ -194,9 +210,12 @@ async function run(verb: string, rest: string[]): Promise<number> {
     case "boards":
       console.log(boardsText(read()));
       return 0;
-    case "show":
-      console.log(describeBoard(chooseBoard(read(), args.positional[0] ?? args.flags.get("board"))));
+    case "show": {
+      const board = chooseBoard(read(), args.positional[0] ?? args.flags.get("board"));
+      console.log(describeBoard(board));
+      await followQuietly(root, args.flags.get("session") ?? setting("VICO_SESSION"), board.id);
       return 0;
+    }
     case "export":
       return exportOne(read(), args);
     case "publish":
@@ -224,6 +243,15 @@ async function run(verb: string, rest: string[]): Promise<number> {
           ? waited.text
           : `no hand-over yet (${waited.outcome}); run \`vico wait\` again to keep listening`,
       );
+      return 0;
+    }
+    case "follow":
+    case "unfollow": {
+      if (args.positional.length === 0) throw new UsageError(`usage: vico ${verb} BOARD…`);
+      if (!session) throw new UsageError(`\`${verb}\` is said by a session: none is known here`);
+      await post(server, actor, session, [{ kind: verb, boards: args.positional }]);
+      const boards = args.positional.join(", ");
+      console.log(verb === "follow" ? `following ${boards}` : `no longer following ${boards}`);
       return 0;
     }
     case "apply": {

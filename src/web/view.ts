@@ -178,6 +178,10 @@ function english(e: Recorded): string {
     }
     case "SessionStarted":
       return "Session started";
+    case "BoardsFollowed":
+      return `Claude follows ${e.boards.join(", ")}`;
+    case "BoardsLeft":
+      return `Claude no longer follows ${e.boards.join(", ")}`;
     case "PromptSubmitted":
       return `Prompt: ${e.text}`;
     case "ToolStarted":
@@ -255,6 +259,10 @@ function french(e: Recorded): string {
     }
     case "SessionStarted":
       return "Session démarrée";
+    case "BoardsFollowed":
+      return `Claude suit ${e.boards.join(", ")}`;
+    case "BoardsLeft":
+      return `Claude ne suit plus ${e.boards.join(", ")}`;
     case "PromptSubmitted":
       return `Prompt : ${e.text}`;
     case "ToolStarted":

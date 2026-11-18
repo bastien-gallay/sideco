@@ -8,7 +8,7 @@ import { type Command, CommandError } from "../domain/commands.ts";
 import { type Context, decide } from "../domain/decide.ts";
 import { type Changes, describeChanges } from "../domain/digest.ts";
 import type { Recorded, VicoEvent } from "../domain/events.ts";
-import { apply, findSession, replay, type Workspace } from "../domain/workspace.ts";
+import { apply, concerns, findSession, replay, type Workspace } from "../domain/workspace.ts";
 import type { Journal } from "./journal.ts";
 
 export interface Dispatched {
@@ -91,7 +91,9 @@ export class Hub {
 
   private announce(event: Recorded): void {
     for (const listener of this.listeners) listener(event);
-    if (event.event === "TurnPassed" && event.to === "agent") this.settleAll("passed");
+    if (event.event === "TurnPassed" && event.to === "agent")
+      for (const session of [...this.waiters.keys()])
+        if (concerns(this.workspace, session, event.board)) this.settle(session, "passed");
     const movedOn = event.event === "PromptSubmitted" || event.event === "SessionEnded";
     if (movedOn && event.session) this.settle(event.session, "released");
   }
@@ -114,7 +116,9 @@ export class Hub {
   /** What the human changed that `session` has not been told yet; `ack` records that it now has. */
   changesFor(session: string, ack: boolean): Changes {
     const after = findSession(this.workspace, session)?.deliveredUpTo ?? 0;
-    const changes = describeChanges(this.events, after);
+    const changes = describeChanges(this.events, after, "human", (board) =>
+      concerns(this.workspace, session, board),
+    );
     if (ack && changes.text !== "")
       this.dispatch([{ kind: "delivered", upTo: changes.upTo }], { actor: "system", session });
     return changes;
@@ -123,7 +127,9 @@ export class Hub {
   /** True when the human handed over the turn and `session` has not been told. */
   hasPendingTurn(session: string): boolean {
     const after = findSession(this.workspace, session)?.deliveredUpTo ?? 0;
-    return this.workspace.boards.some((b) => b.turn?.to === "agent" && b.turn.seq > after);
+    return this.workspace.boards.some(
+      (b) => b.turn?.to === "agent" && b.turn.seq > after && concerns(this.workspace, session, b.id),
+    );
   }
 
   /** Resolves when the human passes the turn, when the session moves on, or at the timeout. */
@@ -151,10 +157,6 @@ export class Hub {
     this.waiters.delete(session);
     waiter(outcome);
     this.announcePresence();
-  }
-
-  private settleAll(outcome: WaitOutcome): void {
-    for (const session of [...this.waiters.keys()]) this.settle(session, outcome);
   }
 
   /** How many agent sessions are blocked waiting for the human right now. */

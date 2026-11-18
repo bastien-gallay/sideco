@@ -560,6 +560,31 @@ describe("the page's language", () => {
   });
 });
 
+describe("two sessions in one project", () => {
+  const told = async (session: string): Promise<string> =>
+    (await hook({ session_id: session, hook_event_name: "UserPromptSubmit", prompt: "Continue" })).out;
+
+  test("each is told what the human changes on the boards it follows, and only there", async () => {
+    await hook({ session_id: "s2", hook_event_name: "SessionStart" });
+    const made = await vico(["board", "new", "Autre chantier", "--id", "autre", "--session", "s2"]);
+    expect(made.code).toBe(0);
+    await human({ kind: "note", board: "autre", text: "Pour la seconde session" });
+    expect(await told("s1")).not.toContain("Pour la seconde session");
+    expect(await told("s2")).toContain("Pour la seconde session");
+  });
+
+  test("reading a board with `vico show` takes it; `vico unfollow` lets go of it", async () => {
+    await vico(["show", "passage-de-commande", "--session", "s2"]);
+    await human({ kind: "note", board: "passage-de-commande", text: "Lue par les deux" });
+    expect(await told("s2")).toContain("Lue par les deux");
+    const left = await vico(["unfollow", "passage-de-commande", "--session", "s2"]);
+    expect(left.out.trim()).toBe("no longer following passage-de-commande");
+    await human({ kind: "note", board: "passage-de-commande", text: "Plus pour la seconde" });
+    expect(await told("s2")).not.toContain("Plus pour la seconde");
+    expect((await vico(["follow", "nulle-part", "--session", "s2"])).code).not.toBe(0);
+  });
+});
+
 describe("tidying up", () => {
   test("a board is removed by its id and leaves the list; the journal keeps its history", async () => {
     await vico(["board", "new", "Brouillon", "--format", "kanban"]);

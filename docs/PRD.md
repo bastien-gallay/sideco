@@ -156,6 +156,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F28 | Impact / Effort en vrai plan 2 × 2 : les quatre couloirs deviennent quatre cases (impact fort en haut, effort faible à gauche), deux cartes de front par case, les deux axes nommés à côté ; les données ne changent pas (T47, S44) | ✅ ; ⚠️ pas de placement fin dans une case, et la grille n'est pas encore offerte aux autres ateliers |
 | F29 | Une colonne de kanban, de rétro ou d'Impact / Effort se renomme pour un tableau : `vico lane LANE "Nom"`. Le nom vaut pour ce tableau, dans toutes les langues et tous les exports ; il s'annule. Dans la page : double-clic sur le nom de la colonne | Livré |
 | F30 | Une colonne d'une frise se déplace d'un bloc, ses cartes avec elle : `vico move-col DE VERS`. Les colonnes traversées se resserrent ; un seul Undo la remet | Livré (commande) ; le glisser dans la page reste à faire |
+| F31 | Plusieurs sessions dans un même projet : chacune ne reçoit que les changements et les passages de main des tableaux qu'elle suit. Elle suit un tableau en y écrivant, en le lisant (`vico show`) ou en le disant (`vico follow`) ; `vico unfollow` le lâche. Un tableau qu'aucune session en cours ne suit est remis à toutes | Livré ; cible : un passage de main adressé à une session, visible dans la page |
 
 ### 5.3 Exigences de qualité
 
@@ -222,7 +223,7 @@ Chaque ligne du journal porte `seq`, `ts`, `actor` (`human`, `agent`, `system`) 
 | Flux | Événements |
 | --- | --- |
 | Tableau | `BoardCreated`, `BoardRetitled`, `LaneNamed`, `ElementAdded`, `ElementRenamed`, `ElementAnnotated`, `ElementMoved`, `ElementRemoved`, `ColumnInserted`, `ColumnMoved`, `EdgeAdded`, `EdgeRemoved`, `FocusSet`, `FocusCleared`, `NoteAdded`, `NoteResolved`, `TurnPassed` |
-| Session | `SessionStarted`, `PromptSubmitted`, `ToolStarted`, `ToolFinished`, `TodosUpdated`, `AgentNotified`, `TurnEnded`, `ChangesDelivered` |
+| Session | `SessionStarted`, `BoardsFollowed`, `BoardsLeft`, `PromptSubmitted`, `ToolStarted`, `ToolFinished`, `TodosUpdated`, `AgentNotified`, `TurnEnded`, `ChangesDelivered` |
 
 Une réponse est un `NoteAdded` qui porte `thread`, l'identifiant de la note qui a ouvert le fil ; sans ce champ, la note ouvre un fil. `NoteResolved` ferme le fil entier.
 

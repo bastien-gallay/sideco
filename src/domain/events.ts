@@ -101,6 +101,10 @@ type BoardFact =
 /** What happened in the terminal session. The session id travels on the envelope. */
 export type SessionEvent =
   | { event: "SessionStarted"; cwd?: string }
+  /** The session takes these boards: what the human changes there is for it. */
+  | { event: "BoardsFollowed"; boards: string[] }
+  /** The session lets go of these boards, until it writes on one again. */
+  | { event: "BoardsLeft"; boards: string[] }
   | { event: "PromptSubmitted"; text: string }
   | { event: "ToolStarted"; call: string; tool: string; summary: string }
   | { event: "ToolFinished"; call: string; ok: boolean }
@@ -150,6 +154,8 @@ const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
 
 const SESSION_EVENTS: ReadonlySet<string> = new Set<SessionEvent["event"]>([
   "SessionStarted",
+  "BoardsFollowed",
+  "BoardsLeft",
   "PromptSubmitted",
   "ToolStarted",
   "ToolFinished",

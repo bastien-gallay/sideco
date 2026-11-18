@@ -91,8 +91,15 @@ export interface Subjects {
 }
 
 /** What `by` changed on the boards in events after `after`. */
-export function describeChanges(events: readonly Recorded[], after: number, by: Actor = "human"): Changes {
-  const net = netChanges(events, after, by);
+export function describeChanges(
+  events: readonly Recorded[],
+  after: number,
+  by: Actor = "human",
+  /** The boards the reader is told about; all of them when not given. */
+  only?: (board: string) => boolean,
+): Changes {
+  const read = only ? events.filter((e) => !("board" in e) || only(e.board)) : events;
+  const net = netChanges(read, after, by);
   const told = net.entries.flatMap((entry) => {
     const line = word(net.ws, entry.board, entry.change);
     return line === undefined ? [] : [{ ...entry, line }];
@@ -100,7 +107,8 @@ export function describeChanges(events: readonly Recorded[], after: number, by: 
   return {
     text: render(net, told),
     count: told.length,
-    upTo: net.ws.seq,
+    // Up to the last event of all: what was left out is not for this reader later either.
+    upTo: events.at(-1)?.seq ?? 0,
     passed: net.passed,
     about: subjects(told),
   };
