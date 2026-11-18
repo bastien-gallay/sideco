@@ -157,6 +157,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F29 | Une colonne de kanban, de rétro ou d'Impact / Effort se renomme pour un tableau : `vico lane LANE "Nom"`. Le nom vaut pour ce tableau, dans toutes les langues et tous les exports ; il s'annule. Dans la page : double-clic sur le nom de la colonne | Livré |
 | F30 | Une colonne d'une frise se déplace d'un bloc, ses cartes avec elle : `vico move-col DE VERS`. Les colonnes traversées se resserrent ; un seul Undo la remet | Livré (commande) ; le glisser dans la page reste à faire |
 | F31 | Plusieurs sessions dans un même projet : chacune ne reçoit que les changements et les passages de main des tableaux qu'elle suit. Elle suit un tableau en y écrivant, en le lisant (`vico show`) ou en le disant (`vico follow`) ; `vico unfollow` le lâche. Un tableau qu'aucune session en cours ne suit est remis à toutes | Livré ; cible : un passage de main adressé à une session, visible dans la page |
+| F32 | Quand Claude a passé la main, l'en-tête le dit par une pastille, quel que soit le tableau à l'écran, et le titre de l'onglet commence par « ● Claude t'attend ». Si une session écoute la réponse (`vico wait`), la pastille et l'onglet disent « Claude est bloqué sur toi », dans la couleur de ce qui arrête le travail | Livré ; une notification du navigateur reste à étudier (S107) |
 
 ### 5.3 Exigences de qualité
 

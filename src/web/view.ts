@@ -507,6 +507,33 @@ export interface Waiting {
   others: number;
 }
 
+/** What is said while Claude waits: in the header, and in the tab for who looks at another one. */
+export interface WaitsNotice {
+  text: string;
+  /** What the tab of the browser says before its own name. */
+  tab: string;
+  /** A session listens for the answer: Claude does nothing until it comes. */
+  blocked: boolean;
+}
+
+/** `here`: the board Claude waits on is the one on screen. */
+export function waitsNotice(
+  waiting: Waiting,
+  here: boolean,
+  listening: number,
+  locale: Locale = DEFAULT_LOCALE,
+): WaitsNotice {
+  const m = MESSAGES[locale];
+  const blocked = listening > 0;
+  const [alone, on] = blocked ? [m.claudeBlocked, m.claudeBlockedOn] : [m.claudeWaits, m.claudeWaitsOn];
+  return { text: here ? alone : on(waiting.title), tab: `● ${alone}`, blocked };
+}
+
+/** The name of the tab: that Claude waits first, where a narrow tab still shows it; then the board. */
+export function tabTitle(notice: WaitsNotice | undefined, board: string | undefined): string {
+  return [notice?.tab, board, "Vico"].filter(Boolean).join(" · ");
+}
+
 export function claudeWaits(ws: Workspace): Waiting | undefined {
   // An answer ends every wait before it, wherever it was given: a turn handed back on any board, or words in the terminal.
   const answered = Math.max(

@@ -42,9 +42,11 @@ import {
   pendingChanges,
   recentTurns,
   redoTarget,
+  tabTitle,
   undoTarget,
   unreadOn,
   type Waiting,
+  waitsNotice,
 } from "./view.ts";
 
 const TURNS_SHOWN = 4;
@@ -298,16 +300,23 @@ const paintStatus = region(statusPill, (m: { tone: string; text: string; connect
   h("span", { class: "status-text" }, m.connected ? m.text : t.disconnected),
 ]);
 
-const paintWaits = region(waitsPill, (m: { waiting: Waiting | undefined; current: string | undefined }) => {
+interface Waits {
+  waiting: Waiting | undefined;
+  current: string | undefined;
+  listening: number;
+}
+
+const paintWaits = region(waitsPill, (m: Waits) => {
   const w = m.waiting;
-  if (!w) return [];
-  const here = w.board === m.current;
+  const here = w?.board === m.current;
+  const notice = w && waitsNotice(w, here, m.listening, locale);
+  if (!w || !notice) return [];
   return [
     h(
       "button",
       {
         type: "button",
-        class: "quiet",
+        class: notice.blocked ? "quiet is-blocked" : "quiet",
         "data-board": w.board,
         title: w.message,
         // Pressed, it leads to the board and says why: Claude's words, wherever the reader was.
@@ -317,7 +326,7 @@ const paintWaits = region(waitsPill, (m: { waiting: Waiting | undefined; current
         },
       },
       h("span", { class: "waits-dot", "aria-hidden": "true" }),
-      here ? t.claudeWaits : t.claudeWaitsOn(w.title),
+      notice.text,
       w.others > 0 && h("span", { class: "waits-more" }, ` +${w.others}`),
     ),
   ];
@@ -952,7 +961,7 @@ function render(): void {
   });
   paintStatus({ ...agentStatus(session, live ? state.listening : 0, locale), connected: state.connected });
   paintExport({ board: board?.id });
-  paintWaits({ waiting: live ? claudeWaits(ws) : undefined, current: board?.id });
+  paintWaits({ waiting: live ? claudeWaits(ws) : undefined, current: board?.id, listening: state.listening });
   const mine = live ? (state.boardId ?? undefined) : undefined;
   paintUndo({
     undo: live && undoTarget(state.live, mine) !== undefined,
@@ -1034,7 +1043,12 @@ function render(): void {
     state.notice = null;
   }
   meet(state.served);
-  document.title = board ? `${board.title} · Vico` : "Vico";
+  // The tab says that Claude waits too: the reader may be looking at another one.
+  const waiting = isLive() ? claudeWaits(state.live) : undefined;
+  document.title = tabTitle(
+    waiting && waitsNotice(waiting, waiting.board === board?.id, state.listening, locale),
+    board?.title,
+  );
 }
 
 start(render);

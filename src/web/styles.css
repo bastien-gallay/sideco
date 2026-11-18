@@ -292,6 +292,11 @@ input[type="text"] {
   text-overflow: ellipsis;
 }
 
+/* Claude blocked, listening for the answer: the same pill, in the colour of what stops the work. */
+.waits button.is-blocked {
+  color: var(--danger);
+}
+
 .waits-dot {
   flex: none;
   width: 8px;

@@ -112,6 +112,8 @@ export interface Messages {
   theirTurn: string;
   claudeWaits: string;
   claudeWaitsOn: (title: string) => string;
+  claudeBlocked: string;
+  claudeBlockedOn: (title: string) => string;
   handOver: string;
 
   // The history.
@@ -258,6 +260,8 @@ const en: Messages = {
   theirTurn: "Claude hands over to you",
   claudeWaits: "Claude waits for you",
   claudeWaitsOn: (title) => `Claude waits · ${title}`,
+  claudeBlocked: "Claude is blocked on you",
+  claudeBlockedOn: (title) => `Claude is blocked · ${title}`,
   handOver: "Hand over to Claude",
 
   history: "Board history",
@@ -396,6 +400,8 @@ const fr: Messages = {
   theirTurn: "Claude te passe la main",
   claudeWaits: "Claude t'attend",
   claudeWaitsOn: (title) => `Claude attend · ${title}`,
+  claudeBlocked: "Claude est bloqué sur toi",
+  claudeBlockedOn: (title) => `Claude est bloqué · ${title}`,
   handOver: "Passer la main à Claude",
 
   history: "Historique du tableau",

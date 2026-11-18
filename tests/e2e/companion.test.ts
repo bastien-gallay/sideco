@@ -1075,6 +1075,8 @@ describe("Claude waits for the human", () => {
     // Other boards of this run may wait too: they are counted after the name.
     expect(await pill().textContent()).toStartWith("Claude waits · Attente");
     expect(await pill().getAttribute("title")).toBe("Ton avis sur E1 ?");
+    // The tab says it too, for who looks at another one.
+    expect(await page.title()).toStartWith("● Claude waits for you · ");
     // Just before the zoom, in the header.
     expect(
       await pill().evaluate((button) =>
@@ -1094,7 +1096,25 @@ describe("Claude waits for the human", () => {
     );
   });
 
+  test("with Claude listening for the answer, the pill and the tab say it is blocked", async () => {
+    // Nothing is left to tell: the wait that follows is a real one.
+    await fetch(`${running.url}/api/changes?session=${SESSION}&ack=1`);
+    const listening = fetch(`${running.url}/api/wait?session=${SESSION}&timeout=20000`).then((response) =>
+      response.json(),
+    );
+    await page.locator(".top .waits button.is-blocked").waitFor();
+    expect(await pill().textContent()).toStartWith("Claude is blocked on you");
+    expect(await page.title()).toBe("● Claude is blocked on you · Attente · Vico");
+    await shot("24-claude-blocked");
+    await page.locator(".turn button", { hasText: "Hand over to Claude" }).click();
+    await listening;
+    await pill().waitFor({ state: "detached" });
+    expect(await page.title()).toBe("Attente · Vico");
+  });
+
   test("handing the turn back ends the wait", async () => {
+    await agent('pass "Encore une question"', BOARD);
+    await pill().waitFor();
     await page.locator(".turn button", { hasText: "Hand over to Claude" }).click();
     await pill().waitFor({ state: "detached" });
   });
