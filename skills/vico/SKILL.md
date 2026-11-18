@@ -105,7 +105,8 @@ vico wait
 ## Commands
 
 ```text
-vico boards                       vico show [BOARD]
+vico boards      vico show [BOARD] [--lane L | --col N] [--brief] [--notes]   (a part: its first line says so)
+vico show ID                      (one card: where it is, its links, its threads)
 vico board new "Title" [--format F] [--id ID]
 vico board rm ID                  (removes the board; its history stays)
 vico add TYPE "Label" [--col N | --lane L] [--from ID [--edge "label"]] [--detail "…"]
@@ -118,8 +119,7 @@ vico link SRC DST ["label"]       vico unlink SRC DST
 vico focus [ID…] [--why "…"]      (no id clears the focus)
 vico note "Text" [--on ID]        (opens a thread, on the board or on one element)
 vico reply N1 "Text"              vico resolve N1    (answer in a thread; close it)
-vico apply [FILE]                 (a batch of the lines above, stdin by default)
-  in a batch: add … --alias NAME     (then @NAME for its id on the lines below)
+vico apply [FILE]   (a batch of the lines above, stdin by default; add … --alias NAME, then @NAME below)
 vico changes                      vico pass ["question"]      vico wait
 vico follow BOARD…                vico unfollow BOARD…        (the boards whose changes you are told)
 vico export [BOARD] --format md|html|svg|mermaid|json [-o FILE]

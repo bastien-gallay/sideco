@@ -1,13 +1,15 @@
 /**
  * Boards as text, for the agent. Two readings:
  *
- * - `describeBoard`: the whole board, compact enough to read on every turn.
+ * - `describeBoard`: the whole board, compact enough to read on every turn, or a
+ *   part of it; `describeCard`: one card with what is tied to it.
  * - `describeChanges`: what one actor did since a given point, net of back-and-forth
  *   (an element renamed twice shows once; one added then removed does not show).
  *
  * Lines carry a sign so the meaning survives without colour: + added, − removed,
  * ~ renamed, → moved.
  */
+import { CommandError } from "./commands.ts";
 import type { Actor, Recorded } from "./events.ts";
 import { findFormat, laneName } from "./formats.ts";
 import {
@@ -17,56 +19,127 @@ import {
   emptyWorkspace,
   findBoard,
   findElement,
+  type Thread,
   threads,
   type Workspace,
 } from "./workspace.ts";
 
-export function describeBoard(board: Board): string {
-  const format = findFormat(board.format);
-  const lines = [`# ${board.id} — ${board.title} (${board.format}, seq ${board.changedSeq})`];
-  const show = (id: string): string => {
-    const e = findElement(board, id);
-    if (!e) return id;
-    return `  ${e.id} ${e.type} ${quote(e.label)}${e.done ? " ✓ done" : ""}${e.detail ? ` — ${under(e.detail)}` : ""}`;
-  };
+/** A part of a board to read instead of the whole; the fields combine. */
+export interface Part {
+  /** One lane, with the links and the notes that touch its cards. */
+  lane?: string;
+  /** One column of a timeline, likewise. */
+  col?: number;
+  /** The cards without their details. */
+  brief?: boolean;
+  /** The open notes and nothing else. */
+  notes?: boolean;
+}
 
-  if (board.elements.length === 0) lines.push("(empty)");
+/** The first line of every reading: the board, and the part read when it is not all of it. */
+function heading(board: Board, part: string[]): string {
+  const whole = `# ${board.id} — ${board.title} (${board.format}, seq ${board.changedSeq})`;
+  return part.length === 0 ? whole : `${whole} · part: ${part.join(", ")}`;
+}
+
+function cardLine(e: Element, brief = false): string {
+  const detail = e.detail && !brief ? ` — ${under(e.detail)}` : "";
+  return `  ${e.id} ${e.type} ${quote(e.label)}${e.done ? " ✓ done" : ""}${detail}`;
+}
+
+function linkLine(edge: { src: string; dst: string; label?: string }): string {
+  return `  ${edge.src} -> ${edge.dst}${edge.label ? ` ${quote(edge.label)}` : ""}`;
+}
+
+function threadLines(thread: Thread, sayClosed = false): string[] {
+  const [first, ...replies] = thread.notes;
+  if (!first) return [];
+  const closed = sayClosed && thread.resolved ? " (resolved)" : "";
+  return [
+    `  ${first.id} by ${first.by}${first.target ? ` on ${first.target}` : ""}: ${first.text}${closed}`,
+    ...replies.map((reply) => `    ${reply.id} by ${reply.by}: ${reply.text}`),
+  ];
+}
+
+export function describeBoard(board: Board, part: Part = {}): string {
+  const format = findFormat(board.format);
+  const name = format?.name.en ?? board.format;
+  if (part.lane !== undefined) {
+    if (format?.layout !== "columns") throw new CommandError(`${name} boards have no lanes`);
+    if (!format.lanes.some((lane) => lane.id === part.lane))
+      throw new CommandError(
+        `${name} has no lane "${part.lane}" (lanes: ${format.lanes.map((l) => l.id).join(", ")})`,
+      );
+  }
+  if (part.col !== undefined && format?.layout !== "timeline")
+    throw new CommandError(`${name} boards have no columns`);
+
+  const said = [
+    part.lane !== undefined && `lane ${part.lane}`,
+    part.col !== undefined && `col ${part.col}`,
+    part.brief && "brief",
+    part.notes && "notes",
+  ].filter((word): word is string => typeof word === "string");
+  const lines = [heading(board, said)];
+  const narrowed = part.lane !== undefined || part.col !== undefined;
+  const elements = board.elements.filter(
+    (e) =>
+      (part.lane === undefined || e.lane === part.lane) && (part.col === undefined || e.col === part.col),
+  );
+  const shown = new Set(elements.map((e) => e.id));
+  const show = (e: Element): string => cardLine(e, part.brief);
+
+  if (part.notes) {
+    // The notes alone: the cards are left out.
+  } else if (elements.length === 0) lines.push("(empty)");
   else if (format?.layout === "timeline") {
-    const columns = [...new Set(board.elements.map((e) => e.col))].sort((a, b) => a - b);
+    const columns = [...new Set(elements.map((e) => e.col))].sort((a, b) => a - b);
     for (const col of columns) {
       lines.push(`col ${col}`);
       for (const type of format.types) {
-        for (const e of board.elements) if (e.col === col && e.type === type.id) lines.push(show(e.id));
+        for (const e of elements) if (e.col === col && e.type === type.id) lines.push(show(e));
       }
     }
   } else if (format?.layout === "columns") {
     for (const lane of format.lanes) {
-      const name = laneName(format, board, lane.id, "en");
-      lines.push(`lane ${lane.id} (${lane.hint ? `${name}: ${lane.hint.en}` : name})`);
-      for (const e of board.elements) if (e.lane === lane.id) lines.push(show(e.id));
+      if (part.lane !== undefined && lane.id !== part.lane) continue;
+      const laneSaid = laneName(format, board, lane.id, "en");
+      lines.push(`lane ${lane.id} (${lane.hint ? `${laneSaid}: ${lane.hint.en}` : laneSaid})`);
+      for (const e of elements) if (e.lane === lane.id) lines.push(show(e));
     }
   } else {
     lines.push("elements");
-    for (const e of board.elements) lines.push(show(e.id));
+    for (const e of elements) lines.push(show(e));
   }
 
-  if (board.edges.length > 0) {
-    lines.push("links");
-    for (const edge of board.edges)
-      lines.push(`  ${edge.src} -> ${edge.dst}${edge.label ? ` ${quote(edge.label)}` : ""}`);
-  }
-  const open = threads(board).filter((thread) => !thread.resolved);
-  if (open.length > 0) {
-    lines.push("open notes");
-    for (const thread of open) {
-      const [first, ...replies] = thread.notes;
-      if (!first) continue;
-      lines.push(`  ${first.id} by ${first.by}${first.target ? ` on ${first.target}` : ""}: ${first.text}`);
-      for (const reply of replies) lines.push(`    ${reply.id} by ${reply.by}: ${reply.text}`);
-    }
-  }
-  if (board.focus)
+  // Of a part, the links and the notes that touch a card shown.
+  const edges = part.notes
+    ? []
+    : board.edges.filter((edge) => !narrowed || shown.has(edge.src) || shown.has(edge.dst));
+  if (edges.length > 0) lines.push("links", ...edges.map(linkLine));
+  const open = threads(board).filter((thread) => {
+    const target = thread.notes[0]?.target;
+    return !thread.resolved && (!narrowed || (target !== undefined && shown.has(target)));
+  });
+  if (open.length > 0) lines.push("open notes", ...open.flatMap((thread) => threadLines(thread)));
+  if (board.focus && !part.notes)
     lines.push(`focus: ${board.focus.ids.join(", ")}${board.focus.reason ? ` — ${board.focus.reason}` : ""}`);
+  return lines.join("\n");
+}
+
+/** One card: its line, where it is, its links, and its threads, closed ones included. */
+export function describeCard(board: Board, id: string): string {
+  const e = findElement(board, id);
+  if (!e) throw new CommandError(`no element ${id} on "${board.id}"`);
+  const format = findFormat(board.format);
+  const lines = [heading(board, [`card ${id}`]), cardLine(e)];
+  if (format?.layout === "timeline") lines.push(`  in col ${e.col}`);
+  else if (format?.layout === "columns")
+    lines.push(`  in lane ${e.lane} (${laneName(format, board, e.lane, "en")})`);
+  const edges = board.edges.filter((edge) => edge.src === id || edge.dst === id);
+  if (edges.length > 0) lines.push("links", ...edges.map(linkLine));
+  const about = threads(board).filter((thread) => thread.notes[0]?.target === id);
+  if (about.length > 0) lines.push("notes", ...about.flatMap((thread) => threadLines(thread, true)));
   return lines.join("\n");
 }
 

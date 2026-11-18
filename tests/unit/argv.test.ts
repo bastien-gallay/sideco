@@ -51,6 +51,14 @@ describe("parseArgs", () => {
 
   test("a flag without a value says which", () => {
     expect(() => parseArgs(["E1", "--col"])).toThrow("--col needs a value");
+    // A switch says yes by being there, and takes nothing after it.
+    expect(parseArgs(["--brief", "backlog", "--notes"])).toEqual({
+      positional: ["backlog"],
+      flags: new Map([
+        ["brief", "yes"],
+        ["notes", "yes"],
+      ]),
+    });
   });
 });
 

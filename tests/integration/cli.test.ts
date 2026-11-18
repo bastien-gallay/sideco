@@ -560,6 +560,27 @@ describe("the page's language", () => {
   });
 });
 
+describe("reading a part of a board", () => {
+  test("`vico show` takes a column, the notes, or the cards without their details", async () => {
+    const column = await vico(["show", "passage-de-commande", "--col", "1"]);
+    expect(column.out.split("\n")[0]).toEndWith("· part: col 1");
+    expect(column.out).not.toContain("col 2");
+    const brief = await vico(["show", "passage-de-commande", "--brief"]);
+    expect(brief.out.split("\n")[0]).toEndWith("· part: brief");
+    const notes = await vico(["show", "passage-de-commande", "--notes", "--col", "1"]);
+    expect(notes.out.split("\n")[0]).toEndWith("· part: col 1, notes");
+  });
+
+  test("`vico show ID` shows one card; a part the board does not have is refused in words", async () => {
+    const card = await vico(["show", "E1", "--board", "passage-de-commande"]);
+    expect(card.out.split("\n")[0]).toEndWith("· part: card E1");
+    expect(card.out).toContain("  in col ");
+    const refused = await vico(["show", "passage-de-commande", "--lane", "todo"]);
+    expect(refused.code).toBe(1);
+    expect(refused.err).toContain("have no lanes");
+  });
+});
+
 describe("two sessions in one project", () => {
   const told = async (session: string): Promise<string> =>
     (await hook({ session_id: session, hook_event_name: "UserPromptSubmit", prompt: "Continue" })).out;

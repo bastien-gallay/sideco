@@ -49,7 +49,10 @@ export interface Args {
 
 const SHORT: Record<string, string> = { "-o": "--out", "-b": "--board", "-f": "--format" };
 
-/** Every flag takes a value: `--col 3`, `--col=3`. */
+/** The flags that say yes by being there. */
+const SWITCHES: ReadonlySet<string> = new Set(["--brief", "--notes"]);
+
+/** Every flag takes a value, `--col 3` or `--col=3`, but the switches: `--brief`. */
 export function parseArgs(tokens: readonly string[]): Args {
   const positional: string[] = [];
   const flags = new Map<string, string>();
@@ -57,6 +60,10 @@ export function parseArgs(tokens: readonly string[]): Args {
     const token = SHORT[tokens[i] ?? ""] ?? tokens[i] ?? "";
     if (!token.startsWith("--") || token === "--") {
       positional.push(token);
+      continue;
+    }
+    if (SWITCHES.has(token)) {
+      flags.set(token.slice(2), "yes");
       continue;
     }
     const eq = token.indexOf("=");

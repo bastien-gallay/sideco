@@ -6,8 +6,8 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { slugify } from "../domain/commands.ts";
-import { describeBoard } from "../domain/digest.ts";
+import { CommandError, isElementId, slugify } from "../domain/commands.ts";
+import { describeBoard, describeCard } from "../domain/digest.ts";
 import { toIndexHtml } from "../domain/export/html.ts";
 import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.ts";
 import { fromModel } from "../domain/export/model.ts";
@@ -57,7 +57,9 @@ Model (BOARD defaults to the only board, or --board ID, or $VICO_BOARD)
   vico board new "Title" [--format F] [--id ID]
   vico board rm ID                  remove a board; its history stays in the journal
   vico boards
-  vico show [BOARD]                 a board as text
+  vico show [BOARD]                 a board as text; a part of it with --lane L, --col N, --brief (no details),
+                                    --notes (the open notes only). The first line names the part.
+  vico show ID                      one card: where it is, its links, its threads
   vico add TYPE "Label" [--col N | --lane L] [--id E1] [--from ID [--edge "label"]] [--detail "…"]
   vico rename ID "Label"            vico detail ID "Text"
   vico move ID --col N | --lane L [--before ID]   (--before alone: before that card, in its cell)
@@ -211,8 +213,11 @@ async function run(verb: string, rest: string[]): Promise<number> {
       console.log(boardsText(read()));
       return 0;
     case "show": {
-      const board = chooseBoard(read(), args.positional[0] ?? args.flags.get("board"));
-      console.log(describeBoard(board));
+      // `show E1` is one card of the board; `show backlog` is a board.
+      const named = args.positional[0];
+      const card = named !== undefined && isElementId(named) ? named : undefined;
+      const board = chooseBoard(read(), card ? args.flags.get("board") : (named ?? args.flags.get("board")));
+      console.log(shown(board, card, args));
       await followQuietly(root, args.flags.get("session") ?? setting("VICO_SESSION"), board.id);
       return 0;
     }
@@ -319,6 +324,25 @@ function language(args: Args): Locale {
 const GLOBAL_FLAGS = new Set(["--as", "--session"]);
 
 /** True for `--as`/`--session` and their values, which are not part of the command itself. */
+/** A board as text: all of it, the part the flags name, or one card. */
+function shown(board: Board, card: string | undefined, args: Args): string {
+  const col = args.flags.get("col");
+  if (col !== undefined && !/^\d+$/.test(col))
+    throw new UsageError(`--col takes a whole number, got "${col}"`);
+  try {
+    if (card) return describeCard(board, card);
+    return describeBoard(board, {
+      lane: args.flags.get("lane"),
+      col: col === undefined ? undefined : Number(col),
+      brief: args.flags.has("brief"),
+      notes: args.flags.has("notes"),
+    });
+  } catch (error) {
+    if (error instanceof CommandError) throw new UsageError(error.message);
+    throw error;
+  }
+}
+
 function isGlobalFlag(tokens: string[], index: number): boolean {
   return GLOBAL_FLAGS.has(tokens[index] ?? "") || GLOBAL_FLAGS.has(tokens[index - 1] ?? "");
 }
