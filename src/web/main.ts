@@ -42,6 +42,7 @@ import {
   recentTurns,
   redoTarget,
   undoTarget,
+  unreadOn,
 } from "./view.ts";
 
 const TURNS_SHOWN = 4;
@@ -332,6 +333,8 @@ interface NotesModel {
   /** The selected card: its discussions stand out. */
   selected: string | null;
   threads: Discussion[];
+  /** The discussions that carry a note Claude has not read. */
+  unread: string[];
 }
 
 /** Replies being typed, per discussion: they survive a repaint, such as Claude answering meanwhile. */
@@ -431,6 +434,7 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel): HTMLEle
         ),
       ),
     ),
+    m.unread.includes(thread.id) && h("p", { class: "thread-unread" }, t.unread),
     m.live &&
       h(
         "form",
@@ -875,6 +879,9 @@ function render(): void {
   const session = currentSession();
   const live = isLive();
   const liveSession = latestSession(state.live);
+  const pending = pendingChanges(state.events, liveSession);
+  // The marks tell about now: a board shown as it was carries none.
+  const unread = live && board ? unreadOn(pending, board.id) : { cards: [], threads: [] };
 
   paintBoardPicker({
     boards: ws.boards.map((b) => ({ id: b.id, title: b.title })),
@@ -898,6 +905,7 @@ function render(): void {
     live,
     selected: state.selected,
     threads: board ? discussions(board) : [],
+    unread: unread.threads,
   });
   revealThreads(state.selected);
 
@@ -907,7 +915,7 @@ function render(): void {
   canvas.hidden = !board;
   empty.hidden = Boolean(board);
   if (!board) paintEmpty({ live });
-  view.paint(board);
+  view.paint(board, unread.cards);
 
   paintSession({
     status: agentStatus(session, live ? state.listening : 0, locale),
@@ -952,7 +960,7 @@ function render(): void {
   paintTurn({
     board: board?.id,
     live,
-    pending: pendingChanges(state.events, liveSession).count,
+    pending: pending.count,
     hint: handOverHint(liveSession?.status, state.listening, locale),
     theirs: turn?.to === "human" ? (turn.message ?? "") : undefined,
   });

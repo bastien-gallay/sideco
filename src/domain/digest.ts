@@ -77,16 +77,32 @@ export interface Changes {
   upTo: number;
   /** Whether the actor handed the turn to the agent in this span. */
   passed: boolean;
+  /** What the lines name, board by board, so a page can mark what the reader has not read yet. */
+  about: Subjects[];
+}
+
+/** The cards and the discussions the lines of a digest name on one board, each once. */
+export interface Subjects {
+  board: string;
+  elements: string[];
+  /** Each discussion by the id of the note that opened it. */
+  threads: string[];
 }
 
 /** What `by` changed on the boards in events after `after`. */
 export function describeChanges(events: readonly Recorded[], after: number, by: Actor = "human"): Changes {
   const net = netChanges(events, after, by);
-  const told = net.entries.flatMap(({ board, change }) => {
-    const line = word(net.ws, board, change);
-    return line === undefined ? [] : [{ board, line }];
+  const told = net.entries.flatMap((entry) => {
+    const line = word(net.ws, entry.board, entry.change);
+    return line === undefined ? [] : [{ ...entry, line }];
   });
-  return { text: render(net, told), count: told.length, upTo: net.ws.seq, passed: net.passed };
+  return {
+    text: render(net, told),
+    count: told.length,
+    upTo: net.ws.seq,
+    passed: net.passed,
+    about: subjects(told),
+  };
 }
 
 /** One thing to tell, as data: netted while the journal is read, worded once it is read. */
@@ -363,6 +379,51 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
     case "resolved":
       return `✓ note ${change.id} resolved`;
   }
+}
+
+/** The cards a change is about, and the discussion it belongs to: what its line names. */
+function named(change: Change): { elements: string[]; thread?: string } {
+  switch (change.kind) {
+    case "added":
+    case "renamed":
+    case "moved":
+    case "annotated":
+    case "removed":
+      return { elements: [change.id] };
+    case "linked":
+    case "unlinked":
+      return { elements: [change.src, change.dst] };
+    case "focused":
+      return { elements: change.ids };
+    case "noted":
+      return { elements: change.target ? [change.target] : [], thread: change.thread ?? change.id };
+    case "resolved":
+      return { elements: [], thread: change.id };
+    case "board-created":
+    case "board-retitled":
+    case "board-removed":
+    case "board-restored":
+    case "column-inserted":
+      return { elements: [] };
+  }
+}
+
+/** What the changes told name, grouped by board; a board whose lines name nothing is left out. */
+function subjects(told: readonly Entry[]): Subjects[] {
+  const boards = new Map<string, { elements: Set<string>; threads: Set<string> }>();
+  for (const { board, change } of told) {
+    const { elements, thread } = named(change);
+    if (elements.length === 0 && thread === undefined) continue;
+    const on = boards.get(board) ?? { elements: new Set(), threads: new Set() };
+    boards.set(board, on);
+    for (const id of elements) on.elements.add(id);
+    if (thread !== undefined) on.threads.add(thread);
+  }
+  return [...boards].map(([board, on]) => ({
+    board,
+    elements: [...on.elements],
+    threads: [...on.threads],
+  }));
 }
 
 function addedLine(ws: Workspace, boardId: string, { id, type, label, col, lane }: Added): string {

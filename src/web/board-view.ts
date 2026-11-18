@@ -6,7 +6,7 @@
 import type { Command } from "../domain/commands.ts";
 import { type Format, findFormat, findType } from "../domain/formats.ts";
 import { layoutBoard, locate, type Scene, type Target, vacancy } from "../domain/layout/index.ts";
-import { arrowDefs, bandMarkup, cardMarkup, connectorMarkup } from "../domain/render/svg.ts";
+import { arrowDefs, bandMarkup, cardMarkup, connectorMarkup, esc } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h, svg } from "./dom.ts";
 import { locale, t } from "./locale.ts";
@@ -22,11 +22,18 @@ interface Editing {
   commit(value: string): void;
 }
 
+/**
+ * The mark of a card that carries a change Claude has not read: a dot on the
+ * corner the note count leaves free, with its words for a pointer resting on it.
+ */
+const UNREAD_MARK = `<g class="card-unread"><title>${esc(t.unread)}</title><circle cx="2" cy="2" r="5"/></g>`;
+
 /** A label or a detail as it is kept: on one line, single-spaced. */
 const tidy = (text: string): string => text.replace(/\s+/g, " ").trim();
 
 export interface BoardView {
-  paint(board: Board | undefined): void;
+  /** `unread` lists the cards that carry a change Claude has not read. */
+  paint(board: Board | undefined, unread: readonly string[]): void;
   /** Opens the label editor for a new element of this type. */
   beginAdd(typeId: string, place?: { col?: number; lane?: string; x: number; y: number }): void;
   zoomBy(step: -1 | 1): number;
@@ -52,6 +59,7 @@ export function mountBoard(host: HTMLElement): BoardView {
 
   const nodes = new Map<string, { g: SVGGElement; signature: string }>();
   let board: Board | undefined;
+  let unread: readonly string[] = [];
   let scene: Scene = { width: 0, height: 0, bands: [], cards: [], connectors: [] };
   let zoom = 1;
   let editing: Editing | undefined;
@@ -64,8 +72,9 @@ export function mountBoard(host: HTMLElement): BoardView {
 
   const format = (): Format | undefined => (board ? findFormat(board.format) : undefined);
 
-  function paint(next: Board | undefined): void {
+  function paint(next: Board | undefined, notRead: readonly string[]): void {
     board = next;
+    unread = notRead;
     if (!board) {
       root.setAttribute("visibility", "hidden");
       tools.hidden = true;
@@ -92,7 +101,8 @@ export function mountBoard(host: HTMLElement): BoardView {
     for (const card of scene.cards) {
       alive.add(card.id);
       const { x, y, ...look } = card;
-      const signature = JSON.stringify(look);
+      const isUnread = unread.includes(card.id);
+      const signature = JSON.stringify({ ...look, isUnread });
       let node = nodes.get(card.id);
       if (!node) {
         const g = svg("g", { class: "card", "data-id": card.id, tabindex: 0, role: "button" });
@@ -102,7 +112,10 @@ export function mountBoard(host: HTMLElement): BoardView {
         nodes.set(card.id, node);
       }
       if (node.signature !== signature) {
-        node.g.innerHTML = cardMarkup(card);
+        node.g.innerHTML = cardMarkup(card) + (isUnread ? UNREAD_MARK : "");
+        // A screen reader hears a card as one name, so the mark's words join it.
+        if (isUnread) node.g.setAttribute("aria-label", `${card.tip} · ${t.unread}`);
+        else node.g.removeAttribute("aria-label");
         node.signature = signature;
       }
       // A card in the human's hand stays there, whatever arrives meanwhile.
@@ -551,7 +564,7 @@ export function mountBoard(host: HTMLElement): BoardView {
     zoomBy(step) {
       const index = Math.min(ZOOMS.length - 1, Math.max(0, ZOOMS.indexOf(zoom) + step));
       zoom = ZOOMS[index] ?? 1;
-      paint(board);
+      paint(board, unread);
       return zoom;
     },
   };

@@ -63,6 +63,22 @@ export function pendingChanges(events: readonly Recorded[], session: Session | u
   return describeChanges(events, session?.deliveredUpTo ?? 0);
 }
 
+/** What carries a change of the human that Claude has not read yet, on one board. */
+export interface Unread {
+  cards: string[];
+  /** Each discussion by the id of the note that opened it. */
+  threads: string[];
+}
+
+/**
+ * The cards and discussions to mark on a board: those the pending digest has a
+ * line about, so the marks and the count cannot tell two stories.
+ */
+export function unreadOn(pending: Changes, boardId: string): Unread {
+  const named = pending.about.find((subjects) => subjects.board === boardId);
+  return { cards: named?.elements ?? [], threads: named?.threads ?? [] };
+}
+
 export function recentTurns(session: Session | undefined, max: number): SessionTurn[] {
   return session ? session.turns.slice(-max) : [];
 }

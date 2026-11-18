@@ -104,6 +104,8 @@ export interface Messages {
   messagePlaceholder: string;
   upToDate: string;
   pending: (count: number) => string;
+  /** On a card or a discussion that carries a change Claude has not read. */
+  unread: string;
   theirTurn: string;
   handOver: string;
 
@@ -240,6 +242,7 @@ const en: Messages = {
   messagePlaceholder: "A word for Claude (optional)",
   upToDate: "Claude is up to date",
   pending: (count) => `${count} change${plural(count)} Claude has not read`,
+  unread: "Not read by Claude yet",
   theirTurn: "Claude hands over to you",
   handOver: "Hand over to Claude",
 
@@ -369,6 +372,7 @@ const fr: Messages = {
   messagePlaceholder: "Un mot pour Claude (facultatif)",
   upToDate: "Claude est à jour",
   pending: (count) => `${count} changement${plural(count)} que Claude n'a pas lu${plural(count)}`,
+  unread: "Pas encore lu par Claude",
   theirTurn: "Claude te passe la main",
   handOver: "Passer la main à Claude",
 

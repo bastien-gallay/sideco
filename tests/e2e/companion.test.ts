@@ -769,6 +769,51 @@ describe("talking it through, note by note", () => {
   });
 });
 
+describe("what Claude has not read yet", () => {
+  const BOARD = "non-lu";
+  const WORDS = "Not read by Claude yet";
+  const cardMark = (id: string) => card(id).locator(".card-unread");
+  const threadMark = (id: string) => page.locator(`.notes .thread[data-thread="${id}"] .thread-unread`);
+
+  test("a card the human renamed and a thread they answered are marked, until Claude has read them", async () => {
+    await agent(
+      `board new "Non lu" --id ${BOARD}\nadd event "Facture émise" --col 1\nadd event "Facture payée" --col 2\nnote "Qui relance ?"`,
+    );
+    await page.locator(".board-picker select").selectOption(BOARD);
+    await card("E2").getByText("Facture payée").waitFor();
+    expect(await page.locator(".card-unread, .thread-unread").count()).toBe(0);
+
+    await card("E1").dblclick();
+    await typeInEditor("Facture envoyée");
+    await cardMark("E1").waitFor();
+    // Said in words too: to a pointer on the mark, and in the card's name for a screen reader.
+    expect(await cardMark("E1").locator("title").textContent()).toBe(WORDS);
+    expect(await card("E1").getAttribute("aria-label")).toEndWith(WORDS);
+    expect(await cardMark("E2").count()).toBe(0);
+
+    const reply = page.locator(`.notes .thread[data-thread="N1"] .thread-reply input`);
+    await reply.fill("La compta");
+    await reply.press("Enter");
+    await threadMark("N1").waitFor();
+    expect(await threadMark("N1").textContent()).toBe(WORDS);
+    await shot("18-unread");
+
+    // The marks tell about now: a board shown as it was carries none.
+    await page.locator(".history button", { hasText: "◄" }).click();
+    await page.locator(".banner").waitFor({ state: "visible" });
+    await card("E1").getByText("Facture envoyée").waitFor();
+    expect(await page.locator(".card-unread, .thread-unread").count()).toBe(0);
+    await page.locator(".banner button").click();
+    await cardMark("E1").waitFor();
+
+    // The session reads its digest, as the hooks do.
+    await fetch(`${running.url}/api/changes?session=${SESSION}&ack=1`);
+    await cardMark("E1").waitFor({ state: "detached" });
+    await threadMark("N1").waitFor({ state: "detached" });
+    expect(await card("E1").getAttribute("aria-label")).toBeNull();
+  });
+});
+
 describe("adding where the pointer is", () => {
   const offer = (type: string) => page.locator(`.vico-board .add-here[data-type="${type}"]`);
   const offers = () => page.locator(".vico-board .add-here");

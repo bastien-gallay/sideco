@@ -97,6 +97,7 @@ Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit
 | `Undo` / `Redo`, ou `⌘Z` / `⇧⌘Z` (`Ctrl+Z` / `Ctrl+Shift+Z`) | Annule ou rétablit ton dernier geste sur le tableau affiché : ajout, renommage, détail, déplacement, suppression, lien. Jamais un geste de Claude, ni un geste que Claude a modifié depuis |
 | `Remove`, à côté du choix du tableau | Supprime le tableau affiché, après confirmation ; `Undo` le fait revenir entier |
 | `Export` | Markdown, HTML, SVG, Mermaid ou modèle JSON du tableau courant, dans la langue de la page |
+| Pastille au coin d'une carte, `Not read by Claude yet` sous un fil | Rien à faire : c'est un rappel de ce que tu as changé et que Claude n'a pas encore lu. Sont marqués les cartes et les fils que nomme le résumé qu'il recevra, net des allers-retours comme lui ; la marque part dès que le résumé est remis à la session. L'historique n'en montre pas |
 | `Hand over to Claude` | Envoie tes changements, avec un mot facultatif |
 | Sélecteur `English` / `Français`, en haut à droite | Change la langue de la page ; le choix est gardé par ce navigateur |
 

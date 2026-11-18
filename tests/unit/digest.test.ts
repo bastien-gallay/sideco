@@ -242,6 +242,64 @@ describe("describeChanges", () => {
   });
 });
 
+describe("the digest says which cards and threads its lines name, board by board", () => {
+  const about = (t: Table, after: number) => describeChanges(t.events, after).about;
+
+  test("every card a line names, once: added, renamed, detailed, moved, removed, linked, focused", () => {
+    const t = table(ORDERING);
+    const mark = t.seq;
+    human(
+      t,
+      'add event "Payé" --col 3\nrename E1 "Validée"\nrename E1 "Commande validée"\ndetail E1 "à revoir"',
+    );
+    human(t, "move E2 --col 3\nrm H1\nlink C2 E2\nunlink C1 E1\nfocus P1");
+    expect(about(t, mark)).toEqual([
+      { board: "commande", elements: ["E3", "E1", "E2", "H1", "C2", "C1", "P1"], threads: [] },
+    ]);
+  });
+
+  test("a change that nets out names nothing: renamed back, moved back, added then removed", () => {
+    const t = table(ORDERING);
+    const mark = t.seq;
+    human(t, 'rename E1 "Essai"\nrename E1 "Commande passée"');
+    human(t, "move E2 --col 5\nmove E2 --col 2");
+    human(t, 'add event "Brouillon"\nrename E3 "Toujours brouillon"\nrm E3');
+    expect(about(t, mark)).toEqual([]);
+  });
+
+  test("a note names its thread, and the card it is pinned on; a reply names the thread it answers", () => {
+    const t = table(ORDERING).script('note "Qui réserve ?" --on P1\nnote "Et le reste ?"');
+    const mark = t.seq;
+    human(t, 'reply N1 "L\'entrepôt"\nreply N1 "Toujours"\nnote "Pour toi" --on E1\nresolve N2');
+    expect(about(t, mark)).toEqual([
+      { board: "commande", elements: ["P1", "E1"], threads: ["N1", "N5", "N2"] },
+    ]);
+  });
+
+  test("a thread opened and closed unseen is not named; what the reader already saw is not either", () => {
+    const t = table(ORDERING);
+    human(t, 'rename E1 "Avant"');
+    const mark = t.seq;
+    human(t, 'note "Pour moi"\nreply N1 "Encore moi"\nresolve N1');
+    t.script('rename E2 "Par l\'agent"');
+    expect(about(t, mark)).toEqual([]);
+  });
+
+  test("each board has its own cards and threads; a line about the board itself names none", () => {
+    const t = table(ORDERING).script(KANBAN);
+    const mark = t.seq;
+    t.script("move T3 --lane doing", "human", "sprint")
+      .script('rename E1 "Validée"\nnote "Vu"', "human", "commande")
+      .script('retitle "Sprint 13"', "human", "sprint");
+    human(t, 'board new "Brouillon" --id brouillon');
+    expect(describeChanges(t.events, mark).count).toBe(5);
+    expect(about(t, mark)).toEqual([
+      { board: "sprint", elements: ["T3"], threads: [] },
+      { board: "commande", elements: ["E1"], threads: ["N1"] },
+    ]);
+  });
+});
+
 describe("moves are worded against the final board", () => {
   test("a card sent to the end of its lane", () => {
     const t = table(KANBAN);

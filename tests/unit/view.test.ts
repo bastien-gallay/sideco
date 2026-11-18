@@ -18,6 +18,7 @@ import {
   recentTurns,
   redoTarget,
   undoTarget,
+  unreadOn,
 } from "../../src/web/view.ts";
 import { FLOW, KANBAN, ORDERING, type Table, table } from "../support.ts";
 
@@ -133,6 +134,48 @@ describe("pendingChanges is what Claude has not been told, net of back-and-forth
   test("with no session, everything the human did is pending", () => {
     const t = table(ORDERING).script('rename E1 "Validée"', "human");
     expect(pendingChanges(t.events, undefined).count).toBe(1);
+  });
+});
+
+describe("unreadOn is what the pending digest names on one board: the cards and threads to mark", () => {
+  const unread = (t: Table, board = "commande"): ReturnType<typeof unreadOn> =>
+    unreadOn(pendingChanges(t.events, session(t)), board);
+
+  test("a card the human renamed and a thread they answered, until the changes are delivered", () => {
+    const t = withSession().script('note "Qui réserve ?" --on P1');
+    expect(unread(t)).toEqual({ cards: [], threads: [] });
+    t.script('rename E1 "Validée"\nreply N1 "L\'entrepôt"', "human");
+    expect(unread(t)).toEqual({ cards: ["E1", "P1"], threads: ["N1"] });
+    t.do({ kind: "delivered", upTo: t.seq }, "system", "s1");
+    expect(unread(t)).toEqual({ cards: [], threads: [] });
+    t.script('rename E2 "Réservé"', "human");
+    expect(unread(t)).toEqual({ cards: ["E2"], threads: [] });
+  });
+
+  test("net of back-and-forth, like the count: renamed back, or added then removed, is nothing to read", () => {
+    const t = withSession();
+    t.script('rename E1 "Essai"\nrename E1 "Commande passée"\nadd event "Brouillon"\nrm E3', "human");
+    expect(unread(t)).toEqual({ cards: [], threads: [] });
+    expect(pendingChanges(t.events, session(t)).count).toBe(0);
+  });
+
+  test("Claude's own changes are not marked, and each board has its own marks", () => {
+    const t = withSession().script(KANBAN).script('rename T1 "PRD relu"');
+    t.script("move T3 --lane doing", "human", "sprint").script('rename E1 "Validée"', "human", "commande");
+    expect(unread(t, "sprint")).toEqual({ cards: ["T3"], threads: [] });
+    expect(unread(t, "commande")).toEqual({ cards: ["E1"], threads: [] });
+  });
+
+  test("with no session, everything the human touched is unread", () => {
+    const t = table(ORDERING).script('rename E1 "Validée"\nnote "Vu"', "human");
+    expect(unread(t)).toEqual({ cards: ["E1"], threads: ["N1"] });
+  });
+
+  test("the page's words for it", () => {
+    expect([MESSAGES.en.unread, MESSAGES.fr.unread]).toEqual([
+      "Not read by Claude yet",
+      "Pas encore lu par Claude",
+    ]);
   });
 });
 
