@@ -5,6 +5,7 @@
  */
 import type { Command } from "../domain/commands.ts";
 import type { Recorded } from "../domain/events.ts";
+import type { Presence } from "../domain/presence.ts";
 import {
   apply,
   type Board,
@@ -91,7 +92,7 @@ function follow(): void {
   };
   source.onmessage = (message) => receive(JSON.parse(message.data) as Recorded);
   source.addEventListener("presence", (message) => {
-    const presence = JSON.parse((message as MessageEvent<string>).data) as { listening: number; run: string };
+    const presence = JSON.parse((message as MessageEvent<string>).data) as Presence;
     if (run !== null && presence.run !== run) {
       // Another run of the companion answered: its journal may not be the one folded here.
       source.close();

@@ -12,6 +12,7 @@ import { existsSync, statSync } from "node:fs";
 import { join, normalize, sep } from "node:path";
 import { type Command, parseCommand } from "../domain/commands.ts";
 import { ACTORS, type Actor } from "../domain/events.ts";
+import type { Presence } from "../domain/presence.ts";
 import { atCommand, BatchError, type Hub } from "./hub.ts";
 
 export interface Site {
@@ -150,8 +151,10 @@ function stream(hub: Hub, request: Request, url: URL): Response {
           close();
         }
       };
-      const presence = (listening: number): void =>
-        send(`event: presence\ndata: ${JSON.stringify({ listening, run: hub.run })}\n\n`);
+      const presence = (listening: number): void => {
+        const said: Presence = { listening, run: hub.run };
+        send(`event: presence\ndata: ${JSON.stringify(said)}\n\n`);
+      };
       for (const event of hub.eventsAfter(after)) send(frame(event.seq, event));
       presence(hub.listening);
       const stopEvents = hub.subscribe((event) => send(frame(event.seq, event)));
