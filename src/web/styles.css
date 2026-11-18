@@ -692,6 +692,12 @@ input[type="text"] {
   pointer-events: none;
 }
 
+/* The name of a lane takes a double-click: it is renamed in place. */
+.band .lane-label {
+  pointer-events: auto;
+  cursor: text;
+}
+
 .card {
   cursor: grab;
   outline: none;

@@ -482,6 +482,19 @@ describe("other workshops", () => {
     await shot("07-kanban");
   });
 
+  test("kanban: a double-click on the name of a column renames it for this board", async () => {
+    const name = page.locator(".lane-label", { hasText: "Doing" });
+    await name.dblclick();
+    const editor = page.locator(".card-editor");
+    await editor.waitFor();
+    expect(await editor.inputValue()).toBe("Doing");
+    await editor.fill("À valider");
+    await editor.press("Enter");
+    await page.locator(".lane-label", { hasText: "À valider" }).waitFor();
+    expect(await pending()).toContain('~ lane doing named "À valider"');
+    await shot("23-lane-renamed");
+  });
+
   test("kanban: a task is marked done from its toolbar or the keyboard, and the card shows a tick", async () => {
     const tick = (id: string) => card(id).locator(".card-done");
     await card("T2").click();

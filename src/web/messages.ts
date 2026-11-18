@@ -128,6 +128,7 @@ export interface Messages {
 
   // A card's actions.
   cardLabel: string;
+  laneName: string;
   rename: string;
   detail: string;
   link: string;
@@ -271,6 +272,7 @@ const en: Messages = {
   backToLive: "Back to live",
 
   cardLabel: "Label",
+  laneName: "Column name",
   rename: "Rename",
   detail: "Detail",
   link: "Link",
@@ -408,6 +410,7 @@ const fr: Messages = {
   backToLive: "Revenir au direct",
 
   cardLabel: "Libellé",
+  laneName: "Nom de la colonne",
   rename: "Renommer",
   detail: "Détail",
   link: "Relier",

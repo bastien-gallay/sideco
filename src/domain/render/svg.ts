@@ -78,7 +78,7 @@ function laneHeading(b: Band): string {
   // The name moves up to leave the second line to the hint.
   const y = b.y + (b.hint ? 21 : 27);
   const hint = b.hint ? `<text class="lane-hint" x="${b.x + 14}" y="${b.y + 37}">${esc(b.hint)}</text>` : "";
-  return `<text class="lane-label" x="${b.x + 14}" y="${y}">${esc(b.label)}</text><text class="lane-count" x="${b.x + b.w - 14}" y="${y}">${b.count ?? 0}</text>${hint}`;
+  return `<text class="lane-label" x="${b.x + 14}" y="${y}" data-lane="${esc(b.id)}">${esc(b.label)}</text><text class="lane-count" x="${b.x + b.w - 14}" y="${y}">${b.count ?? 0}</text>${hint}`;
 }
 
 export function connectorMarkup(c: Connector): string {

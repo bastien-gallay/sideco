@@ -323,6 +323,23 @@ export function mountBoard(host: HTMLElement): BoardView {
     });
   }
 
+  /** Opens the editor on the name of a lane: what is typed is the name this board gives it. */
+  function renameLane(heading: SVGTextElement): void {
+    const lane = heading.dataset.lane;
+    if (!board || !lane) return;
+    const boardId = board.id;
+    const box = heading.getBoundingClientRect();
+    openEditor(
+      new DOMRect(box.left - 6, box.top - 6, 180, 36),
+      heading.textContent ?? "",
+      t.laneName,
+      { fill: "var(--surface)", ink: "var(--ink)" },
+      (label) => {
+        void send({ kind: "name-lane", board: boardId, lane, label });
+      },
+    );
+  }
+
   function annotate(id: string): void {
     const node = nodes.get(id);
     const element = board?.elements.find((e) => e.id === id);
@@ -535,6 +552,11 @@ export function mountBoard(host: HTMLElement): BoardView {
     const id = cardAt(under(event));
     if (id) {
       rename(id);
+      return;
+    }
+    const heading = under(event)?.closest<SVGTextElement>("text.lane-label");
+    if (heading) {
+      renameLane(heading);
       return;
     }
     const f = format();
