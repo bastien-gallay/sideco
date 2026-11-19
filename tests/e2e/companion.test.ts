@@ -571,6 +571,34 @@ describe("other workshops", () => {
     expect(await pending()).toContain("→ I3 moved lane fill → bet");
     await settled("I3");
     await shot("19-impact-effort");
+
+    // Each axis names its two ends; zoomed in and scrolled sideways, a cell keeps its name in sight.
+    expect(await page.locator(".axis-bound").allTextContents()).toEqual(["low", "high", "low", "high"]);
+    const zoomIn = page.getByRole("button", { name: "Zoom in" });
+    const zoomOut = page.getByRole("button", { name: "Zoom out" });
+    for (let i = 0; i < 4; i++) await zoomIn.click();
+    const canvas = page.locator(".canvas-scroll");
+    const quickName = page.locator(".lane-label", { hasText: "Quick wins" });
+    const quickCell = page.locator(".band-lane .lane-bg").first();
+    const frameLeft = (await canvas.boundingBox())?.x ?? 0;
+    const cellLeft = (await quickCell.boundingBox())?.x ?? 0;
+    await canvas.evaluate(
+      (el, by) => {
+        el.scrollLeft += by;
+      },
+      cellLeft - frameLeft + 120,
+    );
+    // The cell's left edge is out of sight; its name is not.
+    await until(
+      "the cell scrolled past its left edge",
+      async () => ((await quickCell.boundingBox())?.x ?? 0) < frameLeft,
+    );
+    await until("the name of the cell followed the scroll", async () => {
+      const at = await quickName.boundingBox();
+      return at !== null && at.x >= frameLeft;
+    });
+    await shot("48-impact-effort-scrolled");
+    for (let i = 0; i < 4; i++) await zoomOut.click();
   });
 
   test("a new board from the page: pick a workshop, name it, start", async () => {

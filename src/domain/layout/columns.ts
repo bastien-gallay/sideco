@@ -160,10 +160,20 @@ export function layoutColumns(
   let height = planned.bottom + MARGIN;
   if (format.grid) {
     const { x, y } = format.grid;
+    const ends = { low: format.grid.low[locale], high: format.grid.high[locale] };
     const first = planned.lanes[0];
     const leftEdge = first?.x ?? MARGIN + AXIS;
     bands.push(
-      { kind: "axis", id: "y", label: y[locale], x: MARGIN, y: MARGIN, w: AXIS, h: planned.bottom - MARGIN },
+      {
+        kind: "axis",
+        id: "y",
+        label: y[locale],
+        x: MARGIN,
+        y: MARGIN,
+        w: AXIS,
+        h: planned.bottom - MARGIN,
+        ...ends,
+      },
       {
         kind: "axis",
         id: "x",
@@ -172,6 +182,7 @@ export function layoutColumns(
         y: planned.bottom,
         w: planned.right - leftEdge,
         h: AXIS,
+        ...ends,
       },
     );
     height = planned.bottom + AXIS + MARGIN / 2;
@@ -290,4 +301,13 @@ export function dropLane(
   const order = planned.lanes.map((lane) => lane.id);
   if (order[order.indexOf(moving) + 1] === next?.id) return undefined;
   return next ? { before: next.id, x: next.x - LANE_GAP / 2 } : { x: planned.right + LANE_GAP / 2 };
+}
+
+/**
+ * How far a lane's name slides right when the board has scrolled past the lane's
+ * left edge: it stays in sight, and never leaves its lane, whose right end keeps
+ * `room` for the name and the count.
+ */
+export function headingSlide(lane: { x: number; w: number }, left: number, room: number): number {
+  return Math.max(0, Math.min(left - lane.x, lane.w - room));
 }

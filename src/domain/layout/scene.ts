@@ -44,6 +44,9 @@ export interface Band {
   count?: number;
   /** What a lane stands for, when its name alone does not say it. */
   hint?: string;
+  /** An axis: the words for where it starts and where it ends. */
+  low?: string;
+  high?: string;
 }
 
 export interface Connector {

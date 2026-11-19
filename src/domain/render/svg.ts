@@ -15,6 +15,8 @@ export const SVG_STYLE = `
 .lane-bg { fill: var(--sideco-lane, #F3F4F6); }
 .lane-label { fill: var(--sideco-ink, #1F2328); font-size: 13px; font-weight: 600; }
 .lane-count { fill: var(--sideco-muted, #59636E); font-size: 12px; text-anchor: end; }
+.axis-bound { fill: var(--sideco-muted, #59636E); font-size: 11px; }
+.axis-bound.is-high { text-anchor: end; }
 .axis-label { fill: var(--sideco-muted, #59636E); font-size: 12px; font-weight: 600; text-anchor: middle; letter-spacing: 0.04em; }
 .lane-hint { fill: var(--sideco-muted, #59636E); font-size: 11px; }
 .conn path { fill: none; stroke: var(--sideco-conn, #6E7781); stroke-width: 1.5; }
@@ -66,7 +68,11 @@ export function bandMarkup(b: Band): string {
       // The name runs along its axis, and an arrow says which way it grows: up, or to the right.
       const cx = b.x + b.w / 2;
       const turn = b.id === "y" ? ` transform="rotate(-90 ${cx} ${mid})"` : "";
-      return `<g class="band band-axis"><text class="axis-label" x="${cx}" y="${mid + 4}"${turn}>${esc(b.label)} →</text></g>`;
+      // Its two ends are named where they are: low where it starts, high where it ends.
+      const half = (b.id === "y" ? b.h : b.w) / 2 - 8;
+      const end = (cls: string, x: number, word: string | undefined): string =>
+        word ? `<text class="${cls}" x="${x}" y="${mid + 4}"${turn}>${esc(word)}</text>` : "";
+      return `<g class="band band-axis"><text class="axis-label" x="${cx}" y="${mid + 4}"${turn}>${esc(b.label)} →</text>${end("axis-bound", cx - half, b.low)}${end("axis-bound is-high", cx + half, b.high)}</g>`;
     }
     case "lane":
       return `<g class="band band-lane"><rect class="lane-bg" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="10"/>${laneHeading(b)}</g>`;

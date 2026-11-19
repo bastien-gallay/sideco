@@ -7,6 +7,7 @@ import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
 import { type Board, type Element, threads } from "../workspace.ts";
 import {
   dropLane,
+  headingSlide,
   laneHeading,
   layoutColumns,
   locateInColumns,
@@ -156,3 +157,4 @@ function cardMaker(
 const oneLineOf = (label: string): string => label.replace(/\s+/g, " ").trim();
 
 export type { Band, Card, Connector, Room, Scene, Target } from "./scene.ts";
+export { headingSlide };

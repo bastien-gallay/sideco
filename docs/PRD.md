@@ -164,6 +164,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F36 | Sur un kanban, « fait » est la dernière colonne : `done` et la touche `d` y envoient la carte, `undone` la remet dans la colonne d'avant ; ni coche ni libellé barré, la colonne le dit (T79) | ✅ |
 | F37 | Supprimer une étape vide d'une frise depuis la page : un « × » en haut de l'étape vide, Annuler dans l'avis ; la réserve de droite ne se supprime pas (T48) | ✅ ; ⚠️ souris seulement |
 | F38 | Une rétro part de « Went well » et « Didn't go well », puis Keep / Stop / Try ; un constat a l'id P (les anciens K restent acceptés), une action sans colonne va dans Try, et « En faire une action » dans la barre d'un constat ajoute une action dans Try, reliée à lui (T26, T74) | ✅ ; ⚠️ pas de touche dédiée |
+| F39 | Impact / Effort se lit comme une matrice : chaque axe nomme ses deux bouts, « faible » et « fort », et le nom d'une case suit aussi le défilement de côté, sans quitter sa case (T73) | ✅ |
 
 ### 5.3 Exigences de qualité
 

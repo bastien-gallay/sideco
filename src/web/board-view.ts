@@ -6,6 +6,7 @@
 import type { Command } from "../domain/commands.ts";
 import { type Format, findFormat, findType, isDone, lanesOf } from "../domain/formats.ts";
 import {
+  headingSlide,
   laneDrop,
   layoutBoard,
   locate,
@@ -43,6 +44,8 @@ const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5];
 /** How tall the head of a lane is: its name, or its name and what it stands for. Above the first card, both. */
 const LANE_HEAD = 38;
 const LANE_HEAD_HINTED = 44;
+/** What a lane heading keeps beside its name: the inset on the left and the count on the right. */
+const LANE_COUNT_ROOM = 56;
 /** How far outside its card the ring of a focused or selected card is drawn: off the sticky's colour, always. */
 const RING = 5;
 const ARROWS: Record<string, Direction> = {
@@ -388,6 +391,14 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       const held = laneDrag?.moving === true && laneDrag.lane === band.id;
       head.classList.toggle("is-dragging", held);
       head.setAttribute("transform", `translate(${held ? laneDrag?.dx : 0} ${headDrop(band)})`);
+      // Its name and what it stands for follow a sideways scroll too, short of the count at its right end.
+      const words = [...head.querySelectorAll<SVGTextElement>("text.lane-label, text.lane-hint")];
+      const room = Math.max(0, ...words.map((text) => text.getComputedTextLength())) + LANE_COUNT_ROOM;
+      const slide = headingSlide(band, sx, room);
+      for (const text of words) {
+        if (slide > 0) text.setAttribute("transform", `translate(${slide} 0)`);
+        else text.removeAttribute("transform");
+      }
     }
     paintOffers();
     // A card the keyboard or a search brings into view lands clear of the frozen names, never under them.

@@ -53,6 +53,9 @@ export interface Grid {
   x: Text;
   /** What grows from bottom to top. */
   y: Text;
+  /** The words for the two ends of an axis: where it starts, where it ends. */
+  low: Text;
+  high: Text;
 }
 
 export interface Format {
@@ -335,7 +338,14 @@ const IMPACT_EFFORT: Format = {
   ),
   layout: "columns",
   // High impact on top, low effort on the left: the lanes below are read row after row.
-  grid: { perRow: 2, abreast: 2, x: t("Effort", "Effort"), y: t("Impact", "Impact") },
+  grid: {
+    perRow: 2,
+    abreast: 2,
+    x: t("Effort", "Effort"),
+    y: t("Impact", "Impact"),
+    low: t("low", "faible"),
+    high: t("high", "fort"),
+  },
   lanes: [
     {
       id: "quick",
