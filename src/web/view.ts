@@ -726,7 +726,7 @@ export function keyAdd(board: Board, id: string, direction: Direction): AddPlace
     const col = (el.col ?? 1) + step;
     return col < 1 ? undefined : { type, col };
   }
-  const lanes = format.lanes.map((lane) => lane.id);
+  const lanes = lanesOf(board);
   const lane = lanes[lanes.indexOf(el.lane ?? "") + step];
   return lane && lanes.includes(el.lane ?? "") ? { type, lane } : undefined;
 }

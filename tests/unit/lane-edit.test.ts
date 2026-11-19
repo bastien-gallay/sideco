@@ -9,7 +9,7 @@ import { toMermaid } from "../../src/domain/export/mermaid.ts";
 import { fromModel, toModel } from "../../src/domain/export/model.ts";
 import { lanesOf } from "../../src/domain/formats.ts";
 import { laneDrop, layoutBoard, locate } from "../../src/domain/layout/index.ts";
-import { addOffers, describeEvent, keyMove } from "../../src/web/view.ts";
+import { addOffers, describeEvent, keyAdd, keyMove } from "../../src/web/view.ts";
 import { IMPACT_EFFORT, KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 const META = { exportedAt: "2026-11-18T10:00:00.000Z" };
@@ -161,6 +161,8 @@ describe("the keyboard follows the board's lanes", () => {
   test("Shift and an arrow move a card into a lane the board added", () => {
     const t = table(KANBAN).script('lane add "Revue" --before done');
     expect(keyMove(t.board(), "T2", "right")).toMatchObject({ kind: "move", lane: "lane-1" });
+    // Alt and an arrow add beside it, in the same lane the board added.
+    expect(keyAdd(t.board(), "T2", "right")).toMatchObject({ lane: "lane-1" });
   });
 });
 
