@@ -46,6 +46,12 @@ type BoardFact =
   | { event: "BoardRetitled"; board: string; title: string }
   /** The board calls a lane of its workshop its own way; an empty label gives the workshop's name back. */
   | { event: "LaneNamed"; board: string; lane: string; label: string }
+  /** A lane of the board's own, before `before`, else last. An empty label leaves its workshop's name, if it has one. */
+  | { event: "LaneAdded"; board: string; lane: string; label: string; before?: string }
+  /** An empty lane leaves the board, its name with it. */
+  | { event: "LaneRemoved"; board: string; lane: string }
+  /** A lane goes before `before`, else last; its cards go with it. */
+  | { event: "LaneMoved"; board: string; lane: string; before?: string }
   /** The board leaves the workspace; the journal keeps its history. `title` is what it was called. */
   | { event: "BoardRemoved"; board: string; title: string }
   /** A removed board comes back as it was: only undoing its removal says this. */
@@ -134,6 +140,9 @@ const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "BoardCreated",
   "BoardRetitled",
   "LaneNamed",
+  "LaneAdded",
+  "LaneRemoved",
+  "LaneMoved",
   "BoardRemoved",
   "BoardRestored",
   "ElementAdded",

@@ -7,7 +7,7 @@
  * named beside it. The lanes and the order of their cards stay what they are.
  */
 
-import { type Format, laneName } from "../formats.ts";
+import { type Format, laneName, lanesOf } from "../formats.ts";
 import type { Locale } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
 import {
@@ -75,9 +75,8 @@ interface Plan {
  * within bounds; a plan keeps its cells, and without a span every card keeps
  * its own width.
  */
-function cardWidth(format: Format, span: number | undefined): number {
-  if (span === undefined || format.grid || format.lanes.length === 0) return CARD_W;
-  const lanes = format.lanes.length;
+function cardWidth(format: Format, lanes: number, span: number | undefined): number {
+  if (span === undefined || format.grid || lanes === 0) return CARD_W;
   const laneW = Math.floor((span - 2 * MARGIN - (lanes - 1) * LANE_GAP) / lanes);
   return Math.min(MAX_CARD_W, Math.max(MIN_CARD_W, laneW - 2 * LANE_SIDE));
 }
@@ -88,9 +87,10 @@ function cardWidth(format: Format, span: number | undefined): number {
  */
 function plan(board: Board, format: Format, without?: string, span?: number): Plan {
   const grid = format.grid;
-  const perRow = grid?.perRow ?? format.lanes.length;
+  const ids = lanesOf(board);
+  const perRow = grid?.perRow ?? ids.length;
   const abreast = grid?.abreast ?? 1;
-  const cardW = cardWidth(format, span);
+  const cardW = cardWidth(format, ids.length, span);
   const chars = charsFor(cardW);
   const laneW = 2 * LANE_SIDE + abreast * cardW + (abreast - 1) * ABREAST_GAP;
   const left = MARGIN + (grid ? AXIS : 0);
@@ -98,10 +98,10 @@ function plan(board: Board, format: Format, without?: string, span?: number): Pl
 
   const lanes: LanePlan[] = [];
   let top = MARGIN;
-  for (let start = 0; start < format.lanes.length; start += perRow) {
-    const row = format.lanes.slice(start, start + perRow).map((lane, i) => {
+  for (let start = 0; start < ids.length; start += perRow) {
+    const row = ids.slice(start, start + perRow).map((id, i) => {
       const x = left + i * (laneW + LANE_GAP);
-      const stack = board.elements.filter((e) => e.lane === lane.id && e.id !== without);
+      const stack = board.elements.filter((e) => e.lane === id && e.id !== without);
       const lines: Line[] = [];
       let y = top + HEADER_H + LANE_PAD;
       for (let at = 0; at < stack.length; at += abreast) {
@@ -113,7 +113,7 @@ function plan(board: Board, format: Format, without?: string, span?: number): Pl
         y += h + STACK_GAP;
       }
       const stackH = y - (top + HEADER_H + LANE_PAD);
-      return { id: lane.id, x, lines, count: stack.length, stackH };
+      return { id, x, lines, count: stack.length, stackH };
     });
     // Lanes side by side are as tall as each other: the tallest stack, and one free slot to drop into.
     const tallest = Math.max(0, ...row.map((lane) => lane.stackH));
@@ -121,7 +121,7 @@ function plan(board: Board, format: Format, without?: string, span?: number): Pl
     for (const { id, x, lines, count } of row) lanes.push({ id, x, y: top, w: laneW, h, lines, count });
     top += h + LANE_GAP;
   }
-  const columns = Math.min(perRow, format.lanes.length);
+  const columns = Math.min(perRow, ids.length);
   return {
     lanes,
     abreast,

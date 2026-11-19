@@ -15,6 +15,11 @@ export type Command =
   | { kind: "create-board"; board: string; title: string; format: string }
   | { kind: "retitle"; board: string; title: string }
   | { kind: "name-lane"; board: string; lane: string; label: string }
+  /** A lane of the board's own; `lane` keeps an id given before, when a model is read back. */
+  | { kind: "add-lane"; board: string; label: string; before?: string; lane?: string }
+  | { kind: "remove-lane"; board: string; lane: string }
+  /** Before `before`, else last. */
+  | { kind: "move-lane"; board: string; lane: string; before?: string }
   | { kind: "remove-board"; board: string }
   | {
       kind: "add";
@@ -133,6 +138,23 @@ export function parseCommand(input: unknown): Command {
       return { kind, board: boardId(f), title: text(f, "title", LIMITS.title) };
     case "name-lane":
       return { kind, board: boardId(f), lane: text(f, "lane", 40), label: text(f, "label", LIMITS.title) };
+    case "add-lane":
+      return {
+        kind,
+        board: boardId(f),
+        label: text(f, "label", LIMITS.title),
+        before: optional(f, "before", (x, k) => text(x, k, 40)),
+        lane: optional(f, "lane", laneId),
+      };
+    case "remove-lane":
+      return { kind, board: boardId(f), lane: text(f, "lane", 40) };
+    case "move-lane":
+      return {
+        kind,
+        board: boardId(f),
+        lane: text(f, "lane", 40),
+        before: optional(f, "before", (x, k) => text(x, k, 40)),
+      };
     case "remove-board":
       return { kind, board: boardId(f) };
     case "add":
@@ -282,6 +304,15 @@ function idOrName(f: Fields, key: string, shown = key): string {
     throw new CommandError(
       `\`${shown}\` must be an id like E1 or C12, or the @name an earlier command of the batch gave`,
     );
+  }
+  return value;
+}
+
+/** A lane's id, like todo or lane-3: lowercase letters, digits and dashes, a letter first. */
+function laneId(f: Fields, key: string): string {
+  const value = f[key];
+  if (typeof value !== "string" || !/^[a-z][a-z0-9-]{0,39}$/.test(value)) {
+    throw new CommandError(`\`${key}\` must be a lane id like todo or lane-3`);
   }
   return value;
 }

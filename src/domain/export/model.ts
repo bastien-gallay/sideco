@@ -23,6 +23,8 @@ export interface Model {
   format: string;
   /** The lanes the board calls its own way, by lane id. */
   lanes?: Record<string, string>;
+  /** The board's lanes in order, when it added, moved or removed some of its workshop's. */
+  laneOrder?: string[];
   elements: ModelElement[];
   edges: { src: string; dst: string; label?: string }[];
 }
@@ -36,6 +38,7 @@ export function toModel(board: Board): Model {
     title: board.title,
     format: board.format,
     ...(Object.keys(board.lanes).length > 0 ? { lanes: { ...board.lanes } } : {}),
+    ...(board.laneOrder ? { laneOrder: [...board.laneOrder] } : {}),
     elements: board.elements.map((e) => ({
       id: e.id,
       type: e.type,
@@ -68,10 +71,25 @@ export function fromModel(input: unknown, board: string): Command[] {
   const layout = format?.layout;
   const title = typeof model.title === "string" && model.title.trim() ? model.title : board;
   const commands: Command[] = [{ kind: "create-board", board, title, format: formatId }];
-  if (typeof model.lanes === "object" && model.lanes !== null) {
-    for (const [lane, label] of Object.entries(model.lanes)) {
-      if (typeof label === "string" && label) commands.push({ kind: "name-lane", board, lane, label });
-    }
+  const names = (typeof model.lanes === "object" && model.lanes !== null ? model.lanes : {}) as Record<
+    string,
+    unknown
+  >;
+  const said = (lane: string): string => (typeof names[lane] === "string" ? (names[lane] as string) : "");
+  const given = new Set(format?.lanes.map((lane) => lane.id));
+  const order = Array.isArray(model.laneOrder)
+    ? model.laneOrder.filter((lane): lane is string => typeof lane === "string")
+    : undefined;
+  // The board's own lanes first, under their ids; the workshop's it dropped go; then each takes its place.
+  if (order && format?.ownLanes) {
+    for (const lane of order)
+      if (!given.has(lane)) commands.push({ kind: "add-lane", board, lane, label: said(lane) });
+    for (const lane of given) if (!order.includes(lane)) commands.push({ kind: "remove-lane", board, lane });
+    for (const lane of order) commands.push({ kind: "move-lane", board, lane });
+  }
+  for (const lane of Object.keys(names)) {
+    if (said(lane) && given.has(lane) && (!order || order.includes(lane)))
+      commands.push({ kind: "name-lane", board, lane, label: said(lane) });
   }
 
   const elements = Array.isArray(model.elements) ? model.elements.map(readElement) : [];

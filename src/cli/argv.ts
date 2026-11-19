@@ -128,6 +128,26 @@ export function boardAction(tokens: readonly string[], board: string | undefined
     case "retitle":
       return { command: { kind: "retitle", board: target(), title: need(0, "a title") } };
     case "lane":
+      if (p[0] === "add")
+        return {
+          command: {
+            kind: "add-lane",
+            board: target(),
+            label: need(1, "a name"),
+            before: flags.get("before"),
+          },
+        };
+      if (p[0] === "rm")
+        return { command: { kind: "remove-lane", board: target(), lane: need(1, "a lane") } };
+      if (p[0] === "move")
+        return {
+          command: {
+            kind: "move-lane",
+            board: target(),
+            lane: need(1, "a lane"),
+            before: flags.get("before"),
+          },
+        };
       return {
         command: { kind: "name-lane", board: target(), lane: need(0, "a lane"), label: need(1, "a name") },
       };

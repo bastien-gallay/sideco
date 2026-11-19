@@ -60,6 +60,11 @@ export interface Format {
   lanes: readonly Lane[];
   /** Only for `columns` layouts: the lanes are the cells of a plan. */
   grid?: Grid;
+  /**
+   * Only for `columns` layouts: each board adds, moves and removes its own lanes,
+   * starting from these.
+   */
+  ownLanes?: true;
 }
 
 const t = (en: string, fr: string): Text => ({ en, fr });
@@ -201,6 +206,7 @@ const KANBAN: Format = {
     "Où en est le travail, et qu'est-ce qui le bloque ?",
   ),
   layout: "columns",
+  ownLanes: true,
   lanes: [
     { id: "todo", label: t("To do", "À faire") },
     { id: "doing", label: t("Doing", "En cours") },
@@ -370,6 +376,14 @@ export function laneName(
   locale: Locale,
 ): string {
   return board.lanes[lane] ?? format?.lanes.find((l) => l.id === lane)?.label[locale] ?? lane;
+}
+
+/** The key of `minted` that counts the lanes a board added: they are lane-1, lane-2… */
+export const LANE_PREFIX = "lane-";
+
+/** The lanes of a board, in order: its own when it changed them, else its workshop's. */
+export function lanesOf(board: { format: string; laneOrder?: readonly string[] }): string[] {
+  return board.laneOrder ? [...board.laneOrder] : (findFormat(board.format)?.lanes.map((l) => l.id) ?? []);
 }
 
 export function findType(format: Format, typeId: string): ElementType | undefined {

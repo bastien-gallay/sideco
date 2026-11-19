@@ -4,7 +4,15 @@
  */
 import { type Command, CommandError } from "./commands.ts";
 import type { Actor, BoardEvent, SidecoEvent, Todo } from "./events.ts";
-import { type ElementType, type Format, findFormat, findType, NOTE_PREFIX } from "./formats.ts";
+import {
+  type ElementType,
+  type Format,
+  findFormat,
+  findType,
+  LANE_PREFIX,
+  lanesOf,
+  NOTE_PREFIX,
+} from "./formats.ts";
 import {
   type Board,
   columnAfterMove,
@@ -70,9 +78,43 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
     case "name-lane": {
       if (format.layout !== "columns")
         throw new CommandError(`${format.name.en} boards have no lanes to name`);
-      const lane = requireLane(format, cmd.lane);
+      const lane = requireLane(board, format, cmd.lane);
       if ((board.lanes[lane] ?? "") === cmd.label) return unchanged();
       return { events: [{ event: "LaneNamed", board: b, lane, label: cmd.label }] };
+    }
+    case "add-lane": {
+      requireOwnLanes(format, "add");
+      if (cmd.before !== undefined) requireLane(board, format, cmd.before);
+      const lane = cmd.lane ?? `${LANE_PREFIX}${(board.minted[LANE_PREFIX] ?? 0) + 1}`;
+      if (lanesOf(board).includes(lane)) throw new CommandError(`lane ${lane} is already on "${b}"`);
+      return {
+        events: [{ event: "LaneAdded", board: b, lane, label: cmd.label, before: cmd.before }],
+        minted: lane,
+      };
+    }
+    case "remove-lane": {
+      requireOwnLanes(format, "remove");
+      const lane = requireLane(board, format, cmd.lane);
+      const inside = board.elements.filter((el) => el.lane === lane).map((el) => el.id);
+      if (inside.length > 0)
+        throw new CommandError(
+          `lane ${lane} still has ${inside.length} card${inside.length > 1 ? "s" : ""} (${inside.join(", ")}): move or remove them first`,
+        );
+      if (lanesOf(board).length === 1)
+        throw new CommandError(`a ${format.name.en.toLowerCase()} keeps at least one lane`);
+      return { events: [{ event: "LaneRemoved", board: b, lane }] };
+    }
+    case "move-lane": {
+      requireOwnLanes(format, "move");
+      const lane = requireLane(board, format, cmd.lane);
+      if (cmd.before !== undefined) {
+        requireLane(board, format, cmd.before);
+        if (cmd.before === lane) throw new CommandError(`lane ${lane} cannot be placed before itself`);
+      }
+      const order = lanesOf(board);
+      const next = order[order.indexOf(lane) + 1];
+      if (next === cmd.before) return unchanged();
+      return { events: [{ event: "LaneMoved", board: b, lane, before: cmd.before }] };
     }
     case "remove-board":
       return { events: [{ event: "BoardRemoved", board: b, title: board.title }] };
@@ -180,6 +222,14 @@ function reverse(ws: Workspace, cmd: { kind: "undo" | "redo"; board: string }, a
   if (!gesture || (!live && gesture.inverse[0]?.event !== "BoardRestored")) {
     throw new CommandError(`nothing to ${cmd.kind} on "${board.id}"`);
   }
+  // A lane goes away only empty: one that got cards since cannot be taken back.
+  for (const back of gesture.inverse) {
+    if (back.event !== "LaneRemoved") continue;
+    if (board.elements.some((el) => el.lane === back.lane))
+      throw new CommandError(
+        `nothing to ${cmd.kind} for now on "${board.id}": lane ${back.lane} has cards now`,
+      );
+  }
   const answers = cmd.kind === "undo" ? { undoes: gesture.seq } : { redoes: gesture.seq };
   return gesture.inverse.map((e): BoardEvent => ({ ...e, ...answers }));
 }
@@ -246,7 +296,7 @@ function placeNew(
       return { col: cmd.col ?? lastColumn(board) + 1, lane: "" };
     case "columns":
       refuse(cmd.col, "col", format, "elements are placed by lane");
-      return { col: 1, lane: requireLane(format, cmd.lane ?? format.lanes[0]?.id ?? "") };
+      return { col: 1, lane: requireLane(board, format, cmd.lane ?? lanesOf(board)[0] ?? "") };
     case "graph":
       refuse(cmd.col, "col", format, "positions follow the links");
       refuse(cmd.lane, "lane", format, "positions follow the links");
@@ -262,7 +312,7 @@ function move(board: Board, format: Format, cmd: Extract<Command, { kind: "move"
       return moveInTimeline(board, el, cmd);
     case "columns": {
       refuse(cmd.col, "col", format, "elements move between lanes");
-      const lane = requireLane(format, cmd.lane ?? el.lane);
+      const lane = requireLane(board, format, cmd.lane ?? el.lane);
       if (cmd.before !== undefined) {
         const anchor = requireElement(board, cmd.before);
         if (anchor.id === el.id) throw new CommandError(`${el.id} cannot be placed before itself`);
@@ -299,13 +349,17 @@ function requireNote(board: Board, id: string): Note {
   return note;
 }
 
-function requireLane(format: Format, lane: string): string {
-  if (!format.lanes.some((l) => l.id === lane)) {
-    throw new CommandError(
-      `${format.name.en} has no lane "${lane}" (lanes: ${format.lanes.map((l) => l.id).join(", ")})`,
-    );
+function requireLane(board: Board, format: Format, lane: string): string {
+  const lanes = lanesOf(board);
+  if (!lanes.includes(lane)) {
+    throw new CommandError(`${format.name.en} has no lane "${lane}" (lanes: ${lanes.join(", ")})`);
   }
   return lane;
+}
+
+function requireOwnLanes(format: Format, verb: string): void {
+  if (!format.ownLanes)
+    throw new CommandError(`${format.name.en} boards have no lanes to ${verb}: their workshop sets them`);
 }
 
 function mint(board: Board, prefix: string): string {

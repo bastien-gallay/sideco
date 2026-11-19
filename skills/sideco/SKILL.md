@@ -113,7 +113,7 @@ sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--from ID [--edge "l
 sideco rename ID "Label"            sideco detail ID "Text"
 sideco move ID --col N | --lane L [--before ID]   # --before alone: before that card, in its cell
 sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)
-sideco lane LANE "Name"             call a lane of this board your own way
+sideco lane L "Name" (names it here) · kanban: lane add "Name" [--before L] · lane rm L · lane move L [--before L]
 sideco done ID                      sideco undone ID
 sideco link SRC DST ["label"]       sideco unlink SRC DST
 sideco focus [ID…] [--why "…"]      (no id clears the focus)

@@ -7,6 +7,7 @@
  * rebuilds them, so they survive a restart and a reload.
  */
 import type { Actor, BoardEvent, Recorded } from "./events.ts";
+import { lanesOf } from "./formats.ts";
 import type { Board, Element } from "./workspace.ts";
 
 /** How many gestures an author can take back on one board. */
@@ -40,6 +41,20 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
       return [{ event: "BoardRetitled", board: b, title: board.title }];
     case "LaneNamed":
       return [{ event: "LaneNamed", board: b, lane: e.lane, label: board.lanes[e.lane] ?? "" }];
+    case "LaneAdded":
+      return [{ event: "LaneRemoved", board: b, lane: e.lane }];
+    case "LaneRemoved":
+      return [
+        {
+          event: "LaneAdded",
+          board: b,
+          lane: e.lane,
+          label: board.lanes[e.lane] ?? "",
+          before: laneAfter(board, e.lane),
+        },
+      ];
+    case "LaneMoved":
+      return [{ event: "LaneMoved", board: b, lane: e.lane, before: laneAfter(board, e.lane) }];
     case "BoardRemoved":
       return [{ event: "BoardRestored", board: b, title: board.title }];
     case "BoardRestored":
@@ -169,7 +184,12 @@ function writes(e: BoardEvent): string[] {
     case "BoardRetitled":
       return ["title"];
     case "LaneNamed":
-      return [`lane:${e.lane}`];
+      return [`lane:${e.lane}.label`];
+    case "LaneAdded":
+    case "LaneRemoved":
+      return [`lane:${e.lane}.*`];
+    case "LaneMoved":
+      return [`lane:${e.lane}.place`];
     case "ColumnInserted":
     case "ColumnRemoved":
     case "ColumnMoved":
@@ -199,6 +219,12 @@ function clash(mine: string, theirs: string): boolean {
   // A removed element takes its links along: a link is written by whatever removes one of its ends.
   const [whole, link] = theirs.endsWith(".*") ? [theirs, mine] : [mine, theirs];
   return whole.endsWith(".*") && link.split(">").includes(whole.slice(0, -2));
+}
+
+/** The lane that follows `lane` on the board: putting `lane` back before it restores its place. */
+function laneAfter(board: Board, lane: string): string | undefined {
+  const order = lanesOf(board);
+  return order[order.indexOf(lane) + 1];
 }
 
 /** The element that follows `el` in stacking order: putting `el` back before it restores its place. */

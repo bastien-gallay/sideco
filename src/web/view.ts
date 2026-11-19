@@ -7,7 +7,7 @@
 import type { Command } from "../domain/commands.ts";
 import { type Changes, describeChanges } from "../domain/digest.ts";
 import type { Actor, Recorded } from "../domain/events.ts";
-import { findFormat, findType } from "../domain/formats.ts";
+import { findFormat, findType, lanesOf } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
 import { type Band, type Target, vacancy } from "../domain/layout/index.ts";
 import {
@@ -135,6 +135,12 @@ function english(e: Recorded): string {
       return e.label
         ? `${does("name")} the lane ${e.lane} “${e.label}”`
         : `${does("give")} the lane ${e.lane} its workshop's name back`;
+    case "LaneAdded":
+      return e.label ? `${does("add")} the lane “${e.label}”` : `${does("put")} the lane ${e.lane} back`;
+    case "LaneRemoved":
+      return `${does("remove")} the lane ${e.lane}`;
+    case "LaneMoved":
+      return `${does("move")} the lane ${e.lane}`;
     case "BoardRemoved":
       return `${does("remove")} the board “${e.title}”`;
     case "BoardRestored":
@@ -218,6 +224,14 @@ function french(e: Recorded): string {
       return e.label
         ? `${verb("nommes", "nomme")} la colonne ${e.lane} « ${e.label} »`
         : `${verb("rends", "rend")} à la colonne ${e.lane} le nom de son atelier`;
+    case "LaneAdded":
+      return e.label
+        ? `${verb("ajoutes", "ajoute")} la colonne « ${e.label} »`
+        : `${verb("remets", "remet")} la colonne ${e.lane}`;
+    case "LaneRemoved":
+      return `${verb("supprimes", "supprime")} la colonne ${e.lane}`;
+    case "LaneMoved":
+      return `${verb("déplaces", "déplace")} la colonne ${e.lane}`;
     case "BoardRemoved":
       return `${verb("supprimes", "supprime")} le tableau « ${e.title} »`;
     case "BoardRestored":
@@ -628,7 +642,7 @@ export function keyMove(board: Board, id: string, direction: Direction): Command
     if (col < 1 || col > last + 1) return undefined;
     return { kind: "move", board: board.id, id, col };
   }
-  const lanes = format.lanes.map((lane) => lane.id);
+  const lanes = lanesOf(board);
   const lane = lanes[lanes.indexOf(el.lane ?? "") + step];
   return lane && lanes.includes(el.lane ?? "") ? { kind: "move", board: board.id, id, lane } : undefined;
 }

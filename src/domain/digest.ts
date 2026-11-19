@@ -11,7 +11,7 @@
  */
 import { CommandError } from "./commands.ts";
 import type { Actor, Recorded } from "./events.ts";
-import { findFormat, laneName } from "./formats.ts";
+import { findFormat, laneName, lanesOf } from "./formats.ts";
 import {
   apply,
   type Board,
@@ -66,10 +66,9 @@ export function describeBoard(board: Board, part: Part = {}): string {
   const name = format?.name.en ?? board.format;
   if (part.lane !== undefined) {
     if (format?.layout !== "columns") throw new CommandError(`${name} boards have no lanes`);
-    if (!format.lanes.some((lane) => lane.id === part.lane))
-      throw new CommandError(
-        `${name} has no lane "${part.lane}" (lanes: ${format.lanes.map((l) => l.id).join(", ")})`,
-      );
+    const lanes = lanesOf(board);
+    if (!lanes.includes(part.lane))
+      throw new CommandError(`${name} has no lane "${part.lane}" (lanes: ${lanes.join(", ")})`);
   }
   if (part.col !== undefined && format?.layout !== "timeline")
     throw new CommandError(`${name} boards have no columns`);
@@ -101,11 +100,12 @@ export function describeBoard(board: Board, part: Part = {}): string {
       }
     }
   } else if (format?.layout === "columns") {
-    for (const lane of format.lanes) {
-      if (part.lane !== undefined && lane.id !== part.lane) continue;
-      const laneSaid = laneName(format, board, lane.id, "en");
-      lines.push(`lane ${lane.id} (${lane.hint ? `${laneSaid}: ${lane.hint.en}` : laneSaid})`);
-      for (const e of elements) if (e.lane === lane.id) lines.push(show(e));
+    for (const id of lanesOf(board)) {
+      if (part.lane !== undefined && id !== part.lane) continue;
+      const hint = format.lanes.find((lane) => lane.id === id)?.hint;
+      const laneSaid = laneName(format, board, id, "en");
+      lines.push(`lane ${id} (${hint ? `${laneSaid}: ${hint.en}` : laneSaid})`);
+      for (const e of elements) if (e.lane === id) lines.push(show(e));
     }
   } else {
     lines.push("elements");
@@ -192,6 +192,9 @@ type Change =
   | { kind: "board-created"; title: string; format: string }
   | { kind: "board-retitled"; title: string }
   | { kind: "lane-named"; lane: string; label: string }
+  | { kind: "lane-added"; lane: string; label: string; before?: string }
+  | { kind: "lane-removed"; lane: string }
+  | { kind: "lane-moved"; lane: string; before?: string }
   | { kind: "board-removed" }
   | { kind: "board-restored" }
   | { kind: "added"; id: string; type: string; label: string; col: number; lane: string; restored?: true }
@@ -329,6 +332,20 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
         case "LaneNamed":
           put("lane", e.lane, { kind: "lane-named", lane: e.lane, label: e.label });
           break;
+        case "LaneAdded":
+          put("lane-edit", e.lane, { kind: "lane-added", lane: e.lane, label: e.label, before: e.before });
+          break;
+        case "LaneRemoved":
+          // Added and removed since the reader looked: no news.
+          if (entries.get(k("lane-edit", e.lane))?.change.kind === "lane-added") {
+            entries.delete(k("lane-edit", e.lane));
+            entries.delete(k("lane", e.lane));
+            entries.delete(k("lane-place", e.lane));
+          } else put("lane-edit", e.lane, { kind: "lane-removed", lane: e.lane });
+          break;
+        case "LaneMoved":
+          put("lane-place", e.lane, { kind: "lane-moved", lane: e.lane, before: e.before });
+          break;
         case "ElementAdded":
           added.add(k("el", e.id));
           put("add", e.id, asAdded(e));
@@ -451,6 +468,14 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
       return change.label
         ? `~ lane ${change.lane} named ${quote(change.label)}`
         : `~ lane ${change.lane} back to its workshop's name`;
+    case "lane-added": {
+      const named = change.label ? ` ${quote(change.label)}` : "";
+      return `+ lane ${change.lane}${named} added${change.before ? ` before ${change.before}` : " at the end"}`;
+    }
+    case "lane-removed":
+      return `− lane ${change.lane} removed`;
+    case "lane-moved":
+      return `~ lane ${change.lane} moved ${change.before ? `before ${change.before}` : "to the end"}`;
     case "board-removed":
       return "− board removed";
     case "board-restored":
@@ -517,6 +542,9 @@ function named(change: Change): { elements: string[]; thread?: string } {
     case "board-created":
     case "board-retitled":
     case "lane-named":
+    case "lane-added":
+    case "lane-removed":
+    case "lane-moved":
     case "board-removed":
     case "board-restored":
     case "column-inserted":

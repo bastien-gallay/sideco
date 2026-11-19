@@ -6,6 +6,7 @@
  * way to get a workspace for a past moment.
  */
 import type { Actor, Recorded, Todo } from "./events.ts";
+import { LANE_PREFIX, lanesOf } from "./formats.ts";
 import { invert, remapColumns, remember as rememberGesture, supersede, type Trails } from "./undo.ts";
 
 export interface Element {
@@ -61,6 +62,8 @@ export interface Board {
   format: string;
   /** The lanes this board calls its own way, by lane id; the others keep the name their workshop gives. */
   lanes: Record<string, string>;
+  /** The board's own lanes, in order, once it added, moved or removed one; until then, its workshop's (see `lanesOf`). */
+  laneOrder?: string[];
   /** In stacking order: within a cell, earlier elements sit first. */
   elements: Element[];
   edges: Edge[];
@@ -230,6 +233,29 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
       if (e.label) board.lanes[e.lane] = e.label;
       else delete board.lanes[e.lane];
       break;
+    case "LaneAdded": {
+      const order = lanesOf(board).filter((lane) => lane !== e.lane);
+      const at = e.before === undefined ? -1 : order.indexOf(e.before);
+      order.splice(at === -1 ? order.length : at, 0, e.lane);
+      board.laneOrder = order;
+      if (e.label) board.lanes[e.lane] = e.label;
+      else delete board.lanes[e.lane];
+      const n = /^lane-(\d+)$/.exec(e.lane)?.[1];
+      if (n) board.minted[LANE_PREFIX] = Math.max(board.minted[LANE_PREFIX] ?? 0, Number(n));
+      break;
+    }
+    case "LaneRemoved":
+      board.laneOrder = lanesOf(board).filter((lane) => lane !== e.lane);
+      delete board.lanes[e.lane];
+      break;
+    case "LaneMoved": {
+      const order = lanesOf(board).filter((lane) => lane !== e.lane);
+      if (order.length === lanesOf(board).length) break;
+      const at = e.before === undefined ? -1 : order.indexOf(e.before);
+      order.splice(at === -1 ? order.length : at, 0, e.lane);
+      board.laneOrder = order;
+      break;
+    }
     case "ElementAdded": {
       remember(board, e.id);
       board.elements.push({
