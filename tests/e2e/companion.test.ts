@@ -1679,6 +1679,10 @@ describe("a card reordered in its cell, by the mouse", () => {
     await page.mouse.up();
     await until("E3 is first in its cell", async () => (await stack()) === "E3,E1,E2");
     expect((await elementOf(BOARD, "E3"))?.col).toBe(1);
+    // The ear hears where it now sits: its step, its row, its rank in the cell.
+    await until("E3 is heard first in its cell", async () =>
+      ((await card("E3").getAttribute("aria-label")) ?? "").includes("step 1, row Event, 1 of 3"),
+    );
   });
 
   test("a step dragged by its number takes the number of the step it is dropped on, its cards with it", async () => {

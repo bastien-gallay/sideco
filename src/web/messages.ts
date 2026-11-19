@@ -186,6 +186,8 @@ export interface Messages {
   boardCards: (title: string) => string;
   /** Where a card is on a timeline, and what is said once it moved somewhere. */
   step: (n: number) => string;
+  /** Where a card sits on a timeline, for the ear: its step, its row, and its rank when it shares the cell. */
+  cell: (step: number, row: string, rank?: [at: number, of: number]) => string;
   /** A card's links, read to who cannot see the arrows: each end as `id label`, a branch name in brackets. */
   leadsTo: (ends: string) => string;
   comesFrom: (ends: string) => string;
@@ -380,6 +382,7 @@ const en: Messages = {
   cardRemoved: (id) => `${id} removed.`,
   boardCards: (title) => `Cards of “${title}”`,
   step: (n) => `step ${n}`,
+  cell: (step, row, rank) => `step ${step}, row ${row}${rank ? `, ${rank[0]} of ${rank[1]}` : ""}`,
   leadsTo: (ends) => `leads to ${ends}`,
   comesFrom: (ends) => `comes from ${ends}`,
   undone: (what) => `Undone: ${what}`,
@@ -630,6 +633,7 @@ const fr: Messages = {
   cardRemoved: (id) => `${id} supprimée.`,
   boardCards: (title) => `Cartes de « ${title} »`,
   step: (n) => `étape ${n}`,
+  cell: (step, row, rank) => `étape ${step}, rangée ${row}${rank ? `, ${rank[0]} sur ${rank[1]}` : ""}`,
   leadsTo: (ends) => `mène à ${ends}`,
   comesFrom: (ends) => `vient de ${ends}`,
   undone: (what) => `Annulé : ${what}`,

@@ -99,10 +99,21 @@ describe("a card says what it is linked to, for who cannot see the arrows", () =
 });
 
 describe("a card says where it is, for who cannot see the board", () => {
-  test("on a timeline, its step", () => {
+  test("on a timeline, its step and its row", () => {
     const board = table(ORDERING).board();
-    expect(cardPlace(board, layoutBoard(board).bands, "P1")).toBe("step 2");
-    expect(cardPlace(board, layoutBoard(board, "fr").bands, "P1", "fr")).toBe("étape 2");
+    expect(cardPlace(board, layoutBoard(board).bands, "P1")).toBe("step 2, row Policy");
+    expect(cardPlace(board, layoutBoard(board, "fr").bands, "P1", "fr")).toBe("étape 2, rangée Règle");
+  });
+
+  test("in a cell of several cards, its rank there, top to bottom", () => {
+    const board = table(`board new "Pile" --id pile
+add event "Un" --col 1
+add event "Deux" --col 1
+add event "Trois" --col 1`).board();
+    expect(cardPlace(board, layoutBoard(board).bands, "E2")).toBe("step 1, row Event, 2 of 3");
+    expect(cardPlace(board, layoutBoard(board, "fr").bands, "E3", "fr")).toBe(
+      "étape 1, rangée Événement, 3 sur 3",
+    );
   });
 
   test("in lanes, the name of its lane as the board shows it", () => {

@@ -545,8 +545,14 @@ export function cardPlace(
 ): string | undefined {
   const el = findElement(board, id);
   if (!el) return undefined;
-  if (findFormat(board.format)?.layout === "timeline" && el.col !== undefined)
-    return MESSAGES[locale].step(el.col);
+  if (findFormat(board.format)?.layout === "timeline" && el.col !== undefined) {
+    // Its step, its row, and, where it shares its cell, its rank there: what the eye takes from where it sits.
+    const row = bands.find((band) => band.kind === "row" && band.id === el.type)?.label ?? el.type;
+    const cell = board.elements.filter((e) => e.type === el.type && e.col === el.col);
+    const rank: [number, number] | undefined =
+      cell.length > 1 ? [cell.indexOf(el) + 1, cell.length] : undefined;
+    return MESSAGES[locale].cell(el.col, row, rank);
+  }
   return bands.find((band) => band.kind === "lane" && band.id === el.lane)?.label;
 }
 

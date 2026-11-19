@@ -166,6 +166,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F38 | Une rétro part de « Went well » et « Didn't go well », puis Keep / Stop / Try ; un constat a l'id P (les anciens K restent acceptés), une action sans colonne va dans Try, et « En faire une action » dans la barre d'un constat ajoute une action dans Try, reliée à lui (T26, T74) | ✅ ; ⚠️ pas de touche dédiée |
 | F39 | Impact / Effort se lit comme une matrice : chaque axe nomme ses deux bouts, « faible » et « fort », et le nom d'une case suit aussi le défilement de côté, sans quitter sa case (T73) | ✅ |
 | F40 | Une story map garde son épine dorsale en vue : une fois les activités passées sous les numéros d'étape, chaque étape dit là son activité (qui court jusqu'à la suivante) et sa tâche (T78) | ✅ |
+| F41 | Sur une frise (event storming, story map), le nom qu'un lecteur d'écran entend dit l'étape, la rangée et, dans une case de plusieurs cartes, le rang : « étape 2, rangée Règle », « étape 1, rangée Événement, 2 sur 3 » (T80) | ✅ ; ⚠️ pas encore essayé avec VoiceOver (T72) |
 
 ### 5.3 Exigences de qualité
 
