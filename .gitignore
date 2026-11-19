@@ -1,6 +1,11 @@
 node_modules/
 dist/
-.sideco/server.json
 tests/e2e/artifacts/
 .impeccable/
-.vico/server.json
+# Local boards and session traces: only examples and fixtures are published
+.sideco/
+.vico/
+# Local Claude Code settings and working notes
+.claude/
+brainstorm/
+REPRISE*.md
