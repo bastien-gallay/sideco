@@ -321,6 +321,71 @@ function openKeys(): void {
   keysSheet.showModal();
 }
 
+// ── Side panels, folded into rails ───────────────────────────────────────────
+
+type Side = "left" | "right";
+const FOLDED = "sideco.folded";
+/** Under this width, both panels fold of themselves: the board keeps the room. */
+const NARROW = window.matchMedia("(max-width: 1100px)");
+
+/** What the reader folded, kept by this browser. The page works the same without it. */
+const chosenFolds: Record<Side, boolean> = (() => {
+  try {
+    const kept = JSON.parse(localStorage.getItem(FOLDED) ?? "{}") as Partial<Record<Side, boolean>>;
+    return { left: kept.left === true, right: kept.right === true };
+  } catch {
+    return { left: false, right: false };
+  }
+})();
+/** A narrow window folds both; what the reader then unfolds holds until the window changes again. */
+let narrowFolds: Record<Side, boolean> | undefined = NARROW.matches ? { left: true, right: true } : undefined;
+
+const foldButton = (side: Side): HTMLButtonElement =>
+  h("button", {
+    type: "button",
+    class: "fold quiet",
+    "aria-controls": `panel-${side}`,
+    onclick: () => toggleFold(side),
+  }) as HTMLButtonElement;
+const folds: Record<Side, HTMLButtonElement> = { left: foldButton("left"), right: foldButton("right") };
+
+function isFolded(side: Side): boolean {
+  return (narrowFolds ?? chosenFolds)[side];
+}
+
+function toggleFold(side: Side): void {
+  if (narrowFolds) narrowFolds[side] = !narrowFolds[side];
+  else {
+    chosenFolds[side] = !chosenFolds[side];
+    try {
+      localStorage.setItem(FOLDED, JSON.stringify(chosenFolds));
+    } catch {
+      // Kept for this page only.
+    }
+  }
+  paintFolds();
+}
+
+function paintFolds(): void {
+  const work = app?.querySelector(".work");
+  for (const side of ["left", "right"] as const) {
+    const folded = isFolded(side);
+    work?.classList.toggle(`fold-${side}`, folded);
+    const button = folds[side];
+    button.setAttribute("aria-expanded", String(!folded));
+    const label = folded ? t.showPanel[side] : t.hidePanel[side];
+    button.setAttribute("aria-label", label);
+    button.title = `${label} (${side === "left" ? "[" : "]"})`;
+    // The arrow points where the panel goes.
+    button.textContent = (side === "left") === folded ? "›" : "‹";
+  }
+}
+
+NARROW.addEventListener("change", () => {
+  narrowFolds = NARROW.matches ? { left: true, right: true } : undefined;
+  paintFolds();
+});
+
 app.append(
   skip,
   h(
@@ -347,9 +412,9 @@ app.append(
   h(
     "main",
     { class: "work" },
-    h("aside", { class: "left" }, palette, notes),
+    h("aside", { class: "left", id: "panel-left" }, folds.left, palette, notes),
     h("section", { class: "stage" }, focusBar, findBar, canvas, empty),
-    h("aside", { class: "right" }, cardPanel, sessionPanel),
+    h("aside", { class: "right", id: "panel-right" }, folds.right, cardPanel, sessionPanel),
   ),
   h(
     "footer",
@@ -371,6 +436,8 @@ app.append(
   keysSheet,
   spoken,
 );
+
+paintFolds();
 
 /** The board the history follows: none when the reader asked for everything, or no board is there. */
 function historyFollows(): string | undefined {
@@ -1085,6 +1152,8 @@ window.addEventListener("keydown", (event) => {
   if (event.ctrlKey || event.metaKey || event.altKey || typing(event.target)) return;
   if (event.key === "/" && currentBoard()) openFind();
   else if (event.key === "?") openKeys();
+  else if (event.key === "[") toggleFold("left");
+  else if (event.key === "]") toggleFold("right");
   else return;
   event.preventDefault();
 });

@@ -37,6 +37,8 @@ export interface Messages {
   // The header.
   boardShown: string;
   newBoardButton: string;
+  showPanel: Record<"left" | "right", string>;
+  hidePanel: Record<"left" | "right", string>;
   boardMenu: string;
   newBoardItem: string;
   removeBoardItem: string;
@@ -262,6 +264,8 @@ const en: Messages = {
 
   boardShown: "Board shown",
   newBoardButton: "+ Board",
+  showPanel: { left: "Show the palette and the notes", right: "Show the side panel" },
+  hidePanel: { left: "Fold the palette and the notes", right: "Fold the side panel" },
   boardMenu: "Board: new, export, remove",
   newBoardItem: "New board…",
   removeBoardItem: "Remove this board…",
@@ -455,6 +459,7 @@ const en: Messages = {
     ["⌘Z / Ctrl+Z", "Undo your last change"],
     ["Esc", "Close, cancel, deselect"],
     ["?", "These shortcuts"],
+    ["[ and ]", "Fold or show the left panel, the right panel"],
     ...(how === "kanban"
       ? ([
           [
@@ -521,6 +526,8 @@ const fr: Messages = {
 
   boardShown: "Tableau affiché",
   newBoardButton: "+ Tableau",
+  showPanel: { left: "Afficher la palette et les notes", right: "Afficher le panneau latéral" },
+  hidePanel: { left: "Replier la palette et les notes", right: "Replier le panneau latéral" },
   boardMenu: "Tableau : nouveau, export, suppression",
   newBoardItem: "Nouveau tableau…",
   removeBoardItem: "Supprimer ce tableau…",
@@ -717,6 +724,7 @@ const fr: Messages = {
     ["⌘Z / Ctrl+Z", "Annuler ton dernier changement"],
     ["Échap", "Fermer, annuler, désélectionner"],
     ["?", "Ces raccourcis"],
+    ["[ et ]", "Replier ou afficher le panneau de gauche, celui de droite"],
     ...(how === "kanban"
       ? ([
           [

@@ -2168,13 +2168,61 @@ describe("tidying up", () => {
   });
 });
 
+describe("side panels folded away", () => {
+  const width = async (selector: string): Promise<number> =>
+    Math.round((await page.locator(selector).boundingBox())?.width ?? 0);
+  const folded = (side: "left" | "right") =>
+    page.locator(".work").evaluate((w, s) => w.classList.contains(`fold-${s}`), side);
+
+  test("each folds into a rail, by its button or a key, and stays so after a reload", async () => {
+    await page.locator(".board-picker select").selectOption("commande");
+    await card("E1").waitFor();
+    const stage = await width(".stage");
+    const left = page.locator(".left button.fold");
+    expect(await left.getAttribute("aria-expanded")).toBe("true");
+    await left.click();
+    await until("the left panel is a rail", async () => (await width(".left")) <= 44);
+    expect(await left.getAttribute("aria-expanded")).toBe("false");
+    expect(await left.getAttribute("aria-label")).toBe("Show the palette and the notes");
+    // Folded, the palette is still there: a kind of card is one click off.
+    await paletteType("Event").click();
+    await page.locator("textarea.card-editor").waitFor({ state: "visible" });
+    await page.keyboard.press("Escape");
+    await page.locator(".stage").click({ position: { x: 600, y: 600 } });
+    await page.keyboard.press("]");
+    await until("the right panel is a rail", async () => (await width(".right")) <= 44);
+    expect(await width(".stage")).toBeGreaterThan(stage + 400);
+    await shot("54-panels-folded");
+
+    await page.reload();
+    await card("E1").waitFor();
+    expect([await folded("left"), await folded("right")]).toEqual([true, true]);
+    await page.keyboard.press("[");
+    await page.keyboard.press("]");
+    await until(
+      "both panels are open again",
+      async () => !(await folded("left")) && !(await folded("right")),
+    );
+    await until("the left panel is whole again", async () => (await width(".left")) > 200);
+  });
+});
+
 describe("look", () => {
   test("dark scheme and a narrow window keep the board usable", async () => {
     await page.emulateMedia({ colorScheme: "dark" });
     await shot("10-dark");
     await page.emulateMedia({ colorScheme: "light" });
     await page.setViewportSize({ width: 900, height: 700 });
-    expect(await page.locator(".right").isVisible()).toBe(false);
+    // A narrow window folds both panels into rails: the board keeps the room.
+    await until("both panels are folded", async () =>
+      page
+        .locator(".work")
+        .evaluate((w) => w.classList.contains("fold-left") && w.classList.contains("fold-right")),
+    );
+    await until(
+      "the right panel is a rail",
+      async () => Math.round((await page.locator(".right").boundingBox())?.width ?? 0) <= 44,
+    );
     expect(await page.locator(".pass button").isVisible()).toBe(true);
     // The header gives way inside: the board title shrinks, the words on the buttons stay whole.
     const header = await page.evaluate(() => {
