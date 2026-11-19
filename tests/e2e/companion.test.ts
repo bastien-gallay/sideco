@@ -1080,9 +1080,26 @@ describe("the board from the keyboard", () => {
   const focused = () => page.evaluate(() => document.activeElement?.getAttribute("data-id") ?? null);
 
   test("the board is one Tab stop, and the arrows go from card to card", async () => {
+    // A fresh page, no card chosen yet: Tab enters at the first card read, top left.
+    await page.reload();
+    await page.locator("g.card").first().waitFor();
     expect(await page.locator('g.card[tabindex="0"]').count()).toBe(1);
     const first = await page.locator('g.card[tabindex="0"]').getAttribute("data-id");
-    await page.locator('g.card[tabindex="0"]').focus();
+    const topLeft = await page.evaluate(() => {
+      const at = (g: Element) =>
+        (g.getAttribute("style") ?? "").match(/translate\(([-\d.]+)px, ([-\d.]+)px\)/);
+      return (
+        [...document.querySelectorAll("g.card")]
+          .map((g) => ({ id: g.getAttribute("data-id"), x: Number(at(g)?.[1]), y: Number(at(g)?.[2]) }))
+          .sort((a, b) => Math.round(a.x) - Math.round(b.x) || a.y - b.y)[0]?.id ?? null
+      );
+    });
+    expect(first).toBe(topLeft);
+    // The way there skips the header and the palette.
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => document.activeElement?.className)).toBe("skip");
+    await page.keyboard.press("Enter");
+    expect(await focused()).toBe(first);
     for (const key of ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"]) {
       await page.keyboard.press(key);
       if ((await focused()) !== first) break;

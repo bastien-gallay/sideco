@@ -12,10 +12,22 @@ import type { Board } from "../domain/workspace.ts";
 import { h, svg } from "./dom.ts";
 import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
-import { addOffers, type Direction, keptLines, keyMove, neighbour, oneLine, readingOrder } from "./view.ts";
+import {
+  addOffers,
+  cardPlace,
+  type Direction,
+  keptLines,
+  keyMove,
+  neighbour,
+  oneLine,
+  readingOrder,
+} from "./view.ts";
 
 const DRAG_THRESHOLD = 4;
 const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5];
+/** How tall the head of a lane is: its name, or its name and what it stands for. Above the first card, both. */
+const LANE_HEAD = 38;
+const LANE_HEAD_HINTED = 44;
 /** How far outside its card the ring of a focused or selected card is drawn: off the sticky's colour, always. */
 const RING = 5;
 const ARROWS: Record<string, Direction> = {
@@ -47,6 +59,8 @@ interface EditorKind {
 export interface BoardHooks {
   /** A card left the board by a key: the page says so, and offers to take it back. */
   removed(id: string): void;
+  /** Something a screen reader should hear, that the eye sees on the board: a card moved by a key. */
+  announce(text: string): void;
 }
 
 /**
@@ -108,6 +122,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   let pickedLink: { src: string; dst: string; x: number; y: number } | undefined;
   /** The one card Tab stops at: the board is a single stop, and the arrows go from card to card inside it. */
   let current: string | undefined;
+  /** The reader put the keyboard on `current`, or selected it: until then, Tab enters at the first card read. */
+  let chosen = false;
   /** The markup of the bands last drawn. */
   let paintedBands = "";
 
@@ -162,10 +178,13 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       }
       if (node.signature !== signature) {
         node.g.innerHTML = ringMarkup(card) + cardMarkup(card) + (isUnread ? UNREAD_MARK : "");
-        // A screen reader hears a card as one name: its words first, then the mark's. Its detail stays in the tooltip.
-        node.g.setAttribute("aria-label", isUnread ? `${cardName(card)} · ${t.unread}` : cardName(card));
         node.signature = signature;
       }
+      // A screen reader hears a card as one name: its words, where it is, then the mark's. Its detail stays in the tooltip.
+      const place = cardPlace(board, scene.bands, card.id, locale);
+      const name = [cardName(card), place, isUnread ? t.unread : undefined].filter(Boolean).join(" · ");
+      if (node.g.getAttribute("aria-label") !== name) node.g.setAttribute("aria-label", name);
+      node.g.setAttribute("aria-pressed", String(state.selected === card.id));
       // A card in the human's hand stays there, whatever arrives meanwhile.
       if (!(drag?.moving && drag.id === card.id)) node.g.style.transform = `translate(${x}px, ${y}px)`;
       node.g.classList.toggle("is-selected", state.selected === card.id);
@@ -187,8 +206,16 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       nodes.delete(id);
     }
     // The board is one Tab stop: the selected card, else the last one the keyboard was on, else the first one read.
-    if (state.selected && alive.has(state.selected)) current = state.selected;
-    if (!current || !alive.has(current)) current = readingOrder(scene.cards)[0];
+    if (switched) chosen = false;
+    if (state.selected && alive.has(state.selected)) {
+      current = state.selected;
+      chosen = true;
+    }
+    // A card nobody chose is never kept: the first one read may change as cards come and go.
+    if (!chosen || !current || !alive.has(current)) {
+      current = readingOrder(scene.cards)[0];
+      chosen = false;
+    }
     for (const [id, node] of nodes) node.g.setAttribute("tabindex", id === current ? "0" : "-1");
     if (switched)
       requestAnimationFrame(() => {
@@ -221,7 +248,13 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       // A lane's heading goes down to its last card at most: it never leaves its own lane.
       head.setAttribute("transform", `translate(0 ${Math.max(0, Math.min(sy - band.y, band.h - 56))})`);
     }
+    // A card the keyboard or a search brings into view lands clear of the frozen names, never under them.
+    scroll.style.scrollPaddingTop = `${frozen.top * zoom + 8}px`;
+    scroll.style.scrollPaddingLeft = `${frozen.left * zoom + 8}px`;
   }
+
+  /** How much of the top and of the left the frozen names cover, in scene units. */
+  let frozen = { top: 0, left: 0 };
 
   /**
    * Takes the names out of the bands, behind the cards, up to the layer over
@@ -239,16 +272,35 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       steps.append(svg("rect", { class: "heads-strip", width: scene.width, height: top }));
     if (Number.isFinite(left))
       rows.append(svg("rect", { class: "heads-strip", width: left, height: scene.height }));
+    let laneTop = 0;
     bands.querySelectorAll(":scope > g.band").forEach((group, index) => {
-      const kind = scene.bands[index]?.kind;
+      const band = scene.bands[index];
+      const kind = band?.kind;
       if (kind === "step") steps.append(...group.querySelectorAll("text"));
       else if (kind === "row") rows.append(...group.querySelectorAll("rect, text"));
-      else if (kind === "lane") {
+      else if (band && kind === "lane") {
+        // The lane's name rides on a strip of the lane's own colour: what scrolls under it is hidden, not smeared.
+        const tall = band.hint ? LANE_HEAD_HINTED : LANE_HEAD;
+        laneTop = Math.max(laneTop, tall);
         const head = svg("g", { class: "head band-lane", "data-band": index });
-        head.append(...group.querySelectorAll("text"));
+        head.append(
+          svg("rect", {
+            class: "heads-lane-strip",
+            x: band.x,
+            y: band.y,
+            width: band.w,
+            height: tall,
+            rx: 10,
+          }),
+          ...group.querySelectorAll("text"),
+        );
         heads.append(head);
       }
     });
+    frozen = {
+      top: Number.isFinite(top) ? top : laneTop,
+      left: Number.isFinite(left) ? left : 0,
+    };
     if (steps.childElementCount > 1) heads.append(steps);
     if (rows.childElementCount > 1) heads.append(rows);
   }
@@ -724,7 +776,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   /** The keyboard is on a card: Tab comes back to that one. */
   root.addEventListener("focusin", (event) => {
     const id = cardAt(event.target);
-    if (!id || id === current) return;
+    if (!id) return;
+    chosen = true;
+    if (id === current) return;
     nodes.get(current ?? "")?.g.setAttribute("tabindex", "-1");
     nodes.get(id)?.g.setAttribute("tabindex", "0");
     current = id;
@@ -736,6 +790,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     nodes.get(current ?? "")?.g.setAttribute("tabindex", "-1");
     node.g.setAttribute("tabindex", "0");
     current = id;
+    chosen = true;
     node.g.focus({ preventScroll: true });
     node.g.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
@@ -755,10 +810,17 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (direction && event.altKey) {
       event.preventDefault();
       const command = keyMove(board, id, direction);
-      if (command)
-        void send(command).then(() =>
-          nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" }),
-        );
+      if (command?.kind !== "move") return;
+      // Where it goes, said once it got there: the eye sees the move, the ear hears it.
+      const place =
+        command.col !== undefined
+          ? t.step(command.col)
+          : scene.bands.find((band) => band.kind === "lane" && band.id === command.lane)?.label;
+      void send(command).then((done) => {
+        if (done === undefined) return;
+        nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" });
+        if (place) hooks.announce(t.moved(id, place));
+      });
       return;
     }
     if (event.key === "Enter" || event.key === "F2") rename(id);

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
-import { keyMove, neighbour, readingOrder } from "../../src/web/view.ts";
+import { cardPlace, keyMove, neighbour, readingOrder } from "../../src/web/view.ts";
 import { KANBAN, ORDERING, table } from "../support.ts";
 
 describe("the arrow keys go from a card to the next one on screen", () => {
@@ -17,6 +17,12 @@ describe("the arrow keys go from a card to the next one on screen", () => {
     expect(neighbour(cards, "C2", "left")).toBe("C1");
   });
 
+  test("down and up never leave the column, even when the next card below is in another one", () => {
+    // Nothing is under E1 in column 1; P1, in column 2, is lower down.
+    expect(neighbour(cards, "E1", "down")).toBeUndefined();
+    expect(neighbour(cards, "P1", "up")).toBe("E2");
+  });
+
   test("at an edge there is nowhere to go", () => {
     expect(neighbour(cards, "X1", "up")).toBeUndefined();
     expect(neighbour(cards, "X1", "left")).toBeUndefined();
@@ -29,6 +35,25 @@ describe("the arrow keys go from a card to the next one on screen", () => {
     const order = readingOrder(layoutBoard(t.board()).cards);
     expect(order.slice(0, 3)).toEqual(["X1", "C1", "E1"]);
     expect(order.indexOf("X2")).toBeLessThan(order.indexOf("P1"));
+  });
+});
+
+describe("a card says where it is, for who cannot see the board", () => {
+  test("on a timeline, its step", () => {
+    const board = table(ORDERING).board();
+    expect(cardPlace(board, layoutBoard(board).bands, "P1")).toBe("step 2");
+    expect(cardPlace(board, layoutBoard(board, "fr").bands, "P1", "fr")).toBe("étape 2");
+  });
+
+  test("in lanes, the name of its lane as the board shows it", () => {
+    const board = table(KANBAN).board();
+    expect(cardPlace(board, layoutBoard(board).bands, "T2")).toBe("Doing");
+    expect(cardPlace(board, layoutBoard(board, "fr").bands, "T2", "fr")).toBe("En cours");
+  });
+
+  test("a card gone has no place", () => {
+    const board = table(KANBAN).board();
+    expect(cardPlace(board, layoutBoard(board).bands, "T99")).toBeUndefined();
   });
 });
 

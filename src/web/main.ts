@@ -153,6 +153,22 @@ const turnBar = h(
   ),
 );
 const toast = h("div", { class: "toast", role: "alert", hidden: true });
+/** What only a screen reader is told: a card moved by a key, which the eye sees on the board. */
+const spoken = h("div", { class: "spoken", role: "status", "aria-live": "polite" });
+/** The first stop of the keyboard: straight to the board, past the header and the palette. */
+const skip = h(
+  "a",
+  {
+    class: "skip",
+    href: "#board",
+    onclick: (event: Event) => {
+      event.preventDefault();
+      const card = canvas.querySelector<SVGGElement>('g.card[tabindex="0"]');
+      if (card) card.focus();
+    },
+  },
+  t.skipToBoard,
+);
 const dialog = h("dialog", { class: "sheet new-board" });
 const removal = h("dialog", { class: "sheet remove-board" });
 
@@ -173,6 +189,13 @@ const languagePicker = h(
 
 const view = mountBoard(canvas, {
   removed: (id) => say(t.cardRemoved(id), { label: t.undoAction, run: () => void undo() }),
+  announce: (text) => {
+    // Emptied first, so the same words twice in a row are said twice.
+    spoken.textContent = "";
+    requestAnimationFrame(() => {
+      spoken.textContent = text;
+    });
+  },
 });
 
 /** A search over the cards of the board shown: `/` opens it, Enter goes from one card found to the next. */
@@ -261,6 +284,7 @@ function openKeys(): void {
 }
 
 app.append(
+  skip,
   h(
     "header",
     { class: "top" },
@@ -305,6 +329,7 @@ app.append(
   dialog,
   removal,
   keysSheet,
+  spoken,
 );
 
 /** The board the history follows: none when the reader asked for everything, or no board is there. */

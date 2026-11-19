@@ -9,7 +9,7 @@ import { type Changes, describeChanges } from "../domain/digest.ts";
 import type { Actor, Recorded } from "../domain/events.ts";
 import { findFormat, findType } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
-import { type Target, vacancy } from "../domain/layout/index.ts";
+import { type Band, type Target, vacancy } from "../domain/layout/index.ts";
 import {
   type AgentStatus,
   type Board,
@@ -497,10 +497,29 @@ export function neighbour(cards: readonly Placed[], id: string, direction: Direc
     const ahead = sign * (sideways ? there.x - here.x : there.y - here.y);
     if (ahead < 1) continue;
     const aside = Math.abs(sideways ? there.y - here.y : there.x - here.x);
+    // Up and down stay in the column: a card beside it is reached by left or right, never by surprise.
+    if (!sideways && aside >= from.w / 2) continue;
     const score = ahead + 2 * aside;
     if (!best || score < best.score) best = { id: card.id, score };
   }
   return best?.id;
+}
+
+/**
+ * Where a card is, in words: its step on a timeline, the name of its lane as
+ * the board shows it otherwise. What a screen reader adds to the card's name.
+ */
+export function cardPlace(
+  board: Board,
+  bands: readonly Band[],
+  id: string,
+  locale: Locale = DEFAULT_LOCALE,
+): string | undefined {
+  const el = findElement(board, id);
+  if (!el) return undefined;
+  if (findFormat(board.format)?.layout === "timeline" && el.col !== undefined)
+    return MESSAGES[locale].step(el.col);
+  return bands.find((band) => band.kind === "lane" && band.id === el.lane)?.label;
 }
 
 /** The order Tab takes through the cards: column by column, top to bottom. */

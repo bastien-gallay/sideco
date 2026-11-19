@@ -800,6 +800,38 @@ kbd {
   stroke: var(--rule);
 }
 
+.heads-lane-strip {
+  fill: var(--vico-lane);
+}
+
+/* Straight to the board: out of sight until the keyboard reaches it, first thing on the page. */
+.skip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 40;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+/* Said to a screen reader only: what the eye already sees on the board. */
+.spoken {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .vico-board .lane-label,
 .vico-board .lane-count,
 .vico-board .lane-hint {

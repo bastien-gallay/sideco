@@ -170,6 +170,10 @@ export interface Messages {
   cardRemoved: (id: string) => string;
   /** The board, as a screen reader names it. */
   boardCards: (title: string) => string;
+  /** Where a card is on a timeline, and what is said once it moved somewhere. */
+  step: (n: number) => string;
+  moved: (id: string, place: string) => string;
+  skipToBoard: string;
 
   // Finding one's way on a large board.
   find: string;
@@ -332,6 +336,9 @@ const en: Messages = {
   withKey: (action, key) => `${action} (${key})`,
   cardRemoved: (id) => `${id} removed.`,
   boardCards: (title) => `Cards of “${title}”`,
+  step: (n) => `step ${n}`,
+  moved: (id, place) => `${id} moved to ${place}.`,
+  skipToBoard: "Skip to the board",
 
   find: "Find a card",
   findPlaceholder: "An id or words…",
@@ -506,6 +513,9 @@ const fr: Messages = {
   withKey: (action, key) => `${action} (${key})`,
   cardRemoved: (id) => `${id} supprimée.`,
   boardCards: (title) => `Cartes de « ${title} »`,
+  step: (n) => `étape ${n}`,
+  moved: (id, place) => `${id} déplacée en ${place}.`,
+  skipToBoard: "Aller au tableau",
 
   find: "Trouver une carte",
   findPlaceholder: "Un id ou des mots…",
