@@ -151,6 +151,19 @@ export function boardAction(tokens: readonly string[], board: string | undefined
       return {
         command: { kind: "name-lane", board: target(), lane: need(0, "a lane"), label: need(1, "a name") },
       };
+    case "slice":
+      if (p[0] === "add")
+        return {
+          command: {
+            kind: "add-slice",
+            board: target(),
+            label: need(1, "a name"),
+            before: flags.get("before"),
+          },
+        };
+      if (p[0] === "rm")
+        return { command: { kind: "remove-slice", board: target(), slice: need(1, "a slice") } };
+      throw new UsageError('usage: slice add "Name" [--before SLICE] | slice rm SLICE');
     case "add":
       return {
         command: {
@@ -254,6 +267,7 @@ export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "board",
   "retitle",
   "lane",
+  "slice",
   "add",
   "rename",
   "detail",

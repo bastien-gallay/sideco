@@ -48,6 +48,8 @@ type BoardFact =
   | { event: "LaneNamed"; board: string; lane: string; label: string }
   /** A lane of the board's own, before `before`, else last. An empty label leaves its workshop's name, if it has one. */
   | { event: "LaneAdded"; board: string; lane: string; label: string; before?: string }
+  | { event: "SliceAdded"; board: string; slice: string; label: string; before?: string }
+  | { event: "SliceRemoved"; board: string; slice: string }
   /** An empty lane leaves the board, its name with it. */
   | { event: "LaneRemoved"; board: string; lane: string }
   /** A lane goes before `before`, else last; its cards go with it. */
@@ -141,6 +143,8 @@ const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "BoardRetitled",
   "LaneNamed",
   "LaneAdded",
+  "SliceAdded",
+  "SliceRemoved",
   "LaneRemoved",
   "LaneMoved",
   "BoardRemoved",

@@ -112,6 +112,9 @@ export function describeBoard(board: Board, part: Part = {}): string {
     for (const e of elements) lines.push(show(e));
   }
 
+  const slices = board.slices ?? [];
+  if (slices.length > 0 && !narrowed)
+    lines.push(`slices: ${slices.map((slice) => `${slice.id} ${quote(slice.label)}`).join(", ")}`);
   // Of a part, the links and the notes that touch a card shown.
   const edges = part.notes
     ? []
@@ -193,6 +196,8 @@ type Change =
   | { kind: "board-retitled"; title: string }
   | { kind: "lane-named"; lane: string; label: string }
   | { kind: "lane-added"; lane: string; label: string; before?: string }
+  | { kind: "slice-added"; slice: string; label: string; before?: string }
+  | { kind: "slice-removed"; slice: string }
   | { kind: "lane-removed"; lane: string }
   | { kind: "lane-moved"; lane: string; before?: string }
   | { kind: "board-removed" }
@@ -343,6 +348,15 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
             entries.delete(k("lane-place", e.lane));
           } else put("lane-edit", e.lane, { kind: "lane-removed", lane: e.lane });
           break;
+        case "SliceAdded":
+          put("slice", e.slice, { kind: "slice-added", slice: e.slice, label: e.label, before: e.before });
+          break;
+        case "SliceRemoved":
+          // Added and removed since the reader looked: no news.
+          if (entries.get(k("slice", e.slice))?.change.kind === "slice-added")
+            entries.delete(k("slice", e.slice));
+          else put("slice", e.slice, { kind: "slice-removed", slice: e.slice });
+          break;
         case "LaneMoved":
           put("lane-place", e.lane, { kind: "lane-moved", lane: e.lane, before: e.before });
           break;
@@ -474,6 +488,10 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
     }
     case "lane-removed":
       return `− lane ${change.lane} removed`;
+    case "slice-added":
+      return `+ slice ${change.slice} ${quote(change.label)} added${change.before ? ` before ${change.before}` : " at the end"}`;
+    case "slice-removed":
+      return `− slice ${change.slice} removed`;
     case "lane-moved":
       return `~ lane ${change.lane} moved ${change.before ? `before ${change.before}` : "to the end"}`;
     case "board-removed":
@@ -545,6 +563,8 @@ function named(change: Change): { elements: string[]; thread?: string } {
     case "lane-added":
     case "lane-removed":
     case "lane-moved":
+    case "slice-added":
+    case "slice-removed":
     case "board-removed":
     case "board-restored":
     case "column-inserted":

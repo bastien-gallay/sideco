@@ -1728,6 +1728,28 @@ describe("a story map scrolled down", () => {
   });
 });
 
+describe("a story map cut into slices", () => {
+  test("draws each slice as a line under the stories, its name in the frozen margin", async () => {
+    await agent(
+      `board new "Lots" --format story-map --id lots\nadd activity "Acheter" --col 1\nadd task "Chercher" --col 1\nadd story "Recherche simple" --col 1\nslice add "Lot 1"\nslice add "Plus tard"`,
+    );
+    await page.locator(".board-picker select").selectOption("lots");
+    await card("S1").waitFor();
+    const name = page.locator(".heads-rows .slice-label", { hasText: "Lot 1" });
+    await name.waitFor();
+    await page.locator(".heads-rows .slice-label", { hasText: "Plus tard" }).waitFor();
+    const story = await card("S1").boundingBox();
+    const line = await name.boundingBox();
+    if (!story || !line) throw new Error("no story or no slice name");
+    expect(line.y).toBeGreaterThan(story.y + story.height);
+    await shot("50-story-map-slices");
+    await agent("board rm lots");
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== "lots";
+    });
+  });
+});
+
 describe("a tab opened on no board in particular", () => {
   const MINE = "tenu";
   const OTHER = "autre-session";

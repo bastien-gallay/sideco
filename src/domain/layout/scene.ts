@@ -32,7 +32,7 @@ export interface Card {
 
 /** A labelled region behind the cards: a type row, a step column, a lane, or the name of an axis beside a plan. */
 export interface Band {
-  kind: "row" | "step" | "lane" | "axis";
+  kind: "row" | "step" | "lane" | "axis" | "slice";
   id: string;
   label: string;
   x: number;

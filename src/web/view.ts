@@ -142,6 +142,10 @@ function english(e: Recorded): string {
       return `${does("remove")} the lane ${e.lane}`;
     case "LaneMoved":
       return `${does("move")} the lane ${e.lane}`;
+    case "SliceAdded":
+      return `${does("add")} the slice “${e.label}”`;
+    case "SliceRemoved":
+      return `${does("remove")} the slice ${e.slice}`;
     case "BoardRemoved":
       return `${does("remove")} the board “${e.title}”`;
     case "BoardRestored":
@@ -233,6 +237,10 @@ function french(e: Recorded): string {
       return `${verb("supprimes", "supprime")} la colonne ${e.lane}`;
     case "LaneMoved":
       return `${verb("déplaces", "déplace")} la colonne ${e.lane}`;
+    case "SliceAdded":
+      return `${verb("ajoutes", "ajoute")} la tranche « ${e.label} »`;
+    case "SliceRemoved":
+      return `${verb("supprimes", "supprime")} la tranche ${e.slice}`;
     case "BoardRemoved":
       return `${verb("supprimes", "supprime")} le tableau « ${e.title} »`;
     case "BoardRestored":

@@ -470,6 +470,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       const kind = band?.kind;
       if (kind === "step") steps.append(...group.querySelectorAll("text"));
       else if (kind === "row") rows.append(...group.querySelectorAll("rect, text"));
+      // A slice's name stays in the frozen margin, like a row's; its line runs on under the cards.
+      else if (kind === "slice") rows.append(...group.querySelectorAll("text"));
       else if (band && kind === "lane") {
         // The lane's name rides on a strip of the lane's own colour: what scrolls under it is hidden, not smeared.
         const tall = band.hint ? LANE_HEAD_HINTED : LANE_HEAD;

@@ -71,6 +71,7 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco move-col FROM TO             a column takes the number TO, its cards with it
   sideco lane LANE "Name"             call a lane of this board your own way
   sideco lane add "Name" [--before L] a kanban lane of this board's own; lane rm L (empty) · lane move L [--before L]
+  sideco slice add "Name" [--before S] a story map's slice, a named line under its stories; slice rm S
   sideco link SRC DST ["label"]       sideco unlink SRC DST
   sideco focus [ID…] [--why "…"]      no id clears the focus
   sideco note "Text" [--on ID]        open a discussion, on the board or on one element

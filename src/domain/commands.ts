@@ -17,6 +17,8 @@ export type Command =
   | { kind: "name-lane"; board: string; lane: string; label: string }
   /** A lane of the board's own; `lane` keeps an id given before, when a model is read back. */
   | { kind: "add-lane"; board: string; label: string; before?: string; lane?: string }
+  | { kind: "add-slice"; board: string; label: string; before?: string; slice?: string }
+  | { kind: "remove-slice"; board: string; slice: string }
   | { kind: "remove-lane"; board: string; lane: string }
   /** Before `before`, else last. */
   | { kind: "move-lane"; board: string; lane: string; before?: string }
@@ -148,6 +150,16 @@ export function parseCommand(input: unknown): Command {
       };
     case "remove-lane":
       return { kind, board: boardId(f), lane: text(f, "lane", 40) };
+    case "add-slice":
+      return {
+        kind,
+        board: boardId(f),
+        label: text(f, "label", LIMITS.title),
+        before: optional(f, "before", (x, k) => text(x, k, 40)),
+        slice: optional(f, "slice", (x, k) => text(x, k, 40)),
+      };
+    case "remove-slice":
+      return { kind, board: boardId(f), slice: text(f, "slice", 40) };
     case "move-lane":
       return {
         kind,

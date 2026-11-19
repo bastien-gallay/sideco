@@ -15,6 +15,8 @@ export const SVG_STYLE = `
 .shows-backbone .step-caption, .shows-backbone .heads-backbone-strip { display: inline; }
 .step-caption { display: none; fill: var(--sideco-muted, #59636E); font-size: 11px; text-anchor: middle; }
 .band-step-label { fill: var(--sideco-muted, #59636E); font-size: 11px; text-anchor: middle; }
+.slice-rule { stroke: var(--sideco-ink, #1F2328); stroke-width: 2; stroke-dasharray: 8 4; }
+.slice-label { fill: var(--sideco-ink, #1F2328); font-size: 12px; font-weight: 700; }
 .lane-bg { fill: var(--sideco-lane, #F3F4F6); }
 .lane-label { fill: var(--sideco-ink, #1F2328); font-size: 13px; font-weight: 600; }
 .lane-count { fill: var(--sideco-muted, #59636E); font-size: 12px; text-anchor: end; }
@@ -85,6 +87,9 @@ export function bandMarkup(b: Band): string {
         word ? `<text class="${cls}" x="${x}" y="${mid + 4}"${turn}>${esc(word)}</text>` : "";
       return `<g class="band band-axis"><text class="axis-label" x="${cx}" y="${mid + 4}"${turn}>${esc(b.label)} →</text>${end("axis-bound", cx - half, b.low)}${end("axis-bound is-high", cx + half, b.high)}</g>`;
     }
+    case "slice":
+      // A line across the board, its name just under it: the stories above it ship first.
+      return `<g class="band band-slice"><line class="slice-rule" x1="${b.x}" y1="${b.y}" x2="${b.x + b.w}" y2="${b.y}"/><text class="slice-label" x="12" y="${b.y + 18}">${esc(b.label)}</text></g>`;
     case "lane":
       return `<g class="band band-lane"><rect class="lane-bg" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="10"/>${laneHeading(b)}</g>`;
   }

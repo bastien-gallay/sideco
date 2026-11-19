@@ -55,6 +55,18 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
       ];
     case "LaneMoved":
       return [{ event: "LaneMoved", board: b, lane: e.lane, before: laneAfter(board, e.lane) }];
+    case "SliceAdded":
+      return [{ event: "SliceRemoved", board: b, slice: e.slice }];
+    case "SliceRemoved": {
+      const slices = board.slices ?? [];
+      const at = slices.findIndex((s) => s.id === e.slice);
+      const slice = slices[at];
+      return (
+        slice && [
+          { event: "SliceAdded", board: b, slice: slice.id, label: slice.label, before: slices[at + 1]?.id },
+        ]
+      );
+    }
     case "BoardRemoved":
       return [{ event: "BoardRestored", board: b, title: board.title }];
     case "BoardRestored":
@@ -190,6 +202,9 @@ function writes(e: BoardEvent): string[] {
       return [`lane:${e.lane}.*`];
     case "LaneMoved":
       return [`lane:${e.lane}.place`];
+    case "SliceAdded":
+    case "SliceRemoved":
+      return [`slice:${e.slice}.*`];
     case "ColumnInserted":
     case "ColumnRemoved":
     case "ColumnMoved":

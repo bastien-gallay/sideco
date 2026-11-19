@@ -6,7 +6,7 @@
  * way to get a workspace for a past moment.
  */
 import type { Actor, Recorded, Todo } from "./events.ts";
-import { LANE_PREFIX, lanesOf } from "./formats.ts";
+import { LANE_PREFIX, lanesOf, SLICE_PREFIX } from "./formats.ts";
 import { invert, remapColumns, remember as rememberGesture, supersede, type Trails } from "./undo.ts";
 
 export interface Element {
@@ -56,6 +56,12 @@ export interface Turn {
   seq: number;
 }
 
+/** A named line across a story map: the stories above it ship before the ones below. */
+export interface Slice {
+  id: string;
+  label: string;
+}
+
 export interface Board {
   id: string;
   title: string;
@@ -64,6 +70,8 @@ export interface Board {
   lanes: Record<string, string>;
   /** The board's own lanes, in order, once it added, moved or removed one; until then, its workshop's (see `lanesOf`). */
   laneOrder?: string[];
+  /** The lines under the stories of a story map, top to bottom: what ships first is above. */
+  slices?: Slice[];
   /** In stacking order: within a cell, earlier elements sit first. */
   elements: Element[];
   edges: Edge[];
@@ -244,6 +252,18 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
       if (n) board.minted[LANE_PREFIX] = Math.max(board.minted[LANE_PREFIX] ?? 0, Number(n));
       break;
     }
+    case "SliceAdded": {
+      const order = (board.slices ?? []).filter((slice) => slice.id !== e.slice);
+      const at = e.before === undefined ? -1 : order.findIndex((slice) => slice.id === e.before);
+      order.splice(at === -1 ? order.length : at, 0, { id: e.slice, label: e.label });
+      board.slices = order;
+      const n = /^slice-(\d+)$/.exec(e.slice)?.[1];
+      if (n) board.minted[SLICE_PREFIX] = Math.max(board.minted[SLICE_PREFIX] ?? 0, Number(n));
+      break;
+    }
+    case "SliceRemoved":
+      board.slices = (board.slices ?? []).filter((slice) => slice.id !== e.slice);
+      break;
     case "LaneRemoved":
       board.laneOrder = lanesOf(board).filter((lane) => lane !== e.lane);
       delete board.lanes[e.lane];

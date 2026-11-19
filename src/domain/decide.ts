@@ -12,6 +12,7 @@ import {
   LANE_PREFIX,
   lanesOf,
   NOTE_PREFIX,
+  SLICE_PREFIX,
 } from "./formats.ts";
 import {
   type Board,
@@ -91,6 +92,22 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
         events: [{ event: "LaneAdded", board: b, lane, label: cmd.label, before: cmd.before }],
         minted: lane,
       };
+    }
+    case "add-slice": {
+      requireSliced(format);
+      if (cmd.before !== undefined) requireSlice(board, cmd.before);
+      const slice = cmd.slice ?? `${SLICE_PREFIX}${(board.minted[SLICE_PREFIX] ?? 0) + 1}`;
+      if ((board.slices ?? []).some((s) => s.id === slice))
+        throw new CommandError(`slice ${slice} is already on "${b}"`);
+      return {
+        events: [{ event: "SliceAdded", board: b, slice, label: cmd.label, before: cmd.before }],
+        minted: slice,
+      };
+    }
+    case "remove-slice": {
+      requireSliced(format);
+      const slice = requireSlice(board, cmd.slice);
+      return { events: [{ event: "SliceRemoved", board: b, slice }] };
     }
     case "remove-lane": {
       requireOwnLanes(format, "remove");
@@ -357,6 +374,17 @@ function requireNote(board: Board, id: string): Note {
   const note = board.notes.find((n) => n.id === id);
   if (!note) throw new CommandError(`no note ${id} on "${board.id}"`);
   return note;
+}
+
+function requireSliced(format: Format): void {
+  if (!format.sliced) throw new CommandError(`${format.name.en} boards have no slices`);
+}
+
+function requireSlice(board: Board, slice: string): string {
+  const ids = (board.slices ?? []).map((s) => s.id);
+  if (!ids.includes(slice))
+    throw new CommandError(`no slice "${slice}" on "${board.id}" (slices: ${ids.join(", ") || "none"})`);
+  return slice;
 }
 
 function requireLane(board: Board, format: Format, lane: string): string {

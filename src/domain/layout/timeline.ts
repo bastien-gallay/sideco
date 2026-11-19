@@ -28,6 +28,8 @@ const CAPTION_CHARS = 26;
 const ROW_PAD = 12;
 const STACK_GAP = 8;
 const EMPTY_ROW_H = 44;
+/** The room a slice takes under the stories: its line, its name, and a little air. */
+const SLICE_H = 44;
 /** How far either side of the rule between two steps their headings offer a column. */
 const EDGE_REACH = 32;
 
@@ -72,7 +74,10 @@ export function layoutTimeline(
 ): Scene {
   const grid = timelineGrid(board, format);
   const width = HEADER_W + grid.columns * COL_W + MARGIN;
-  const bottom = grid.rows.reduce((max, row) => Math.max(max, row.y + row.h), TOP_H);
+  const rowsEnd = grid.rows.reduce((max, row) => Math.max(max, row.y + row.h), TOP_H);
+  // The slices go under the last row, the stories', one under the other.
+  const slices = format.sliced ? (board.slices ?? []) : [];
+  const bottom = rowsEnd + slices.length * SLICE_H;
 
   const captions = captionsOf(board, format, grid.columns);
   const bands: Band[] = [];
@@ -102,6 +107,18 @@ export function layoutTimeline(
       swatch: type?.fill,
     });
   }
+
+  slices.forEach((slice, index) => {
+    bands.push({
+      kind: "slice",
+      id: slice.id,
+      label: slice.label,
+      x: 0,
+      y: rowsEnd + index * SLICE_H,
+      w: width,
+      h: SLICE_H,
+    });
+  });
 
   const cards: Card[] = [];
   /** Per cell, where its next card goes, below the ones already placed. */

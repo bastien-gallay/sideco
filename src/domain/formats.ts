@@ -79,6 +79,11 @@ export interface Format {
    * keeps them in sight under the step numbers once they have scrolled away.
    */
   backbone?: readonly string[];
+  /**
+   * Only for `timeline` layouts: the kind of the last row, under which the board
+   * draws its slices, the lines that say what ships first.
+   */
+  sliced?: string;
 }
 
 const t = (en: string, fr: string): Text => ({ en, fr });
@@ -259,6 +264,7 @@ const STORY_MAP: Format = {
   layout: "timeline",
   lanes: [],
   backbone: ["activity", "task"],
+  sliced: "story",
   types: [
     {
       id: "activity",
@@ -409,6 +415,8 @@ export function laneName(
 
 /** The key of `minted` that counts the lanes a board added: they are lane-1, lane-2… */
 export const LANE_PREFIX = "lane-";
+/** The ids a board gives its slices: `slice-1`, `slice-2`… */
+export const SLICE_PREFIX = "slice-";
 
 /** The lanes of a board, in order: its own when it changed them, else its workshop's. */
 export function lanesOf(board: { format: string; laneOrder?: readonly string[] }): string[] {

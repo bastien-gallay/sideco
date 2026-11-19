@@ -25,6 +25,8 @@ export interface Model {
   lanes?: Record<string, string>;
   /** The board's lanes in order, when it added, moved or removed some of its workshop's. */
   laneOrder?: string[];
+  /** A story map's slices, top to bottom. */
+  slices?: { id: string; label: string }[];
   elements: ModelElement[];
   edges: { src: string; dst: string; label?: string }[];
 }
@@ -39,6 +41,7 @@ export function toModel(board: Board): Model {
     format: board.format,
     ...(Object.keys(board.lanes).length > 0 ? { lanes: { ...board.lanes } } : {}),
     ...(board.laneOrder ? { laneOrder: [...board.laneOrder] } : {}),
+    ...(board.slices?.length ? { slices: board.slices.map((s) => ({ id: s.id, label: s.label })) } : {}),
     elements: board.elements.map((e) => ({
       id: e.id,
       type: e.type,
@@ -91,6 +94,18 @@ export function fromModel(input: unknown, board: string): Command[] {
     if (said(lane) && given.has(lane) && (!order || order.includes(lane)))
       commands.push({ kind: "name-lane", board, lane, label: said(lane) });
   }
+
+  if (format?.sliced && Array.isArray(model.slices))
+    for (const raw of model.slices) {
+      const slice = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+      if (typeof slice.label !== "string") continue;
+      commands.push({
+        kind: "add-slice",
+        board,
+        label: slice.label,
+        ...(typeof slice.id === "string" ? { slice: slice.id } : {}),
+      });
+    }
 
   const elements = Array.isArray(model.elements) ? model.elements.map(readElement) : [];
   const idFor = idGiver(format, elements);
