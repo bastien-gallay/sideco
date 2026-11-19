@@ -99,6 +99,10 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   const hint = root.appendChild(svg("rect", { class: "drop-hint", rx: 8, visibility: "hidden" }));
   const conns = root.appendChild(svg("g", { class: "layer-conns" }));
   const cards = root.appendChild(svg("g", { class: "layer-cards" }));
+  /** Over the cards, the one in the hand included: where it would land stays in sight. */
+  const dropLine = root.appendChild(
+    svg("rect", { class: "drop-line", rx: 2, height: 4, visibility: "hidden" }),
+  );
   /** The names of rows, steps and lanes, over the cards: they stay on screen while the board scrolls under them. */
   const heads = root.appendChild(svg("g", { class: "layer-heads" }));
   // The "+" stays over everything: the one that inserts a column sits on the step numbers.
@@ -837,6 +841,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
           : undefined;
     if (!band) {
       hint.setAttribute("visibility", "hidden");
+      dropLine.setAttribute("visibility", "hidden");
       return;
     }
     hint.setAttribute("x", String(band.x + 2));
@@ -844,6 +849,32 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     hint.setAttribute("width", String(band.w - 4));
     hint.setAttribute("height", String(band.h - 4));
     hint.setAttribute("visibility", "visible");
+    showDropLine(target);
+  }
+
+  /** Where in its cell or lane the card would land: a line between two cards, or under the last. */
+  function showDropLine(target: Target): void {
+    const moving = drag?.id;
+    const peers =
+      board && (target.kind === "cell" || target.kind === "slot")
+        ? board.elements.filter(
+            (e) =>
+              e.id !== moving &&
+              (target.kind === "cell"
+                ? e.col === target.col && e.type === target.type
+                : target.kind === "slot" && e.lane === target.lane),
+          )
+        : [];
+    const before = target.kind === "cell" || target.kind === "slot" ? target.before : undefined;
+    const at = scene.cards.find((c) => c.id === (before ?? peers.at(-1)?.id));
+    if (!at) {
+      dropLine.setAttribute("visibility", "hidden");
+      return;
+    }
+    dropLine.setAttribute("x", String(at.x));
+    dropLine.setAttribute("y", String(before ? at.y - 6 : at.y + at.h + 2));
+    dropLine.setAttribute("width", String(at.w));
+    dropLine.setAttribute("visibility", "visible");
   }
 
   let drag:
@@ -964,6 +995,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const done = drag;
     drag = undefined;
     hint.setAttribute("visibility", "hidden");
+    dropLine.setAttribute("visibility", "hidden");
     if (root.hasPointerCapture(event.pointerId)) root.releasePointerCapture(event.pointerId);
     if (!done || !board) return;
     nodes.get(done.id)?.g.classList.remove("is-dragging");
@@ -971,7 +1003,19 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       dropped = true;
       const element = board.elements.find((e) => e.id === done.id);
       const target = done.target;
-      if (element && target.kind === "cell" && target.col !== element.col) {
+      if (element && target.kind === "cell" && target.type === element.type) {
+        // Into another step, or to another place in its own cell; where it already is, nothing is sent.
+        const cell = board.elements.filter((e) => e.col === element.col && e.type === element.type);
+        const next = cell[cell.indexOf(element) + 1]?.id;
+        if (target.col !== element.col || target.before !== next)
+          void send({
+            kind: "move",
+            board: board.id,
+            id: done.id,
+            col: target.col,
+            ...(target.before ? { before: target.before } : {}),
+          });
+      } else if (element && target.kind === "cell" && target.col !== element.col) {
         void send({ kind: "move", board: board.id, id: done.id, col: target.col });
       } else if (element && target.kind === "slot") {
         void send({ kind: "move", board: board.id, id: done.id, lane: target.lane, before: target.before });

@@ -115,7 +115,13 @@ export function layoutTimeline(
  * The cell under a point; above the rows, the edge between two steps nearest
  * to it, as far as steps hold cards; `none` outside the grid.
  */
-export function locateInTimeline(board: Board, format: Format, x: number, y: number): Target {
+export function locateInTimeline(
+  board: Board,
+  format: Format,
+  x: number,
+  y: number,
+  moving?: string,
+): Target {
   if (y >= 0 && y < TOP_H) {
     const edge = columnBoundary(x);
     const inReach = x >= HEADER_W - COL_W / 2 && edge <= lastColumn(board);
@@ -125,7 +131,17 @@ export function locateInTimeline(board: Board, format: Format, x: number, y: num
   const row = grid.rows.find((candidate) => y >= candidate.y && y < candidate.y + candidate.h);
   const col = Math.floor((x - HEADER_W) / COL_W) + 1;
   if (!row || col < 1 || col > grid.columns) return { kind: "none" };
-  return { kind: "cell", col, type: row.type };
+  // The stack as it would be without the card in the hand: the drop lands before the first card whose upper half is under the pointer.
+  let top = row.y + ROW_PAD;
+  const before = board.elements
+    .filter((e) => e.col === col && e.type === row.type && e.id !== moving)
+    .find((e) => {
+      const h = labelHeight(e.label);
+      const under = y < top + h / 2;
+      top += h + STACK_GAP;
+      return under;
+    });
+  return { kind: "cell", col, type: row.type, ...(before ? { before: before.id } : {}) };
 }
 
 /** The free room of a cell: under its stack, or from the top of an empty cell, down to the foot of its row. */

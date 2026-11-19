@@ -939,6 +939,12 @@ kbd {
   pointer-events: none;
 }
 
+/* Where a card would land in its cell or lane: between two cards, or under the last. */
+.drop-line {
+  fill: var(--accent);
+  pointer-events: none;
+}
+
 /* Where a lane would land: a bar on the edge, not a shade over a lane. */
 .drop-hint.is-lane-drop {
   opacity: 0.7;

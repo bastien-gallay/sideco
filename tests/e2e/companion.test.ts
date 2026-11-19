@@ -1535,6 +1535,38 @@ describe("a kanban's own lanes, from the page", () => {
   });
 });
 
+describe("a card reordered in its cell, by the mouse", () => {
+  const BOARD = "pile";
+  const stack = async (): Promise<string> =>
+    ((await workspace()).boards.find((b) => b.id === BOARD)?.elements ?? []).map((e) => e.id).join();
+
+  test("dropped on the upper half of a card, it lands before it; on its own place, nothing is sent", async () => {
+    await agent(
+      `board new "Pile" --id ${BOARD}\nadd event "Un" --col 1\nadd event "Deux" --col 1\nadd event "Trois" --col 1`,
+    );
+    await page.locator(".board-picker select").selectOption(BOARD);
+    await card("E3").waitFor();
+    const seq = (await workspace()).seq;
+    const three = await centre("E3");
+    await dragTo("E3", three.x, three.y + 3);
+    await Bun.sleep(300);
+    expect((await workspace()).seq).toBe(seq);
+    const one = await settled("E1");
+    await page.mouse.move(three.x, three.y);
+    await page.mouse.down();
+    await page.mouse.move(one.x + one.width / 2, one.y + 4, { steps: 12 });
+    await page.locator(".drop-line").waitFor();
+    await shot("43-reorder-in-cell");
+    await page.mouse.up();
+    await until("E3 is first in its cell", async () => (await stack()) === "E3,E1,E2");
+    expect((await elementOf(BOARD, "E3"))?.col).toBe(1);
+    await agent(`board rm ${BOARD}`);
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== BOARD;
+    });
+  });
+});
+
 describe("a tab opened on no board in particular", () => {
   const MINE = "tenu";
   const OTHER = "autre-session";

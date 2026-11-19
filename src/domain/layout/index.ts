@@ -58,7 +58,7 @@ export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE, span?
 /** What a point of the scene means on this board: a cell, a slot in a lane, or nothing. */
 export function locate(board: Board, x: number, y: number, moving?: string, span?: number): Target {
   const format = findFormat(board.format);
-  if (format?.layout === "timeline") return locateInTimeline(board, format, x, y);
+  if (format?.layout === "timeline") return locateInTimeline(board, format, x, y, moving);
   if (format?.layout === "columns") return locateInColumns(board, format, x, y, moving, span);
   return { kind: "none" };
 }

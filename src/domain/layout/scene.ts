@@ -74,7 +74,8 @@ export interface Room {
 }
 
 export type Target =
-  | { kind: "cell"; col: number; type: string }
+  /** `before`: the card of the cell a drop would land before; none at the foot of its stack. */
+  | { kind: "cell"; col: number; type: string; before?: string }
   | { kind: "slot"; lane: string; before?: string }
   /** The edge between two steps of a timeline: a column inserted there takes the number `col`. */
   | { kind: "boundary"; col: number }
