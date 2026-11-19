@@ -90,9 +90,97 @@ const focusBar = h("div", { class: "focus-bar", hidden: true });
 const canvas = h("div", { class: "canvas" });
 const empty = h("div", { class: "empty", hidden: true });
 /** What Claude's session does, under the card panel: it scrolls on its own, to its latest step. */
-const sessionPanel = h("section", { class: "session", "aria-label": t.sessionPanel });
+const sessionPanel = h("section", {
+  class: "session",
+  id: "tab-session-panel",
+  role: "tabpanel",
+  "aria-labelledby": "tab-session",
+});
 /** The card chosen on the board, as it reads in full: shown while a card is chosen, folded on demand. */
-const cardPanel = h("details", { class: "card-panel", open: true, hidden: true });
+const cardPanel = h("section", {
+  class: "card-panel",
+  id: "tab-detail-panel",
+  role: "tabpanel",
+  "aria-labelledby": "tab-detail",
+  hidden: true,
+});
+
+// ── The right panel's tabs: what Claude's session does, and the chosen card ───
+
+type Tab = "session" | "detail";
+const TABS: Tab[] = ["session", "detail"];
+const TAB_ICON: Record<Tab, string> = { session: "◷", detail: "ⓘ" };
+let tab: Tab = "session";
+/** The card the Detail tab was last opened for: a new choice opens it again, a repaint does not. */
+let detailFor: string | null = null;
+
+const tabButtons: Record<Tab, HTMLButtonElement> = Object.fromEntries(
+  TABS.map((id) => [
+    id,
+    h(
+      "button",
+      {
+        type: "button",
+        role: "tab",
+        class: "tab",
+        id: `tab-${id}`,
+        "aria-controls": `tab-${id}-panel`,
+        onclick: () => chooseTab(id),
+      },
+      h("span", { class: "tab-icon", "aria-hidden": "true" }, TAB_ICON[id]),
+      h("span", { class: "tab-label" }, t.tabs[id]),
+    ),
+  ]),
+) as Record<Tab, HTMLButtonElement>;
+const tabList = h(
+  "div",
+  { class: "tabs", role: "tablist", "aria-label": t.sidePanel },
+  ...TABS.map((id) => tabButtons[id]),
+);
+
+/** A tab chosen opens the panel too: from the rail, it is the way back in. */
+function chooseTab(id: Tab, focus = false): void {
+  if (tabButtons[id].getAttribute("aria-disabled") === "true") return;
+  tab = id;
+  if (isFolded("right")) toggleFold("right");
+  paintTabs();
+  if (focus) tabButtons[id].focus();
+}
+
+function paintTabs(): void {
+  const can: Record<Tab, boolean> = { session: true, detail: !cardPanel.dataset.empty };
+  if (!can[tab]) tab = "session";
+  for (const id of TABS) {
+    const button = tabButtons[id];
+    const chosen = id === tab;
+    button.setAttribute("aria-selected", String(chosen));
+    button.tabIndex = chosen ? 0 : -1;
+    if (can[id]) button.removeAttribute("aria-disabled");
+    else button.setAttribute("aria-disabled", "true");
+    button.title = can[id] ? t.tabs[id] : t.detailTabEmpty;
+  }
+  sessionPanel.hidden = tab !== "session";
+  cardPanel.hidden = tab !== "detail";
+}
+
+// The arrows go from tab to tab, past the one that has nothing to show yet.
+tabList.addEventListener("keydown", (event) => {
+  const open = TABS.filter((id) => tabButtons[id].getAttribute("aria-disabled") !== "true");
+  const at = open.indexOf(tab);
+  const next =
+    event.key === "ArrowRight" || event.key === "ArrowDown"
+      ? open[(at + 1) % open.length]
+      : event.key === "ArrowLeft" || event.key === "ArrowUp"
+        ? open[(at - 1 + open.length) % open.length]
+        : event.key === "Home"
+          ? open[0]
+          : event.key === "End"
+            ? open.at(-1)
+            : undefined;
+  if (!next) return;
+  event.preventDefault();
+  chooseTab(next, true);
+});
 const historyLabel = h("output", { class: "history-label" });
 const historyRange = h("input", {
   type: "range",
@@ -414,7 +502,7 @@ app.append(
     { class: "work" },
     h("aside", { class: "left", id: "panel-left" }, folds.left, palette, notes),
     h("section", { class: "stage" }, focusBar, findBar, canvas, empty),
-    h("aside", { class: "right", id: "panel-right" }, folds.right, cardPanel, sessionPanel),
+    h("aside", { class: "right", id: "panel-right" }, folds.right, tabList, sessionPanel, cardPanel),
   ),
   h(
     "footer",
@@ -929,7 +1017,7 @@ interface CardPanelModel {
 }
 
 const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
-  h("summary", {}, h("h2", {}, t.cardPanelOf(m.id))),
+  h("h2", {}, t.cardPanelOf(m.id)),
   h("p", { class: "card-panel-name" }, m.label),
   m.type !== undefined && h("p", { class: "hint" }, m.type),
   m.detail
@@ -953,7 +1041,6 @@ const TOOL_MARK: Record<string, string> = { ok: "✓", failed: "✗", running: "
 const TODO_MARK: Record<string, string> = { completed: "☑", in_progress: "◐", pending: "☐" };
 
 const paintSession = region(sessionPanel, (m: SessionModel) => [
-  h("h2", {}, t.session),
   h("p", { class: `session-status tone-${m.status.tone}` }, m.status.text),
   m.todos.length > 0 &&
     h(
@@ -1387,7 +1474,11 @@ function render(): void {
   view.paint(board, unread.cards);
 
   const chosen = board?.elements.find((e) => e.id === state.selected);
-  cardPanel.hidden = !chosen;
+  // A card newly chosen opens its tab; while it stays chosen, the reader's tab is theirs.
+  if (chosen && chosen.id !== detailFor) tab = "detail";
+  detailFor = chosen?.id ?? null;
+  if (chosen) delete cardPanel.dataset.empty;
+  else cardPanel.dataset.empty = "true";
   if (board && chosen) {
     const format = findFormat(board.format);
     paintCardPanel({
@@ -1399,6 +1490,7 @@ function render(): void {
     });
   }
 
+  paintTabs();
   paintSession({
     status: agentStatus(session, live ? state.listening : 0, locale),
     todos: (session?.todos ?? []).map((t) => ({ text: t.text, status: t.status })),

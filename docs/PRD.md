@@ -171,6 +171,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F43 | Un flux trop long pour une colonne se replie, dans une fenêtre assez large, en colonnes côte à côte qui se lisent comme un journal : on descend la première, la flèche monte par l'allée et reprend en haut de la suivante. Une coupe ne tombe qu'où une seule flèche passe et qu'aucune boucle ne remonte ; l'export garde une colonne (T76) | ✅ |
 | F44 | La barre du haut se lit en trois groupes : le tableau (son nom et un menu `⋯` qui reçoit nouveau tableau, export et suppression), ce que fait Claude au centre, la vue à droite (annuler, zoom, langue) (T87) | ✅ |
 | F45 | Les panneaux latéraux se replient en rail de 40 px, par leur bouton ou les touches `[` et `]` ; le rail de gauche garde les types pour ajouter d'un clic. Le choix est gardé par le navigateur, et une fenêtre de moins de 1 100 px replie les deux (T84) | ✅ |
+| F46 | Le panneau de droite a deux onglets, Session et Détail : choisir une carte ouvre Détail, grisé tant qu'aucune carte n'est choisie ; les flèches vont d'onglet en onglet, et le rail replié garde un onglet par icône (T85) | ✅ |
 
 ### 5.3 Exigences de qualité
 

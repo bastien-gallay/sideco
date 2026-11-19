@@ -123,6 +123,9 @@ export interface Messages {
   /** The panel that shows the card chosen on the board, and what it says of it. */
   cardPanel: string;
   cardPanelOf: (id: string) => string;
+  sidePanel: string;
+  tabs: Record<"session" | "detail", string>;
+  detailTabEmpty: string;
   noDetail: string;
   editDetail: string;
 
@@ -348,6 +351,9 @@ const en: Messages = {
   sessionHint: "Claude's steps will appear here as soon as a Claude Code session runs in this project.",
   cardPanel: "Chosen card",
   cardPanelOf: (id) => `Card ${id}`,
+  sidePanel: "Side panel",
+  tabs: { session: "Session", detail: "Detail" },
+  detailTabEmpty: "Detail: choose a card on the board",
   noDetail: "No detail yet.",
   editDetail: "Edit the detail",
 
@@ -612,6 +618,9 @@ const fr: Messages = {
     "Les étapes de Claude apparaîtront ici dès qu'une session Claude Code tournera dans ce projet.",
   cardPanel: "Carte choisie",
   cardPanelOf: (id) => `Carte ${id}`,
+  sidePanel: "Panneau latéral",
+  tabs: { session: "Session", detail: "Détail" },
+  detailTabEmpty: "Détail : choisis une carte sur le tableau",
   noDetail: "Pas encore de détail.",
   editDetail: "Modifier le détail",
 

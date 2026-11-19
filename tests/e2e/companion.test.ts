@@ -1187,7 +1187,9 @@ describe("the chosen card, read in the right panel", () => {
     expect(posted.ok).toBe(true);
     await card("E1").click();
     await panel().waitFor({ state: "visible" });
-    expect(await panel().locator("summary").textContent()).toBe("Card E1");
+    // A card chosen opens the Detail tab.
+    expect(await page.locator("#tab-detail").getAttribute("aria-selected")).toBe("true");
+    expect(await panel().locator("h2").textContent()).toBe("Card E1");
     expect(await panel().locator(".card-panel-name").textContent()).toBe(
       (await elementOf("ajout-case", "E1"))?.label ?? null,
     );
@@ -1233,21 +1235,30 @@ describe("the chosen card, read in the right panel", () => {
     await editor.waitFor({ state: "hidden" });
   });
 
-  test("folds, and stays folded while the board changes", async () => {
-    await panel().locator("summary").click();
-    expect(await panel().evaluate((d: HTMLDetailsElement) => d.open)).toBe(false);
+  test("the Session tab, once chosen, stays while the board changes under it", async () => {
+    await page.locator("#tab-session").click();
+    await panel().waitFor({ state: "hidden" });
     await agent('rename E1 "Paiement accepté"', "ajout-case");
-    await until(
-      "the new name reaches the panel",
-      async () => (await panel().locator(".card-panel-name").textContent()) === "Paiement accepté",
+    await until("the board has the new name", async () =>
+      ((await card("E1").textContent()) ?? "").includes("Paiement accepté"),
     );
-    expect(await panel().evaluate((d: HTMLDetailsElement) => d.open)).toBe(false);
-    await panel().locator("summary").click();
+    expect(await page.locator(".session").isVisible()).toBe(true);
+    await page.locator("#tab-detail").click();
+    expect(await panel().locator(".card-panel-name").textContent()).toBe("Paiement accepté");
   });
 
-  test("leaves when no card is chosen", async () => {
+  test("with no card chosen, Detail is quiet and the arrows pass it by", async () => {
     await page.keyboard.press("Escape");
     await panel().waitFor({ state: "hidden" });
+    const detail = page.locator("#tab-detail");
+    expect(await detail.getAttribute("aria-disabled")).toBe("true");
+    expect(await page.locator("#tab-session").getAttribute("aria-selected")).toBe("true");
+    await detail.click({ force: true });
+    expect(await page.locator("#tab-session").getAttribute("aria-selected")).toBe("true");
+    await page.locator("#tab-session").focus();
+    await page.keyboard.press("ArrowRight");
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe("tab-session");
+    await shot("57-tabs");
   });
 });
 
