@@ -444,8 +444,47 @@ input[type="text"] {
 }
 
 .right {
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
   border-left: 1px solid var(--rule);
+}
+
+/* The chosen card on top, read in full; the session under it scrolls on its own. */
+.card-panel {
+  flex: none;
+  max-height: 45%;
+  overflow-y: auto;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.card-panel summary {
+  padding: 2px 0 6px;
+}
+
+.card-panel summary h2 {
+  display: inline;
+}
+
+.card-panel-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.card-panel-detail {
+  margin: 8px 0 10px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.session {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .purpose,

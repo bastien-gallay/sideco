@@ -6,7 +6,7 @@
 import { type Command, slugify } from "../domain/commands.ts";
 import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../domain/export/index.ts";
 import { toMermaid } from "../domain/export/mermaid.ts";
-import { FORMATS, findFormat } from "../domain/formats.ts";
+import { FORMATS, findFormat, findType } from "../domain/formats.ts";
 import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import { addressee, findBoard, latestSession, readerOf } from "../domain/workspace.ts";
@@ -87,7 +87,10 @@ const notes = h("section", { class: "notes", "aria-label": t.notes });
 const focusBar = h("div", { class: "focus-bar", hidden: true });
 const canvas = h("div", { class: "canvas" });
 const empty = h("div", { class: "empty", hidden: true });
-const sessionPanel = h("aside", { class: "right", "aria-label": t.sessionPanel });
+/** What Claude's session does, under the card panel: it scrolls on its own, to its latest step. */
+const sessionPanel = h("section", { class: "session", "aria-label": t.sessionPanel });
+/** The card chosen on the board, as it reads in full: shown while a card is chosen, folded on demand. */
+const cardPanel = h("details", { class: "card-panel", open: true, hidden: true });
 const historyLabel = h("output", { class: "history-label" });
 const historyRange = h("input", {
   type: "range",
@@ -342,7 +345,7 @@ app.append(
     { class: "work" },
     h("aside", { class: "left" }, palette, notes),
     h("section", { class: "stage" }, focusBar, findBar, canvas, empty),
-    sessionPanel,
+    h("aside", { class: "right" }, cardPanel, sessionPanel),
   ),
   h(
     "footer",
@@ -814,6 +817,24 @@ function formatCard(id: string, onPick: () => void, disabled = false): HTMLEleme
   );
 }
 
+interface CardPanelModel {
+  id: string;
+  label: string;
+  type: string | undefined;
+  detail: string | undefined;
+  live: boolean;
+}
+
+const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
+  h("summary", {}, h("h2", {}, t.cardPanelOf(m.id))),
+  h("p", { class: "card-panel-name" }, m.label),
+  m.type !== undefined && h("p", { class: "hint" }, m.type),
+  m.detail
+    ? h("div", { class: "card-panel-detail" }, m.detail)
+    : h("p", { class: "hint card-panel-detail" }, t.noDetail),
+  m.live && h("button", { type: "button", onclick: () => view.annotate(m.id) }, t.editDetail),
+]);
+
 interface SessionModel {
   status: { tone: string; text: string };
   todos: { text: string; status: string }[];
@@ -1259,6 +1280,19 @@ function render(): void {
   empty.hidden = Boolean(board);
   if (!board) paintEmpty({ live });
   view.paint(board, unread.cards);
+
+  const chosen = board?.elements.find((e) => e.id === state.selected);
+  cardPanel.hidden = !chosen;
+  if (board && chosen) {
+    const format = findFormat(board.format);
+    paintCardPanel({
+      id: chosen.id,
+      label: chosen.label,
+      type: format && findType(format, chosen.type)?.label[locale],
+      detail: chosen.detail,
+      live,
+    });
+  }
 
   paintSession({
     status: agentStatus(session, live ? state.listening : 0, locale),

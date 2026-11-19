@@ -115,6 +115,11 @@ export interface Messages {
   turnInProgress: string;
   earlierSteps: (count: number) => string;
   sessionHint: string;
+  /** The panel that shows the card chosen on the board, and what it says of it. */
+  cardPanel: string;
+  cardPanelOf: (id: string) => string;
+  noDetail: string;
+  editDetail: string;
 
   // The hand-over.
   messageForClaude: string;
@@ -331,6 +336,10 @@ const en: Messages = {
   turnInProgress: "(turn in progress)",
   earlierSteps: (count) => `… ${count} earlier step${plural(count)}`,
   sessionHint: "Claude's steps will appear here as soon as a Claude Code session runs in this project.",
+  cardPanel: "Chosen card",
+  cardPanelOf: (id) => `Card ${id}`,
+  noDetail: "No detail yet.",
+  editDetail: "Edit the detail",
 
   messageForClaude: "Message for Claude",
   messagePlaceholder: "A word for Claude (optional)",
@@ -585,6 +594,10 @@ const fr: Messages = {
   earlierSteps: (count) => `… ${count} étape${plural(count)} avant`,
   sessionHint:
     "Les étapes de Claude apparaîtront ici dès qu'une session Claude Code tournera dans ce projet.",
+  cardPanel: "Carte choisie",
+  cardPanelOf: (id) => `Carte ${id}`,
+  noDetail: "Pas encore de détail.",
+  editDetail: "Modifier le détail",
 
   messageForClaude: "Message pour Claude",
   messagePlaceholder: "Un mot pour Claude (facultatif)",

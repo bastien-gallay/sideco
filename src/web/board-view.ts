@@ -111,6 +111,8 @@ export interface BoardView {
   reveal(id: string): void;
   /** Gives the card the keyboard: it is where Tab enters the board from now on. */
   focus(id: string): void;
+  /** Opens the editor of the card's detail, under the card. */
+  annotate(id: string): void;
 }
 
 export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
@@ -1469,6 +1471,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" });
     },
     focus: focusCard,
+    annotate,
     zoomBy(step) {
       // From a fitted zoom, the next step that way.
       const next = step > 0 ? ZOOMS.find((z) => z > zoom + 0.001) : ZOOMS.findLast((z) => z < zoom - 0.001);

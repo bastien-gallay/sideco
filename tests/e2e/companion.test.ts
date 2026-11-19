@@ -1160,6 +1160,67 @@ describe("reopening a card without changing it", () => {
   });
 });
 
+describe("the chosen card, read in the right panel", () => {
+  const panel = () => page.locator(".card-panel");
+
+  test("shows the card's name, its kind and its whole detail, line by line", async () => {
+    // Posted as JSON: the CLI grammar holds one command per line.
+    const posted = await fetch(`${running.url}/api/commands`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        actor: "agent",
+        session: SESSION,
+        commands: [
+          {
+            kind: "annotate",
+            board: "ajout-case",
+            id: "E1",
+            detail: "Paiement par carte.\nVirement refusé.",
+          },
+        ],
+      }),
+    });
+    expect(posted.ok).toBe(true);
+    await card("E1").click();
+    await panel().waitFor({ state: "visible" });
+    expect(await panel().locator("summary").textContent()).toBe("Card E1");
+    expect(await panel().locator(".card-panel-name").textContent()).toBe(
+      (await elementOf("ajout-case", "E1"))?.label ?? null,
+    );
+    expect(await panel().locator(".card-panel-detail").textContent()).toBe(
+      "Paiement par carte.\nVirement refusé.",
+    );
+    await shot("55-card-panel");
+  });
+
+  test("opens the detail editor from the panel", async () => {
+    await panel().locator("button", { hasText: "Edit the detail" }).click();
+    const editor = page.locator("textarea.card-editor");
+    await editor.waitFor({ state: "visible" });
+    expect(await editor.getAttribute("aria-label")).toBe("Detail of E1");
+    await editor.press("Escape");
+    await editor.waitFor({ state: "hidden" });
+  });
+
+  test("folds, and stays folded while the board changes", async () => {
+    await panel().locator("summary").click();
+    expect(await panel().evaluate((d: HTMLDetailsElement) => d.open)).toBe(false);
+    await agent('rename E1 "Paiement accepté"', "ajout-case");
+    await until(
+      "the new name reaches the panel",
+      async () => (await panel().locator(".card-panel-name").textContent()) === "Paiement accepté",
+    );
+    expect(await panel().evaluate((d: HTMLDetailsElement) => d.open)).toBe(false);
+    await panel().locator("summary").click();
+  });
+
+  test("leaves when no card is chosen", async () => {
+    await page.keyboard.press("Escape");
+    await panel().waitFor({ state: "hidden" });
+  });
+});
+
 describe("the board from the keyboard", () => {
   const focused = () => page.evaluate(() => document.activeElement?.getAttribute("data-id") ?? null);
 
