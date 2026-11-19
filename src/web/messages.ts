@@ -60,6 +60,8 @@ export interface Messages {
   addLane: string;
   removeLane: (name: string) => string;
   laneRemoved: (name: string) => string;
+  removeStep: (col: number) => string;
+  stepRemoved: (col: number) => string;
   howTimeline: string;
   howColumns: string;
   howGraph: string;
@@ -256,8 +258,10 @@ const en: Messages = {
   addLane: "Add a lane here",
   removeLane: (name) => `Remove the lane ${name}`,
   laneRemoved: (name) => `Lane ${name} removed.`,
+  removeStep: (col) => `Remove step ${col}`,
+  stepRemoved: (col) => `Step ${col} removed.`,
   howTimeline:
-    "Point at a cell and click its +, or click a type to add it at the end. Point between two step numbers to insert a column.",
+    "Point at a cell and click its +, or click a type to add it at the end. Point between two step numbers to insert a column; an empty step offers a × to remove it.",
   howColumns: "Point at a column and click a +, or click a type. Drag to move.",
   howGraph: "Select an element so that the next one is linked to it.",
   howGraphFrom: (id) => `The new element will be linked to ${id}.`,
@@ -441,8 +445,10 @@ const fr: Messages = {
   addLane: "Ajouter une colonne ici",
   removeLane: (name) => `Supprimer la colonne ${name}`,
   laneRemoved: (name) => `Colonne ${name} supprimée.`,
+  removeStep: (col) => `Supprimer l'étape ${col}`,
+  stepRemoved: (col) => `Étape ${col} supprimée.`,
   howTimeline:
-    "Survole une case et clique son +, ou clique un type pour l'ajouter à la suite. Survole entre deux numéros d'étape pour insérer une colonne.",
+    "Survole une case et clique son +, ou clique un type pour l'ajouter à la suite. Survole entre deux numéros d'étape pour insérer une colonne ; une étape vide offre un × pour la retirer.",
   howColumns: "Survole une colonne et clique un +, ou clique un type. Glisse pour déplacer.",
   howGraph: "Sélectionne un élément pour que le suivant lui soit relié.",
   howGraphFrom: (id) => `Le nouvel élément sera relié à ${id}.`,

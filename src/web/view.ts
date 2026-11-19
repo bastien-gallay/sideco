@@ -9,12 +9,13 @@ import { type Changes, describeChanges } from "../domain/digest.ts";
 import type { Actor, Recorded } from "../domain/events.ts";
 import { findFormat, findType, laneName, lanesOf } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
-import { type Band, headingOf, type Target, vacancy } from "../domain/layout/index.ts";
+import { type Band, headingOf, stepOf, type Target, vacancy } from "../domain/layout/index.ts";
 import {
   type AgentStatus,
   type Board,
   findBoard,
   findElement,
+  lastColumn,
   type Session,
   type SessionTurn,
   threads,
@@ -806,7 +807,12 @@ export function addOffers(
       },
     ];
   }
-  const removal = target.kind === "slot" ? laneRemoval(board, target.lane, locale, span) : [];
+  const removal =
+    target.kind === "slot"
+      ? laneRemoval(board, target.lane, locale, span)
+      : target.kind === "cell"
+        ? stepRemoval(board, target.col, locale)
+        : [];
   const types = target.kind === "cell" ? [findType(format, target.type)] : format.types;
   const several = types.length > 1;
   const w = several ? 40 : 28;
@@ -850,6 +856,27 @@ function laneRemoval(board: Board, lane: string, locale: Locale, span?: number):
       // Left of the count of cards, at the right of the heading.
       x: heading.x + heading.w - w - 32,
       y: heading.y + (heading.h - OFFER_H) / 2,
+      w,
+      h: OFFER_H,
+    },
+  ];
+}
+
+/** On a timeline, the "×" at the top of an empty step, as long as a later step holds cards. */
+function stepRemoval(board: Board, col: number, locale: Locale): Offer[] {
+  const top = stepOf(board, col);
+  if (!top || col > lastColumn(board) || board.elements.some((e) => e.col === col)) return [];
+  const w = 24;
+  return [
+    {
+      type: "remove-column",
+      column: col,
+      label: MESSAGES[locale].removeStep(col),
+      text: "×",
+      fill: "#FFFFFF",
+      ink: "#1F2328",
+      x: top.x + top.w - w - 8,
+      y: top.y + 4,
       w,
       h: OFFER_H,
     },

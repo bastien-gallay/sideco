@@ -998,9 +998,35 @@ describe("adding where the pointer is", () => {
     await until("step 2 moved to 3", async () => (await elementOf("ajout-case", "E2"))?.col === 3);
     expect((await elementOf("ajout-case", "P1"))?.col).toBe(3);
     expect((await elementOf("ajout-case", "E1"))?.col).toBe(1);
-    // Back to where the next tests expect the cards.
-    await agent("move E2 --col 2\nmove P1 --col 2", "ajout-case");
-    await until("step 2 is back", async () => (await elementOf("ajout-case", "E2"))?.col === 2);
+  });
+
+  test("timeline: an empty step offers a « × » at its top, and the steps after it move back", async () => {
+    // The card added before is still selected: its toolbar would cover the step.
+    await page.keyboard.press("Escape");
+    await page.locator(".card-tools").waitFor({ state: "hidden" });
+    // Step 2 is the empty one the column made; its event cell is level with E1, one step right.
+    const e1 = await centre("E1");
+    const step = await page.locator(".band-step-label", { hasText: /^2$/ }).boundingBox();
+    if (!step) throw new Error("no heading for step 2");
+    await page.mouse.move(step.x + step.width / 2, e1.y);
+    const remove = page.locator('.sideco-board .add-here[data-type="remove-column"][data-column="2"]');
+    await remove.waitFor();
+    expect(await remove.getAttribute("aria-label")).toBe("Remove step 2");
+    await Bun.sleep(200);
+    await shot("21-remove-step");
+
+    await remove.click();
+    await until("step 3 moved back to 2", async () => (await elementOf("ajout-case", "E2"))?.col === 2);
+    expect((await elementOf("ajout-case", "P1"))?.col).toBe(2);
+    await page.keyboard.press("Control+z");
+    await until(
+      "Undo puts the empty step back",
+      async () => (await elementOf("ajout-case", "E2"))?.col === 3,
+    );
+    // The page offers Redo once the undo has reached it, not before.
+    await page.locator("button:not([disabled])", { hasText: /^Redo$/ }).waitFor();
+    await page.keyboard.press("Control+Shift+z");
+    await until("Redo takes it out again", async () => (await elementOf("ajout-case", "E2"))?.col === 2);
   });
 
   test("the offer leaves with the pointer, and is not made on a board shown as it was", async () => {

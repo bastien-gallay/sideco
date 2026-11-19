@@ -26,7 +26,7 @@ import {
   WRAP_LINES,
   wrap,
 } from "./scene.ts";
-import { layoutTimeline, locateInTimeline, roomInTimeline, roomOnBoundary } from "./timeline.ts";
+import { layoutTimeline, locateInTimeline, roomInTimeline, roomOnBoundary, stepTop } from "./timeline.ts";
 
 const EMPTY: Scene = { width: 0, height: 0, bands: [], cards: [], connectors: [] };
 
@@ -90,6 +90,11 @@ export function laneDrop(
 ): { before?: string; x: number } | undefined {
   const format = findFormat(board.format);
   return format?.ownLanes && !format.grid ? dropLane(board, format, x, moving, span) : undefined;
+}
+
+/** The top of a step of a timeline: where what is done to the whole step is offered. */
+export function stepOf(board: Board, col: number): Room | undefined {
+  return findFormat(board.format)?.layout === "timeline" ? stepTop(col) : undefined;
 }
 
 /** The heading of a lane of a columns board: where what is done to the whole lane is offered. */

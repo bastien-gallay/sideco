@@ -437,7 +437,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     adds.replaceChildren(
       ...offers.map((offer) => {
         const g = svg("g", {
-          class: offer.column === undefined ? "add-here" : "add-here insert-column",
+          class: offer.type === "column" ? "add-here insert-column" : "add-here",
           "data-type": offer.type,
           ...(offer.column === undefined ? {} : { "data-column": offer.column }),
           ...(offer.before === undefined ? {} : { "data-before": offer.before }),
@@ -722,6 +722,13 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const name = scene.bands.find((band) => band.kind === "lane" && band.id === lane)?.label ?? lane;
     void send({ kind: "remove-lane", board: board.id, lane }).then((done) => {
       if (done !== undefined) hooks.removed(t.laneRemoved(name));
+    });
+  }
+
+  function removeStep(col: number): void {
+    if (!board || !isLive()) return;
+    void send({ kind: "remove-column", board: board.id, at: col }).then((done) => {
+      if (done !== undefined) hooks.removed(t.stepRemoved(col));
     });
   }
 
@@ -1052,6 +1059,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       const { column, type, lane } = offer.dataset;
       if (type === "lane") nameNewLane(offer);
       else if (type === "remove-lane" && lane) removeLane(lane);
+      else if (type === "remove-column" && column !== undefined) removeStep(Number(column));
       else if (column === undefined) addHere(type ?? "");
       else if (board && isLive()) void send({ kind: "insert-column", board: board.id, at: Number(column) });
       return;

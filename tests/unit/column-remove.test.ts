@@ -4,7 +4,8 @@
  */
 import { describe, expect, test } from "bun:test";
 import { describeChanges } from "../../src/domain/digest.ts";
-import { describeEvent } from "../../src/web/view.ts";
+import { layoutBoard } from "../../src/domain/layout/index.ts";
+import { addOffers, describeEvent } from "../../src/web/view.ts";
 import { KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 /** Steps 1 and 2 hold cards, 3 is empty, 4 holds E3. */
@@ -66,5 +67,37 @@ describe("removing a column of a timeline", () => {
     );
     expect(describeEvent(t.events.at(-1) as never)).toBe("You remove column 3");
     expect(describeEvent(t.events.at(-1) as never, "fr")).toBe("Tu supprimes la colonne 3");
+  });
+});
+
+describe("the page offers to remove an empty step", () => {
+  const removal = (t: Table, col: number, type = "event") =>
+    addOffers(t.board(), { kind: "cell", col, type }, "en").find((o) => o.type === "remove-column");
+
+  test("pointing at a cell of an empty step offers a « × » at the top right of that step", () => {
+    const t = table(GAP);
+    const offer = removal(t, 3);
+    expect(offer).toMatchObject({ column: 3, text: "×", label: "Remove step 3" });
+    const step = layoutBoard(t.board()).bands.find((b) => b.kind === "step" && b.id === "3");
+    if (!step || !offer) throw new Error("drawn");
+    expect(offer.x).toBeGreaterThan(step.x + step.w / 2);
+    expect(offer.x + offer.w).toBeLessThanOrEqual(step.x + step.w);
+    expect(removal(t, 3, "command")?.y).toBe(offer.y);
+    expect(addOffers(t.board(), { kind: "cell", col: 3, type: "event" }, "fr").at(-1)?.label).toBe(
+      "Supprimer l'étape 3",
+    );
+  });
+
+  test("a step that holds cards, or the free one after the last, offers none", () => {
+    const t = table(GAP);
+    expect(removal(t, 2)).toBeUndefined();
+    expect(removal(t, 5)).toBeUndefined();
+  });
+
+  test("what it offers is what the board takes", () => {
+    const t = table(GAP);
+    const offer = removal(t, 3);
+    t.do({ kind: "remove-column", board: "commande", at: offer?.column });
+    expect(columns(t)).toMatchObject({ E3: 3 });
   });
 });

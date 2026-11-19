@@ -159,6 +159,11 @@ export function roomOnBoundary(col: number): Room {
   return { x: columnX(col), y: 0, w: 0, h: TOP_H };
 }
 
+/** The top of a step, under its number: where what is done to the whole step is offered. */
+export function stepTop(col: number): Room {
+  return { x: columnX(col), y: TOP_H, w: COL_W, h: 0 };
+}
+
 /** The column whose left edge is nearest to `x`: a column inserted there takes that number. */
 function columnBoundary(x: number): number {
   return Math.max(1, Math.round((x - HEADER_W) / COL_W) + 1);
