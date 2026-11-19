@@ -9,7 +9,7 @@ import { toMermaid } from "../domain/export/mermaid.ts";
 import { FORMATS, findFormat } from "../domain/formats.ts";
 import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
-import { findBoard, latestSession } from "../domain/workspace.ts";
+import { findBoard, latestSession, readerOf } from "../domain/workspace.ts";
 import { mountBoard } from "./board-view.ts";
 import { clock, h, type Props, region } from "./dom.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
@@ -1166,8 +1166,12 @@ function render(): void {
   const live = isLive();
   const liveSession = latestSession(state.live);
   const pending = pendingChanges(state.events, liveSession);
-  // The marks tell about now: a board shown as it was carries none.
-  const unread = live && board ? unreadOn(pending, board.id) : { cards: [], threads: [] };
+  // The marks tell about now: a board shown as it was carries none. They are
+  // measured against the session the board is for, not the last one to speak.
+  const unread =
+    live && board
+      ? unreadOn(pendingChanges(state.events, readerOf(state.live, board.id)), board.id)
+      : { cards: [], threads: [] };
 
   paintBoardPicker({
     boards: ws.boards.map((b) => ({ id: b.id, title: b.title })),

@@ -7,8 +7,10 @@ import { describe, expect, test } from "bun:test";
 import { parseBatch } from "../../src/cli/argv.ts";
 import { type Command, parseCommand } from "../../src/domain/commands.ts";
 import type { Actor } from "../../src/domain/events.ts";
+import { readerOf } from "../../src/domain/workspace.ts";
 import { Hub } from "../../src/server/hub.ts";
 import { memoryJournal } from "../../src/server/journal.ts";
+import { pendingChanges, unreadOn } from "../../src/web/view.ts";
 import { KANBAN, ORDERING, T0 } from "../support.ts";
 
 const batch = (script: string, board?: string): Command[] => parseBatch(script, board).map(parseCommand);
@@ -105,5 +107,29 @@ describe("which session is told what", () => {
     const told = hub.changesFor("other", false).text;
     expect(told).toContain("E2 renamed");
     expect(told).not.toContain("E1 renamed");
+  });
+
+  test("a board's unread marks are measured against the session it is for, not the last one to speak", () => {
+    const { hub, run } = setup();
+    hub.changesFor("other", true);
+    run('rename E1 "Validée"', "human");
+    hub.changesFor("mine", true);
+    // The other session speaks last; it was never told about "commande".
+    hub.dispatch([parseCommand({ kind: "prompt", text: "ailleurs" })], { actor: "agent", session: "other" });
+    const reader = readerOf(hub.workspace, "commande");
+    expect(reader?.id).toBe("mine");
+    expect(unreadOn(pendingChanges(hub.events, reader), "commande").cards).toEqual([]);
+    run('rename E2 "Après"', "human");
+    const again = readerOf(hub.workspace, "commande");
+    expect(unreadOn(pendingChanges(hub.events, again), "commande").cards).toEqual(["E2"]);
+  });
+
+  test("a board nobody follows is read by the latest session that it is for", () => {
+    const { hub } = setup();
+    hub.dispatch(batch(KANBAN), { actor: "human" });
+    hub.dispatch([parseCommand({ kind: "prompt", text: "là" })], { actor: "agent", session: "other" });
+    expect(readerOf(hub.workspace, "sprint")?.id).toBe("other");
+    say(hub, "other", "unfollow", "sprint");
+    expect(readerOf(hub.workspace, "sprint")?.id).toBe("mine");
   });
 });

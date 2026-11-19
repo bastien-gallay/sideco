@@ -392,6 +392,15 @@ export function concerns(ws: Workspace, session: string, board: string): boolean
   );
 }
 
+/**
+ * The session that reads what happens on `board`: the latest that it concerns.
+ * Its delivery cursor says what on the board is not read yet; another session's
+ * cursor moves past changes it was never told about.
+ */
+export function readerOf(ws: Workspace, board: string): Session | undefined {
+  return latestSession({ ...ws, sessions: ws.sessions.filter((s) => concerns(ws, s.id, board)) });
+}
+
 function applyToSession(ws: Workspace, e: Recorded & { session: string }): void {
   let session = findSession(ws, e.session);
   if (!session) {
