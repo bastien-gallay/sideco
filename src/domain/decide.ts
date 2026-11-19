@@ -128,7 +128,7 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       return { events: [{ event: "ElementAnnotated", board: b, id: cmd.id, detail: cmd.detail }] };
     case "mark": {
       const el = requireElement(board, cmd.id);
-      if (format.ownLanes) {
+      if (format.doneLast) {
         // Done is the last lane: the card goes there, or back to the lane before it.
         const lanes = lanesOf(board);
         const to = cmd.done ? lanes.at(-1) : el.lane === lanes.at(-1) ? lanes.at(-2) : undefined;
@@ -252,7 +252,7 @@ function add(board: Board, format: Format, cmd: Extract<Command, { kind: "add" }
   if (cmd.from) requireElement(board, cmd.from);
   const id = cmd.id === undefined ? mint(board, type.prefix) : claim(board, type, cmd.id);
   const anchor = cmd.before === undefined ? undefined : requireElement(board, cmd.before);
-  const { col, lane } = placeNew(board, format, {
+  const { col, lane } = placeNew(board, format, type, {
     col: cmd.col ?? (format.layout === "timeline" ? anchor?.col : undefined),
     lane: cmd.lane ?? (format.layout === "columns" ? anchor?.lane : undefined),
   });
@@ -297,6 +297,7 @@ function besideIn(format: Format, anchor: Element, place: { type: string; col: n
 function placeNew(
   board: Board,
   format: Format,
+  type: ElementType,
   cmd: { col?: number; lane?: string },
 ): { col: number; lane: string } {
   switch (format.layout) {
@@ -305,7 +306,7 @@ function placeNew(
       return { col: cmd.col ?? lastColumn(board) + 1, lane: "" };
     case "columns":
       refuse(cmd.col, "col", format, "elements are placed by lane");
-      return { col: 1, lane: requireLane(board, format, cmd.lane ?? lanesOf(board)[0] ?? "") };
+      return { col: 1, lane: requireLane(board, format, cmd.lane ?? homeOf(board, type)) };
     case "graph":
       refuse(cmd.col, "col", format, "positions follow the links");
       refuse(cmd.lane, "lane", format, "positions follow the links");
@@ -366,6 +367,12 @@ function requireLane(board: Board, format: Format, lane: string): string {
   return lane;
 }
 
+/** Where a card goes when no lane is said: its kind's home, when the board has it, else the first lane. */
+function homeOf(board: Board, type: ElementType): string {
+  const lanes = lanesOf(board);
+  return type.home && lanes.includes(type.home) ? type.home : (lanes[0] ?? "");
+}
+
 function requireOwnLanes(format: Format, verb: string): void {
   if (!format.ownLanes)
     throw new CommandError(`${format.name.en} boards have no lanes to ${verb}: their workshop sets them`);
@@ -377,7 +384,7 @@ function mint(board: Board, prefix: string): string {
 
 /** An id chosen by the caller is accepted only if no element, present or removed, ever had it. */
 function claim(board: Board, type: ElementType, id: string): string {
-  if (id.charAt(0) !== type.prefix) {
+  if (id.charAt(0) !== type.prefix && id.charAt(0) !== type.formerPrefix) {
     throw new CommandError(`a ${type.id} id starts with ${type.prefix}, got ${id}`);
   }
   if (findElement(board, id) || board.retired.includes(id)) {

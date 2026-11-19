@@ -580,6 +580,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         },
         doneLabel,
       ),
+      ...leadsFrom(id, element?.type),
       h(
         "button",
         { type: "button", ...keyed(t.noteForClaude, "N"), onclick: () => noteOn(id) },
@@ -842,7 +843,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const was = board.elements.find((e) => e.id === id)?.lane;
     const to = done ? lanes.at(-1) : was === lanes.at(-1) ? lanes.at(-2) : was;
     const place =
-      format()?.ownLanes && to !== was
+      format()?.doneLast && to !== was
         ? scene.bands.find((band) => band.kind === "lane" && band.id === to)?.label
         : undefined;
     void send({ kind: "mark", board: board.id, id, done }).then((answer) => {
@@ -853,6 +854,22 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   function beginLink(id: string): void {
     state.linking = id;
     changed();
+  }
+
+  /** The button that makes, from a card, one of the kind it leads to: a point of a retro, an action. */
+  function leadsFrom(id: string, typeId: string | undefined): HTMLElement[] {
+    const f = format();
+    const next = f && typeId ? findType(f, typeId)?.leadsTo : undefined;
+    if (!next) return [];
+    return [h("button", { type: "button", onclick: () => makeFrom(id, next.type) }, next.label[locale])];
+  }
+
+  /** Opens the editor for a card of `typeId`, beside this one, to be linked from it once named. */
+  function makeFrom(id: string, typeId: string): void {
+    const node = nodes.get(id);
+    if (!node) return;
+    const r = node.g.getBoundingClientRect();
+    beginAdd(typeId, { from: id, x: r.right + 12 * zoom, y: r.top });
   }
 
   /** Opens the editor for a card of the focused one's kind, beside it where the arrow points. */

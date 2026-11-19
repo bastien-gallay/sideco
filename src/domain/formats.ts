@@ -27,6 +27,12 @@ export interface ElementType {
   shape: Shape;
   /** One line for the palette tooltip and the agent's guidance. */
   hint: Text;
+  /** Only for `columns` layouts: the lane a card of this kind goes to when none is said, if the board has it. */
+  home?: string;
+  /** The kind a card of this one leads to: the page offers, by `label`, to make one from it, linked. */
+  leadsTo?: { type: string; label: Text };
+  /** A prefix the kind minted before: ids made then are still taken. */
+  formerPrefix?: string;
 }
 
 export interface Lane {
@@ -60,11 +66,10 @@ export interface Format {
   lanes: readonly Lane[];
   /** Only for `columns` layouts: the lanes are the cells of a plan. */
   grid?: Grid;
-  /**
-   * Only for `columns` layouts: each board adds, moves and removes its own lanes,
-   * starting from these; a card in the last one is done, and wears no other mark.
-   */
+  /** Only for `columns` layouts: each board adds, moves and removes its own lanes, starting from these. */
   ownLanes?: true;
+  /** With `ownLanes`: a card in the last lane is done, and wears no other mark. */
+  doneLast?: true;
 }
 
 const t = (en: string, fr: string): Text => ({ en, fr });
@@ -207,6 +212,7 @@ const KANBAN: Format = {
   ),
   layout: "columns",
   ownLanes: true,
+  doneLast: true,
   lanes: [
     { id: "todo", label: t("To do", "À faire") },
     { id: "doing", label: t("Doing", "En cours") },
@@ -282,7 +288,10 @@ const RETRO: Format = {
     "Que garde-t-on, qu'arrête-t-on, qu'essaie-t-on ?",
   ),
   layout: "columns",
+  ownLanes: true,
   lanes: [
+    { id: "went-well", label: t("Went well", "Ce qui a marché") },
+    { id: "went-badly", label: t("Didn't go well", "Ce qui a coincé") },
     { id: "keep", label: t("Keep", "On garde") },
     { id: "drop", label: t("Stop", "On arrête") },
     { id: "try", label: t("Try", "On essaie") },
@@ -291,7 +300,9 @@ const RETRO: Format = {
     {
       id: "point",
       label: t("Observation", "Constat"),
-      prefix: "K",
+      prefix: "P",
+      formerPrefix: "K",
+      leadsTo: { type: "action", label: t("Make an action of it", "En faire une action") },
       fill: "#FCEFA1",
       ink: DARK,
       shape: "sticky",
@@ -305,6 +316,7 @@ const RETRO: Format = {
       ink: DARK,
       shape: "sticky",
       hint: t("What we will do, and who", "Ce qu'on fera, par qui"),
+      home: "try",
     },
   ],
 };
@@ -391,13 +403,13 @@ export function isDone(
   board: { format: string; laneOrder?: readonly string[] },
   el: { lane: string; done?: boolean },
 ): boolean {
-  if (findFormat(board.format)?.ownLanes) return el.lane === lanesOf(board).at(-1);
+  if (findFormat(board.format)?.doneLast) return el.lane === lanesOf(board).at(-1);
   return el.done === true;
 }
 
 /** Whether a card wears the tick and the strike: where done is a mark, not a lane. */
 export function wearsDone(board: { format: string }, el: { done?: boolean }): boolean {
-  return !findFormat(board.format)?.ownLanes && el.done === true;
+  return !findFormat(board.format)?.doneLast && el.done === true;
 }
 
 export function findType(format: Format, typeId: string): ElementType | undefined {

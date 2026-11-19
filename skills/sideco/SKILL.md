@@ -96,7 +96,7 @@ sideco wait
 | which path, where it branches | `flow` | `--from ID`, `--edge "oui"` |
 | where the work stands, what blocks it | `kanban` | `--lane todo`, `doing` or `done` |
 | which journey, what ships first | `story-map` | `--col N` |
-| what to keep, stop, try | `retro` | `--lane keep`, `drop` or `try` |
+| what went well or not, what to keep, stop, try | `retro` | `--lane went-well`, `went-badly`, `keep`, `drop` or `try`; an action from a point: `add action "…" --from P1` |
 | what to do first, for what it brings and costs | `impact-effort` | `--lane quick`, `bet`, `fill` or `avoid` |
 
 `sideco formats` lists every element type with its id prefix, and what each lane of
@@ -113,7 +113,7 @@ sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--from ID [--edge "l
 sideco rename ID "Label"            sideco detail ID "Text"
 sideco move ID --col N | --lane L [--before ID]   # --before alone: before that card, in its cell
 sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)
-sideco lane L "Name" (names it here) · kanban: lane add "Name" [--before L] · lane rm L · lane move L [--before L]
+sideco lane L "Name" (names it here) · kanban, retro: lane add "Name" [--before L] · lane rm L · lane move L [--before L]
 sideco done ID                      sideco undone ID
 sideco link SRC DST ["label"]       sideco unlink SRC DST
 sideco focus [ID…] [--why "…"]      (no id clears the focus)

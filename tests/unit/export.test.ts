@@ -271,11 +271,11 @@ describe("a card marked done", () => {
     const board = table(
       'board new "Rétro" --format retro\nadd point "Revue rapide" --lane keep\nadd point "Lent" --lane drop',
     )
-      .script("done K1")
+      .script("done P1")
       .board();
-    expect(toMermaid(board)).toContain("K1[K1 ✓ Revue rapide]");
-    expect(toMermaid(board)).toContain("K2[K2 Lent]");
-    expect(toMarkdown(board, META)).toContain("| K1 | Observation | ✓ Revue rapide |");
+    expect(toMermaid(board)).toContain("P1[P1 ✓ Revue rapide]");
+    expect(toMermaid(board)).toContain("P2[P2 Lent]");
+    expect(toMarkdown(board, META)).toContain("| P1 | Observation | ✓ Revue rapide |");
     expect(toHtml(board, META)).toContain("<td>✓ Revue rapide</td>");
     const timeline = table(ORDERING).script("done E1").board();
     expect(toMermaid(timeline)).toContain('"✓ Commande passée"');

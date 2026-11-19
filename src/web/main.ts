@@ -299,7 +299,7 @@ function openKeys(): void {
     );
   keysSheet.replaceChildren(
     h("h2", {}, t.shortcuts),
-    list(t.shortcutList(how), true),
+    list(t.shortcutList(how, Boolean(findFormat(currentBoard()?.format ?? "")?.doneLast)), true),
     h("h3", {}, t.withTheMouse),
     list(t.mouseList(how), false),
     h(

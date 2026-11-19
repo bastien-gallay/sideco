@@ -585,11 +585,26 @@ describe("other workshops", () => {
 
     await paletteType("Observation").click();
     await typeInEditor("Les revues sont rapides");
-    await card("K1").waitFor();
+    await card("P1").waitFor();
     expect((await workspace()).boards.find((b) => b.id === "retro-sprint-12")?.elements[0]).toMatchObject({
-      id: "K1",
-      lane: "keep",
+      id: "P1",
+      lane: "went-well",
     });
+
+    // An action from the palette lands in Try; one made from a point is linked from it.
+    await paletteType("Action").click();
+    await typeInEditor("Garder des revues courtes");
+    await card("A1").waitFor();
+    expect((await elementOf("retro-sprint-12", "A1"))?.lane).toBe("try");
+    await card("P1").click();
+    await page.locator(".card-tools button", { hasText: "Make an action of it" }).click();
+    await typeInEditor("Revue à deux");
+    await card("A2").waitFor();
+    const retro = (await workspace()).boards.find((b) => b.id === "retro-sprint-12");
+    expect(retro?.elements.find((e) => e.id === "A2")?.lane).toBe("try");
+    expect(retro?.edges).toContainEqual(expect.objectContaining({ src: "P1", dst: "A2" }));
+    await settled("A2");
+    await shot("47-retro-action");
   });
 });
 
@@ -933,7 +948,7 @@ describe("adding where the pointer is", () => {
       `board new "Rétro du sprint" --format retro --id ajout\nadd point "Les tests d'abord" --lane keep`,
     );
     await page.locator(".board-picker select").selectOption("ajout");
-    await card("K1").getByText("Les tests").waitFor();
+    await card("P1").getByText("Les tests").waitFor();
     // Nothing is offered while the pointer is elsewhere.
     await page.mouse.move(700, 20);
     expect(await offers().count()).toBe(0);
@@ -942,7 +957,9 @@ describe("adding where the pointer is", () => {
     if (!lane) throw new Error("no Try lane");
     await page.mouse.move(lane.x + 60, lane.y + 150);
     await offer("action").waitFor();
-    expect(await offers().count()).toBe(2);
+    // One + per kind of card, and the × of the empty lane: a retro's lanes are its own.
+    expect(await offers().count()).toBe(3);
+    expect(await offer("remove-lane").count()).toBe(1);
     expect(await offer("action").getAttribute("aria-label")).toBe("Add: Action");
     expect(await offer("point").getAttribute("aria-label")).toBe("Add: Observation");
     // Let the offer finish fading in before the picture.
@@ -1711,7 +1728,7 @@ describe("tidying up", () => {
   test("a board Claude removes leaves the picker; the page moves to one that exists and says so", async () => {
     await agent('board new "Brouillon" --format retro --id brouillon\nadd point "À jeter" --lane keep');
     await page.locator(".board-picker select").selectOption("brouillon");
-    await card("K1").waitFor();
+    await card("P1").waitFor();
 
     await agent("board rm brouillon");
     await until("the removed board left the picker", async () => !(await listed()).includes("brouillon"));

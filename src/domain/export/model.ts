@@ -107,7 +107,7 @@ export function fromModel(input: unknown, board: string): Command[] {
       detail: e.detail,
     });
     // On a kanban, done is the lane the card is in: a mark would move it.
-    if (e.done && id && !format?.ownLanes) commands.push({ kind: "mark", board, id, done: true });
+    if (e.done && id && !format?.doneLast) commands.push({ kind: "mark", board, id, done: true });
   }
   for (const edge of Array.isArray(model.edges) ? model.edges : []) {
     const [src, dst, label] = readEdge(edge);

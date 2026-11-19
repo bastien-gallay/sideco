@@ -206,7 +206,8 @@ export interface Messages {
   shortcuts: string;
   /** Each shortcut of the page: the keys, then what they do. */
   /** The keys of the page, as they work on a board laid out this way. */
-  shortcutList: (how: SheetKind) => [keys: string, does: string][];
+  /** `doneLast`: done is the last lane, not a mark. */
+  shortcutList: (how: SheetKind, doneLast: boolean) => [keys: string, does: string][];
   /** What the mouse does there that no key says. */
   mouseList: (how: SheetKind) => [gesture: string, does: string][];
   withTheMouse: string;
@@ -394,7 +395,7 @@ const en: Messages = {
   fitHint: "Fit the whole board in the window, or back to 100 %",
   resolvedNotes: (count) => `Resolved (${count})`,
   shortcuts: "Keyboard shortcuts",
-  shortcutList: (how) => [
+  shortcutList: (how, doneLast) => [
     ["Tab", "Into the board, then out of it"],
     ["← → ↑ ↓", "From a card to the next one"],
     ...(how === "graph"
@@ -416,7 +417,7 @@ const en: Messages = {
     ["Space", "Select the card and show its actions"],
     [
       "D",
-      how === "kanban"
+      doneLast
         ? "Move the card to the last lane, or back to the one before"
         : "Mark the card done, or not done",
     ],
@@ -644,7 +645,7 @@ const fr: Messages = {
   fitHint: "Faire tenir tout le tableau dans la fenêtre, ou revenir à 100 %",
   resolvedNotes: (count) => `Résolues (${count})`,
   shortcuts: "Raccourcis clavier",
-  shortcutList: (how) => [
+  shortcutList: (how, doneLast) => [
     ["Tab", "Entrer dans le tableau, puis en sortir"],
     ["← → ↑ ↓", "D'une carte à la suivante"],
     ...(how === "graph"
@@ -666,7 +667,7 @@ const fr: Messages = {
     ["Espace", "Sélectionner la carte et montrer ses actions"],
     [
       "D",
-      how === "kanban"
+      doneLast
         ? "Envoyer la carte dans la dernière colonne, ou la remettre dans celle d'avant"
         : "Marquer la carte faite, ou non faite",
     ],
