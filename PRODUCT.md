@@ -6,11 +6,11 @@ product
 
 ## Users
 
-Développeurs et équipes techniques qui pensent visuellement, en conception technique. Ils travaillent avec Claude Code dans un terminal ; Vico est ouvert dans une fenêtre de navigateur à côté. Le travail à faire : construire un modèle (event storming, flux, kanban, story map, rétrospective, impact / effort) à deux avec l'agent, puis lui passer la main.
+Développeurs et équipes techniques qui pensent visuellement, en conception technique. Ils travaillent avec Claude Code dans un terminal ; Sideco est ouvert dans une fenêtre de navigateur à côté. Le travail à faire : construire un modèle (event storming, flux, kanban, story map, rétrospective, impact / effort) à deux avec l'agent, puis lui passer la main.
 
 ## Product Purpose
 
-Vico est le compagnon visuel de Claude Code : un tableau local, partagé entre le développeur et son agent, où chaque geste est un événement d'un journal. Il complète le terminal sans le remplacer : la conversation reste dans Claude Code, la page est la surface de modélisation.
+Sideco est le compagnon visuel de Claude Code : un tableau local, partagé entre le développeur et son agent, où chaque geste est un événement d'un journal. Il complète le terminal sans le remplacer : la conversation reste dans Claude Code, la page est la surface de modélisation.
 
 Réussir, c'est que modéliser avec l'agent devienne aussi direct qu'un atelier de post-its : poser, déplacer, relier, annoter, puis passer la main, sans retaper en texte ce que le tableau montre déjà.
 
