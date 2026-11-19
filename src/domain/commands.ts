@@ -59,7 +59,7 @@ export type Command =
   | { kind: "reply"; board: string; to: string; text: string }
   /** Closes the thread the note belongs to. */
   | { kind: "resolve"; board: string; id: string }
-  | { kind: "pass"; board: string; to: "agent" | "human"; message?: string }
+  | { kind: "pass"; board: string; to: "agent" | "human"; message?: string; target?: string }
   /** Takes back the caller's last gesture on the board; the board may be one they just removed. */
   | { kind: "undo"; board: string }
   /** Puts back what the caller's last undo took. */
@@ -246,6 +246,7 @@ export function parseCommand(input: unknown): Command {
         board: boardId(f),
         to: oneOf(f, "to", ["agent", "human"] as const),
         message: optional(f, "message", (x, k) => text(x, k, LIMITS.note)),
+        target: optional(f, "target", (x, k) => text(x, k, 200)),
       };
     case "undo":
     case "redo":

@@ -257,7 +257,15 @@ export function boardAction(tokens: readonly string[], board: string | undefined
     case "resolve":
       return { command: { kind: "resolve", board: target(), id: need(0, "a note id") } };
     case "pass":
-      return { command: { kind: "pass", board: target(), to: flags.get("to") ?? "human", message: p[0] } };
+      return {
+        command: {
+          kind: "pass",
+          board: target(),
+          to: flags.get("to") ?? "human",
+          message: p[0],
+          target: flags.get("for"),
+        },
+      };
     default:
       throw new UsageError(`unknown command "${verb}" (try \`sideco help\`)`);
   }

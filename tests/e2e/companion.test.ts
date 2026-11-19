@@ -327,6 +327,8 @@ describe("the human edits, the agent is told", () => {
     expect(await page.locator(".pending").textContent()).toContain(
       "Claude resumes as soon as you hand over.",
     );
+    // Beside the button: the session the turn goes to, the last one to write on the board.
+    expect(await page.locator(".pass-to").textContent()).toMatch(/^Goes to the session .+ · s1$/);
     await shot("05-listening");
 
     await page.locator(".pass input").fill("J'ai corrigé la règle, continue");

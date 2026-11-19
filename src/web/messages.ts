@@ -129,6 +129,8 @@ export interface Messages {
   claudeBlocked: string;
   claudeBlockedOn: (title: string) => string;
   handOver: string;
+  /** Beside the button: the session the turn goes to. */
+  handOverTo: string;
 
   // The history.
   history: string;
@@ -338,6 +340,7 @@ const en: Messages = {
   claudeBlocked: "Claude is blocked on you",
   claudeBlockedOn: (title) => `Claude is blocked · ${title}`,
   handOver: "Hand over to Claude",
+  handOverTo: "Goes to the session",
 
   history: "Board history",
   previousEvent: "Previous event",
@@ -588,6 +591,7 @@ const fr: Messages = {
   claudeBlocked: "Claude est bloqué sur toi",
   claudeBlockedOn: (title) => `Claude est bloqué · ${title}`,
   handOver: "Passer la main à Claude",
+  handOverTo: "Pour la session",
 
   history: "Historique du tableau",
   previousEvent: "Événement précédent",

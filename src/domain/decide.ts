@@ -15,6 +15,7 @@ import {
   SLICE_PREFIX,
 } from "./formats.ts";
 import {
+  addressee,
   type Board,
   columnAfterMove,
   type Element,
@@ -226,8 +227,18 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       const note = requireNote(board, cmd.id);
       return { events: note.resolved ? [] : [{ event: "NoteResolved", board: b, id: threadOf(note) }] };
     }
-    case "pass":
-      return { events: [{ event: "TurnPassed", board: b, to: cmd.to, message: cmd.message }] };
+    case "pass": {
+      if (cmd.to === "human")
+        return { events: [{ event: "TurnPassed", board: b, to: cmd.to, message: cmd.message }] };
+      if (cmd.target !== undefined && !findSession(ws, cmd.target))
+        throw new CommandError(`no session "${cmd.target}" in this project`);
+      const target = cmd.target ?? addressee(ws, b)?.id;
+      return {
+        events: [
+          { event: "TurnPassed", board: b, to: cmd.to, message: cmd.message, ...(target ? { target } : {}) },
+        ],
+      };
+    }
   }
 }
 

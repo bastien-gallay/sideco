@@ -15,6 +15,7 @@ import {
   type Board,
   findBoard,
   findElement,
+  findSession,
   lastColumn,
   type Session,
   type SessionTurn,
@@ -103,12 +104,24 @@ export function handOverNotice(
 
 const MAX_LINE = 90;
 
-/** One line of history, in the reader's language. */
-export function describeEvent(e: Recorded, locale: Locale = DEFAULT_LOCALE): string {
-  return clip(WORDING[locale](e) + answered(e, locale));
+/**
+ * One line of history, in the reader's language. With the workspace, a
+ * hand-over says the session it went to.
+ */
+export function describeEvent(e: Recorded, locale: Locale = DEFAULT_LOCALE, ws?: Workspace): string {
+  const session = e.event === "TurnPassed" && e.target && ws ? findSession(ws, e.target) : undefined;
+  return clip(WORDING[locale](e, session ? ` (${sessionName(session)})` : "") + answered(e, locale));
 }
 
-const WORDING: Record<Locale, (e: Recorded) => string> = { en: english, fr: french };
+/** A session as the page names it: its folder, and the start of its id. */
+export function sessionName(session: Session): string {
+  const id = session.id.slice(0, 6);
+  const folder = session.cwd?.split("/").filter(Boolean).at(-1);
+  return folder ? `${folder} · ${id}` : id;
+}
+
+/** `to` is said after Claude in a hand-over: the session it went to, or nothing. */
+const WORDING: Record<Locale, (e: Recorded, to: string) => string> = { en: english, fr: french };
 
 const ANSWERS: Record<Locale, { undo: string; redo: string }> = {
   en: { undo: " (undo)", redo: " (redo)" },
@@ -122,7 +135,7 @@ function answered(e: Recorded, locale: Locale): string {
   return e.redoes !== undefined ? ANSWERS[locale].redo : "";
 }
 
-function english(e: Recorded): string {
+function english(e: Recorded, to: string): string {
   const you = e.actor === "human";
   const who = { human: "You", agent: "Claude", system: "Sideco" }[e.actor];
   /** `You add`, `Claude adds`. */
@@ -187,7 +200,7 @@ function english(e: Recorded): string {
       return `${does("resolve")} the note ${e.id}`;
     case "TurnPassed": {
       const message = e.message ? `: ${e.message}` : "";
-      if (e.to === "agent") return `${does("hand")} over to Claude${message}`;
+      if (e.to === "agent") return `${does("hand")} over to Claude${to}${message}`;
       return you ? `You keep the turn${message}` : `Claude hands over to you${message}`;
     }
     case "SessionStarted":
@@ -215,7 +228,7 @@ function english(e: Recorded): string {
   }
 }
 
-function french(e: Recorded): string {
+function french(e: Recorded, to: string): string {
   const you = e.actor === "human";
   const who = { human: "Tu", agent: "Claude", system: "Sideco" }[e.actor];
   /** `Tu ajoutes`, `Claude ajoute`. */
@@ -282,7 +295,7 @@ function french(e: Recorded): string {
       return `${verb("résous", "résout")} la note ${e.id}`;
     case "TurnPassed": {
       const message = e.message ? ` : ${e.message}` : "";
-      if (e.to === "agent") return `${verb("passes", "passe")} la main à Claude${message}`;
+      if (e.to === "agent") return `${verb("passes", "passe")} la main à Claude${to}${message}`;
       return you ? `Tu gardes la main${message}` : `Claude te passe la main${message}`;
     }
     case "SessionStarted":

@@ -52,6 +52,8 @@ export interface Thread {
 
 export interface Turn {
   to: "agent" | "human";
+  /** The session a hand-over to the agent is for; none, and it is for every session the board concerns. */
+  target?: string;
   message?: string;
   seq: number;
 }
@@ -86,6 +88,8 @@ export interface Board {
   trails: Trails;
   createdSeq: number;
   changedSeq: number;
+  /** The last session whose agent wrote on the board: a hand-over goes to it by default. */
+  writer?: string;
 }
 
 export interface ToolCall {
@@ -161,6 +165,20 @@ export function latestSession(ws: Workspace): Session | undefined {
   return ws.sessions.reduce<Session | undefined>((a, s) => (a && a.lastSeq > s.lastSeq ? a : s), undefined);
 }
 
+/**
+ * The session a hand-over on `board` goes to when none is named: the last one
+ * to write on it, while it runs; else the latest session the board is for.
+ */
+export function addressee(ws: Workspace, board: string): Session | undefined {
+  const writer = findBoard(ws, board)?.writer;
+  const session = writer ? findSession(ws, writer) : undefined;
+  if (session && session.status !== "ended") return session;
+  return latestSession({
+    ...ws,
+    sessions: ws.sessions.filter((s) => s.status !== "ended" && concerns(ws, s.id, board)),
+  });
+}
+
 /** The number a column carries once the column `from` has moved to `to`: the ones it passes close the gap. */
 export function columnAfterMove(col: number, from: number, to: number): number {
   if (col === from) return to;
@@ -208,6 +226,7 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
       trails: {},
       createdSeq: e.seq,
       changedSeq: e.seq,
+      ...(e.actor === "agent" && e.session ? { writer: e.session } : {}),
     });
     return;
   }
@@ -224,6 +243,7 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
   }
   const board = findBoard(ws, e.board);
   if (!board) return;
+  if (e.actor === "agent" && e.session) board.writer = e.session;
   const inverse = invert(board, e);
   if (e.event === "BoardRemoved") {
     ws.boards.splice(ws.boards.indexOf(board), 1);
@@ -392,7 +412,7 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
       break;
     }
     case "TurnPassed":
-      board.turn = { to: e.to, message: e.message, seq: e.seq };
+      board.turn = { to: e.to, message: e.message, seq: e.seq, ...(e.target ? { target: e.target } : {}) };
       break;
   }
   if (inverse) rememberGesture(board, e, inverse);

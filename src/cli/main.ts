@@ -83,7 +83,7 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
 
 Work with the human
   sideco changes                      what the human changed since you last asked
-  sideco pass ["message"]             hand the turn to the human
+  sideco pass ["message"]             hand the turn to the human (--to agent [--for SESSION]: to one session)
   sideco follow BOARD…                take these boards: you are told what the human changes on the boards you
                                     follow (those you wrote on or read with \`sideco show\`), not on another session's
   sideco unfollow BOARD…              let go of boards, until you write on one again

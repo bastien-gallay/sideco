@@ -9,7 +9,7 @@ import { toMermaid } from "../domain/export/mermaid.ts";
 import { FORMATS, findFormat } from "../domain/formats.ts";
 import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
-import { findBoard, latestSession, readerOf } from "../domain/workspace.ts";
+import { addressee, findBoard, latestSession, readerOf } from "../domain/workspace.ts";
 import { mountBoard } from "./board-view.ts";
 import { clock, h, type Props, region } from "./dom.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
@@ -45,6 +45,7 @@ import {
   recentTurns,
   redoTarget,
   resolvedDiscussions,
+  sessionName,
   tabTitle,
   undoTarget,
   unreadOn,
@@ -144,7 +145,11 @@ const turnBar = h(
         });
         passMessage.value = "";
         // The page cannot wake a terminal at rest: say what will make Claude read this.
-        const notice = handOverNotice(latestSession(state.live)?.status, state.listening, locale);
+        const notice = handOverNotice(
+          (addressee(state.live, passOn) ?? latestSession(state.live))?.status,
+          state.listening,
+          locale,
+        );
         if (notice) say(notice);
       },
     },
@@ -873,6 +878,8 @@ interface TurnModel {
   pending: number;
   hint: string;
   theirs: string | undefined;
+  /** The session a hand-over would go to, by its name; none when no session runs. */
+  to: string | undefined;
   /** The ids on the board shown, of cards and of notes: those Claude's words can lead to. */
   known: string[];
 }
@@ -889,6 +896,7 @@ const paintTurnSays = region(turnSays, (m: TurnModel) => {
         ...linked(m.theirs, m.known),
       ),
     h("p", { class: "pending" }, h("strong", {}, count), ` · ${m.hint}`),
+    m.to !== undefined && h("p", { class: "pass-to" }, `${t.handOverTo} `, h("strong", {}, m.to)),
   ];
 });
 
@@ -1281,7 +1289,7 @@ function render(): void {
         ? t.live(place.of)
         : place.at === 0
           ? t.beforeFirst
-          : `${place.at} / ${place.of}${latest ? ` · ${clock(latest.ts)} · ${describeEvent(latest, locale)}` : ""}`,
+          : `${place.at} / ${place.of}${latest ? ` · ${clock(latest.ts)} · ${describeEvent(latest, locale, state.live)}` : ""}`,
     board: followed,
     choice: wholeJournal || followed,
   });
@@ -1295,12 +1303,14 @@ function render(): void {
   }
 
   const turn = board ? findBoard(state.live, board.id)?.turn : undefined;
+  const addressed = live && board ? addressee(state.live, board.id) : undefined;
   paintTurn({
     board: board?.id,
     live,
     pending: pending.count,
     hint: handOverHint(liveSession?.status, state.listening, locale),
     theirs: turn?.to === "human" ? (turn.message ?? "") : undefined,
+    to: addressed ? sessionName(addressed) : undefined,
     known: board ? [...board.elements.map((e) => e.id), ...board.notes.map((n) => n.id)] : [],
   });
 

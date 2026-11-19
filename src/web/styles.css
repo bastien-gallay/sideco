@@ -1366,13 +1366,15 @@ legend {
 }
 
 .pending,
+.pass-to,
 .theirs {
   color: var(--muted);
   font-size: 12.5px;
   text-align: right;
 }
 
-.pending strong {
+.pending strong,
+.pass-to strong {
   color: var(--ink);
 }
 
@@ -1493,6 +1495,7 @@ legend {
   }
 
   .pending,
+  .pass-to,
   .theirs {
     text-align: left;
   }

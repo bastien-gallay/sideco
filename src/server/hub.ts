@@ -93,7 +93,7 @@ export class Hub {
     for (const listener of this.listeners) listener(event);
     if (event.event === "TurnPassed" && event.to === "agent")
       for (const session of [...this.waiters.keys()])
-        if (concerns(this.workspace, session, event.board)) this.settle(session, "passed");
+        if (isFor(this.workspace, session, event.board, event.target)) this.settle(session, "passed");
     const movedOn = event.event === "PromptSubmitted" || event.event === "SessionEnded";
     if (movedOn && event.session) this.settle(event.session, "released");
   }
@@ -128,7 +128,8 @@ export class Hub {
   hasPendingTurn(session: string): boolean {
     const after = findSession(this.workspace, session)?.deliveredUpTo ?? 0;
     return this.workspace.boards.some(
-      (b) => b.turn?.to === "agent" && b.turn.seq > after && concerns(this.workspace, session, b.id),
+      (b) =>
+        b.turn?.to === "agent" && b.turn.seq > after && isFor(this.workspace, session, b.id, b.turn.target),
     );
   }
 
@@ -172,4 +173,9 @@ export class Hub {
   private announcePresence(): void {
     for (const listener of this.presenceListeners) listener(this.listening);
   }
+}
+
+/** Whether a hand-over on `board` is for `session`: the one it names, or every session the board concerns. */
+function isFor(ws: Workspace, session: string, board: string, target: string | undefined): boolean {
+  return target === undefined ? concerns(ws, session, board) : target === session;
 }

@@ -106,7 +106,7 @@ type BoardFact =
   /** `thread` is the note that opened the discussion this one answers; absent, the note opens one. */
   | { event: "NoteAdded"; board: string; id: string; text: string; target?: string; thread?: string }
   | { event: "NoteResolved"; board: string; id: string }
-  | { event: "TurnPassed"; board: string; to: "agent" | "human"; message?: string };
+  | { event: "TurnPassed"; board: string; to: "agent" | "human"; message?: string; target?: string };
 
 /** What happened in the terminal session. The session id travels on the envelope. */
 export type SessionEvent =
