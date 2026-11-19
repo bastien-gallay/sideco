@@ -1,0 +1,13 @@
+#!/bin/sh
+# Vico is now sideco. Sessions started before the rename still call this path
+# from their hooks; it hands over to sideco until they restart. Symlinks are
+# resolved so a `vico` link on the PATH reaches it too.
+self="$0"
+while [ -L "$self" ]; do
+  target="$(readlink "$self")"
+  case "$target" in
+    /*) self="$target" ;;
+    *) self="$(dirname "$self")/$target" ;;
+  esac
+done
+exec "$(dirname "$self")/sideco" "$@"

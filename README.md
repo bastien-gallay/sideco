@@ -209,7 +209,8 @@ Sideco s'appelait Vico jusqu'au 2026-11-19.
 | --- | --- | --- |
 | `.vico/` | `.sideco/` | ✅ un projet qui n'a que `.vico/` continue de le lire |
 | `VICO_SESSION`, `VICO_BOARD`… | `SIDECO_SESSION`, `SIDECO_BOARD`… | ✅ l'ancienne variable compte quand la nouvelle est absente |
-| commande `vico`, plugin `vico@vico` | commande `sideco`, plugin `sideco@sideco` | ❌ à réinstaller |
+| commande `vico` | commande `sideco` | ✅ `bin/vico` passe la main à `sideco`, pour les sessions ouvertes avant le renommage |
+| plugin `vico@vico` | plugin `sideco@sideco` | ❌ à réinstaller |
 
 Pour passer un projet à `.sideco/`, arrête le compagnon puis renomme le dossier :
 
