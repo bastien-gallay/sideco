@@ -1227,6 +1227,10 @@ describe("the board for who cannot see it", () => {
     expect(await card("D1").getAttribute("aria-description")).toBe(
       "leads to S2 Expédier (oui) · comes from S1 Recevoir",
     );
+    // Shift and an arrow cannot move a card a flow places from its links: the page says so.
+    await card("D1").focus();
+    await page.keyboard.press("Shift+ArrowRight");
+    await page.locator(".toast", { hasText: "D1 is placed by its links" }).waitFor();
     await agent(`board rm ${FLOWING}\nboard rm ${BOARD}`);
     await until("the page has left the boards removed", async () => {
       const shown = await page.locator(".board-picker select").inputValue();
@@ -1517,6 +1521,21 @@ describe("a kanban's own lanes, from the page", () => {
       async () => (await lanes()).join() === "todo,lane-1,doing,done",
     );
     await page.locator(".layer-heads .lane-label", { hasText: /^Prêt$/ }).waitFor();
+  });
+
+  test("`?` on a kanban says what D does there, and what the mouse does to lanes", async () => {
+    await card("T1").focus();
+    await page.keyboard.press("?");
+    const sheet = page.locator("dialog.keys");
+    await sheet.waitFor({ state: "visible" });
+    expect(await sheet.locator("dd", { hasText: "Move the card to the last lane" }).count()).toBe(1);
+    expect(await sheet.locator("dd", { hasText: "← → a lane, ↑ ↓ its place in its lane" }).count()).toBe(1);
+    expect(await sheet.locator("h3", { hasText: "With the mouse" }).count()).toBe(1);
+    expect(await sheet.locator("dt", { hasText: "+ between two lane headings" }).count()).toBe(1);
+    await shot("44-keys-kanban");
+    await page.keyboard.press("Escape");
+    await sheet.waitFor({ state: "hidden" });
+    expect(await page.locator(".palette .how").textContent()).toContain("a heading to move its lane");
   });
 
   test("an empty lane offers to remove it; Undo in the notice puts it back", async () => {

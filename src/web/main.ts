@@ -13,7 +13,7 @@ import { findBoard, latestSession, readerOf } from "../domain/workspace.ts";
 import { mountBoard } from "./board-view.ts";
 import { clock, h, type Props, region } from "./dom.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
-import { MESSAGES } from "./messages.ts";
+import { MESSAGES, type SheetKind } from "./messages.ts";
 import {
   changed,
   currentBoard,
@@ -202,6 +202,7 @@ function speak(text: string): void {
 const view = mountBoard(canvas, {
   removed: (said) => say(said, { label: t.undoAction, run: () => void undo() }),
   announce: speak,
+  notice: (text) => say(text),
 });
 
 /** A search over the cards of the board shown: `/` opens it, Enter goes from one card found to the next. */
@@ -278,14 +279,29 @@ function showFound(): void {
 /** The keys of the page, in one place: asked for with `?`, or from the palette. */
 const keysSheet = h("dialog", { class: "sheet keys" });
 
+/** How the board shown is laid out, as far as its keys and gestures go. */
+function sheetKind(): SheetKind {
+  const format = findFormat(currentBoard()?.format ?? "");
+  if (!format || format.layout === "timeline") return "timeline";
+  if (format.layout === "graph") return "graph";
+  if (format.grid) return "grid";
+  return format.ownLanes ? "kanban" : "lanes";
+}
+
 function openKeys(): void {
-  keysSheet.replaceChildren(
-    h("h2", {}, t.shortcuts),
+  const how = sheetKind();
+  /** Keys wear the look of keys; a gesture of the mouse is said in words. */
+  const list = (rows: [string, string][], keys: boolean) =>
     h(
       "dl",
       { class: "key-list" },
-      ...t.shortcutList.flatMap(([keys, does]) => [h("dt", {}, h("kbd", {}, keys)), h("dd", {}, does)]),
-    ),
+      ...rows.flatMap(([what, does]) => [h("dt", {}, keys ? h("kbd", {}, what) : what), h("dd", {}, does)]),
+    );
+  keysSheet.replaceChildren(
+    h("h2", {}, t.shortcuts),
+    list(t.shortcutList(how), true),
+    h("h3", {}, t.withTheMouse),
+    list(t.mouseList(how), false),
     h(
       "div",
       { class: "actions" },
@@ -508,7 +524,9 @@ const paintPalette = region(palette, (m: PaletteModel) => {
     format.layout === "timeline"
       ? t.howTimeline
       : format.layout === "columns"
-        ? t.howColumns
+        ? format.ownLanes && !format.grid
+          ? t.howKanban
+          : t.howColumns
         : m.from
           ? t.howGraphFrom(m.from)
           : t.howGraph;

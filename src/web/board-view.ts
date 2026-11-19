@@ -68,6 +68,8 @@ export interface BoardHooks {
   removed(said: string): void;
   /** Something a screen reader should hear, that the eye sees on the board: a card moved by a key. */
   announce(text: string): void;
+  /** Something every reader is told, in the page's notice: why a key did nothing. */
+  notice(text: string): void;
 }
 
 /**
@@ -1133,6 +1135,11 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (!isLive()) return;
     if (direction && event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
       event.preventDefault();
+      // A flow places its cards from their links: the keys say so rather than doing nothing.
+      if (format()?.layout === "graph") {
+        hooks.notice(t.placedByLinks(id));
+        return;
+      }
       const command = keyMove(board, id, direction);
       if (command?.kind !== "move") return;
       // Where it goes, said once it got there: the eye sees the move, the ear hears it.

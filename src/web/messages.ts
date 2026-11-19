@@ -201,9 +201,18 @@ export interface Messages {
   resolvedNotes: (count: number) => string;
   shortcuts: string;
   /** Each shortcut of the page: the keys, then what they do. */
-  shortcutList: [keys: string, does: string][];
+  /** The keys of the page, as they work on a board laid out this way. */
+  shortcutList: (how: SheetKind) => [keys: string, does: string][];
+  /** What the mouse does there that no key says. */
+  mouseList: (how: SheetKind) => [gesture: string, does: string][];
+  withTheMouse: string;
+  howKanban: string;
+  placedByLinks: (id: string) => string;
   close: string;
 }
+
+/** How a board is laid out, as far as its keys and gestures go. */
+export type SheetKind = "timeline" | "lanes" | "kanban" | "grid" | "graph";
 
 const plural = (count: number): string => (count > 1 ? "s" : "");
 
@@ -376,14 +385,32 @@ const en: Messages = {
   fitHint: "Fit the whole board in the window, or back to 100 %",
   resolvedNotes: (count) => `Resolved (${count})`,
   shortcuts: "Keyboard shortcuts",
-  shortcutList: [
+  shortcutList: (how) => [
     ["Tab", "Into the board, then out of it"],
     ["← → ↑ ↓", "From a card to the next one"],
-    ["Shift + ← → ↑ ↓", "Move the card: column or lane, then its place"],
-    ["Alt + ← → ↑ ↓", "Add a card of its kind beside it, there"],
+    ...(how === "graph"
+      ? []
+      : ([
+          [
+            "Shift + ← → ↑ ↓",
+            how === "timeline"
+              ? "Move the card: ← → a step, ↑ ↓ its place in its cell"
+              : how === "grid"
+                ? "Move the card to the cell that way: ↑ ↓ impact, ← → effort"
+                : "Move the card: ← → a lane, ↑ ↓ its place in its lane",
+          ],
+        ] as [string, string][])),
+    how === "graph"
+      ? ["Alt + → ↓", "Add the next step, linked from the card"]
+      : ["Alt + ← → ↑ ↓", "Add a card of its kind beside it, there"],
     ["Enter or F2", "Rename the card"],
     ["Space", "Select the card and show its actions"],
-    ["D", "Mark the card done, or not done"],
+    [
+      "D",
+      how === "kanban"
+        ? "Move the card to the last lane, or back to the one before"
+        : "Mark the card done, or not done",
+    ],
     ["L", "Link from the card: then Space on the other one"],
     ["N", "Note for Claude on the card"],
     ["Delete", "Remove the card (Undo brings it back)"],
@@ -392,6 +419,31 @@ const en: Messages = {
     ["Esc", "Close, cancel, deselect"],
     ["?", "These shortcuts"],
   ],
+  mouseList: (how) => [
+    [
+      "Drag a card",
+      how === "graph"
+        ? "Nothing: a flow places its cards from their links"
+        : "Move it; a line shows where it lands",
+    ],
+    ...(how === "timeline"
+      ? ([["+ between two step numbers", "Insert a column there"]] as [string, string][])
+      : []),
+    ...(how === "kanban"
+      ? ([
+          ["+ between two lane headings", "Add a lane there"],
+          ["× in the heading of an empty lane", "Remove it (Undo brings it back)"],
+          ["Drag a lane heading", "Move the lane, its cards with it"],
+        ] as [string, string][])
+      : []),
+    ...(how === "graph" || how === "timeline"
+      ? []
+      : ([["Double-click a lane's name", "Rename it for this board"]] as [string, string][])),
+  ],
+  withTheMouse: "With the mouse",
+  howKanban:
+    "Point at a lane and click a +, or click a type. Drag a card to move it, a heading to move its lane; a + between two headings adds a lane.",
+  placedByLinks: (id) => `${id} is placed by its links: link or unlink it to move it.`,
   close: "Close",
 };
 
@@ -566,14 +618,32 @@ const fr: Messages = {
   fitHint: "Faire tenir tout le tableau dans la fenêtre, ou revenir à 100 %",
   resolvedNotes: (count) => `Résolues (${count})`,
   shortcuts: "Raccourcis clavier",
-  shortcutList: [
+  shortcutList: (how) => [
     ["Tab", "Entrer dans le tableau, puis en sortir"],
     ["← → ↑ ↓", "D'une carte à la suivante"],
-    ["Maj + ← → ↑ ↓", "Déplacer la carte : colonne ou couloir, puis sa place"],
-    ["Alt + ← → ↑ ↓", "Ajouter une carte du même type à côté, de ce côté"],
+    ...(how === "graph"
+      ? []
+      : ([
+          [
+            "Maj + ← → ↑ ↓",
+            how === "timeline"
+              ? "Déplacer la carte : ← → une étape, ↑ ↓ sa place dans sa case"
+              : how === "grid"
+                ? "Déplacer la carte dans la case de ce côté : ↑ ↓ l'impact, ← → l'effort"
+                : "Déplacer la carte : ← → une colonne, ↑ ↓ sa place dans la colonne",
+          ],
+        ] as [string, string][])),
+    how === "graph"
+      ? ["Alt + → ↓", "Ajouter l'étape suivante, reliée depuis la carte"]
+      : ["Alt + ← → ↑ ↓", "Ajouter une carte du même type à côté, de ce côté"],
     ["Entrée ou F2", "Renommer la carte"],
     ["Espace", "Sélectionner la carte et montrer ses actions"],
-    ["D", "Marquer la carte faite, ou non faite"],
+    [
+      "D",
+      how === "kanban"
+        ? "Envoyer la carte dans la dernière colonne, ou la remettre dans celle d'avant"
+        : "Marquer la carte faite, ou non faite",
+    ],
     ["L", "Relier depuis la carte : puis Espace sur l'autre"],
     ["N", "Note pour Claude sur la carte"],
     ["Suppr", "Supprimer la carte (Annuler la ramène)"],
@@ -582,6 +652,31 @@ const fr: Messages = {
     ["Échap", "Fermer, annuler, désélectionner"],
     ["?", "Ces raccourcis"],
   ],
+  mouseList: (how) => [
+    [
+      "Glisser une carte",
+      how === "graph"
+        ? "Rien : un flux place ses cartes d'après leurs liens"
+        : "La déplacer ; une ligne montre où elle tombe",
+    ],
+    ...(how === "timeline"
+      ? ([["+ entre deux numéros d'étape", "Insérer une colonne là"]] as [string, string][])
+      : []),
+    ...(how === "kanban"
+      ? ([
+          ["+ entre deux en-têtes", "Ajouter une colonne là"],
+          ["× dans l'en-tête d'une colonne vide", "La supprimer (Annuler la ramène)"],
+          ["Glisser un en-tête", "Déplacer la colonne, ses cartes avec elle"],
+        ] as [string, string][])
+      : []),
+    ...(how === "graph" || how === "timeline"
+      ? []
+      : ([["Double-clic sur le nom d'une colonne", "La renommer pour ce tableau"]] as [string, string][])),
+  ],
+  withTheMouse: "À la souris",
+  howKanban:
+    "Survole une colonne et clique un +, ou clique un type. Glisse une carte pour la déplacer, un en-tête pour déplacer sa colonne ; un + entre deux en-têtes ajoute une colonne.",
+  placedByLinks: (id) => `${id} est placé d'après ses liens : relie-le ou délie-le pour le déplacer.`,
   close: "Fermer",
 };
 
