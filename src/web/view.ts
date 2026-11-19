@@ -528,7 +528,7 @@ export function readingOrder(cards: readonly Placed[]): string[] {
 }
 
 /**
- * The move Alt and an arrow ask for on a focused card, by the board's own rules:
+ * The move Shift and an arrow ask for on a focused card, by the board's own rules:
  * on a timeline, a column either way or a place in its cell; in lanes, a lane
  * either way or a place in its lane. Undefined where the card cannot go.
  */
