@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
 import { cardPlace, keyMove, neighbour, readingOrder } from "../../src/web/view.ts";
-import { KANBAN, ORDERING, table } from "../support.ts";
+import { IMPACT_EFFORT, KANBAN, ORDERING, table } from "../support.ts";
 
 describe("the arrow keys go from a card to the next one on screen", () => {
   // ORDERING: column 1 holds X1, C1, E1 from top to bottom; column 2 holds P1, C2, E2, H1.
@@ -110,5 +110,26 @@ describe("Shift and an arrow move the focused card, by the board's own rules", (
     });
     expect(keyMove(board, "T3", "down")).toEqual({ kind: "move", board: "sprint", id: "T3", lane: "todo" });
     expect(keyMove(board, "T3", "up")).toBeUndefined();
+  });
+
+  test("on a grid, left and right change the effort, up and down the impact", () => {
+    const board = table(IMPACT_EFFORT).board();
+    // Quick wins | Big bets on top, Fill-ins | Avoid below. I1 is a quick win, I2 a big bet, I3 a fill-in.
+    const to = (id: string, lane: string) => ({ kind: "move" as const, board: "priorites", id, lane });
+    expect(keyMove(board, "I1", "right")).toEqual(to("I1", "bet"));
+    expect(keyMove(board, "I2", "left")).toEqual(to("I2", "quick"));
+    expect(keyMove(board, "I1", "down")).toEqual(to("I1", "fill"));
+    expect(keyMove(board, "I3", "up")).toEqual(to("I3", "quick"));
+    expect(keyMove(board, "I2", "down")).toEqual(to("I2", "avoid"));
+  });
+
+  test("on a grid, a card never leaves it, nor wraps to the next row", () => {
+    const board = table(IMPACT_EFFORT).board();
+    expect(keyMove(board, "I1", "left")).toBeUndefined();
+    expect(keyMove(board, "I1", "up")).toBeUndefined();
+    // Big bets is the end of the top row: right does not wrap round to Fill-ins.
+    expect(keyMove(board, "I2", "right")).toBeUndefined();
+    expect(keyMove(board, "I3", "left")).toBeUndefined();
+    expect(keyMove(board, "I3", "down")).toBeUndefined();
   });
 });

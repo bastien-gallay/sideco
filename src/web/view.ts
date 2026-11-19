@@ -536,6 +536,7 @@ export function keyMove(board: Board, id: string, direction: Direction): Command
   const format = findFormat(board.format);
   const el = findElement(board, id);
   if (!format || !el || format.layout === "graph") return undefined;
+  if (format.grid) return gridMove(board, format.lanes, format.grid.perRow, el, direction);
   const timeline = format.layout === "timeline";
   const siblings = board.elements.filter((other) =>
     timeline ? other.col === el.col && other.type === el.type : other.lane === el.lane,
@@ -561,6 +562,33 @@ export function keyMove(board: Board, id: string, direction: Direction): Command
   const lanes = format.lanes.map((lane) => lane.id);
   const lane = lanes[lanes.indexOf(el.lane ?? "") + step];
   return lane && lanes.includes(el.lane ?? "") ? { kind: "move", board: board.id, id, lane } : undefined;
+}
+
+/**
+ * On a plan, the arrows go where they point: left and right to the next cell
+ * of the row, up and down to the cell above or below. A card never leaves the
+ * plan, and never wraps round to the next row.
+ */
+function gridMove(
+  board: Board,
+  lanes: readonly { id: string }[],
+  perRow: number,
+  el: { id: string; lane?: string },
+  direction: Direction,
+): Command | undefined {
+  const at = lanes.findIndex((lane) => lane.id === el.lane);
+  if (at < 0) return undefined;
+  const row = Math.floor(at / perRow);
+  const col = at % perRow;
+  const [r, c] =
+    direction === "up"
+      ? [row - 1, col]
+      : direction === "down"
+        ? [row + 1, col]
+        : [row, col + (direction === "right" ? 1 : -1)];
+  if (c < 0 || c >= perRow || r < 0) return undefined;
+  const lane = lanes[r * perRow + c];
+  return lane ? { kind: "move", board: board.id, id: el.id, lane: lane.id } : undefined;
 }
 
 /** A "+" to click: adds a card of one kind where it is drawn. Scene coordinates. */
