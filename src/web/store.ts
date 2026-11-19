@@ -17,6 +17,7 @@ import {
   type Workspace,
 } from "../domain/workspace.ts";
 import { t } from "./locale.ts";
+import { postCommands } from "./post.ts";
 import type { Frame } from "./relay.ts";
 import { connect } from "./stream.ts";
 
@@ -33,6 +34,8 @@ export interface State {
   /** Agent sessions blocked on `sideco wait` right now. */
   listening: number;
   connected: boolean;
+  /** A save has waited long enough for the companion's answer to be worth saying. */
+  saving: boolean;
   /** The build of the page the companion serves now; null until it has said. */
   served: string | null;
   /** Elements that changed moments ago, to draw the eye. */
@@ -53,6 +56,7 @@ export const state: State = {
   listening: 0,
   // Assumed until the stream says otherwise, so the first paint does not cry wolf.
   connected: true,
+  saving: false,
   served: null,
   fresh: new Set(),
   error: null,
@@ -225,22 +229,38 @@ export function travelTo(seq: number | null): void {
   changed();
 }
 
-/** Sends the human's commands. The board updates when the events come back on the stream. */
+/** How long the companion has to answer a save; past that, the save has failed. */
+const SEND_TIMEOUT_MS = 8000;
+/** A save answered sooner says nothing: the board changing is answer enough. */
+const SLOW_MS = 300;
+let inFlight = 0;
+
+/**
+ * Sends the human's commands. The board updates when the events come back on
+ * the stream. Undefined when nothing was saved: refused, out of reach, or not
+ * answered in time — the error says which.
+ */
 export async function send(...commands: Command[]): Promise<(string | null)[] | undefined> {
   if (!isLive()) return undefined;
-  try {
-    const response = await fetch("/api/commands", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ actor: "human", commands }),
-    });
-    const body = (await response.json()) as { error?: string; minted?: (string | null)[] };
-    if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
+  inFlight++;
+  const posted = await postCommands(JSON.stringify({ actor: "human", commands }), {
+    fetch: (input, init) => fetch(input, init),
+    timeoutMs: SEND_TIMEOUT_MS,
+    slowMs: SLOW_MS,
+    onSlow: () => {
+      state.saving = true;
+      changed();
+    },
+  });
+  inFlight--;
+  if (inFlight === 0) state.saving = false;
+  if (posted.ok) {
     state.error = null;
-    return body.minted;
-  } catch (error) {
-    state.error = error instanceof Error ? error.message : String(error);
     changed();
-    return undefined;
+    return posted.minted;
   }
+  state.error =
+    posted.reason === "timeout" ? t.noAnswer : posted.reason === "unreachable" ? t.unreachable : posted.error;
+  changed();
+  return undefined;
 }

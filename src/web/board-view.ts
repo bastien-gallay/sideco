@@ -40,7 +40,10 @@ const ARROWS: Record<string, Direction> = {
 interface Editing {
   /** The text the editor opened with, as it would be saved: leaving it as it was saves nothing. */
   initial: string;
-  commit(value: string): void;
+  /** Saves the words; true once the companion took them. Nothing to wait for when it returns nothing. */
+  commit(value: string): Promise<boolean> | undefined;
+  /** The words are on their way: the editor holds them, and nothing closes it meanwhile. */
+  saving: boolean;
   /** How the words are kept: on one line for a label, line by line for a detail. */
   tidy(text: string): string;
   /** A text of several lines: read from the left, Shift+Enter breaks its lines. */
@@ -451,7 +454,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     value: string,
     placeholder: string,
     colours: { fill: string; ink: string },
-    commit: (value: string) => void,
+    commit: (value: string) => Promise<boolean> | undefined,
     kind: EditorKind = { name: t.cardLabel, lines: false },
   ): void {
     const frame = host.getBoundingClientRect();
@@ -471,7 +474,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     editor.style.background = colours.fill;
     editor.style.color = colours.ink;
     editor.hidden = false;
-    editing = { initial: tidy(value), commit, tidy, lines: kind.lines, from: kind.from };
+    editing = { initial: tidy(value), commit, tidy, lines: kind.lines, from: kind.from, saving: false };
     tools.hidden = true;
     paintOffers();
     editor.focus();
@@ -482,13 +485,39 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   /** `refocus`: the keyboard goes back to the card the editor was about, rather than to nowhere. */
   function closeEditor(save: boolean, refocus = true): void {
     const was = editing;
-    if (!was) return;
+    if (!was || was.saving) return;
+    const value = was.tidy(editor.value);
+    const pending = save && value !== "" && value !== was.initial ? was.commit(value) : undefined;
+    if (pending) {
+      hold(was, pending, refocus);
+      return;
+    }
     editing = undefined;
     editor.hidden = true;
-    const value = was.tidy(editor.value);
-    if (save && value !== "" && value !== was.initial) was.commit(value);
     changed();
     if (refocus && was.from) nodes.get(was.from)?.g.focus({ preventScroll: true });
+  }
+
+  /**
+   * Keeps the words on screen until the companion has them. Saved, the editor
+   * closes; not saved, the words come back to the human, editable, with the
+   * reason said by the page.
+   */
+  function hold(was: Editing, pending: Promise<boolean>, refocus: boolean): void {
+    was.saving = true;
+    editor.readOnly = true;
+    editor.setAttribute("aria-busy", "true");
+    void pending.then((saved) => {
+      was.saving = false;
+      editor.readOnly = false;
+      editor.removeAttribute("aria-busy");
+      if (editing !== was) return;
+      if (saved) {
+        closeEditor(false, refocus);
+        return;
+      }
+      editor.focus();
+    });
   }
 
   editor.addEventListener("keydown", (event) => {
@@ -512,6 +541,11 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     return { fill: type?.fill ?? "#FFFFFF", ink: type?.ink ?? "#1F2328" };
   }
 
+  /** Whether a send saved something: it answers undefined when nothing was. */
+  function saved(sending: Promise<unknown>): Promise<boolean> {
+    return sending.then((answer) => answer !== undefined);
+  }
+
   function rename(id: string): void {
     const node = nodes.get(id);
     const element = board?.elements.find((e) => e.id === id);
@@ -523,7 +557,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       t.cardLabel,
       colours(element.type),
       (label) => {
-        if (label !== element.label) void send({ kind: "rename", board: boardId, id, label });
+        if (label !== element.label) return saved(send({ kind: "rename", board: boardId, id, label }));
       },
       { name: t.cardLabel, lines: false, from: id },
     );
@@ -541,7 +575,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       t.laneName,
       { fill: "var(--surface)", ink: "var(--ink)" },
       (label) => {
-        void send({ kind: "name-lane", board: boardId, lane, label });
+        return saved(send({ kind: "name-lane", board: boardId, lane, label }));
       },
     );
   }
@@ -559,7 +593,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       t.detailPlaceholder,
       { fill: "var(--surface)", ink: "var(--ink)" },
       (detail) => {
-        void send({ kind: "annotate", board: boardId, id, detail });
+        return saved(send({ kind: "annotate", board: boardId, id, detail }));
       },
       { name: t.detailOf(id), lines: true, from: id },
     );
@@ -577,7 +611,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       t.noteOnPlaceholder(id),
       { fill: "var(--surface)", ink: "var(--ink)" },
       (text) => {
-        void send({ kind: "note", board: boardId, text, target: id });
+        return saved(send({ kind: "note", board: boardId, text, target: id }));
       },
       { name: t.noteOn(id), lines: true, from: id },
     );
@@ -608,13 +642,16 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         lane: place?.lane,
         from,
       };
-      void send(command).then((minted) => {
-        const id = minted?.[0];
-        if (id) {
-          state.selected = id;
-          changed();
-        }
-      });
+      return saved(
+        send(command).then((minted) => {
+          const id = minted?.[0];
+          if (id) {
+            state.selected = id;
+            changed();
+          }
+          return minted;
+        }),
+      );
     });
   }
 

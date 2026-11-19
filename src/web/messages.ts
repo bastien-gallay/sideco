@@ -19,6 +19,11 @@ export interface Messages {
   waitingInTerminal: (why: string) => string;
   listening: string;
   disconnected: string;
+  /** A save still waiting for the companion's answer. */
+  saving: string;
+  /** A save the companion did not answer in time, or could not be reached for. */
+  noAnswer: string;
+  unreachable: string;
 
   // When the agent will read the human's changes.
   hintListening: string;
@@ -202,6 +207,9 @@ const en: Messages = {
   waitingInTerminal: (why) => `Claude is waiting for you in the terminal: ${why}`.trim(),
   listening: "Claude is waiting for you to hand over",
   disconnected: "Companion disconnected, reconnecting…",
+  saving: "Saving…",
+  noAnswer: "The companion did not answer: nothing was saved.",
+  unreachable: "The companion is out of reach: nothing was saved.",
 
   hintListening: "Claude resumes as soon as you hand over.",
   hintNoSession: "No session linked: Claude will read your changes when a session starts here.",
@@ -377,6 +385,9 @@ const fr: Messages = {
   waitingInTerminal: (why) => `Claude t'attend dans le terminal : ${why}`.trim(),
   listening: "Claude attend que tu lui passes la main",
   disconnected: "Compagnon déconnecté, reconnexion…",
+  saving: "Enregistrement…",
+  noAnswer: "Le compagnon n'a pas répondu : rien n'est enregistré.",
+  unreachable: "Le compagnon est injoignable : rien n'est enregistré.",
 
   hintListening: "Claude reprend dès que tu lui passes la main.",
   hintNoSession: "Aucune session reliée : Claude lira tes changements quand une session démarrera ici.",

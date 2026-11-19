@@ -1249,6 +1249,46 @@ describe("an editor kept while the board changes under it", () => {
   });
 });
 
+describe("a save the companion does not answer", () => {
+  const BOARD = "envoi";
+  const editor = () => page.locator(".card-editor");
+
+  test("the page says it is saving, and a failed save gives the words back to the editor", async () => {
+    await agent(`board new "Envoi" --id ${BOARD}\nadd event "Avant" --col 1`);
+    await page.locator(".board-picker select").selectOption(BOARD);
+    await card("E1").getByText("Avant").waitFor();
+    const held: import("playwright-core").Route[] = [];
+    await page.route("**/api/commands", (route) => void held.push(route));
+    await card("E1").dblclick();
+    await editor().fill("Après");
+    await editor().press("Enter");
+    // Held: the words stay on screen, not editable, and the page says it is saving.
+    await status().filter({ hasText: "Saving…" }).waitFor();
+    expect(await editor().isVisible()).toBe(true);
+    expect(await editor().getAttribute("aria-busy")).toBe("true");
+    expect(await editor().inputValue()).toBe("Après");
+    await until("the post left", async () => held.length === 1);
+    await held[0]?.abort("connectionrefused");
+    // Failed: the words come back to the editor, editable, and the page says why.
+    await page.locator(".toast", { hasText: "nothing was saved" }).waitFor();
+    // The browser logs the refusal this test staged; that one line is not a fault of the page.
+    const staged = problems.indexOf("console: Failed to load resource: net::ERR_CONNECTION_REFUSED");
+    if (staged >= 0) problems.splice(staged, 1);
+    expect(await editor().getAttribute("aria-busy")).toBeNull();
+    expect(await editor().inputValue()).toBe("Après");
+    expect(await editor().evaluate((field) => field === document.activeElement)).toBe(true);
+    await status().filter({ hasNotText: "Saving…" }).waitFor();
+    await page.unroute("**/api/commands");
+    await editor().press("Enter");
+    await until(
+      "the label is saved once the companion answers",
+      async () => (await elementOf(BOARD, "E1"))?.label === "Après",
+    );
+    await editor().waitFor({ state: "hidden" });
+    await agent(`board rm ${BOARD}`);
+  });
+});
+
 describe("many tabs open on the companion", () => {
   const BOARD = "onglets";
 

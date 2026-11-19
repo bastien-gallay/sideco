@@ -1039,6 +1039,13 @@ kbd {
   opacity: 0.6;
 }
 
+/* Words on their way to the companion: still on screen, no longer editable. */
+.card-editor[aria-busy="true"] {
+  border-style: dashed;
+  cursor: progress;
+  opacity: 0.75;
+}
+
 /* ── Empty state and the new-board dialog ─────────────────────────────────── */
 
 .empty {

@@ -425,10 +425,14 @@ const paintUndo = region(undoGroup, (m: { undo: boolean; redo: boolean }) => [
   ),
 ]);
 
-const paintStatus = region(statusPill, (m: { tone: string; text: string; connected: boolean }) => [
-  h("span", { class: `dot tone-${m.connected ? m.tone : "off"}`, "aria-hidden": "true" }),
-  h("span", { class: "status-text" }, m.connected ? m.text : t.disconnected),
-]);
+const paintStatus = region(
+  statusPill,
+  (m: { tone: string; text: string; connected: boolean; saving: boolean }) => [
+    h("span", { class: `dot tone-${m.connected ? m.tone : "off"}`, "aria-hidden": "true" }),
+    // A save still waiting says so first: the human's words are on their way, not lost.
+    h("span", { class: "status-text" }, !m.connected ? t.disconnected : m.saving ? t.saving : m.text),
+  ],
+);
 
 interface Waits {
   waiting: Waiting | undefined;
@@ -1178,7 +1182,11 @@ function render(): void {
     current: board?.id,
     live,
   });
-  paintStatus({ ...agentStatus(session, live ? state.listening : 0, locale), connected: state.connected });
+  paintStatus({
+    ...agentStatus(session, live ? state.listening : 0, locale),
+    connected: state.connected,
+    saving: state.saving,
+  });
   paintExport({ board: board?.id });
   paintWaits({ waiting: live ? claudeWaits(ws) : undefined, current: board?.id, listening: state.listening });
   const mine = live ? (state.boardId ?? undefined) : undefined;
