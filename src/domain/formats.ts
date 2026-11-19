@@ -73,6 +73,12 @@ export interface Format {
   ownLanes?: true;
   /** With `ownLanes`: a card in the last lane is done, and wears no other mark. */
   doneLast?: true;
+  /**
+   * Only for `timeline` layouts: the kinds, first rows of the board, that say
+   * where a step belongs. The first runs on into the steps after it; the page
+   * keeps them in sight under the step numbers once they have scrolled away.
+   */
+  backbone?: readonly string[];
 }
 
 const t = (en: string, fr: string): Text => ({ en, fr });
@@ -252,6 +258,7 @@ const STORY_MAP: Format = {
   ),
   layout: "timeline",
   lanes: [],
+  backbone: ["activity", "task"],
   types: [
     {
       id: "activity",

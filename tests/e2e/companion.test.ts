@@ -1703,6 +1703,31 @@ describe("a card reordered in its cell, by the mouse", () => {
   });
 });
 
+describe("a story map scrolled down", () => {
+  test("keeps each step's activity and task in sight under its number", async () => {
+    const stories = Array.from({ length: 14 }, (_, i) => `add story "Story ${i + 1}" --col 1`).join("\n");
+    await agent(
+      `board new "Carte" --format story-map --id carte-longue\nadd activity "Trouver un livre" --col 1\nadd task "Chercher par titre" --col 1\n${stories}`,
+    );
+    await page.locator(".board-picker select").selectOption("carte-longue");
+    await card("S14").waitFor();
+    // The activity runs on into the spare step: the caption of step 1 is the first.
+    const caption = page.locator(".heads-steps .step-caption", { hasText: "Trouver un livre" }).first();
+    // At rest the activity is on the board itself: the caption would only say it twice.
+    expect(await caption.isVisible()).toBe(false);
+    await page.locator(".canvas-scroll").evaluate((el) => {
+      el.scrollTop = 600;
+    });
+    await caption.waitFor({ state: "visible" });
+    await page.locator(".heads-steps .step-caption", { hasText: "Chercher par titre" }).waitFor();
+    await shot("49-story-map-backbone");
+    await agent("board rm carte-longue");
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== "carte-longue";
+    });
+  });
+});
+
 describe("a tab opened on no board in particular", () => {
   const MINE = "tenu";
   const OTHER = "autre-session";

@@ -44,6 +44,8 @@ export interface Band {
   count?: number;
   /** What a lane stands for, when its name alone does not say it. */
   hint?: string;
+  /** A step of a story map: the activity and the task it belongs to, one line each. */
+  caption?: string[];
   /** An axis: the words for where it starts and where it ends. */
   low?: string;
   high?: string;
@@ -65,6 +67,8 @@ export interface Scene {
   bands: Band[];
   cards: Card[];
   connectors: Connector[];
+  /** On a story map, where its first backbone row ends: scrolled past it, the steps show their captions. */
+  backbone?: number;
 }
 
 /** Where a pointer position lands, in the board's own terms. */

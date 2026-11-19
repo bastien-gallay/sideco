@@ -17,11 +17,14 @@ import {
   type Room,
   type Scene,
   type Target,
+  wrap,
 } from "./scene.ts";
 
 export const COL_W = 176;
 const HEADER_W = 136;
 const TOP_H = 32;
+/** What a caption under a step number holds, at the size it is drawn. */
+const CAPTION_CHARS = 26;
 const ROW_PAD = 12;
 const STACK_GAP = 8;
 const EMPTY_ROW_H = 44;
@@ -71,8 +74,10 @@ export function layoutTimeline(
   const width = HEADER_W + grid.columns * COL_W + MARGIN;
   const bottom = grid.rows.reduce((max, row) => Math.max(max, row.y + row.h), TOP_H);
 
+  const captions = captionsOf(board, format, grid.columns);
   const bands: Band[] = [];
   for (let col = 1; col <= grid.columns; col++) {
+    const caption = captions?.[col - 1];
     bands.push({
       kind: "step",
       id: String(col),
@@ -81,6 +86,7 @@ export function layoutTimeline(
       y: 0,
       w: COL_W,
       h: bottom,
+      ...(caption ? { caption } : {}),
     });
   }
   for (const row of grid.rows) {
@@ -110,7 +116,38 @@ export function layoutTimeline(
     cards.push(placed);
     filled.set(cell, above + placed.h + STACK_GAP);
   }
-  return { width, height: bottom + MARGIN, bands, cards, connectors: [] };
+  const first = grid.rows.find((row) => row.type === format.backbone?.[0]);
+  return {
+    width,
+    height: bottom + MARGIN,
+    bands,
+    cards,
+    connectors: [],
+    ...(first ? { backbone: first.y + first.h } : {}),
+  };
+}
+
+/**
+ * Per step, a line for each kind of the backbone: the card of that kind in the
+ * step, the first when several; the first kind's runs on into the steps after.
+ */
+function captionsOf(board: Board, format: Format, columns: number): string[][] | undefined {
+  const kinds = format.backbone;
+  if (!kinds) return undefined;
+  const short = (label: string): string => wrap(label.replace(/\s+/g, " ").trim(), CAPTION_CHARS, 1)[0] ?? "";
+  const running = new Map<string, string>();
+  const captions: string[][] = [];
+  for (let col = 1; col <= columns; col++) {
+    captions.push(
+      kinds.map((kind, index) => {
+        const here = board.elements.find((e) => e.type === kind && e.col === col);
+        if (here) running.set(kind, short(here.label));
+        else if (index > 0) running.delete(kind);
+        return running.get(kind) ?? "";
+      }),
+    );
+  }
+  return captions;
 }
 
 /**

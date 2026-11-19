@@ -46,6 +46,8 @@ const LANE_HEAD = 38;
 const LANE_HEAD_HINTED = 44;
 /** What a lane heading keeps beside its name: the inset on the left and the count on the right. */
 const LANE_COUNT_ROOM = 56;
+/** What a story map's step numbers take more, once they say their activity and task. */
+const BACKBONE_H = 36;
 /** How far outside its card the ring of a focused or selected card is drawn: off the sticky's colour, always. */
 const RING = 5;
 const ARROWS: Record<string, Direction> = {
@@ -374,10 +376,14 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   function holdHeadings(): void {
     const sx = scroll.scrollLeft / zoom;
     const sy = scroll.scrollTop / zoom;
-    heads.querySelector(".heads-steps")?.setAttribute("transform", `translate(0 ${sy})`);
-    // The step number in the human's hand stays there, whatever is painted meanwhile.
+    const steps = heads.querySelector(".heads-steps");
+    steps?.setAttribute("transform", `translate(0 ${sy})`);
+    // On a story map, once the activities have scrolled under the numbers, each step says its activity and task.
+    const backbone = scene.backbone !== undefined && sy > scene.backbone - frozen.top;
+    steps?.classList.toggle("shows-backbone", backbone);
+    // The step in the human's hand stays there, its number and its captions, whatever is painted meanwhile.
     for (const label of heads.querySelectorAll<SVGTextElement>(".heads-steps text")) {
-      const held = stepDrag?.moving === true && label.textContent === String(stepDrag.from);
+      const held = stepDrag?.moving === true && label.dataset.col === String(stepDrag.from);
       label.classList.toggle("is-dragging", held);
       if (held) label.setAttribute("transform", `translate(${stepDrag?.dx ?? 0} 0)`);
       else label.removeAttribute("transform");
@@ -402,7 +408,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     }
     paintOffers();
     // A card the keyboard or a search brings into view lands clear of the frozen names, never under them.
-    scroll.style.scrollPaddingTop = `${frozen.top * zoom + 8}px`;
+    scroll.style.scrollPaddingTop = `${(frozen.top + (backbone ? BACKBONE_H : 0)) * zoom + 8}px`;
     scroll.style.scrollPaddingLeft = `${frozen.left * zoom + 8}px`;
   }
 
@@ -448,6 +454,14 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const left = Math.min(...scene.bands.filter((b) => b.kind === "step").map((b) => b.x));
     if (Number.isFinite(top))
       steps.append(svg("rect", { class: "heads-strip", width: scene.width, height: top }));
+    if (Number.isFinite(top) && scene.backbone !== undefined)
+      steps.append(
+        svg("rect", {
+          class: "heads-strip heads-backbone-strip",
+          width: scene.width,
+          height: top + BACKBONE_H,
+        }),
+      );
     if (Number.isFinite(left))
       rows.append(svg("rect", { class: "heads-strip", width: left, height: scene.height }));
     let laneTop = 0;

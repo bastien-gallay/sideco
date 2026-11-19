@@ -11,6 +11,9 @@ export const SVG_STYLE = `
 .sideco-board { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 .band-rule { stroke: var(--sideco-rule, #E3E6EA); stroke-width: 1; }
 .band-label { fill: var(--sideco-muted, #59636E); font-size: 12px; font-weight: 600; }
+.heads-backbone-strip { display: none; }
+.shows-backbone .step-caption, .shows-backbone .heads-backbone-strip { display: inline; }
+.step-caption { display: none; fill: var(--sideco-muted, #59636E); font-size: 11px; text-anchor: middle; }
 .band-step-label { fill: var(--sideco-muted, #59636E); font-size: 11px; text-anchor: middle; }
 .lane-bg { fill: var(--sideco-lane, #F3F4F6); }
 .lane-label { fill: var(--sideco-ink, #1F2328); font-size: 13px; font-weight: 600; }
@@ -60,8 +63,16 @@ export function arrowDefs(): string {
 export function bandMarkup(b: Band): string {
   const mid = b.y + b.h / 2;
   switch (b.kind) {
-    case "step":
-      return `<g class="band band-step"><line class="band-rule" x1="${b.x}" y1="0" x2="${b.x}" y2="${b.h}"/><text class="band-step-label" x="${b.x + b.w / 2}" y="20">${esc(b.label)}</text></g>`;
+    case "step": {
+      // A story map's step also says its activity and task, shown only once those rows have scrolled away.
+      const caption = (b.caption ?? [])
+        .map(
+          (line, i) =>
+            `<text class="step-caption" data-col="${esc(b.id)}" x="${b.x + b.w / 2}" y="${38 + 15 * i}">${esc(line)}</text>`,
+        )
+        .join("");
+      return `<g class="band band-step"><line class="band-rule" x1="${b.x}" y1="0" x2="${b.x}" y2="${b.h}"/><text class="band-step-label" data-col="${esc(b.id)}" x="${b.x + b.w / 2}" y="20">${esc(b.label)}</text>${caption}</g>`;
+    }
     case "row":
       return `<g class="band band-row"><line class="band-rule" x1="0" y1="${b.y}" x2="${b.w}" y2="${b.y}"/><rect x="12" y="${mid - 6}" width="12" height="12" rx="2" fill="${esc(b.swatch ?? "#E8EEF4")}" stroke="rgba(0,0,0,.2)"/><text class="band-label" x="32" y="${mid + 4}">${esc(b.label)}</text></g>`;
     case "axis": {
