@@ -9,7 +9,7 @@ import { toMermaid } from "../../src/domain/export/mermaid.ts";
 import { fromModel, toModel } from "../../src/domain/export/model.ts";
 import { lanesOf } from "../../src/domain/formats.ts";
 import { laneDrop, layoutBoard, locate } from "../../src/domain/layout/index.ts";
-import { addOffers, describeEvent, keyAdd, keyMove } from "../../src/web/view.ts";
+import { addOffers, describeEvent, keyAdd, keyMove, laneKeyMove } from "../../src/web/view.ts";
 import { IMPACT_EFFORT, KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 const META = { exportedAt: "2026-11-18T10:00:00.000Z" };
@@ -227,5 +227,31 @@ describe("a lane dragged by its heading", () => {
     expect(laneDrop(t.board(), middle(todo), "todo")).toBeUndefined();
     // The hint stands on the edge it would land on.
     expect(laneDrop(t.board(), middle(done) - 1, "todo")?.x).toBe(done.x - 8);
+  });
+});
+
+describe("a lane moved from the keyboard", () => {
+  test("Shift and an arrow on its heading move it one lane that way; at an end, nowhere", () => {
+    const t = table(KANBAN);
+    expect(laneKeyMove(t.board(), "todo", "right")).toEqual({
+      kind: "move-lane",
+      board: "sprint",
+      lane: "todo",
+      before: "done",
+    });
+    expect(laneKeyMove(t.board(), "doing", "right")).toEqual({
+      kind: "move-lane",
+      board: "sprint",
+      lane: "doing",
+    });
+    expect(laneKeyMove(t.board(), "doing", "left")).toEqual({
+      kind: "move-lane",
+      board: "sprint",
+      lane: "doing",
+      before: "todo",
+    });
+    expect(laneKeyMove(t.board(), "todo", "left")).toBeUndefined();
+    expect(laneKeyMove(t.board(), "done", "right")).toBeUndefined();
+    expect(laneKeyMove(t.board(), "done", "up")).toBeUndefined();
   });
 });

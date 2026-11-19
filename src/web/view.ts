@@ -694,6 +694,20 @@ export interface AddPlace {
   from?: string;
 }
 
+/** The move Shift and an arrow ask for on the heading of a kanban lane: one lane that way; undefined at an end. */
+export function laneKeyMove(board: Board, lane: string, direction: Direction): Command | undefined {
+  const lanes = lanesOf(board);
+  const at = lanes.indexOf(lane);
+  if (at === -1 || (direction !== "left" && direction !== "right")) return undefined;
+  if (direction === "left") {
+    const before = lanes[at - 1];
+    return before ? { kind: "move-lane", board: board.id, lane, before } : undefined;
+  }
+  if (at === lanes.length - 1) return undefined;
+  const before = lanes[at + 2];
+  return { kind: "move-lane", board: board.id, lane, ...(before ? { before } : {}) };
+}
+
 /**
  * The card Alt and an arrow add beside a focused one, of its kind, where the
  * arrow points: on a timeline, the step either way or just above or below it

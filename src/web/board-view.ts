@@ -28,6 +28,7 @@ import {
   keptLines,
   keyAdd,
   keyMove,
+  laneKeyMove,
   neighbour,
   oneLine,
   type ReadingGroup,
@@ -172,6 +173,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     | undefined;
   /** A step of a timeline taken by its number, how far it was carried, and the number it would take. */
   let stepDrag: { from: number; startX: number; dx: number; moving: boolean; to?: number } | undefined;
+  /** A lane heading that should have the keyboard once drawn: after a key moved, named or added it. */
+  let laneArriving: string | undefined;
   /** A card the human just added, not drawn yet: it comes back on the stream, after the save is answered. */
   let arriving: string | undefined;
   /** The group of each lane or step a screen reader enters, by its name. */
@@ -257,6 +260,14 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       liftHeadings();
     }
     holdHeadings();
+    if (laneArriving) {
+      const label = heads.querySelector<SVGTextElement>(`text.lane-label[data-lane="${laneArriving}"]`);
+      const at = document.activeElement;
+      if (label && (at === null || at === document.body || at === editor || !at.isConnected)) {
+        label.focus({ preventScroll: true });
+        laneArriving = undefined;
+      }
+    }
     conns.innerHTML = scene.connectors.map(connectorMarkup).join("");
     for (const conn of conns.querySelectorAll<SVGGElement>(".conn")) {
       const path = conn.querySelector("path");
@@ -451,6 +462,14 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
           ...group.querySelectorAll("text"),
         );
         heads.append(head);
+        // On a kanban, a lane heading is a Tab stop: its keys rename, move, remove it, or add one beside it.
+        const label = head.querySelector<SVGTextElement>("text.lane-label");
+        if (label && format()?.ownLanes && !format()?.grid) {
+          label.setAttribute("tabindex", "0");
+          label.setAttribute("role", "button");
+          label.setAttribute("aria-label", t.laneHeading(band.label, band.count ?? 0));
+          label.setAttribute("aria-description", t.laneKeys);
+        }
       }
     });
     frozen = {
@@ -745,16 +764,22 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   /** Opens the editor on the edge where the "+" was: what is typed names the lane added there. */
   function nameNewLane(offer: SVGGElement): void {
+    const box = offer.getBoundingClientRect();
+    nameLaneAt(new DOMRect(box.left + box.width / 2 - 90, box.top - 7, 180, 36), offer.dataset.before);
+  }
+
+  /** The editor that names a lane added before `before`, else last; once drawn, its heading has the keyboard. */
+  function nameLaneAt(box: DOMRect, before: string | undefined): void {
     if (!board || !isLive()) return;
     const boardId = board.id;
-    const before = offer.dataset.before;
-    const box = offer.getBoundingClientRect();
-    openEditor(
-      new DOMRect(box.left + box.width / 2 - 90, box.top - 7, 180, 36),
-      "",
-      t.laneName,
-      { fill: "var(--surface)", ink: "var(--ink)" },
-      (label) => saved(send({ kind: "add-lane", board: boardId, label, ...(before ? { before } : {}) })),
+    openEditor(box, "", t.laneName, { fill: "var(--surface)", ink: "var(--ink)" }, (label) =>
+      saved(
+        send({ kind: "add-lane", board: boardId, label, ...(before ? { before } : {}) }).then((minted) => {
+          const lane = minted?.[0];
+          if (lane) laneArriving = lane;
+          return minted;
+        }),
+      ),
     );
   }
 
@@ -1265,6 +1290,56 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     else if (event.key.toLowerCase() === "n") noteOn(id);
     else return;
     event.preventDefault();
+  });
+
+  root.addEventListener("keydown", (event) => {
+    const label = (event.target as Element | null)?.closest?.<SVGTextElement>("text.lane-label");
+    const lane = label?.dataset.lane;
+    if (!label || !lane || !board) return;
+    const lanes = lanesOf(board);
+    const at = lanes.indexOf(lane);
+    const name = label.textContent ?? lane;
+    const direction = ARROWS[event.key];
+    const plain = !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey;
+    const focusLane = (id: string | undefined) =>
+      id &&
+      heads
+        .querySelector<SVGTextElement>(`text.lane-label[data-lane="${id}"]`)
+        ?.focus({ preventScroll: true });
+    if ((direction === "left" || direction === "right") && plain)
+      focusLane(lanes[at + (direction === "right" ? 1 : -1)]);
+    else if (direction === "down" && plain) {
+      const first = board.elements.find((e) => e.lane === lane);
+      if (first) focusCard(first.id);
+    } else if (!isLive()) return;
+    else if (direction && event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
+      const command = laneKeyMove(board, lane, direction);
+      if (!command) return;
+      laneArriving = lane;
+      void send(command).then((done) => {
+        if (done !== undefined)
+          hooks.announce(t.laneMovedTo(name, at + (direction === "right" ? 2 : 0), lanes.length));
+      });
+    } else if ((direction === "left" || direction === "right") && event.altKey) {
+      const box = label.getBoundingClientRect();
+      const before = direction === "right" ? lanes[at + 1] : lane;
+      nameLaneAt(new DOMRect(box.left - 6, box.bottom + 6, 180, 36), before);
+    } else if (event.key === "+") {
+      const box = label.getBoundingClientRect();
+      nameLaneAt(new DOMRect(box.left - 6, box.bottom + 6, 180, 36), lanes[at + 1]);
+    } else if (event.key === "Enter" || event.key === "F2") {
+      laneArriving = lane;
+      renameLane(label);
+    } else if (event.key === "Delete" || event.key === "Backspace") {
+      if (board.elements.some((e) => e.lane === lane)) hooks.notice(t.laneNotEmpty(name));
+      else if (lanes.length < 2) return;
+      else {
+        laneArriving = lanes[at + 1] ?? lanes[at - 1];
+        removeLane(lane);
+      }
+    } else return;
+    event.preventDefault();
+    event.stopPropagation();
   });
 
   window.addEventListener("keydown", (event) => {

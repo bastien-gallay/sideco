@@ -59,6 +59,10 @@ export interface Messages {
   insertColumn: string;
   addLane: string;
   removeLane: (name: string) => string;
+  laneHeading: (name: string, count: number) => string;
+  laneKeys: string;
+  laneMovedTo: (name: string, position: number, of: number) => string;
+  laneNotEmpty: (name: string) => string;
   laneRemoved: (name: string) => string;
   removeStep: (col: number) => string;
   stepRemoved: (col: number) => string;
@@ -266,6 +270,11 @@ const en: Messages = {
   insertColumn: "Insert a column here",
   addLane: "Add a lane here",
   removeLane: (name) => `Remove the lane ${name}`,
+  laneHeading: (name, count) => `Lane ${name}, ${count} card${count === 1 ? "" : "s"}`,
+  laneKeys:
+    "Enter: rename · Shift and an arrow: move · Delete: remove if empty · + or Alt and an arrow: add a lane",
+  laneMovedTo: (name, position, of) => `Lane ${name} moved: ${position} of ${of}.`,
+  laneNotEmpty: (name) => `Lane ${name} still has cards: move or remove them first.`,
   laneRemoved: (name) => `Lane ${name} removed.`,
   removeStep: (col) => `Remove step ${col}`,
   stepRemoved: (col) => `Step ${col} removed.`,
@@ -418,6 +427,14 @@ const en: Messages = {
     ["⌘Z / Ctrl+Z", "Undo your last change"],
     ["Esc", "Close, cancel, deselect"],
     ["?", "These shortcuts"],
+    ...(how === "kanban"
+      ? ([
+          [
+            "On a lane heading",
+            "Enter renames · Shift + ← → moves · Delete removes it if empty · + or Alt + ← → adds a lane · ↓ goes to its cards",
+          ],
+        ] as [string, string][])
+      : []),
   ],
   mouseList: (how) => [
     [
@@ -500,6 +517,11 @@ const fr: Messages = {
   insertColumn: "Insérer une colonne ici",
   addLane: "Ajouter une colonne ici",
   removeLane: (name) => `Supprimer la colonne ${name}`,
+  laneHeading: (name, count) => `Colonne ${name}, ${count} carte${count > 1 ? "s" : ""}`,
+  laneKeys:
+    "Entrée : renommer · Maj et une flèche : déplacer · Suppr : supprimer si vide · + ou Alt et une flèche : ajouter une colonne",
+  laneMovedTo: (name, position, of) => `Colonne ${name} déplacée : ${position} sur ${of}.`,
+  laneNotEmpty: (name) => `La colonne ${name} a encore des cartes : déplace-les ou supprime-les d'abord.`,
   laneRemoved: (name) => `Colonne ${name} supprimée.`,
   removeStep: (col) => `Supprimer l'étape ${col}`,
   stepRemoved: (col) => `Étape ${col} supprimée.`,
@@ -655,6 +677,14 @@ const fr: Messages = {
     ["⌘Z / Ctrl+Z", "Annuler ton dernier changement"],
     ["Échap", "Fermer, annuler, désélectionner"],
     ["?", "Ces raccourcis"],
+    ...(how === "kanban"
+      ? ([
+          [
+            "Sur un en-tête de colonne",
+            "Entrée renomme · Maj + ← → déplace · Suppr la supprime si vide · + ou Alt + ← → ajoute une colonne · ↓ va à ses cartes",
+          ],
+        ] as [string, string][])
+      : []),
   ],
   mouseList: (how) => [
     [

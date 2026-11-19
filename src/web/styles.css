@@ -859,6 +859,13 @@ kbd {
   opacity: 0.85;
 }
 
+/* A kanban lane heading takes the keyboard: it says so as a card does. */
+.layer-heads .lane-label:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
 /* On a timeline, a step is taken by its number and moved, its cards with it. */
 .has-steps:not(.is-past) .layer-heads .heads-steps .heads-strip {
   pointer-events: auto;

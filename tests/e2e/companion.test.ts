@@ -1573,6 +1573,35 @@ describe("a kanban's own lanes, from the page", () => {
     await page.locator(".layer-heads .lane-label", { hasText: /^Doing$/ }).dblclick();
     await typeInEditor("En cours");
     await page.locator(".layer-heads .lane-label", { hasText: /^En cours$/ }).waitFor();
+  });
+
+  test("a lane heading takes the keyboard: Shift moves it, + adds one beside it, Delete removes it", async () => {
+    const label = (name: string) =>
+      page.locator(".layer-heads .lane-label", { hasText: new RegExp(`^${name}$`) });
+    const focused = () => page.evaluate(() => document.activeElement?.textContent ?? null);
+    // Order now: En cours, To do, Prêt, Done.
+    await label("To do").focus();
+    expect(await label("To do").getAttribute("aria-label")).toBe("Lane To do, 0 cards");
+    await page.keyboard.press("Shift+ArrowLeft");
+    await until("To do is first", async () => (await lanes())[0] === "todo");
+    await until("the keyboard is still on To do", async () => (await focused()) === "To do");
+    await page.locator(".spoken", { hasText: "Lane To do moved: 1 of 4." }).waitFor({ state: "attached" });
+
+    await page.keyboard.press("+");
+    await typeInEditor("Revue");
+    await until(
+      "Revue is after To do",
+      async () => (await lanes()).join() === "todo,lane-2,doing,lane-1,done",
+    );
+    await until("the keyboard is on Revue", async () => (await focused()) === "Revue");
+
+    await page.keyboard.press("Delete");
+    await until("Revue is gone", async () => !(await lanes()).includes("lane-2"));
+    await label("En cours").focus();
+    await page.keyboard.press("Delete");
+    await page.locator(".toast", { hasText: "Lane En cours still has cards" }).waitFor();
+    await page.keyboard.press("ArrowDown");
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe("T1");
     await agent(`board rm ${BOARD}`);
     await until("the page has left the board removed", async () => {
       return (await page.locator(".board-picker select").inputValue()) !== BOARD;
