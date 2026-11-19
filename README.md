@@ -1,5 +1,7 @@
 # Sideco
 
+[![CI](https://github.com/bastien-gallay/sideco/actions/workflows/ci.yml/badge.svg)](https://github.com/bastien-gallay/sideco/actions/workflows/ci.yml)
+
 Sideco est le compagnon visuel de Claude Code : une page web locale, ouverte à côté du terminal, où toi et ton agent construisez le même modèle (event storming, flux, kanban, story map, rétrospective, impact / effort) pendant que l'agent travaille.
 
 ![Un event storming dans Sideco : la palette à gauche, le tableau au centre, la session de Claude à droite, le passage de main en bas](docs/img/sideco-event-storming.png)
