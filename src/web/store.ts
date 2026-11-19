@@ -110,7 +110,10 @@ function hear(frame: Frame): void {
       const presence = JSON.parse(frame.data) as Presence;
       state.listening = presence.listening;
       state.served = presence.build;
-      if (!caughtUp) leaveMissingBoard();
+      if (!caughtUp) {
+        leaveMissingBoard();
+        holdShownBoard();
+      }
       caughtUp = true;
       changed();
     }
@@ -135,6 +138,18 @@ function leaveMissingBoard(): void {
   const next = state.live.boards.at(-1);
   if (next) openBoard(next.id);
   else closeBoard();
+}
+
+/**
+ * A tab opened on no board in particular shows the latest one, and names it in
+ * its address: from then on it is that tab's board, whatever is created after,
+ * and Undo acts on it.
+ */
+function holdShownBoard(): void {
+  const shown = state.live.boards.at(-1);
+  if (state.boardId !== null || !shown) return;
+  history.replaceState(null, "", `${location.pathname}${location.search}#/b/${shown.id}`);
+  state.boardId = shown.id;
 }
 
 function receive(event: Recorded): void {

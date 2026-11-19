@@ -532,6 +532,14 @@ describe("what Undo and Redo in the page would act on", () => {
     expect(undoTarget(t.ws, "sprint")).toBe("commande");
   });
 
+  test("not a removal older than a gesture made since on another board", () => {
+    const t = table(ORDERING).script(KANBAN).script("board rm commande", "human");
+    t.script(`board new "Autre" --format kanban --id autre\nadd task "Ailleurs"`, "human");
+    // The reader's latest gesture is on « autre »: from « sprint », Undo has nothing of theirs to take back.
+    expect(undoTarget(t.ws, "sprint")).toBeUndefined();
+    expect(undoTarget(t.ws, "autre")).toBe("autre");
+  });
+
   test("never a board Claude removed", () => {
     const t = table(ORDERING).script(KANBAN).script("board rm commande", "agent");
     expect(undoTarget(t.ws, "sprint")).toBeUndefined();

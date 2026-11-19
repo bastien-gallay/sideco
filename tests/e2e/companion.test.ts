@@ -1425,6 +1425,31 @@ describe("many tabs open on the companion", () => {
   });
 });
 
+describe("a tab opened on no board in particular", () => {
+  const MINE = "tenu";
+  const OTHER = "autre-session";
+
+  test("keeps the board it shows when another one is created, and Undo acts on it", async () => {
+    await agent(`board new "Tenu" --format kanban --id ${MINE}\nadd task "Ici"`);
+    const context = await browser.newContext();
+    const tab = await context.newPage();
+    tab.setDefaultTimeout(4000);
+    await tab.goto(running.url);
+    // The board shown is named in the address: it is that tab's own, not whichever came last.
+    await tab.waitForFunction((id) => location.hash === `#/b/${id}`, MINE);
+    await tab.locator('g.card[data-id="T1"]').focus();
+    await tab.keyboard.press("Shift+ArrowRight");
+    await until("T1 moved", async () => (await elementOf(MINE, "T1"))?.lane === "doing");
+    await agent(`board new "Autre session" --format kanban --id ${OTHER}`);
+    await tab.locator(".toast", { hasText: "Autre session" }).waitFor();
+    expect(await tab.evaluate(() => location.hash)).toBe(`#/b/${MINE}`);
+    await tab.keyboard.press("Control+z");
+    await until("T1 is back", async () => (await elementOf(MINE, "T1"))?.lane === "todo");
+    await agent(`board rm ${OTHER}\nboard rm ${MINE}`);
+    await context.close();
+  });
+});
+
 describe("tidying up", () => {
   const listed = (): Promise<string[]> =>
     page

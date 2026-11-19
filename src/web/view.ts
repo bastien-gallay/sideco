@@ -362,7 +362,7 @@ export function historyPlace(stops: readonly number[], cursor: number | null): H
 
 /**
  * The board an Undo from the page acts on: the one shown, unless the reader
- * removed a board since their last gesture there. Their latest gesture goes first.
+ * removed a board since their last gesture, there or on any board. Their latest gesture goes first.
  */
 export function undoTarget(
   ws: Workspace,
@@ -372,7 +372,8 @@ export function undoTarget(
   const last = (boardId: string | undefined): number =>
     (boardId && findBoard(ws, boardId)?.trails[by]?.undo.at(-1)?.seq) || 0;
   let target = last(shown) > 0 ? shown : undefined;
-  let latest = last(shown);
+  // A removal is taken back from anywhere only while no gesture of the reader's came after it, on any board.
+  let latest = Math.max(0, ...ws.boards.map((board) => last(board.id)));
   for (const board of ws.removed) {
     const removal = board.trails[by]?.undo.at(-1);
     if (removal?.inverse[0]?.event !== "BoardRestored" || removal.seq < latest) continue;
