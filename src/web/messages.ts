@@ -177,6 +177,12 @@ export interface Messages {
   boardCards: (title: string) => string;
   /** Where a card is on a timeline, and what is said once it moved somewhere. */
   step: (n: number) => string;
+  /** A card's links, read to who cannot see the arrows: each end as `id label`, a branch name in brackets. */
+  leadsTo: (ends: string) => string;
+  comesFrom: (ends: string) => string;
+  /** A gesture taken back, or done again, said to who does not see the board change. */
+  undone: (what: string) => string;
+  redone: string;
   moved: (id: string, place: string) => string;
   skipToBoard: string;
 
@@ -345,6 +351,10 @@ const en: Messages = {
   cardRemoved: (id) => `${id} removed.`,
   boardCards: (title) => `Cards of “${title}”`,
   step: (n) => `step ${n}`,
+  leadsTo: (ends) => `leads to ${ends}`,
+  comesFrom: (ends) => `comes from ${ends}`,
+  undone: (what) => `Undone: ${what}`,
+  redone: "Done again",
   moved: (id, place) => `${id} moved to ${place}.`,
   skipToBoard: "Skip to the board",
 
@@ -525,6 +535,10 @@ const fr: Messages = {
   cardRemoved: (id) => `${id} supprimée.`,
   boardCards: (title) => `Cartes de « ${title} »`,
   step: (n) => `étape ${n}`,
+  leadsTo: (ends) => `mène à ${ends}`,
+  comesFrom: (ends) => `vient de ${ends}`,
+  undone: (what) => `Annulé : ${what}`,
+  redone: "Refait",
   moved: (id, place) => `${id} déplacée en ${place}.`,
   skipToBoard: "Aller au tableau",
 

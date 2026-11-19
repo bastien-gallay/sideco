@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
-import { cardPlace, keyMove, neighbour, readingOrder } from "../../src/web/view.ts";
-import { IMPACT_EFFORT, KANBAN, ORDERING, table } from "../support.ts";
+import { cardLinks, cardPlace, keyMove, neighbour, readingGroups, readingOrder } from "../../src/web/view.ts";
+import { FLOW, IMPACT_EFFORT, KANBAN, ORDERING, table } from "../support.ts";
 
 describe("the arrow keys go from a card to the next one on screen", () => {
   // ORDERING: column 1 holds X1, C1, E1 from top to bottom; column 2 holds P1, C2, E2, H1.
@@ -35,6 +35,66 @@ describe("the arrow keys go from a card to the next one on screen", () => {
     const order = readingOrder(layoutBoard(t.board()).cards);
     expect(order.slice(0, 3)).toEqual(["X1", "C1", "E1"]);
     expect(order.indexOf("X2")).toBeLessThan(order.indexOf("P1"));
+  });
+});
+
+describe("a screen reader reads the board as it is drawn, not as it was made", () => {
+  const groups = (script: string, locale?: "en" | "fr") => {
+    const board = table(script).board();
+    return readingGroups(board, layoutBoard(board, locale), locale);
+  };
+
+  test("in lanes: lane by lane, each a group under its name, top to bottom", () => {
+    expect(groups(KANBAN)).toEqual([
+      { label: "To do", ids: ["T3", "T4"] },
+      { label: "Doing", ids: ["T2", "B1"] },
+      { label: "Done", ids: ["T1"] },
+    ]);
+    expect(groups(KANBAN, "fr")[0]?.label).toBe("À faire");
+  });
+
+  test("on a timeline: step by step, top to bottom, whatever the order of creation", () => {
+    const t = table(ORDERING);
+    t.do({ kind: "add", board: "commande", type: "actor", label: "Caisse", col: 2 });
+    const board = t.board();
+    const read = readingGroups(board, layoutBoard(board));
+    expect(read.map((g) => g.label)).toEqual(["step 1", "step 2"]);
+    expect(read[0]?.ids).toEqual(["X1", "C1", "E1"]);
+    expect(read[1]?.ids[0]).toBe("X2");
+  });
+
+  test("on a plan: cell by cell in the order of the plan, row after row inside a cell", () => {
+    const read = groups(
+      `${IMPACT_EFFORT}\nadd item "Raccourcis" --lane quick\nadd item "Thème" --lane quick`,
+    );
+    expect(read).toEqual([
+      { label: "Quick wins", ids: ["I1", "I4", "I5"] },
+      { label: "Big bets", ids: ["I2"] },
+      { label: "Fill-ins", ids: ["I3"] },
+    ]);
+  });
+
+  test("on a flow: one run of cards, from the first step down", () => {
+    const read = groups(FLOW);
+    expect(read).toHaveLength(1);
+    expect(read[0]?.label).toBeUndefined();
+    expect(read[0]?.ids[0]).toBe("S1");
+    expect([...(read[0]?.ids ?? [])].sort()).toEqual(["D1", "O1", "S1", "S2", "S3"]);
+  });
+});
+
+describe("a card says what it is linked to, for who cannot see the arrows", () => {
+  const board = table(FLOW).board();
+
+  test("where it leads, with the name of each branch, and where it comes from", () => {
+    expect(cardLinks(board, "D1")).toBe(
+      "leads to S2 Expédier (oui), S3 Commander au fournisseur (non) · comes from S1 Recevoir la commande, S3 Commander au fournisseur (à réception)",
+    );
+    expect(cardLinks(board, "S1", "fr")).toBe("mène à D1 En stock ?");
+  });
+
+  test("a card without links says nothing more", () => {
+    expect(cardLinks(table(KANBAN).board(), "T1")).toBeUndefined();
   });
 });
 

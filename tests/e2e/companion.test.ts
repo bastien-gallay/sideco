@@ -1131,7 +1131,8 @@ describe("the board from the keyboard", () => {
     const field = page.locator(".find-bar input");
     await field.waitFor({ state: "visible" });
     await field.fill(id.toLowerCase());
-    expect(await page.locator(".find-count").textContent()).toMatch(/^1 \/ \d+$/);
+    // The count names the card found: a screen reader hears which one, not just how many.
+    expect(await page.locator(".find-count").textContent()).toMatch(new RegExp(`^1 / \\d+ · ${id} \\S`));
     expect(await card(id).getAttribute("class")).toContain("is-pointed");
     await field.press("Escape");
     await page.locator(".find-bar").waitFor({ state: "hidden" });
@@ -1145,6 +1146,67 @@ describe("the board from the keyboard", () => {
     expect(await sheet.locator("kbd", { hasText: "Shift + ← → ↑ ↓" }).count()).toBe(1);
     await page.keyboard.press("Escape");
     await sheet.waitFor({ state: "hidden" });
+  });
+});
+
+describe("the board for who cannot see it", () => {
+  const BOARD = "lecture";
+  const FLOWING = "lecture-flow";
+  const labels = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll(".layer-cards > g.card-group")].map((group) => ({
+        label: group.getAttribute("aria-label"),
+        role: group.getAttribute("role"),
+        ids: [...group.querySelectorAll("g.card")].map((g) => g.getAttribute("data-id")),
+      })),
+    );
+
+  test("cards are read lane by lane, each lane a named group, whatever the order they were made in", async () => {
+    await agent(
+      `board new "Lecture" --format kanban --id ${BOARD}\nadd task "Fini" --lane done\nadd task "Après" --lane todo\nadd task "Avant" --lane todo`,
+    );
+    await page.locator(".board-picker select").selectOption(BOARD);
+    await card("T3").waitFor();
+    // T3 was made last; it sits at the top of To do, so it is read first.
+    await agent("move T3 --lane todo --before T2", BOARD);
+    await until("T3 is read before T2", async () => (await labels())[0]?.ids?.[0] === "T3");
+    expect(await labels()).toEqual([
+      { label: "To do", role: "group", ids: ["T3", "T2"] },
+      { label: "Done", role: "group", ids: ["T1"] },
+    ]);
+    expect(await page.locator('g.card[tabindex="0"]').getAttribute("data-id")).toBe("T3");
+  });
+
+  test("a card moved by the keyboard joins its new group, and the keyboard stays on it", async () => {
+    await card("T3").focus();
+    await page.keyboard.press("Shift+ArrowRight");
+    await until("T3 moved to Doing", async () => (await labels()).some((g) => g.label === "Doing"));
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe("T3");
+    expect((await labels()).find((g) => g.label === "Doing")?.ids).toEqual(["T3"]);
+  });
+
+  test("Undo is said, with what it took back", async () => {
+    await page.keyboard.press("Control+z");
+    await until("T3 is back in To do", async () => (await labels())[0]?.ids?.includes("T3") === true);
+    await page.locator(".spoken", { hasText: /^Undone: / }).waitFor({ state: "attached" });
+    await page.keyboard.press("Control+Shift+z");
+    await page.locator(".spoken", { hasText: "Done again" }).waitFor({ state: "attached" });
+  });
+
+  test("on a flow, a card tells where it leads and where it comes from, branches named", async () => {
+    await agent(
+      `board new "Lecture flow" --format flow --id ${FLOWING}\nadd step "Recevoir"\nadd decision "En stock ?" --from S1\nadd step "Expédier" --from D1 --edge oui`,
+    );
+    await page.locator(".board-picker select").selectOption(FLOWING);
+    await card("D1").waitFor();
+    expect(await card("D1").getAttribute("aria-description")).toBe(
+      "leads to S2 Expédier (oui) · comes from S1 Recevoir",
+    );
+    await agent(`board rm ${FLOWING}\nboard rm ${BOARD}`);
+    await until("the page has left the boards removed", async () => {
+      const shown = await page.locator(".board-picker select").inputValue();
+      return shown !== BOARD && shown !== FLOWING;
+    });
   });
 });
 

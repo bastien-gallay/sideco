@@ -14,16 +14,19 @@ import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
 import {
   addOffers,
+  cardLinks,
   cardPlace,
   type Direction,
   keptLines,
   keyMove,
   neighbour,
   oneLine,
-  readingOrder,
+  type ReadingGroup,
+  readingGroups,
 } from "./view.ts";
 
 const DRAG_THRESHOLD = 4;
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5];
 /** How tall the head of a lane is: its name, or its name and what it stands for. Above the first card, both. */
 const LANE_HEAD = 38;
@@ -140,6 +143,60 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   let current: string | undefined;
   /** The reader put the keyboard on `current`, or selected it: until then, Tab enters at the first card read. */
   let chosen = false;
+  /** The group of each lane or step a screen reader enters, by its name. */
+  const groups = new Map<string, SVGGElement>();
+
+  /**
+   * Puts the cards in the order they are read, each in the group of its lane
+   * or step. The eye sees no change: a card moved to another group still
+   * glides from where it was, and the keyboard stays on the card it was on.
+   */
+  function arrange(reading: readonly ReadingGroup[], glide: boolean): void {
+    const wanted: SVGGElement[] = [];
+    const inside = new Map<SVGGElement, SVGGElement[]>();
+    for (const group of reading) {
+      const members = group.ids.flatMap((id) => {
+        const g = nodes.get(id)?.g;
+        return g ? [g] : [];
+      });
+      if (group.label === undefined) {
+        wanted.push(...members);
+        continue;
+      }
+      let g = groups.get(group.label);
+      if (!g) {
+        g = svg("g", { class: "card-group", role: "group", "aria-label": group.label });
+        groups.set(group.label, g);
+      }
+      inside.set(g, members);
+      wanted.push(g);
+    }
+    const same = (parent: Element, children: readonly Element[]): boolean =>
+      parent.children.length === children.length &&
+      children.every((child, i) => parent.children[i] === child);
+    const moving = [...inside].filter(([g, members]) => !same(g, members));
+    if (moving.length === 0 && same(cards, wanted)) return;
+    const focused = document.activeElement;
+    // Where each card is on screen now, mid-glide included, before it changes parent.
+    const from = new Map<SVGGElement, string>();
+    if (glide && !reducedMotion.matches)
+      for (const [, members] of moving)
+        for (const g of members) if (g.parentElement !== null) from.set(g, getComputedStyle(g).transform);
+    for (const [g, members] of moving) g.replaceChildren(...members);
+    if (!same(cards, wanted)) cards.replaceChildren(...wanted);
+    for (const [label, g] of groups) if (!inside.has(g)) groups.delete(label);
+    for (const [g, was] of from) {
+      const to = g.style.transform;
+      if (was !== "none" && was !== getComputedStyle(g).transform)
+        g.animate([{ transform: was }, { transform: to }], {
+          duration: 260,
+          easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+        });
+    }
+    if (focused instanceof SVGElement && focused !== document.activeElement && focused.isConnected)
+      focused.focus({ preventScroll: true });
+  }
+
   /** The markup of the bands last drawn. */
   let paintedBands = "";
 
@@ -200,6 +257,11 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       const place = cardPlace(board, scene.bands, card.id, locale);
       const name = [cardName(card), place, isUnread ? t.unread : undefined].filter(Boolean).join(" · ");
       if (node.g.getAttribute("aria-label") !== name) node.g.setAttribute("aria-label", name);
+      // Its links, which the eye follows along the arrows, are told after its name.
+      const links = cardLinks(board, card.id, locale);
+      if (links === undefined) node.g.removeAttribute("aria-description");
+      else if (node.g.getAttribute("aria-description") !== links)
+        node.g.setAttribute("aria-description", links);
       node.g.setAttribute("aria-pressed", String(state.selected === card.id));
       // A card in the human's hand stays there, whatever arrives meanwhile.
       if (!(drag?.moving && drag.id === card.id)) node.g.style.transform = `translate(${x}px, ${y}px)`;
@@ -221,6 +283,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       node.g.remove();
       nodes.delete(id);
     }
+    const reading = readingGroups(board, scene, locale);
+    arrange(reading, !switched);
     // The board is one Tab stop: the selected card, else the last one the keyboard was on, else the first one read.
     if (switched) chosen = false;
     if (state.selected && alive.has(state.selected)) {
@@ -229,7 +293,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     }
     // A card nobody chose is never kept: the first one read may change as cards come and go.
     if (!chosen || !current || !alive.has(current)) {
-      current = readingOrder(scene.cards)[0];
+      current = reading[0]?.ids[0];
       chosen = false;
     }
     for (const [id, node] of nodes) node.g.setAttribute("tabindex", id === current ? "0" : "-1");

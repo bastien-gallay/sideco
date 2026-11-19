@@ -187,15 +187,17 @@ const languagePicker = h(
   ...LOCALES.map((l) => h("option", { value: l, lang: l, selected: l === locale }, MESSAGES[l].languageName)),
 );
 
+/** Tells a screen reader, and only it. Emptied first, so the same words twice in a row are said twice. */
+function speak(text: string): void {
+  spoken.textContent = "";
+  requestAnimationFrame(() => {
+    spoken.textContent = text;
+  });
+}
+
 const view = mountBoard(canvas, {
   removed: (id) => say(t.cardRemoved(id), { label: t.undoAction, run: () => void undo() }),
-  announce: (text) => {
-    // Emptied first, so the same words twice in a row are said twice.
-    spoken.textContent = "";
-    requestAnimationFrame(() => {
-      spoken.textContent = text;
-    });
-  },
+  announce: speak,
 });
 
 /** A search over the cards of the board shown: `/` opens it, Enter goes from one card found to the next. */
@@ -257,8 +259,14 @@ findField.addEventListener("keydown", (event) => {
 
 function showFound(): void {
   const id = found[foundAt];
+  // The count alone says nothing to who cannot see the board: the card found is named with it.
+  const named = id ? currentBoard()?.elements.find((e) => e.id === id) : undefined;
   findCount.textContent =
-    findField.value.trim() === "" ? "" : id ? t.findCount(foundAt + 1, found.length) : t.findNone;
+    findField.value.trim() === ""
+      ? ""
+      : id
+        ? `${t.findCount(foundAt + 1, found.length)} · ${id}${named ? ` ${named.label.replace(/\s+/g, " ").trim()}` : ""}`
+        : t.findNone;
   view.point(id);
   if (id) view.reveal(id);
 }
@@ -963,12 +971,17 @@ async function undo(): Promise<void> {
   if (!board) return;
   // An offer to take a gesture back is moot once one was taken back: it leaves.
   if (toast.querySelector("button")) toast.hidden = true;
-  await send({ kind: "undo", board });
+  // Said once taken back: who does not see the board change hears what came back.
+  const gesture = [...state.live.boards, ...state.live.removed]
+    .find((b) => b.id === board)
+    ?.trails.human?.undo.at(-1);
+  const event = gesture && state.events.find((e) => e.seq === gesture.seq);
+  if (await send({ kind: "undo", board })) speak(t.undone(event ? describeEvent(event, locale) : board));
 }
 
 async function redo(): Promise<void> {
   const board = isLive() ? redoTarget(state.live, state.boardId ?? undefined) : undefined;
-  if (board) await send({ kind: "redo", board });
+  if (board && (await send({ kind: "redo", board }))) speak(t.redone);
 }
 
 /** A text being typed has its own undo, and a question asked in a dialog comes first. */

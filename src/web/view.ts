@@ -522,6 +522,70 @@ export function cardPlace(
   return bands.find((band) => band.kind === "lane" && band.id === el.lane)?.label;
 }
 
+/** A run of cards a screen reader reads together, under the name of the lane or step that holds them. */
+export interface ReadingGroup {
+  label: string | undefined;
+  ids: string[];
+}
+
+/**
+ * The board as a screen reader reads it: lane by lane, or step by step, each
+ * top to bottom and, in a cell of a plan, row after row. A flow is one run,
+ * from the first step down. Never the order the cards were made in.
+ */
+export function readingGroups(
+  board: Board,
+  scene: { bands: readonly Band[]; cards: readonly Placed[] },
+  locale: Locale = DEFAULT_LOCALE,
+): ReadingGroup[] {
+  const format = findFormat(board.format);
+  const downThenAcross = (a: Placed, b: Placed): number => a.y - b.y || a.x - b.x;
+  const run = (cards: readonly Placed[]): string[] => [...cards].sort(downThenAcross).map((c) => c.id);
+  if (!format || format.layout === "graph") return [{ label: undefined, ids: run(scene.cards) }];
+  const placeOf = new Map(board.elements.map((e) => [e.id, e]));
+  const groups: ReadingGroup[] = [];
+  const keys: { key: string; label: string }[] =
+    format.layout === "timeline"
+      ? [...new Set(board.elements.map((e) => e.col ?? 1))]
+          .sort((a, b) => a - b)
+          .map((col) => ({ key: String(col), label: MESSAGES[locale].step(col) }))
+      : scene.bands.filter((b) => b.kind === "lane").map((b) => ({ key: b.id, label: b.label }));
+  const keyOf = (id: string): string | undefined => {
+    const el = placeOf.get(id);
+    return format.layout === "timeline" ? String(el?.col ?? 1) : el?.lane;
+  };
+  for (const { key, label } of keys) {
+    const ids = run(scene.cards.filter((c) => keyOf(c.id) === key));
+    if (ids.length > 0) groups.push({ label, ids });
+  }
+  // A card in no lane on screen is still read, last.
+  const read = new Set(groups.flatMap((g) => g.ids));
+  const rest = scene.cards.filter((c) => !read.has(c.id));
+  if (rest.length > 0) groups.push({ label: undefined, ids: run(rest) });
+  return groups;
+}
+
+/**
+ * What a card is linked to, for who cannot see the arrows: where it leads,
+ * with the name of each branch, then where it comes from. Undefined when it is
+ * linked to nothing.
+ */
+export function cardLinks(board: Board, id: string, locale: Locale = DEFAULT_LOCALE): string | undefined {
+  const words = MESSAGES[locale];
+  const end = (other: string, label: string | undefined): string => {
+    const el = findElement(board, other);
+    const name = el ? `${other} ${el.label.replace(/\s+/g, " ").trim()}` : other;
+    return label ? `${name} (${label})` : name;
+  };
+  const out = board.edges.filter((e) => e.src === id).map((e) => end(e.dst, e.label));
+  const into = board.edges.filter((e) => e.dst === id).map((e) => end(e.src, e.label));
+  const parts = [
+    out.length > 0 ? words.leadsTo(out.join(", ")) : undefined,
+    into.length > 0 ? words.comesFrom(into.join(", ")) : undefined,
+  ].filter((part) => part !== undefined);
+  return parts.length > 0 ? parts.join(" · ") : undefined;
+}
+
 /** The order Tab takes through the cards: column by column, top to bottom. */
 export function readingOrder(cards: readonly Placed[]): string[] {
   return [...cards].sort((a, b) => Math.round(a.x) - Math.round(b.x) || a.y - b.y).map((c) => c.id);
