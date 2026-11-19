@@ -49,7 +49,7 @@ export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE, span?
   const format = findFormat(board.format);
   if (!format) return EMPTY;
   const card = cardMaker(board, format, locale);
-  if (format.layout === "graph") return layoutGraph(board, card);
+  if (format.layout === "graph") return layoutGraph(board, card, span);
 
   const scene =
     format.layout === "timeline"

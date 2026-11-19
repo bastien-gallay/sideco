@@ -168,6 +168,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F40 | Une story map garde son épine dorsale en vue : une fois les activités passées sous les numéros d'étape, chaque étape dit là son activité (qui court jusqu'à la suivante) et sa tâche (T78) | ✅ |
 | F41 | Sur une frise (event storming, story map), le nom qu'un lecteur d'écran entend dit l'étape, la rangée et, dans une case de plusieurs cartes, le rang : « étape 2, rangée Règle », « étape 1, rangée Événement, 2 sur 3 » (T80) | ✅ ; ⚠️ pas encore essayé avec VoiceOver (T72) |
 | F42 | Dans un flux, un humain nomme une branche depuis la page (barre du lien, ou double-clic sur le lien) ; le nom d'une branche se pose à côté de sa propre flèche, jamais sur le rail d'une autre (T75) | ✅ ; ⚠️ pas de chemin au clavier jusqu'à un lien |
+| F43 | Un flux trop long pour une colonne se replie, dans une fenêtre assez large, en colonnes côte à côte qui se lisent comme un journal : on descend la première, la flèche monte par l'allée et reprend en haut de la suivante. Une coupe ne tombe qu'où une seule flèche passe et qu'aucune boucle ne remonte ; l'export garde une colonne (T76) | ✅ |
 
 ### 5.3 Exigences de qualité
 

@@ -138,6 +138,8 @@ Un atelier est une donnée (`src/domain/formats.ts`), pas un moteur de rendu : t
 | `retro` | Que garde-t-on, qu'arrête-t-on, qu'essaie-t-on ? | colonnes | `point` `P`, `action` `A` |
 | `impact-effort` | Que fait-on d'abord, pour ce que ça rapporte et ce que ça coûte ? | colonnes, en plan 2 × 2 | `item` `I` |
 
+Un `flow` trop long pour tenir en hauteur se replie, si la fenêtre est assez large, en colonnes côte à côte : on lit la première de haut en bas, puis la flèche monte par l'allée et reprend en haut de la suivante. Le repli ne coupe qu'à un endroit où une seule flèche passe, jamais sous une boucle qui remonte, et suit la largeur de la fenêtre ; les exports gardent une seule colonne.
+
 Sur une `story-map`, quand le tableau défile vers le bas et que les activités passent sous les numéros d'étape, chaque numéro affiche dessous l'activité et la tâche de son étape ; l'activité court jusqu'à l'étape qui en a une autre.
 
 Une `story-map` se découpe en tranches : `sideco slice add "Lot 1" [--before slice-N]` trace sous les stories un trait pointillé nommé ; ce qui est au-dessus se livre d'abord. `sideco slice rm slice-N` le retire, et Undo reprend l'un comme l'autre. ⚠️ Premier pas : ranger une story dans une tranche, et le faire depuis la page, viendront ensuite.

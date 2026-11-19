@@ -1801,6 +1801,29 @@ describe("a flow's branches named from the page", () => {
   });
 });
 
+describe("a long flow in a wide window", () => {
+  test("folds into columns side by side, and fits the window without scrolling", async () => {
+    const steps = Array.from({ length: 14 }, (_, i) => `add step "Étape ${i + 2}" --from S${i + 1}`);
+    await agent(['board new "Chaîne" --format flow --id chaine', 'add step "Étape 1"', ...steps].join("\n"));
+    await page.locator(".board-picker select").selectOption("chaine");
+    await card("S15").waitFor();
+    const lefts = await page
+      .locator("g.card")
+      .evaluateAll((cards) => [...new Set(cards.map((c) => Math.round(c.getBoundingClientRect().left)))]);
+    expect(lefts.length).toBeGreaterThan(1);
+    const room = await page.locator(".canvas-scroll").evaluate((el) => ({
+      wide: el.scrollWidth <= el.clientWidth,
+      tall: el.scrollHeight <= el.clientHeight,
+    }));
+    expect(room).toEqual({ wide: true, tall: true });
+    await shot("52-flow-folded");
+    await agent("board rm chaine");
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== "chaine";
+    });
+  });
+});
+
 describe("a tab opened on no board in particular", () => {
   const MINE = "tenu";
   const OTHER = "autre-session";

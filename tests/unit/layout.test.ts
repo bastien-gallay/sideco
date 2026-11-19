@@ -501,6 +501,63 @@ describe("graph layout", () => {
   });
 });
 
+describe("a long flow folds into columns side by side, when the window is wide", () => {
+  const CHAIN = [
+    'board new "Chaîne" --format flow --id chaine',
+    'add step "Étape 1"',
+    ...Array.from({ length: 14 }, (_, i) => `add step "Étape ${i + 2}" --from S${i + 1}`),
+  ].join("\n");
+  const chain = table(CHAIN).board();
+  const inside = (s: Segment, c: Card): boolean =>
+    s.x1 < c.x + c.w && c.x < s.x2 && s.y1 < c.y + c.h && c.y < s.y2;
+
+  test("on paper, without a window, the chain stays one column", () => {
+    expect(new Set(layoutBoard(chain).cards.map((c) => c.x)).size).toBe(1);
+  });
+
+  test("in a wide window, it reads down a column then on at the top of the next", () => {
+    const scene = layoutBoard(chain, "en", 900);
+    expectTidy(scene);
+    expect(scene.width).toBeLessThanOrEqual(900);
+    expect(scene.height).toBeLessThan(layoutBoard(chain).height / 2);
+    const xs = [...new Set(scene.cards.map((c) => c.x))];
+    expect(xs.length).toBeGreaterThan(1);
+    // Down a column, then on to the right, at the top again.
+    for (let i = 1; i < 15; i++) {
+      const [a, b] = [card(scene, `S${i}`), card(scene, `S${i + 1}`)];
+      if (a.x === b.x) expect(b.y).toBeGreaterThan(a.y);
+      else {
+        expect(b.x).toBeGreaterThan(a.x);
+        expect(b.y).toBe(card(scene, "S1").y);
+      }
+    }
+  });
+
+  test("every link still runs from its card to the next without crossing a card", () => {
+    const scene = layoutBoard(chain, "en", 900);
+    expect(scene.connectors).toHaveLength(14);
+    for (const c of scene.connectors) {
+      expect(c.d).toMatch(/^M[\d.]+ [\d.]+( [HV][\d.]+)+$/);
+      const others = scene.cards.filter((card) => card.id !== c.src && card.id !== c.dst);
+      for (const s of segments(c.d)) for (const other of others) expect(inside(s, other)).toBe(false);
+      const [first, last] = [segments(c.d)[0], segments(c.d).at(-1)];
+      const [from, to] = [card(scene, c.src), card(scene, c.dst)];
+      expect(first?.y1).toBe(from.y + from.h);
+      expect(last?.y2).toBeGreaterThanOrEqual(to.y - 4);
+    }
+  });
+
+  test("a narrow window, or a short flow, is left as it is", () => {
+    expect(new Set(layoutBoard(chain, "en", 300).cards.map((c) => c.x)).size).toBe(1);
+    expect(layoutBoard(table(FLOW).board(), "en", 1400)).toEqual(layoutBoard(table(FLOW).board()));
+  });
+
+  test("a loop back over a fold would cross the columns: the flow is not folded there", () => {
+    const looped = table(`${CHAIN}\nlink S15 S1 "encore"`).board();
+    expect(new Set(layoutBoard(looped, "en", 900).cards.map((c) => c.x)).size).toBe(1);
+  });
+});
+
 test("the same board always gives the same scene", () => {
   for (const script of [ORDERING, KANBAN, FLOW]) {
     expect(layoutBoard(table(script).board())).toEqual(layoutBoard(table(script).board()));
