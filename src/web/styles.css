@@ -948,6 +948,12 @@ kbd {
   pointer-events: auto;
   cursor: grab;
 }
+/* Held, the step stays in the hand wherever the pointer goes, its heading included. */
+.sideco-board.is-grabbing,
+.sideco-board.is-grabbing *,
+.has-steps .sideco-board.is-grabbing .layer-heads .heads-steps .heads-strip {
+  cursor: grabbing;
+}
 .layer-heads .heads-steps text.is-dragging {
   fill: var(--accent);
   font-weight: 700;

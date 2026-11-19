@@ -4,6 +4,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { layoutBoard, locate, stepDrop } from "../../src/domain/layout/index.ts";
+import { addOffers } from "../../src/web/view.ts";
 import { table } from "../support.ts";
 
 const STACKED = `
@@ -58,6 +59,14 @@ add event "Trois" --col 3
     const two = step(2);
     expect(locate(t.board(), two.x + 3, 10)).toEqual({ kind: "boundary", col: 2 });
     expect(locate(t.board(), two.x + two.w / 2, 10)).toEqual({ kind: "step-head", col: 2 });
+  });
+
+  test('the edge is no wider than its "+": the rest of the heading is a handle, with nothing to add on it', () => {
+    const two = step(2);
+    expect(locate(t.board(), two.x + 24, 10)).toEqual({ kind: "step-head", col: 2 });
+    expect(locate(t.board(), two.x + two.w - 24, 10)).toEqual({ kind: "step-head", col: 2 });
+    for (const script of ['board new "Carte" --format story-map --id carte\nadd story "S" --col 1', STACKED])
+      expect(addOffers(table(script).board(), { kind: "step-head", col: 1 })).toEqual([]);
   });
 });
 

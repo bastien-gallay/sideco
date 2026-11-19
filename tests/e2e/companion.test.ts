@@ -1797,6 +1797,37 @@ describe("a card reordered in its cell, by the mouse", () => {
   });
 });
 
+describe("a story map's step taken by its heading", () => {
+  test('anywhere along the heading but its edges, with no "+" in the way', async () => {
+    await agent(
+      'board new "Poignée" --format story-map --id poignee\nadd activity "Chercher" --col 1\nadd activity "Payer" --col 2\nadd story "Par titre" --col 1',
+    );
+    await page.locator(".board-picker select").selectOption("poignee");
+    await card("S1").waitFor();
+    const two = await page.locator(".band-step-label", { hasText: /^2$/ }).boundingBox();
+    const one = await page.locator(".band-step-label", { hasText: /^1$/ }).boundingBox();
+    if (!one || !two) throw new Error("no step numbers");
+    // Hovered in its middle, a heading offers nothing to add: it is a handle.
+    await page.mouse.move(two.x + two.width / 2, two.y + two.height / 2);
+    await page.mouse.move(two.x + two.width / 2 + 2, two.y + two.height / 2);
+    expect(await page.locator(".add-here").count()).toBe(0);
+    // Taken off its number, 30 of its 176 units from its left edge, where an insertion used to be offered, it still moves.
+    const column = two.x - one.x;
+    await page.mouse.move(two.x + two.width / 2 - (column * 58) / 176, two.y + two.height / 2);
+    expect(await page.locator(".add-here").count()).toBe(0);
+    await page.mouse.down();
+    await page.mouse.move(one.x + one.width / 2, one.y + one.height / 2, { steps: 12 });
+    await page.locator(".drop-hint.is-lane-drop").waitFor();
+    expect(await page.locator("svg.sideco-board").getAttribute("class")).toContain("is-grabbing");
+    await page.mouse.up();
+    await until("Payer is in step 1", async () => (await elementOf("poignee", "A2"))?.col === 1);
+    await agent("board rm poignee");
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== "poignee";
+    });
+  });
+});
+
 describe("a story map scrolled down", () => {
   test("keeps each step's activity and task in sight under its number", async () => {
     const stories = Array.from({ length: 14 }, (_, i) => `add story "Story ${i + 1}" --col 1`).join("\n");

@@ -813,7 +813,8 @@ export function addOffers(
 ): Offer[] {
   const format = findFormat(board.format);
   const room = vacancy(board, target, span);
-  if (!format || !room) return [];
+  // The middle of a step's heading is a handle: it moves the step, it adds nothing.
+  if (!format || !room || target.kind === "step-head") return [];
   if (target.kind === "boundary") {
     const w = 28;
     return [

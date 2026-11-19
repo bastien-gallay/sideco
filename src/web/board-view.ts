@@ -1144,6 +1144,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (!stepDrag.moving && Math.abs(x - stepDrag.startX) > DRAG_THRESHOLD) {
       stepDrag.moving = true;
       root.setPointerCapture(event.pointerId);
+      root.classList.add("is-grabbing");
       pointed = { kind: "none" };
       paintOffers();
     }
@@ -1171,6 +1172,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const step = stepDrag;
     stepDrag = undefined;
     if (step) {
+      root.classList.remove("is-grabbing");
       hint.setAttribute("visibility", "hidden");
       hint.classList.remove("is-lane-drop");
       if (root.hasPointerCapture(event.pointerId)) root.releasePointerCapture(event.pointerId);

@@ -30,8 +30,12 @@ const STACK_GAP = 8;
 const EMPTY_ROW_H = 44;
 /** The room a slice takes under the stories: its line, its name, and a little air. */
 const SLICE_H = 44;
-/** How far either side of the rule between two steps their headings offer a column. */
-const EDGE_REACH = 32;
+/**
+ * How far either side of the rule between two steps their headings offer a
+ * column: the half of its "+" and a little more. The rest of a heading is the
+ * handle that moves the step.
+ */
+const EDGE_REACH = 18;
 
 interface Row {
   type: string;

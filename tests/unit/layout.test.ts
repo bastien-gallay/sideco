@@ -158,8 +158,8 @@ describe("timeline layout", () => {
     const [first, second, spare] = steps;
     if (!first || !second || !spare) throw new Error("two steps and a spare one");
     expect(locate(board, second.x + 3, 10)).toEqual({ kind: "boundary", col: 2 });
-    expect(locate(board, second.x - 30, 10)).toEqual({ kind: "boundary", col: 2 });
-    expect(locate(board, first.x + 20, 10)).toEqual({ kind: "boundary", col: 1 });
+    expect(locate(board, second.x - 12, 10)).toEqual({ kind: "boundary", col: 2 });
+    expect(locate(board, first.x + 12, 10)).toEqual({ kind: "boundary", col: 1 });
     // Past the last step that holds a card, a column would change nothing; nor in the corner over the row names.
     expect(locate(board, spare.x + 2, 10)).toEqual({ kind: "none" });
     expect(locate(board, 10, 10)).toEqual({ kind: "none" });
