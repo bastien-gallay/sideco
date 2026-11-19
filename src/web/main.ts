@@ -81,7 +81,8 @@ const zoomLabel = h(
   "100 %",
 );
 const undoGroup = h("div", { class: "undo" });
-const exportMenu = h("details", { class: "menu" });
+/** What is done to the board as a whole: a new one, an export, its removal. Out of the way, one click off. */
+const boardMenu = h("details", { class: "menu board-menu" });
 const banner = h("div", { class: "banner", hidden: true });
 const palette = h("section", { class: "palette", "aria-label": t.palette });
 const notes = h("section", { class: "notes", "aria-label": t.notes });
@@ -325,20 +326,22 @@ app.append(
   h(
     "header",
     { class: "top" },
-    h("strong", { class: "brand" }, "Sideco"),
-    boardPicker,
-    undoGroup,
-    statusPill,
-    waitsPill,
+    // Three groups: the board, then what Claude is doing, then the view of it.
+    h("div", { class: "top-board" }, h("strong", { class: "brand" }, "Sideco"), boardPicker, boardMenu),
+    h("div", { class: "top-claude" }, statusPill, waitsPill),
     h(
       "div",
-      { class: "zoom" },
-      h("button", { type: "button", "aria-label": t.zoomOut, onclick: () => zoom(-1) }, "−"),
-      zoomLabel,
-      h("button", { type: "button", "aria-label": t.zoomIn, onclick: () => zoom(1) }, "+"),
+      { class: "top-view" },
+      undoGroup,
+      h(
+        "div",
+        { class: "zoom" },
+        h("button", { type: "button", "aria-label": t.zoomOut, onclick: () => zoom(-1) }, "−"),
+        zoomLabel,
+        h("button", { type: "button", "aria-label": t.zoomIn, onclick: () => zoom(1) }, "+"),
+      ),
+      languagePicker,
     ),
-    exportMenu,
-    languagePicker,
   ),
   banner,
   h(
@@ -386,6 +389,17 @@ function step(by: -1 | 1): void {
   travelTo(historyStep(historyStopsShown(), state.cursor, by));
 }
 
+// A menu open closes as a menu does: on a click elsewhere, or on Escape, which gives its button the keyboard back.
+document.addEventListener("click", (event) => {
+  if (boardMenu.open && !boardMenu.contains(event.target as Node)) boardMenu.open = false;
+});
+boardMenu.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !boardMenu.open) return;
+  event.stopPropagation();
+  boardMenu.open = false;
+  boardMenu.querySelector("summary")?.focus();
+});
+
 function zoom(by: -1 | 1): void {
   zoomLabel.textContent = `${Math.round(view.zoomBy(by) * 100)} %`;
 }
@@ -403,7 +417,6 @@ interface BoardPickerModel {
 }
 
 const paintBoardPicker = region(boardPicker, (m: BoardPickerModel) => {
-  const shown = m.boards.find((b) => b.id === m.current);
   return [
     m.boards.length > 0 &&
       h(
@@ -415,20 +428,9 @@ const paintBoardPicker = region(boardPicker, (m: BoardPickerModel) => {
         },
         ...m.boards.map((b) => h("option", { value: b.id, selected: b.id === m.current }, b.title)),
       ),
-    h("button", { type: "button", class: "quiet", onclick: () => openNewBoard() }, t.newBoardButton),
-    shown &&
-      h(
-        "button",
-        {
-          type: "button",
-          class: "quiet remove-board",
-          title: t.removeBoard(shown.title),
-          "aria-label": t.removeBoard(shown.title),
-          disabled: !m.live,
-          onclick: () => askToRemove(shown.id),
-        },
-        t.remove,
-      ),
+    // No board yet: creating one is the only thing to do, so it stays in sight.
+    m.boards.length === 0 &&
+      h("button", { type: "button", class: "quiet", onclick: () => openNewBoard() }, t.newBoardButton),
   ];
 });
 
@@ -503,11 +505,28 @@ const paintWaits = region(waitsPill, (m: Waits) => {
   ];
 });
 
-const paintExport = region(exportMenu, (m: { board: string | undefined }) => [
-  h("summary", {}, t.export),
+interface BoardMenuModel {
+  board: { id: string; title: string } | undefined;
+  live: boolean;
+}
+
+const paintBoardMenu = region(boardMenu, (m: BoardMenuModel) => [
+  h("summary", { title: t.boardMenu, "aria-label": t.boardMenu }, "⋯"),
   h(
     "div",
     { class: "menu-items" },
+    h(
+      "button",
+      {
+        type: "button",
+        onclick: () => {
+          boardMenu.open = false;
+          openNewBoard();
+        },
+      },
+      t.newBoardItem,
+    ),
+    h("p", { class: "menu-heading" }, t.export),
     ...EXPORT_FORMATS.map((format) =>
       h(
         "button",
@@ -517,6 +536,22 @@ const paintExport = region(exportMenu, (m: { board: string | undefined }) => [
     ),
     h("button", { type: "button", disabled: !m.board, onclick: () => void copyMermaid() }, t.copyMermaid),
     h("p", { class: "menu-note" }, t.publishAll),
+    m.board &&
+      h(
+        "button",
+        {
+          type: "button",
+          class: "remove-board",
+          title: t.removeBoard(m.board.title),
+          disabled: !m.live,
+          onclick: () => {
+            const id = m.board?.id;
+            boardMenu.open = false;
+            if (id) askToRemove(id);
+          },
+        },
+        t.removeBoardItem,
+      ),
   ),
 ]);
 
@@ -999,7 +1034,7 @@ function exportAs(format: ExportFormat): void {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  exportMenu.open = false;
+  boardMenu.open = false;
 }
 
 async function copyMermaid(): Promise<void> {
@@ -1011,7 +1046,7 @@ async function copyMermaid(): Promise<void> {
   } catch {
     say(t.clipboardRefused);
   }
-  exportMenu.open = false;
+  boardMenu.open = false;
 }
 
 /**
@@ -1252,7 +1287,7 @@ function render(): void {
     connected: state.connected,
     saving: state.saving,
   });
-  paintExport({ board: board?.id });
+  paintBoardMenu({ board: board && { id: board.id, title: board.title }, live });
   paintWaits({ waiting: live ? claudeWaits(ws) : undefined, current: board?.id, listening: state.listening });
   const mine = live ? (state.boardId ?? undefined) : undefined;
   paintUndo({

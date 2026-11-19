@@ -380,7 +380,7 @@ describe("history", () => {
     expect(await page.locator("g.card").count()).toBe(3);
     expect(await page.locator(".history-label").textContent()).toMatch(/^4 \/ \d+ · .*Claude adds E1/);
     expect(await paletteType("Event").isDisabled()).toBe(true);
-    expect(await page.locator(".board-picker button.remove-board").isDisabled()).toBe(true);
+    expect(await page.locator(".board-menu button.remove-board").isDisabled()).toBe(true);
     await shot("06-history");
 
     await page.locator(".history button", { hasText: "►" }).click();
@@ -604,7 +604,8 @@ describe("other workshops", () => {
   });
 
   test("a new board from the page: pick a workshop, name it, start", async () => {
-    await page.locator(".board-picker button", { hasText: "+ Board" }).click();
+    await page.locator(".board-menu summary").click();
+    await page.locator(".board-menu .menu-items button", { hasText: "New board…" }).click();
     await page.locator("dialog.new-board").waitFor({ state: "visible" });
     await page.locator('dialog.new-board input[name="title"]').fill("Rétro sprint 12");
     await page.locator("dialog.new-board label.choice", { hasText: "Retrospective" }).click();
@@ -642,7 +643,8 @@ describe("keeping the model", () => {
   test("the export menu downloads a design note that carries the diagram", async () => {
     await page.locator(".board-picker select").selectOption("commande");
     await card("E1").waitFor();
-    await page.locator(".menu summary").click();
+    await page.locator(".board-menu summary").click();
+    await shot("53-board-menu");
     const [download] = await Promise.all([
       page.waitForEvent("download"),
       page.locator(".menu-items button", { hasText: "Markdown" }).click(),
@@ -693,7 +695,7 @@ describe("the reader's language", () => {
     // What the user wrote is theirs: it is never translated.
     expect(await card("E1").textContent()).toContain("Commande validée");
 
-    await page.locator(".menu summary").click();
+    await page.locator(".board-menu summary").click();
     const [download] = await Promise.all([
       page.waitForEvent("download"),
       page.locator(".menu-items button", { hasText: "Markdown" }).click(),
@@ -781,7 +783,8 @@ describe("taking a gesture back", () => {
 
   test("a removed board is offered back at once, and comes back whole", async () => {
     const sheet = page.locator("dialog.remove-board");
-    await page.locator(".board-picker button.remove-board").click();
+    await page.locator(".board-menu summary").click();
+    await page.locator(".board-menu button.remove-board").click();
     expect(await sheet.locator("p").textContent()).toContain("Undo brings it back");
     await sheet.locator("button.danger").click();
     await until("the board is gone", async () => !(await workspace()).boards.some((b) => b.id === BOARD));
@@ -1456,12 +1459,8 @@ describe("Claude waits for the human", () => {
     expect(await pill().getAttribute("title")).toBe("Ton avis sur E1 ?");
     // The tab says it too, for who looks at another one.
     expect(await page.title()).toStartWith("● Claude waits for you · ");
-    // Just before the zoom, in the header.
-    expect(
-      await pill().evaluate((button) =>
-        button.closest(".waits")?.nextElementSibling?.classList.contains("zoom"),
-      ),
-    ).toBe(true);
+    // In the middle of the header, beside what Claude is doing.
+    expect(await pill().evaluate((button) => button.closest(".top-claude") !== null)).toBe(true);
     await shot("22-claude-waits");
 
     await pill().click();
@@ -2013,9 +2012,14 @@ describe("tidying up", () => {
     await page.locator(".board-picker select").selectOption("a-jeter");
     await card("T1").waitFor();
 
-    const remove = page.locator(".board-picker button.remove-board");
+    const remove = page.locator(".board-menu button.remove-board");
     const sheet = page.locator("dialog.remove-board");
     expect(await remove.getAttribute("title")).toBe("Remove the board “À jeter”");
+    // Out of the way, one click off: the board menu, beside the board's name.
+    await page.locator(".board-menu summary").click();
+    expect(await page.locator(".board-menu summary").getAttribute("aria-label")).toBe(
+      "Board: new, export, remove",
+    );
     await remove.click();
     expect(await sheet.locator("h2").textContent()).toBe("Remove the board “À jeter”?");
     expect(await sheet.locator("p").textContent()).toStartWith("It holds 1 element. ");
@@ -2025,6 +2029,7 @@ describe("tidying up", () => {
     await sheet.waitFor({ state: "hidden" });
     expect(await listed()).toContain("a-jeter");
 
+    await page.locator(".board-menu summary").click();
     await remove.click();
     await sheet.locator("button.danger").click();
     await until("the removed board left the picker", async () => !(await listed()).includes("a-jeter"));

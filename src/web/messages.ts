@@ -37,6 +37,9 @@ export interface Messages {
   // The header.
   boardShown: string;
   newBoardButton: string;
+  boardMenu: string;
+  newBoardItem: string;
+  removeBoardItem: string;
   zoomOut: string;
   zoomIn: string;
   /** The tooltip of Undo and of Redo; `keys` is the shortcut as the reader's keyboard writes it. */
@@ -259,6 +262,9 @@ const en: Messages = {
 
   boardShown: "Board shown",
   newBoardButton: "+ Board",
+  boardMenu: "Board: new, export, remove",
+  newBoardItem: "New board…",
+  removeBoardItem: "Remove this board…",
   zoomOut: "Zoom out",
   zoomIn: "Zoom in",
   undo: (keys) => `Undo your last change (${keys})`,
@@ -515,6 +521,9 @@ const fr: Messages = {
 
   boardShown: "Tableau affiché",
   newBoardButton: "+ Tableau",
+  boardMenu: "Tableau : nouveau, export, suppression",
+  newBoardItem: "Nouveau tableau…",
+  removeBoardItem: "Supprimer ce tableau…",
   zoomOut: "Dézoomer",
   zoomIn: "Zoomer",
   undo: (keys) => `Annuler ton dernier changement (${keys})`,

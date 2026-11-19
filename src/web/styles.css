@@ -193,6 +193,37 @@ input[type="text"] {
   border-bottom: 1px solid var(--rule);
 }
 
+/* The board, then what Claude is doing, then the view: three groups, the middle one taking the room. */
+.top-board,
+.top-view {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-board {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.top-view {
+  flex: none;
+  gap: 12px;
+}
+
+.top-claude {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.top-claude .status {
+  flex: 0 1 auto;
+}
+
 .brand {
   font-size: 15px;
   letter-spacing: 0.02em;
@@ -205,12 +236,43 @@ input[type="text"] {
   min-width: 0;
 }
 
-/* Offered, never advertised: it takes the board from Claude too. */
-.board-picker .remove-board {
+/* The board menu: a quiet "⋯" beside the board's name; its list opens under it, to the right. */
+.board-menu summary {
+  min-width: 32px;
+  padding: 3px 8px;
+  border-color: transparent;
+  background: none;
   color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: center;
 }
 
-.board-picker .remove-board:hover:not(:disabled) {
+.board-menu summary:hover,
+.board-menu[open] summary {
+  border-color: var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.board-menu .menu-items {
+  right: auto;
+  left: 0;
+}
+
+.menu-heading {
+  margin: 0;
+  padding: 8px 10px 2px;
+  border-top: 1px solid var(--rule);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Offered, never advertised: it takes the board from Claude too. Last, set apart. */
+.menu-items .remove-board {
+  margin-top: 4px;
+  border-top-color: var(--rule);
+  border-radius: 0 0 6px 6px;
   color: var(--danger);
 }
 
@@ -1539,13 +1601,10 @@ legend {
     row-gap: 6px;
   }
 
-  .status {
+  .top-claude {
     order: 10;
     flex: 1 1 100%;
-  }
-
-  .waits {
-    order: 11;
+    justify-content: flex-start;
   }
 
   .status:has(~ .waits:not(:empty)) {
@@ -1561,11 +1620,6 @@ legend {
   .zoom .zoom-label {
     width: auto;
     min-width: 44px;
-  }
-
-  /* Set once, then forgotten: it closes the second row, after what Claude does. */
-  .language {
-    order: 12;
   }
 
   .bottom {
