@@ -672,3 +672,49 @@ describe("history", () => {
     expect(readFileSync(join(root, ".sideco", "sessions.jsonl"), "utf8")).toContain("PromptSubmitted");
   });
 });
+
+describe("a companion nobody uses", () => {
+  /** A workspace of its own, so stopping its companion leaves the others alone. */
+  async function apart(): Promise<{ dir: string; run: (args: string[], stdin?: string) => Promise<Ran> }> {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), "sideco-idle-")));
+    const env = { SIDECO_IDLE_MS: "400" };
+    const run = (args: string[], stdin?: string) => sideco(args, { cwd: dir, env, stdin });
+    await run(["init"]);
+    return { dir, run };
+  }
+  const running = (dir: string): boolean => existsSync(join(dir, ".sideco", "server.json"));
+  const pause = (ms: number) => new Promise((done) => setTimeout(done, ms));
+
+  test("stops by itself once the grace is over, and the next command starts it again", async () => {
+    const { dir, run } = await apart();
+    try {
+      expect((await run(["url"])).code).toBe(0);
+      expect(running(dir)).toBe(true);
+      await pause(1500);
+      expect(running(dir)).toBe(false);
+      expect((await run(["url"])).code).toBe(0);
+      expect(running(dir)).toBe(true);
+    } finally {
+      await run(["stop"]);
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("stays while a session is open, and stops once it ends", async () => {
+    const { dir, run } = await apart();
+    const hookIn = (event: string) =>
+      run(["hook"], JSON.stringify({ session_id: "idle-1", cwd: dir, hook_event_name: event }));
+    try {
+      await hookIn("SessionStart");
+      expect(running(dir)).toBe(true);
+      await pause(1500);
+      expect(running(dir)).toBe(true);
+      await hookIn("SessionEnd");
+      await pause(1500);
+      expect(running(dir)).toBe(false);
+    } finally {
+      await run(["stop"]);
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

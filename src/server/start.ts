@@ -8,6 +8,7 @@ import { join } from "node:path";
 import type { Locale } from "../domain/i18n.ts";
 import { serve } from "./http.ts";
 import { Hub } from "./hub.ts";
+import { IDLE_CHECK_MS, IdleWatch, STALE_SESSION_MS } from "./idle.ts";
 import { openJournal } from "./journal.ts";
 import { buildPage } from "./page.ts";
 
@@ -40,12 +41,17 @@ export interface StartOptions {
   show?: (address: string) => Promise<boolean>;
   /** The language the page opens in; each reader may pick another. */
   locale?: Locale;
+  /**
+   * Called once nothing has used the companion for `graceMs`: no page, no
+   * waiting session, no open session. Without it, the companion never stops by itself.
+   */
+  idle?: { graceMs: number; onIdle: () => void };
 }
 
 export async function start(
   root: string,
   preferredPort = DEFAULT_PORT,
-  { show, locale }: StartOptions = {},
+  { show, locale, idle }: StartOptions = {},
 ): Promise<Running> {
   const dir = dataDir(root);
   mkdirSync(dir, { recursive: true });
@@ -61,11 +67,16 @@ export async function start(
     serverNote(root),
     `${JSON.stringify({ url, port, pid: process.pid, workspace: root }, null, 2)}\n`,
   );
+  const watch = idle && new IdleWatch(hub, { ...idle, staleMs: STALE_SESSION_MS });
+  const looking =
+    watch &&
+    setInterval(() => watch.check(Date.now()), Math.min(IDLE_CHECK_MS, Math.max(50, idle.graceMs / 4)));
   return {
     url,
     port,
     hub,
     stop() {
+      if (looking) clearInterval(looking);
       server.stop(true);
       rmSync(serverNote(root), { force: true });
     },

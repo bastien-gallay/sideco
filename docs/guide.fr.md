@@ -158,7 +158,7 @@ sideco export --format md -o docs/design/commande.md
 sideco export --format md --lang fr   # le même, en français
 sideco board rm brouillon         # supprime un tableau ; son histoire reste dans le journal
 sideco publish                    # tous les tableaux en site statique, sous .sideco/site
-sideco stop                       # arrête le compagnon ; le journal reste
+sideco stop                       # arrête le compagnon ; le journal reste (il s'arrête aussi seul, 5 min après la dernière page et la dernière session)
 ```
 
 L'agent, lui, écrit par lots, tout ou rien :
@@ -293,7 +293,7 @@ Le pourquoi des choix est dans [PRD.md](PRD.md).
 
 - ⚠️ Le contenu de `TodoWrite` n'est pas documenté côté hooks : les tâches sont lues prudemment, et peuvent manquer dans le panneau de session.
 - ⚠️ Deux personnes qui modifient `.sideco/boards.jsonl` chacune de leur côté auront un conflit de fusion : le multi-utilisateur n'est pas traité.
-- Le compagnon démarré automatiquement reste en marche après la session : `sideco stop` l'arrête.
+- Le compagnon s'arrête seul 5 minutes après que la dernière page et la dernière session l'ont quitté. Une session tuée sans se terminer le garde en marche jusqu'à 12 h. `SIDECO_IDLE_MS` règle le délai ; `SIDECO_IDLE_MS=off` le garde en marche jusqu'à `sideco stop`.
 - Une session sans interface (`claude -p`) n'est jamais réveillée par un passage de main : elle doit pouvoir se terminer.
 - Claude au repos depuis plus de 12 h n'est plus réveillé par un passage de main : la page le dit, et il lit tes changements à ton prochain message dans le terminal.
 - La durée d'écoute se lit dans `hooks/hooks.json` au démarrage de la session : après une mise à jour du plugin, relance Claude Code. ⚠️ Une compaction de la conversation (`/compact`) ne relance pas l'écoute si elle était déjà close ; qu'elle la laisse ouverte reste à observer.

@@ -14,6 +14,7 @@ import { fromModel } from "../domain/export/model.ts";
 import { FORMATS } from "../domain/formats.ts";
 import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale, WORDS } from "../domain/i18n.ts";
 import { type Board, findBoard, latestSession, replay, type Workspace } from "../domain/workspace.ts";
+import { IDLE_GRACE_MS } from "../server/idle.ts";
 import { openJournal } from "../server/journal.ts";
 import { DEFAULT_PORT, dataDir, start } from "../server/start.ts";
 import {
@@ -49,7 +50,8 @@ const HELP = `sideco — a visual companion for Claude Code
   sideco open                         start the companion if needed and show the page (a page already open is left alone)
   sideco url                          print its address
   sideco serve [--port N] [--lang L]  run it in the foreground
-  sideco stop                         stop the companion; the journal stays
+  sideco stop                         stop the companion; the journal stays. It also stops by itself
+                                      5 min after the last page and session leave ($SIDECO_IDLE_MS, or off)
   sideco init                         create a workspace (.sideco/) here
   sideco status                       boards, sessions, server
 
@@ -390,7 +392,12 @@ async function hook(rewake: boolean): Promise<number> {
 async function serveForeground(given: string, args: Args): Promise<number> {
   const root = initRoot(given);
   const port = Number(args.flags.get("port") ?? setting("SIDECO_PORT") ?? DEFAULT_PORT);
-  const running = await start(root, port, { show: openBrowser, locale: language(args) });
+  const graceMs = idleGraceMs();
+  const running = await start(root, port, {
+    show: openBrowser,
+    locale: language(args),
+    idle: graceMs === undefined ? undefined : { graceMs, onIdle: () => stop() },
+  });
   console.log(`sideco is serving ${root}\n  ${running.url}`);
   const stop = (): void => {
     running.stop();
@@ -402,7 +409,17 @@ async function serveForeground(given: string, args: Args): Promise<number> {
   return 0;
 }
 
-/** How many pages follow this companion right now. */
+/**
+ * How long the companion stays once no page, no session uses it: SIDECO_IDLE_MS,
+ * or five minutes. `off` keeps it running until `sideco stop`.
+ */
+function idleGraceMs(): number | undefined {
+  const asked = setting("SIDECO_IDLE_MS");
+  if (asked === "off") return undefined;
+  const ms = Number(asked);
+  return asked !== undefined && Number.isFinite(ms) && ms > 0 ? ms : IDLE_GRACE_MS;
+}
+
 /**
  * How long a page left open takes to find a companion that was started again:
  * the browser retries its stream a few seconds after losing it.
@@ -424,6 +441,7 @@ async function watched(server: Server, withinMs: number): Promise<boolean> {
   }
 }
 
+/** How many pages follow this companion right now. */
 async function watchers(server: Server): Promise<number> {
   return (await get<{ watching?: number }>(server, "/health", 1000)).watching ?? 0;
 }

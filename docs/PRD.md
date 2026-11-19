@@ -318,11 +318,11 @@ Hors MVP, assumé : dessin libre, images, curseurs multiples, comptes, synchroni
 | --- | --- | --- |
 | L1 | ✅ Levé le 2026-11-18 : bouton `Remove` à côté du choix du tableau, avec confirmation | ✅ Rien : `Undo` restaure le tableau supprimé (B5) |
 | L2 | Seule la session la plus récente est affichée | Deux sessions Claude Code dans le même projet : une seule est suivie |
-| L3 | Le compagnon reste en marche après la fin de la session | L'arrêter avec `sideco stop` |
+| L3 | ✅ Levé le 2026-11-19 : le compagnon s'arrête seul 5 min après la dernière page ouverte, la dernière session en attente et la dernière session ouverte ; une session muette depuis 12 h ne compte plus | ✅ Rien ; `SIDECO_IDLE_MS` règle le délai, `off` le désactive |
 | L4 | Deux branches qui écrivent dans `boards.jsonl` | ⚠️ Conflit de fusion probable, non essayé ; vérification : fusionner deux branches qui ont chacune ajouté des événements |
 | L6 | Premier `sideco open` d'un projet sous bac à sable | ✅ Observé le 2026-11-18 avec `allowLocalBinding` : espace de travail créé, compagnon démarré, écritures acceptées ; seule l'ouverture de la page échoue, avec la consigne de relancer hors bac à sable. ⚠️ Bac à sable par défaut (sans `allowLocalBinding`) : toujours non observé, refus attendu avec `this shell may not start the companion` (test unitaire seulement) ; vérification : retirer le réglage le temps d'un essai |
 
-<sub>Source : backlog présenté en session le 2026-11-18 ; L1 à L3 : `src/web/main.ts`, `src/domain/workspace.ts` (`latestSession`), `src/cli/main.ts` (`stop`) ; L5 n'est pas une tâche mais un risque : voir R2.</sub>
+<sub>Source : backlog présenté en session le 2026-11-18 ; L1 à L3 : `src/web/main.ts`, `src/domain/workspace.ts` (`latestSession`), `src/cli/main.ts` (`stop`), `src/server/idle.ts` ; L5 n'est pas une tâche mais un risque : voir R2.</sub>
 
 ## 9. Risques
 
