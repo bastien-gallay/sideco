@@ -189,6 +189,8 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       requireElement(board, cmd.src);
       requireElement(board, cmd.dst);
       if (cmd.src === cmd.dst) throw new CommandError(`${cmd.src} cannot link to itself`);
+      if (board.edges.some((e) => e.src === cmd.src && e.dst === cmd.dst && e.label === cmd.label))
+        return unchanged();
       return { events: [{ event: "EdgeAdded", board: b, src: cmd.src, dst: cmd.dst, label: cmd.label }] };
     case "unlink":
       if (!board.edges.some((e) => e.src === cmd.src && e.dst === cmd.dst)) {

@@ -19,6 +19,8 @@ const STUB = 4;
 const LABEL_GAP = 4;
 const CLEARANCE = 6;
 const LABEL_CHAR_W = 6.2;
+/** From a rail down to a name's baseline: the text clears the rail and the arrow's head. */
+const LABEL_BELOW_RAIL = 16;
 
 type Pair = readonly [string, string];
 
@@ -155,29 +157,27 @@ function route(
 
     let d: string;
     let labelAt: [number, number];
-    let lane: number | undefined;
     if (back.has(key(edge.src, edge.dst))) {
       lanes += 1;
-      lane = right + LANE * lanes;
+      const lane = right + LANE * lanes;
       const sy = Math.round(s.y + s.h / 2);
       const ty = Math.round(t.y + t.h / 2);
       d = `M${r(s.x + s.w)} ${sy} H${lane} V${ty} H${r(t.x + t.w + STUB)}`;
       labelAt = [lane + LABEL_GAP, (sy + ty) / 2];
     } else if (passed.some((c) => tx >= c.x - CLEARANCE && tx <= c.x + c.w + CLEARANCE)) {
       lanes += 1;
-      lane = right + LANE * lanes;
+      const lane = right + LANE * lanes;
       const low = Math.round(t.y - GAP_Y / 2);
       d = `M${sx} ${y1} V${rail} H${lane} V${low} H${tx} V${y2}`;
       labelAt = [lane + LABEL_GAP, (rail + low) / 2];
-    } else if (sx === tx) {
-      d = `M${sx} ${y1} V${y2}`;
-      labelAt = [sx + CLEARANCE, rail];
     } else {
-      d = `M${sx} ${y1} V${rail} H${tx} V${y2}`;
-      labelAt = [(sx + tx) / 2 - (label.length * LABEL_CHAR_W) / 2, rail - LABEL_GAP];
+      d = sx === tx ? `M${sx} ${y1} V${y2}` : `M${sx} ${y1} V${rail} H${tx} V${y2}`;
+      // Beside the last leg, the one only this link draws: the rail at the top is shared by the
+      // branches of a decision, and a name written there reads as another branch's.
+      labelAt = [tx + CLEARANCE, rail + LABEL_BELOW_RAIL];
     }
-    if (lane !== undefined)
-      reach = Math.max(reach, lane + (label ? LABEL_GAP + label.length * LABEL_CHAR_W : 0));
+    // A long name runs past the boxes: the scene widens to keep it whole.
+    if (label) reach = Math.max(reach, labelAt[0] + label.length * LABEL_CHAR_W);
     connectors.push({
       src: edge.src,
       dst: edge.dst,

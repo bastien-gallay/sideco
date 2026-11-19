@@ -184,7 +184,7 @@ function english(e: Recorded, to: string): string {
     case "ColumnMoved":
       return `${does("move")} column ${e.from} to ${e.to}`;
     case "EdgeAdded":
-      return `${does("link")} ${e.src} → ${e.dst}`;
+      return `${does("link")} ${e.src} → ${e.dst}${e.label ? ` “${e.label}”` : ""}`;
     case "EdgeRemoved":
       return `${does("remove")} the link ${e.src} → ${e.dst}`;
     case "FocusSet":
@@ -279,7 +279,7 @@ function french(e: Recorded, to: string): string {
     case "ColumnMoved":
       return `${verb("déplaces", "déplace")} la colonne ${e.from} en ${e.to}`;
     case "EdgeAdded":
-      return `${verb("relies", "relie")} ${e.src} → ${e.dst}`;
+      return `${verb("relies", "relie")} ${e.src} → ${e.dst}${e.label ? ` « ${e.label} »` : ""}`;
     case "EdgeRemoved":
       return `${verb("retires", "retire")} le lien ${e.src} → ${e.dst}`;
     case "FocusSet":

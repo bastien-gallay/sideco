@@ -70,6 +70,8 @@ interface Editing {
   lines: boolean;
   /** The card the keyboard goes back to once the editor closes. */
   from: string | undefined;
+  /** Emptied, the words are saved too: a name taken off. */
+  blank: boolean;
 }
 
 /** How an editor opens: what it is called, and whether its words are several lines read before they are changed. */
@@ -77,6 +79,7 @@ interface EditorKind {
   name: string;
   lines: boolean;
   from?: string;
+  blank?: boolean;
 }
 
 export interface BoardHooks {
@@ -572,6 +575,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       };
       tools.replaceChildren(
         h("span", { class: "tools-label" }, t.linkBetween(link.src, link.dst)),
+        h("button", { type: "button", onclick: () => nameLink(link.src, link.dst) }, t.nameLink),
         h("button", { type: "button", class: "danger", onclick: remove }, t.removeLink),
       );
       tools.hidden = false;
@@ -684,7 +688,15 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     editor.style.background = colours.fill;
     editor.style.color = colours.ink;
     editor.hidden = false;
-    editing = { initial: tidy(value), commit, tidy, lines: kind.lines, from: kind.from, saving: false };
+    editing = {
+      initial: tidy(value),
+      commit,
+      tidy,
+      lines: kind.lines,
+      from: kind.from,
+      blank: kind.blank ?? false,
+      saving: false,
+    };
     tools.hidden = true;
     paintOffers();
     editor.focus();
@@ -697,7 +709,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const was = editing;
     if (!was || was.saving) return;
     const value = was.tidy(editor.value);
-    const pending = save && value !== "" && value !== was.initial ? was.commit(value) : undefined;
+    const pending =
+      save && (value !== "" || was.blank) && value !== was.initial ? was.commit(value) : undefined;
     if (pending) {
       hold(was, pending, refocus);
       return;
@@ -824,6 +837,32 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     void send({ kind: "remove-column", board: board.id, at: col }).then((done) => {
       if (done !== undefined) hooks.removed(t.stepRemoved(col));
     });
+  }
+
+  /**
+   * Opens the editor on the name of a link, over the name when it has one: a
+   * decision's branches are told apart by it. Emptied, the name comes off.
+   */
+  function nameLink(src: string, dst: string): void {
+    const edge = board?.edges.find((e) => e.src === src && e.dst === dst);
+    if (!board || !edge || !isLive()) return;
+    const boardId = board.id;
+    const conn = [...conns.querySelectorAll<SVGGElement>("g.conn")].find(
+      (g) => g.dataset.src === src && g.dataset.dst === dst,
+    );
+    const named = conn?.querySelector("text.conn-label")?.getBoundingClientRect();
+    const frame = host.getBoundingClientRect();
+    const at =
+      named ?? new DOMRect(frame.left + (pickedLink?.x ?? 0), frame.top + (pickedLink?.y ?? 0), 0, 0);
+    pickedLink = undefined;
+    openEditor(
+      new DOMRect(at.left - 6, at.top - 8, 180, 36),
+      edge.label ?? "",
+      t.linkName,
+      { fill: "var(--surface)", ink: "var(--ink)" },
+      (label) => saved(send({ kind: "link", board: boardId, src, dst, ...(label ? { label } : {}) })),
+      { name: t.linkNameOf(src, dst), lines: false, blank: true },
+    );
   }
 
   function annotate(id: string): void {
@@ -1246,6 +1285,11 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const heading = under(event)?.closest<SVGTextElement>("text.lane-label");
     if (heading) {
       renameLane(heading);
+      return;
+    }
+    const conn = under(event)?.closest<SVGGElement>("g.conn");
+    if (conn?.dataset.src && conn.dataset.dst) {
+      nameLink(conn.dataset.src, conn.dataset.dst);
       return;
     }
     const f = format();

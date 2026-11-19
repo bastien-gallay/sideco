@@ -20,6 +20,35 @@ const card = (scene: Scene, id: string): Card => {
 const overlaps = (a: Card, b: Card): boolean =>
   a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
+type Box = { x1: number; y1: number; x2: number; y2: number };
+type Segment = Box;
+
+/** The room a link's name takes: 11px text, about 6.2px a letter, above its baseline. */
+const labelBox = (c: { label?: string; labelX: number; labelY: number }): Box => ({
+  x1: c.labelX,
+  y1: c.labelY - 9,
+  x2: c.labelX + (c.label ?? "").length * 6.2,
+  y2: c.labelY + 2,
+});
+
+/** The straight segments of a path of M, H and V steps. */
+function segments(d: string): Segment[] {
+  const out: Segment[] = [];
+  const [, mx, my] = /^M([\d.]+) ([\d.]+)/.exec(d) ?? [];
+  let x = Number(mx);
+  let y = Number(my);
+  for (const [, axis, value] of d.matchAll(/([HV])([\d.]+)/g)) {
+    const [nx, ny] = axis === "H" ? [Number(value), y] : [x, Number(value)];
+    out.push({ x1: Math.min(x, nx), y1: Math.min(y, ny), x2: Math.max(x, nx), y2: Math.max(y, ny) });
+    [x, y] = [nx, ny];
+  }
+  return out;
+}
+
+const crosses = (s: Segment, b: Box): boolean => s.x1 <= b.x2 && b.x1 <= s.x2 && s.y1 <= b.y2 && b.y1 <= s.y2;
+const near = (s: Segment, b: Box): boolean =>
+  crosses(s, { x1: b.x1 - 12, y1: b.y1 - 12, x2: b.x2 + 12, y2: b.y2 + 12 });
+
 function expectTidy(scene: Scene): void {
   for (const [i, a] of scene.cards.entries()) {
     expect(a.x).toBeGreaterThanOrEqual(0);
@@ -438,6 +467,25 @@ describe("graph layout", () => {
     const lane = Number(/H([\d.]+)/.exec(loop?.d ?? "")?.[1]);
     expect(lane).toBeGreaterThan(right);
     expect(scene.width).toBeGreaterThan(lane);
+  });
+
+  test("a branch's name sits beside its own arrow, never on another one", () => {
+    const fan = layoutBoard(
+      table(
+        'board new "Q" --format flow --id q\nadd decision "Q ?"\n' +
+          'add step "A" --from D1 --edge oui\nadd step "B" --from D1 --edge non\n' +
+          'add step "C" --from D1 --edge "peut-être"',
+      ).board(),
+    );
+    for (const scene of [fan, layoutBoard(table(FLOW).board())]) {
+      for (const c of scene.connectors.filter((c) => c.label)) {
+        const box = labelBox(c);
+        for (const other of scene.connectors.filter((o) => o !== c)) {
+          expect(segments(other.d).some((s) => crosses(s, box))).toBe(false);
+        }
+        expect(segments(c.d).some((s) => near(s, box))).toBe(true);
+      }
+    }
   });
 
   test("an empty graph is a small empty scene", () => {

@@ -115,7 +115,7 @@ sideco move ID --col N | --lane L [--before ID]   # --before alone: before that 
 sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)
 sideco lane L "Name" (names it here) · kanban, retro: lane add "Name" [--before L] · lane rm L · lane move L [--before L] · story map: slice add "Lot 1" [--before S] (a line under the stories) · slice rm S
 sideco done ID                      sideco undone ID
-sideco link SRC DST ["label"]       sideco unlink SRC DST
+sideco link SRC DST ["label"]       sideco unlink SRC DST   (link again: renames the link)
 sideco focus [ID…] [--why "…"]      (no id clears the focus)
 sideco note "Text" [--on ID]        (opens a thread, on the board or on one element)
 sideco reply N1 "Text"              sideco resolve N1    (answer in a thread; close it)

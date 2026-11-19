@@ -1756,6 +1756,51 @@ describe("a story map cut into slices", () => {
   });
 });
 
+describe("a flow's branches named from the page", () => {
+  const conn = (src: string, dst: string) => page.locator(`g.conn[data-src="${src}"][data-dst="${dst}"]`);
+  const named = (src: string, dst: string) => conn(src, dst).locator("text.conn-label");
+
+  test("a link takes a name from its toolbar or a double click, and an empty name comes off", async () => {
+    await agent(
+      'board new "Branches" --format flow --id branches\nadd decision "En stock ?"\nadd step "Expédier" --from D1 --edge oui\nadd step "Commander" --from D1',
+    );
+    await page.locator(".board-picker select").selectOption("branches");
+    await conn("D1", "S2").waitFor();
+
+    // A click on the link opens its toolbar; Name opens the editor on its name.
+    await named("D1", "S1").click();
+    await page.locator(".card-tools button", { hasText: "Name" }).click();
+    expect(await page.locator("textarea.card-editor").inputValue()).toBe("oui");
+    await typeInEditor("en stock");
+    await until("the branch is renamed", async () => (await named("D1", "S1").textContent()) === "en stock");
+
+    // A double click on a link without a name names it.
+    const middle = await conn("D1", "S2")
+      .locator("path")
+      .first()
+      .evaluate((path: SVGPathElement) => {
+        const at = path.getPointAtLength(path.getTotalLength() - 12);
+        const point = new DOMPoint(at.x, at.y).matrixTransform(path.getScreenCTM() ?? undefined);
+        return { x: point.x, y: point.y };
+      });
+    await page.mouse.dblclick(middle.x, middle.y);
+    await typeInEditor("en rupture");
+    await named("D1", "S2").waitFor();
+    expect(await named("D1", "S2").textContent()).toBe("en rupture");
+    await shot("51-flow-branches-named");
+
+    // Emptied, the name comes off the link.
+    await named("D1", "S1").dblclick();
+    await typeInEditor("");
+    await named("D1", "S1").waitFor({ state: "detached" });
+
+    await agent("board rm branches");
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== "branches";
+    });
+  });
+});
+
 describe("a tab opened on no board in particular", () => {
   const MINE = "tenu";
   const OTHER = "autre-session";

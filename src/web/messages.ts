@@ -160,6 +160,9 @@ export interface Messages {
   noteOnPlaceholder: (id: string) => string;
   linkBetween: (src: string, dst: string) => string;
   removeLink: string;
+  nameLink: string;
+  linkName: string;
+  linkNameOf: (src: string, dst: string) => string;
 
   // News the agent made while the human looked elsewhere.
   agentRemovedBoard: (title: string) => string;
@@ -367,6 +370,9 @@ const en: Messages = {
   noteOnPlaceholder: (id) => `Note for Claude on ${id}…`,
   linkBetween: (src, dst) => `Link ${src} → ${dst}`,
   removeLink: "Remove the link",
+  nameLink: "Name",
+  linkName: "Name of the link, such as yes or no",
+  linkNameOf: (src, dst) => `Name of the link ${src} → ${dst}`,
 
   agentRemovedBoard: (title) => `Claude removed the board “${title}”.`,
   agentRestoredBoard: (title) => `Claude restored the board “${title}”.`,
@@ -618,6 +624,9 @@ const fr: Messages = {
   noteOnPlaceholder: (id) => `Note pour Claude sur ${id}…`,
   linkBetween: (src, dst) => `Lien ${src} → ${dst}`,
   removeLink: "Supprimer le lien",
+  nameLink: "Nommer",
+  linkName: "Nom du lien, comme oui ou non",
+  linkNameOf: (src, dst) => `Nom du lien ${src} → ${dst}`,
 
   agentRemovedBoard: (title) => `Claude a supprimé le tableau « ${title} ».`,
   agentRestoredBoard: (title) => `Claude a restauré le tableau « ${title} ».`,
