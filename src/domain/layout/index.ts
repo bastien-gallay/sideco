@@ -26,7 +26,14 @@ import {
   WRAP_LINES,
   wrap,
 } from "./scene.ts";
-import { layoutTimeline, locateInTimeline, roomInTimeline, roomOnBoundary, stepTop } from "./timeline.ts";
+import {
+  layoutTimeline,
+  locateInTimeline,
+  roomInTimeline,
+  roomOnBoundary,
+  stepHeading,
+  stepTop,
+} from "./timeline.ts";
 
 const EMPTY: Scene = { width: 0, height: 0, bands: [], cards: [], connectors: [] };
 
@@ -74,6 +81,7 @@ export function vacancy(board: Board, target: Target, span?: number): Room | und
   if (format?.layout === "timeline" && target.kind === "cell")
     return roomInTimeline(board, format, target.col, target.type);
   if (format?.layout === "timeline" && target.kind === "boundary") return roomOnBoundary(target.col);
+  if (format?.layout === "timeline" && target.kind === "step-head") return stepHeading(target.col);
   if (format?.layout === "columns" && target.kind === "slot")
     return roomInColumns(board, format, target.lane, span);
   if (format?.layout === "columns" && target.kind === "lane-edge")

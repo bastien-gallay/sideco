@@ -41,3 +41,22 @@ describe("a drop inside a cell of a timeline", () => {
     expect(locate(t.board(), two.x + 4, two.y + 2, "E2")).toMatchObject({ before: "E3" });
   });
 });
+
+describe("the heading of a step", () => {
+  const t = table(`
+board new "Étapes" --id etapes
+add event "Un" --col 1
+add event "Trois" --col 3
+`);
+  const step = (col: number) => {
+    const band = layoutBoard(t.board()).bands.find((b) => b.kind === "step" && b.id === String(col));
+    if (!band) throw new Error(`no step ${col}`);
+    return band;
+  };
+
+  test("near an edge offers a column there; in its middle, is the step itself", () => {
+    const two = step(2);
+    expect(locate(t.board(), two.x + 3, 10)).toEqual({ kind: "boundary", col: 2 });
+    expect(locate(t.board(), two.x + two.w / 2, 10)).toEqual({ kind: "step-head", col: 2 });
+  });
+});

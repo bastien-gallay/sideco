@@ -25,6 +25,8 @@ const TOP_H = 32;
 const ROW_PAD = 12;
 const STACK_GAP = 8;
 const EMPTY_ROW_H = 44;
+/** How far either side of the rule between two steps their headings offer a column. */
+const EDGE_REACH = 32;
 
 interface Row {
   type: string;
@@ -125,6 +127,10 @@ export function locateInTimeline(
   if (y >= 0 && y < TOP_H) {
     const edge = columnBoundary(x);
     const inReach = x >= HEADER_W - COL_W / 2 && edge <= lastColumn(board);
+    // Near an edge, a column to insert there; in the middle of a heading, the step itself.
+    const step = Math.floor((x - HEADER_W) / COL_W) + 1;
+    if (Math.abs(x - columnX(edge)) > EDGE_REACH && step >= 1 && step <= lastColumn(board))
+      return { kind: "step-head", col: step };
     return inReach ? { kind: "boundary", col: edge } : { kind: "none" };
   }
   const grid = timelineGrid(board, format);
@@ -155,6 +161,11 @@ export function roomInTimeline(board: Board, format: Format, col: number, type: 
 }
 
 /** Where an edge between two steps is pointed at: on its rule, as high as the heading of the steps. */
+/** The heading of a step: where what is done to the whole column is offered. */
+export function stepHeading(col: number): Room {
+  return { x: columnX(col), y: 0, w: COL_W, h: TOP_H };
+}
+
 export function roomOnBoundary(col: number): Room {
   return { x: columnX(col), y: 0, w: 0, h: TOP_H };
 }

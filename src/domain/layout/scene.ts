@@ -79,6 +79,8 @@ export type Target =
   | { kind: "slot"; lane: string; before?: string }
   /** The edge between two steps of a timeline: a column inserted there takes the number `col`. */
   | { kind: "boundary"; col: number }
+  /** The middle of a step's heading: what is done to the whole column. */
+  | { kind: "step-head"; col: number }
   /** The edge between two lane headings of a kanban: a lane added there goes before `before`, else last. */
   | { kind: "lane-edge"; before?: string }
   | { kind: "none" };
