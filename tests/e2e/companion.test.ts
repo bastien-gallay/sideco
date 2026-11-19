@@ -1456,6 +1456,69 @@ describe("many tabs open on the companion", () => {
   });
 });
 
+describe("a kanban's own lanes, from the page", () => {
+  const BOARD = "colonnes";
+  const lanes = async (): Promise<string[]> =>
+    ((await workspace()).boards.find((b) => b.id === BOARD)?.laneOrder as string[] | undefined) ?? [
+      "todo",
+      "doing",
+      "done",
+    ];
+  const heading = async (name: string) => {
+    const box = await page
+      .locator(".layer-heads .lane-label", { hasText: new RegExp(`^${name}$`) })
+      .boundingBox();
+    if (!box) throw new Error(`no heading ${name}`);
+    return box;
+  };
+
+  test("the edge between two headings offers a lane; named, it is added there", async () => {
+    await agent(`board new "Colonnes" --format kanban --id ${BOARD}\nadd task "Là" --lane doing`);
+    await page.locator(".board-picker select").selectOption(BOARD);
+    await card("T1").waitFor();
+    const doing = await heading("Doing");
+    // The label sits 14 px into its lane; the edge is the gap just left of the lane.
+    await page.mouse.move(doing.x - 14 - 8, doing.y + doing.height / 2);
+    const plus = page.locator('.sideco-board .add-here[data-type="lane"]');
+    await plus.waitFor();
+    expect(await plus.getAttribute("aria-label")).toBe("Add a lane here");
+    expect(await plus.getAttribute("data-before")).toBe("doing");
+    await Bun.sleep(200);
+    await shot("40-add-lane");
+    await plus.click();
+    await typeInEditor("Prêt");
+    await until(
+      "the lane is added before Doing",
+      async () => (await lanes()).join() === "todo,lane-1,doing,done",
+    );
+    await page.locator(".layer-heads .lane-label", { hasText: /^Prêt$/ }).waitFor();
+  });
+
+  test("an empty lane offers to remove it; Undo in the notice puts it back", async () => {
+    const ready = await heading("Prêt");
+    await page.mouse.move(ready.x + 20, ready.y + 120);
+    const cross = page.locator('.sideco-board .add-here[data-type="remove-lane"]');
+    await cross.waitFor();
+    expect(await cross.getAttribute("aria-label")).toBe("Remove the lane Prêt");
+    // A lane with cards offers no such thing.
+    const doing = await heading("Doing");
+    await page.mouse.move(doing.x + 20, doing.y + 160);
+    await page.locator('.sideco-board .add-here[data-type="task"]').waitFor();
+    expect(await cross.count()).toBe(0);
+    await page.mouse.move(ready.x + 20, ready.y + 120);
+    await Bun.sleep(200);
+    await shot("41-remove-lane");
+    await cross.click();
+    await until("the lane is gone", async () => !(await lanes()).includes("lane-1"));
+    await page.locator(".toast", { hasText: "Lane Prêt removed." }).getByRole("button").click();
+    await until("the lane is back", async () => (await lanes()).join() === "todo,lane-1,doing,done");
+    await agent(`board rm ${BOARD}`);
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== BOARD;
+    });
+  });
+});
+
 describe("a tab opened on no board in particular", () => {
   const MINE = "tenu";
   const OTHER = "autre-session";

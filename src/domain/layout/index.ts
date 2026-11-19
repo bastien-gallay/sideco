@@ -5,7 +5,7 @@
 import { type Format, findFormat, findType } from "../formats.ts";
 import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
 import { type Board, type Element, threads } from "../workspace.ts";
-import { layoutColumns, locateInColumns, roomInColumns } from "./columns.ts";
+import { laneHeading, layoutColumns, locateInColumns, roomInColumns, roomOnLaneEdge } from "./columns.ts";
 import { layoutGraph, NODE_LINES } from "./graph.ts";
 import {
   CARD_W,
@@ -69,7 +69,15 @@ export function vacancy(board: Board, target: Target, span?: number): Room | und
   if (format?.layout === "timeline" && target.kind === "boundary") return roomOnBoundary(target.col);
   if (format?.layout === "columns" && target.kind === "slot")
     return roomInColumns(board, format, target.lane, span);
+  if (format?.layout === "columns" && target.kind === "lane-edge")
+    return roomOnLaneEdge(board, format, target.before, span);
   return undefined;
+}
+
+/** The heading of a lane of a columns board: where what is done to the whole lane is offered. */
+export function headingOf(board: Board, lane: string, span?: number): Room | undefined {
+  const format = findFormat(board.format);
+  return format?.layout === "columns" ? laneHeading(board, format, lane, span) : undefined;
 }
 
 function cardMaker(

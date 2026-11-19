@@ -8,9 +8,9 @@ import { toMarkdown } from "../../src/domain/export/markdown.ts";
 import { toMermaid } from "../../src/domain/export/mermaid.ts";
 import { fromModel, toModel } from "../../src/domain/export/model.ts";
 import { lanesOf } from "../../src/domain/formats.ts";
-import { layoutBoard } from "../../src/domain/layout/index.ts";
-import { describeEvent, keyMove } from "../../src/web/view.ts";
-import { KANBAN, ORDERING, type Table, table } from "../support.ts";
+import { layoutBoard, locate } from "../../src/domain/layout/index.ts";
+import { addOffers, describeEvent, keyMove } from "../../src/web/view.ts";
+import { IMPACT_EFFORT, KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 const META = { exportedAt: "2026-11-18T10:00:00.000Z" };
 const order = (t: Table): string[] => lanesOf(t.board());
@@ -161,5 +161,53 @@ describe("the keyboard follows the board's lanes", () => {
   test("Shift and an arrow move a card into a lane the board added", () => {
     const t = table(KANBAN).script('lane add "Revue" --before done');
     expect(keyMove(t.board(), "T2", "right")).toMatchObject({ kind: "move", lane: "lane-1" });
+  });
+});
+
+describe("the page offers to add and remove lanes", () => {
+  const lanesDrawn = (t: Table) => layoutBoard(t.board()).bands.filter((b) => b.kind === "lane");
+
+  test("on the edge between two lane headings, a lane before the second; past the last, one at the end", () => {
+    const t = table(KANBAN);
+    const [todo, doing, done] = lanesDrawn(t);
+    if (!todo || !doing || !done) throw new Error("three lanes");
+    const between = (todo.x + todo.w + doing.x) / 2;
+    expect(locate(t.board(), between, doing.y + 10)).toEqual({ kind: "lane-edge", before: "doing" });
+    expect(locate(t.board(), done.x + done.w + 6, done.y + 10)).toEqual({ kind: "lane-edge" });
+    // Under the headings, the gap is no place: cards are dropped into lanes.
+    expect(locate(t.board(), between, doing.y + 200)).toEqual({ kind: "none" });
+    const [offer, ...others] = addOffers(t.board(), { kind: "lane-edge", before: "doing" }, "fr");
+    expect(others).toEqual([]);
+    expect(offer).toMatchObject({
+      type: "lane",
+      before: "doing",
+      text: "+",
+      label: "Ajouter une colonne ici",
+    });
+    expect((offer?.x ?? 0) + (offer?.w ?? 0) / 2).toBe(between);
+  });
+
+  test("not on a board whose workshop sets its lanes", () => {
+    const t = table(IMPACT_EFFORT);
+    const [first] = lanesDrawn(t);
+    if (!first) throw new Error("a lane");
+    expect(locate(t.board(), first.x - 4, first.y + 10).kind).not.toBe("lane-edge");
+  });
+
+  test("an empty lane offers to remove it, in its heading; a lane with cards, or the last one, does not", () => {
+    const t = table(KANBAN).script('lane add "Revue"');
+    const remove = (lane: string) =>
+      addOffers(t.board(), { kind: "slot", lane }, "en").find((o) => o.type === "remove-lane");
+    const offer = remove("lane-1");
+    expect(offer).toMatchObject({ lane: "lane-1", text: "×", label: "Remove the lane Revue" });
+    const band = lanesDrawn(t).find((b) => b.id === "lane-1");
+    if (!band || !offer) throw new Error("drawn");
+    expect(offer.x + offer.w).toBeLessThanOrEqual(band.x + band.w);
+    expect(offer.y).toBeGreaterThanOrEqual(band.y);
+    expect(remove("doing")).toBeUndefined();
+    const lone = table('board new "Seul" --format kanban --id seul\nlane rm doing\nlane rm done');
+    expect(
+      addOffers(lone.board(), { kind: "slot", lane: "todo" }, "en").some((o) => o.type === "remove-lane"),
+    ).toBe(false);
   });
 });

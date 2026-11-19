@@ -209,6 +209,8 @@ export function locateInColumns(
   span?: number,
 ): Target {
   const planned = plan(board, format, moving, span);
+  const edge = laneEdgeAt(planned, format, x, y);
+  if (edge) return edge;
   // A lane goes on under its foot, as far as the pointer goes; a cell ends where the next one starts.
   const lane = planned.lanes.find(
     (candidate) =>
@@ -230,4 +232,42 @@ export function locateInColumns(
             (y < c.line.y - STACK_GAP / 2 || x < c.x + planned.cardW / 2),
         );
   return { kind: "slot", lane: lane.id, before: before?.e.id };
+}
+
+/** How far into a lane heading its edge reaches, either side of the gap. */
+const EDGE_REACH = 10;
+
+/** On a kanban, the edge between two lane headings, or past the last one, under the point. */
+function laneEdgeAt(planned: Plan, format: Format, x: number, y: number): Target | undefined {
+  if (!format.ownLanes || format.grid) return undefined;
+  const first = planned.lanes[0];
+  if (!first || y < first.y || y >= first.y + HEADER_H) return undefined;
+  for (const lane of planned.lanes)
+    if (x >= lane.x - LANE_GAP - EDGE_REACH && x < lane.x + EDGE_REACH)
+      return { kind: "lane-edge", before: lane.id };
+  if (x >= planned.right - EDGE_REACH && x < planned.right + LANE_GAP + EDGE_REACH)
+    return { kind: "lane-edge" };
+  return undefined;
+}
+
+/** Where a lane added before `before` (else last) is offered: on the edge, the height of the headings. */
+export function roomOnLaneEdge(
+  board: Board,
+  format: Format,
+  before: string | undefined,
+  span?: number,
+): Room | undefined {
+  const planned = plan(board, format, undefined, span);
+  const first = planned.lanes[0];
+  if (!first) return undefined;
+  const next = before === undefined ? undefined : planned.lanes.find((lane) => lane.id === before);
+  if (before !== undefined && !next) return undefined;
+  const x = next ? next.x - LANE_GAP / 2 : planned.right + LANE_GAP / 2;
+  return { x, y: first.y, w: 0, h: HEADER_H };
+}
+
+/** The heading of a lane, where what is done to the whole lane is offered. */
+export function laneHeading(board: Board, format: Format, lane: string, span?: number): Room | undefined {
+  const found = plan(board, format, undefined, span).lanes.find((candidate) => candidate.id === lane);
+  return found && { x: found.x, y: found.y, w: found.w, h: HEADER_H };
 }

@@ -57,6 +57,9 @@ export interface Messages {
   add: (type: string) => string;
   /** The "+" on the edge between two steps of a timeline. */
   insertColumn: string;
+  addLane: string;
+  removeLane: (name: string) => string;
+  laneRemoved: (name: string) => string;
   howTimeline: string;
   howColumns: string;
   howGraph: string;
@@ -250,6 +253,9 @@ const en: Messages = {
   palette: "Elements to add",
   add: (type) => `Add: ${type}`,
   insertColumn: "Insert a column here",
+  addLane: "Add a lane here",
+  removeLane: (name) => `Remove the lane ${name}`,
+  laneRemoved: (name) => `Lane ${name} removed.`,
   howTimeline:
     "Point at a cell and click its +, or click a type to add it at the end. Point between two step numbers to insert a column.",
   howColumns: "Point at a column and click a +, or click a type. Drag to move.",
@@ -432,6 +438,9 @@ const fr: Messages = {
   palette: "Éléments à ajouter",
   add: (type) => `Ajouter : ${type}`,
   insertColumn: "Insérer une colonne ici",
+  addLane: "Ajouter une colonne ici",
+  removeLane: (name) => `Supprimer la colonne ${name}`,
+  laneRemoved: (name) => `Colonne ${name} supprimée.`,
   howTimeline:
     "Survole une case et clique son +, ou clique un type pour l'ajouter à la suite. Survole entre deux numéros d'étape pour insérer une colonne.",
   howColumns: "Survole une colonne et clique un +, ou clique un type. Glisse pour déplacer.",

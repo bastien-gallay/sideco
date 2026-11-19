@@ -7,9 +7,9 @@
 import type { Command } from "../domain/commands.ts";
 import { type Changes, describeChanges } from "../domain/digest.ts";
 import type { Actor, Recorded } from "../domain/events.ts";
-import { findFormat, findType, lanesOf } from "../domain/formats.ts";
+import { findFormat, findType, laneName, lanesOf } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
-import { type Band, type Target, vacancy } from "../domain/layout/index.ts";
+import { type Band, headingOf, type Target, vacancy } from "../domain/layout/index.ts";
 import {
   type AgentStatus,
   type Board,
@@ -737,6 +737,10 @@ export interface Offer {
   type: string;
   /** The number the inserted column takes. */
   column?: number;
+  /** For "lane": the lane the new one goes before, else last. */
+  before?: string;
+  /** For "remove-lane": the lane it removes. */
+  lane?: string;
   /** What the button does, for a tooltip and a screen reader. */
   label: string;
   /** What it shows: a plus, and the letter of the kind when several are offered. */
@@ -785,12 +789,30 @@ export function addOffers(
       },
     ];
   }
+  if (target.kind === "lane-edge") {
+    const w = 28;
+    return [
+      {
+        type: "lane",
+        ...(target.before ? { before: target.before } : {}),
+        label: MESSAGES[locale].addLane,
+        text: "+",
+        fill: "#FFFFFF",
+        ink: "#1F2328",
+        x: room.x - w / 2,
+        y: room.y + (room.h - OFFER_H) / 2,
+        w,
+        h: OFFER_H,
+      },
+    ];
+  }
+  const removal = target.kind === "slot" ? laneRemoval(board, target.lane, locale, span) : [];
   const types = target.kind === "cell" ? [findType(format, target.type)] : format.types;
   const several = types.length > 1;
   const w = several ? 40 : 28;
   const left = room.x + (room.w - types.length * w - (types.length - 1) * OFFER_GAP) / 2;
   const y = room.y + (Math.min(room.h, OFFER_REACH) - OFFER_H) / 2;
-  return types.flatMap((type, i) =>
+  const adds = types.flatMap((type, i) =>
     type
       ? [
           {
@@ -807,6 +829,31 @@ export function addOffers(
         ]
       : [],
   );
+  return [...adds, ...removal];
+}
+
+/** On a kanban, the "×" in the heading of an empty lane, unless it is the board's last. */
+function laneRemoval(board: Board, lane: string, locale: Locale, span?: number): Offer[] {
+  const format = findFormat(board.format);
+  const heading = headingOf(board, lane, span);
+  if (!format?.ownLanes || !heading || lanesOf(board).length < 2) return [];
+  if (board.elements.some((e) => e.lane === lane)) return [];
+  const w = 24;
+  return [
+    {
+      type: "remove-lane",
+      lane,
+      label: MESSAGES[locale].removeLane(laneName(format, board, lane, locale)),
+      text: "×",
+      fill: "#FFFFFF",
+      ink: "#1F2328",
+      // Left of the count of cards, at the right of the heading.
+      x: heading.x + heading.w - w - 32,
+      y: heading.y + (heading.h - OFFER_H) / 2,
+      w,
+      h: OFFER_H,
+    },
+  ];
 }
 
 /** A label as it is kept: on one line, single-spaced. */

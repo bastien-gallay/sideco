@@ -200,7 +200,7 @@ function speak(text: string): void {
 }
 
 const view = mountBoard(canvas, {
-  removed: (id) => say(t.cardRemoved(id), { label: t.undoAction, run: () => void undo() }),
+  removed: (said) => say(said, { label: t.undoAction, run: () => void undo() }),
   announce: speak,
 });
 

@@ -64,8 +64,8 @@ interface EditorKind {
 }
 
 export interface BoardHooks {
-  /** A card left the board by a key: the page says so, and offers to take it back. */
-  removed(id: string): void;
+  /** A card or a lane left the board by a gesture: the page says so, and offers to take it back. */
+  removed(said: string): void;
   /** Something a screen reader should hear, that the eye sees on the board: a card moved by a key. */
   announce(text: string): void;
 }
@@ -336,11 +336,23 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       const band = scene.bands[Number(head.dataset.band)];
       if (band?.kind !== "lane") continue;
       // A lane's heading goes down to its last card at most: it never leaves its own lane.
-      head.setAttribute("transform", `translate(0 ${Math.max(0, Math.min(sy - band.y, band.h - 56))})`);
+      head.setAttribute("transform", `translate(0 ${headDrop(band)})`);
     }
+    paintOffers();
     // A card the keyboard or a search brings into view lands clear of the frozen names, never under them.
     scroll.style.scrollPaddingTop = `${frozen.top * zoom + 8}px`;
     scroll.style.scrollPaddingLeft = `${frozen.left * zoom + 8}px`;
+  }
+
+  /** How far a lane's heading has come down with the scroll: it never leaves its own lane. */
+  function headDrop(band: { y: number; h: number }): number {
+    return Math.max(0, Math.min(scroll.scrollTop / zoom - band.y, band.h - 56));
+  }
+
+  /** How far the headings of a kanban came down: what is offered in them comes down too. */
+  function lanesDrop(): number {
+    const first = scene.bands.find((band) => band.kind === "lane");
+    return first && format()?.ownLanes ? headDrop(first) : 0;
   }
 
   /** How much of the top and of the left the frozen names cover, in scene units. */
@@ -399,7 +411,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   function paintOffers(): void {
     const quiet = !board || !isLive() || editing !== undefined || drag?.moving === true;
     const offers = quiet || !board ? [] : addOffers(board, pointed, locale, span);
-    const signature = JSON.stringify(offers);
+    const drop = lanesDrop();
+    const signature = JSON.stringify({ offers, drop });
     if (signature === offered) return;
     offered = signature;
     adds.replaceChildren(
@@ -408,9 +421,11 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
           class: offer.column === undefined ? "add-here" : "add-here insert-column",
           "data-type": offer.type,
           ...(offer.column === undefined ? {} : { "data-column": offer.column }),
+          ...(offer.before === undefined ? {} : { "data-before": offer.before }),
+          ...(offer.lane === undefined ? {} : { "data-lane": offer.lane }),
           role: "button",
           "aria-label": offer.label,
-          transform: `translate(${offer.x} ${offer.y})`,
+          transform: `translate(${offer.x} ${offer.y + (offer.type === "lane" || offer.type === "remove-lane" ? drop : 0)})`,
         });
         const title = svg("title", {});
         title.textContent = offer.label;
@@ -667,6 +682,29 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     );
   }
 
+  /** Opens the editor on the edge where the "+" was: what is typed names the lane added there. */
+  function nameNewLane(offer: SVGGElement): void {
+    if (!board || !isLive()) return;
+    const boardId = board.id;
+    const before = offer.dataset.before;
+    const box = offer.getBoundingClientRect();
+    openEditor(
+      new DOMRect(box.left + box.width / 2 - 90, box.top - 7, 180, 36),
+      "",
+      t.laneName,
+      { fill: "var(--surface)", ink: "var(--ink)" },
+      (label) => saved(send({ kind: "add-lane", board: boardId, label, ...(before ? { before } : {}) })),
+    );
+  }
+
+  function removeLane(lane: string): void {
+    if (!board || !isLive()) return;
+    const name = scene.bands.find((band) => band.kind === "lane" && band.id === lane)?.label ?? lane;
+    void send({ kind: "remove-lane", board: board.id, lane }).then((done) => {
+      if (done !== undefined) hooks.removed(t.laneRemoved(name));
+    });
+  }
+
   function annotate(id: string): void {
     const node = nodes.get(id);
     const element = board?.elements.find((e) => e.id === id);
@@ -806,7 +844,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   root.addEventListener("pointermove", (event) => {
     if (drag || !board || event.pointerType === "touch" || offerAt(event.target)) return;
     const at = toScene(event);
-    pointed = locate(board, at.x, at.y, undefined, span);
+    // The headings of a kanban come down with the scroll: their edges are where they are drawn.
+    const edge = locate(board, at.x, at.y - lanesDrop(), undefined, span);
+    pointed = edge.kind === "lane-edge" ? edge : locate(board, at.x, at.y, undefined, span);
     paintOffers();
   });
   root.addEventListener("pointerleave", () => {
@@ -876,8 +916,10 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (wasDrop || cardAt(target)) return;
     const offer = offerAt(target);
     if (offer) {
-      const column = offer.dataset.column;
-      if (column === undefined) addHere(offer.dataset.type ?? "");
+      const { column, type, lane } = offer.dataset;
+      if (type === "lane") nameNewLane(offer);
+      else if (type === "remove-lane" && lane) removeLane(lane);
+      else if (column === undefined) addHere(type ?? "");
       else if (board && isLive()) void send({ kind: "insert-column", board: board.id, at: Number(column) });
       return;
     }
@@ -977,7 +1019,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       const boardId = board.id;
       void send({ kind: "remove", board: boardId, id }).then((done) => {
         if (done === undefined) return;
-        hooks.removed(id);
+        hooks.removed(t.cardRemoved(id));
         if (next) focusCard(next);
       });
     } else if (event.key.toLowerCase() === "d")

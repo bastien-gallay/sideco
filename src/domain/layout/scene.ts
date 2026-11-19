@@ -78,6 +78,8 @@ export type Target =
   | { kind: "slot"; lane: string; before?: string }
   /** The edge between two steps of a timeline: a column inserted there takes the number `col`. */
   | { kind: "boundary"; col: number }
+  /** The edge between two lane headings of a kanban: a lane added there goes before `before`, else last. */
+  | { kind: "lane-edge"; before?: string }
   | { kind: "none" };
 
 export const CARD_W = 152;
