@@ -162,7 +162,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F34 | L'éditeur d'une carte reste ouvert, avec son texte et le curseur, quand Claude écrit sur le tableau pendant la saisie ; ce que l'humain valide l'emporte. Si la carte est supprimée entre-temps, l'éditeur se ferme et le texte saisi est rendu dans un message | Livré |
 | F35 | Un kanban a ses propres colonnes : `sideco lane add "Nom" [--before L]`, `sideco lane rm L` (vide seulement, jamais la dernière), `sideco lane move L [--before L]`. Dans la page : un « + » au survol de l'espace entre deux en-têtes, un « × » dans l'en-tête d'une colonne vide, l'en-tête se glisse pour déplacer la colonne avec ses cartes. Au clavier, l'en-tête d'une colonne est un arrêt de Tab : Entrée renomme, Maj + ← → déplace, Suppr supprime si vide, + ou Alt + ← → ajoute une colonne. Tout s'annule, se dit à l'agent et se garde à l'export (T57, T65, T81) | ✅ |
 | F36 | Sur un kanban, « fait » est la dernière colonne : `done` et la touche `d` y envoient la carte, `undone` la remet dans la colonne d'avant ; ni coche ni libellé barré, la colonne le dit (T79) | ✅ |
-| F37 | Supprimer une étape vide d'une frise depuis la page : un « × » au milieu de son numéro, Annuler dans l'avis ; la réserve de droite ne se supprime pas (T48) | ✅ ; ⚠️ souris seulement |
+| F37 | Supprimer une étape vide d'une frise depuis la page : un « × » en haut de l'étape vide, Annuler dans l'avis ; la réserve de droite ne se supprime pas (T48) | ✅ ; ⚠️ souris seulement |
 
 ### 5.3 Exigences de qualité
 
