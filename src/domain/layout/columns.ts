@@ -15,6 +15,7 @@ import {
   CARD_H,
   CARD_W,
   type Card,
+  charsFor,
   labelHeight,
   MARGIN,
   type Room,
@@ -37,6 +38,10 @@ const MIN_SLOTS_IN_CELL = 2;
 const SLOT_H = CARD_H + STACK_GAP;
 /** The strip that names an axis, beside the cells. */
 const AXIS = 28;
+/** Shared out over a window, a card is never narrower than this: a line still holds a few words. */
+const MIN_CARD_W = 120;
+/** Nor wider than this: past it, a line is too long to read at a glance. */
+const MAX_CARD_W = 320;
 
 /** A row of cards abreast in a lane. */
 interface Line {
@@ -59,16 +64,35 @@ interface Plan {
   lanes: LanePlan[];
   /** Cards abreast in a lane. */
   abreast: number;
+  /** The width of every card. */
+  cardW: number;
   right: number;
   bottom: number;
 }
 
-/** Where every lane and every card goes. `without` is a card in the human's hand: it takes no place. */
-function plan(board: Board, format: Format, without?: string): Plan {
+/**
+ * How wide a card is. Lanes side by side share out the `span` they are given,
+ * within bounds; a plan keeps its cells, and without a span every card keeps
+ * its own width.
+ */
+function cardWidth(format: Format, span: number | undefined): number {
+  if (span === undefined || format.grid || format.lanes.length === 0) return CARD_W;
+  const lanes = format.lanes.length;
+  const laneW = Math.floor((span - 2 * MARGIN - (lanes - 1) * LANE_GAP) / lanes);
+  return Math.min(MAX_CARD_W, Math.max(MIN_CARD_W, laneW - 2 * LANE_SIDE));
+}
+
+/**
+ * Where every lane and every card goes. `without` is a card in the human's
+ * hand: it takes no place. `span` is the width the board has on screen.
+ */
+function plan(board: Board, format: Format, without?: string, span?: number): Plan {
   const grid = format.grid;
   const perRow = grid?.perRow ?? format.lanes.length;
   const abreast = grid?.abreast ?? 1;
-  const laneW = 2 * LANE_SIDE + abreast * CARD_W + (abreast - 1) * ABREAST_GAP;
+  const cardW = cardWidth(format, span);
+  const chars = charsFor(cardW);
+  const laneW = 2 * LANE_SIDE + abreast * cardW + (abreast - 1) * ABREAST_GAP;
   const left = MARGIN + (grid ? AXIS : 0);
   const minHeight = (grid ? MIN_SLOTS_IN_CELL : MIN_SLOTS) * SLOT_H;
 
@@ -83,8 +107,8 @@ function plan(board: Board, format: Format, without?: string): Plan {
       for (let at = 0; at < stack.length; at += abreast) {
         const cards = stack
           .slice(at, at + abreast)
-          .map((e, k) => ({ e, x: x + LANE_SIDE + k * (CARD_W + ABREAST_GAP) }));
-        const h = Math.max(...cards.map((c) => labelHeight(c.e.label)));
+          .map((e, k) => ({ e, x: x + LANE_SIDE + k * (cardW + ABREAST_GAP) }));
+        const h = Math.max(...cards.map((c) => labelHeight(c.e.label, chars)));
         lines.push({ y, h, cards });
         y += h + STACK_GAP;
       }
@@ -101,6 +125,7 @@ function plan(board: Board, format: Format, without?: string): Plan {
   return {
     lanes,
     abreast,
+    cardW,
     right: left + columns * (laneW + LANE_GAP) - LANE_GAP,
     bottom: top - LANE_GAP,
   };
@@ -109,10 +134,11 @@ function plan(board: Board, format: Format, without?: string): Plan {
 export function layoutColumns(
   board: Board,
   format: Format,
-  card: (e: Element, x: number, y: number) => Card,
+  card: (e: Element, x: number, y: number, w: number) => Card,
   locale: Locale,
+  span?: number,
 ): Scene {
-  const planned = plan(board, format);
+  const planned = plan(board, format, undefined, span);
   const bands: Band[] = [];
   const cards: Card[] = [];
   for (const lane of planned.lanes) {
@@ -128,7 +154,8 @@ export function layoutColumns(
       h: lane.h,
       count: lane.count,
     });
-    for (const line of lane.lines) for (const { e, x } of line.cards) cards.push(card(e, x, line.y));
+    for (const line of lane.lines)
+      for (const { e, x } of line.cards) cards.push(card(e, x, line.y, planned.cardW));
   }
   let height = planned.bottom + MARGIN;
   if (format.grid) {
@@ -157,24 +184,31 @@ export function layoutColumns(
  * last card, or under the header of an empty lane; in a plan, beside the last
  * card while its row has room.
  */
-export function roomInColumns(board: Board, format: Format, lane: string): Room | undefined {
-  const planned = plan(board, format);
+export function roomInColumns(board: Board, format: Format, lane: string, span?: number): Room | undefined {
+  const planned = plan(board, format, undefined, span);
+  const cardW = planned.cardW;
   const found = planned.lanes.find((candidate) => candidate.id === lane);
   if (!found) return undefined;
   const foot = found.y + found.h;
   const last = found.lines.at(-1);
   if (last && last.cards.length < planned.abreast) {
-    const x = found.x + LANE_SIDE + last.cards.length * (CARD_W + ABREAST_GAP);
-    return { x, y: last.y, w: CARD_W, h: foot - last.y };
+    const x = found.x + LANE_SIDE + last.cards.length * (cardW + ABREAST_GAP);
+    return { x, y: last.y, w: cardW, h: foot - last.y };
   }
   const y = last ? last.y + last.h : found.y + HEADER_H;
-  const x = planned.abreast === 1 ? found.x + (found.w - CARD_W) / 2 : found.x + LANE_SIDE;
-  return { x, y, w: CARD_W, h: foot - y };
+  return { x: found.x + LANE_SIDE, y, w: cardW, h: foot - y };
 }
 
 /** The lane under a point and the card the drop would land before; `moving` is left out of the count. */
-export function locateInColumns(board: Board, format: Format, x: number, y: number, moving?: string): Target {
-  const planned = plan(board, format, moving);
+export function locateInColumns(
+  board: Board,
+  format: Format,
+  x: number,
+  y: number,
+  moving?: string,
+  span?: number,
+): Target {
+  const planned = plan(board, format, moving, span);
   // A lane goes on under its foot, as far as the pointer goes; a cell ends where the next one starts.
   const lane = planned.lanes.find(
     (candidate) =>
@@ -188,11 +222,12 @@ export function locateInColumns(board: Board, format: Format, x: number, y: numb
   const before =
     planned.abreast === 1
       ? // The drop lands before the first card whose upper half is at or below the pointer.
-        stack.find((c) => y < c.y + labelHeight(c.e.label) / 2)
+        stack.find((c) => y < c.y + labelHeight(c.e.label, charsFor(planned.cardW)) / 2)
       : // In a plan: on the row the pointer is in, before the first card whose left half is at or right of it.
         stack.find(
           (c) =>
-            y < c.line.y + c.line.h + STACK_GAP / 2 && (y < c.line.y - STACK_GAP / 2 || x < c.x + CARD_W / 2),
+            y < c.line.y + c.line.h + STACK_GAP / 2 &&
+            (y < c.line.y - STACK_GAP / 2 || x < c.x + planned.cardW / 2),
         );
   return { kind: "slot", lane: lane.id, before: before?.e.id };
 }

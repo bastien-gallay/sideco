@@ -333,6 +333,73 @@ describe("columns layout", () => {
   });
 });
 
+describe("kanban lanes share the width of the window", () => {
+  const board = table(KANBAN).board();
+  const lanes = (scene: Scene): Band[] => scene.bands.filter((b) => b.kind === "lane");
+
+  test("a wide window: the lanes grow to fill it, and their cards with them", () => {
+    const span = 1000;
+    const scene = layoutBoard(board, "en", span);
+    expectTidy(scene);
+    expect(scene.width).toBeLessThanOrEqual(span);
+    expect(scene.width).toBeGreaterThan(span - 40);
+    const [todo, doing, done] = lanes(scene);
+    expect(todo?.w).toBe(doing?.w);
+    expect(done?.w).toBe(todo?.w);
+    expect(card(scene, "T3").w).toBeGreaterThan(CARD_W);
+    // A card spans its lane, with the same margin on either side.
+    const t3 = card(scene, "T3");
+    expect(t3.x - (todo?.x ?? 0)).toBe((todo?.x ?? 0) + (todo?.w ?? 0) - (t3.x + t3.w));
+  });
+
+  test("a wider card says more of its label on a line", () => {
+    const long = table(`${KANBAN}\nadd task "Brancher les hooks de session sur le compagnon local"`).board();
+    const narrow = card(layoutBoard(long), "T5");
+    const wide = card(layoutBoard(long, "en", 1200), "T5");
+    expect(wide.lines.length).toBeLessThan(narrow.lines.length);
+    expect(wide.h).toBeLessThan(narrow.h);
+  });
+
+  test("a very wide window: the lanes stop growing, a line of text stays readable", () => {
+    const scene = layoutBoard(board, "en", 4000);
+    expect(lanes(scene)[0]?.w).toBeLessThanOrEqual(360);
+  });
+
+  test("a narrow window: the lanes give some width back before the last one is cut", () => {
+    const span = 600;
+    const scene = layoutBoard(board, "en", span);
+    expectTidy(scene);
+    expect(scene.width).toBeLessThanOrEqual(span);
+    expect(card(scene, "T1").w).toBeLessThan(CARD_W);
+  });
+
+  test("too narrow for that: the lanes keep a card readable, and the board scrolls", () => {
+    const scene = layoutBoard(board, "en", 300);
+    expect(card(scene, "T1").w).toBeGreaterThanOrEqual(120);
+    expect(scene.width).toBeGreaterThan(300);
+  });
+
+  test("a drop and the room to add go by the lanes as drawn", () => {
+    const span = 1000;
+    const scene = layoutBoard(board, "en", span);
+    const t2 = card(scene, "T2");
+    // Near the right edge of a widened card: still that card, in its lane.
+    expect(locate(board, t2.x + t2.w - 4, t2.y + 4, undefined, span)).toEqual({
+      kind: "slot",
+      lane: "doing",
+      before: "T2",
+    });
+    const room = vacancy(board, { kind: "slot", lane: "doing" }, span);
+    expect(room?.x).toBe(t2.x);
+    expect(room?.w).toBe(t2.w);
+  });
+
+  test("the plan of impact and effort keeps its cells as they are", () => {
+    const priorities = table(IMPACT_EFFORT).board();
+    expect(layoutBoard(priorities, "en", 2000)).toEqual(layoutBoard(priorities));
+  });
+});
+
 describe("graph layout", () => {
   const board = table(FLOW).board();
   const scene = layoutBoard(board);

@@ -100,9 +100,14 @@ export function cardHeight(lines: number): number {
   return Math.max(CARD_MIN_H, CARD_CHROME + lines * LINE_H);
 }
 
-/** The height of the card that shows this label, in a layout of stacked stickies. */
-export function labelHeight(label: string): number {
-  return cardHeight(wrap(label).length);
+/** The height of the card that shows this label, in a layout of stacked stickies, `chars` to a line. */
+export function labelHeight(label: string, chars = WRAP_CHARS): number {
+  return cardHeight(wrap(label, chars).length);
+}
+
+/** How many characters a line of a card this wide holds: as many as `CARD_W` holds, in proportion. */
+export function charsFor(width: number): number {
+  return Math.floor((width * WRAP_CHARS) / CARD_W);
 }
 
 /** Breaks a label into at most `maxLines` lines of at most `width` characters, ending with … when cut. */

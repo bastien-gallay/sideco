@@ -619,9 +619,14 @@ const OFFER_REACH = 56;
  * of its row in a timeline, each kind of the workshop in a lane. On the edge
  * between two steps, the "+" offers a column there.
  */
-export function addOffers(board: Board, target: Target, locale: Locale = DEFAULT_LOCALE): Offer[] {
+export function addOffers(
+  board: Board,
+  target: Target,
+  locale: Locale = DEFAULT_LOCALE,
+  span?: number,
+): Offer[] {
   const format = findFormat(board.format);
-  const room = vacancy(board, target);
+  const room = vacancy(board, target, span);
   if (!format || !room) return [];
   if (target.kind === "boundary") {
     const w = 28;

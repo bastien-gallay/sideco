@@ -110,12 +110,25 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     "aria-label": t.cardLabel,
   });
   host.append(scroll, tools, editor);
+  // A window resized shares its new width out over the lanes.
+  new ResizeObserver(() => {
+    const width = Math.floor(scroll.clientWidth - 16);
+    if (width <= 0 || width === span) return;
+    span = width;
+    if (board) changed();
+  }).observe(scroll);
 
   const nodes = new Map<string, { g: SVGGElement; signature: string }>();
   let board: Board | undefined;
   let unread: readonly string[] = [];
   let scene: Scene = { width: 0, height: 0, bands: [], cards: [], connectors: [] };
   let zoom = 1;
+  /**
+   * The width the board has on screen, at its own size: lanes share it out.
+   * The zoom leaves it alone, so that zooming out shows more of the board
+   * rather than wider lanes.
+   */
+  let span: number | undefined;
   let editing: Editing | undefined;
   /** Where the pointer is, as a place to add to; and what is drawn there, to repaint only on a change. */
   let pointed: Target = { kind: "none" };
@@ -142,7 +155,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     }
     root.removeAttribute("visibility");
     root.setAttribute("aria-label", t.boardCards(board.title));
-    scene = layoutBoard(board, locale);
+    scene = layoutBoard(board, locale, span);
     const w = Math.max(scene.width, 320);
     const hgt = Math.max(scene.height, 200);
     root.setAttribute("viewBox", `0 0 ${w} ${hgt}`);
@@ -311,7 +324,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   /** Draws a "+" for each kind of card that can be added where the pointer is. */
   function paintOffers(): void {
     const quiet = !board || !isLive() || editing !== undefined || drag?.moving === true;
-    const offers = quiet || !board ? [] : addOffers(board, pointed, locale);
+    const offers = quiet || !board ? [] : addOffers(board, pointed, locale, span);
     const signature = JSON.stringify(offers);
     if (signature === offered) return;
     offered = signature;
@@ -337,7 +350,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   /** Opens the editor for a new card of this kind where the pointer is: in its cell, or at the end of its lane. */
   function addHere(typeId: string): void {
-    const room = board ? vacancy(board, pointed) : undefined;
+    const room = board ? vacancy(board, pointed, span) : undefined;
     const matrix = root.getScreenCTM();
     if (!room || !matrix || pointed.kind === "none") return;
     const corner = new DOMPoint(room.x, room.y).matrixTransform(matrix);
@@ -702,7 +715,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   root.addEventListener("pointermove", (event) => {
     if (drag || !board || event.pointerType === "touch" || offerAt(event.target)) return;
     const at = toScene(event);
-    pointed = locate(board, at.x, at.y);
+    pointed = locate(board, at.x, at.y, undefined, span);
     paintOffers();
   });
   root.addEventListener("pointerleave", () => {
@@ -723,7 +736,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (!drag.moving) return;
     const g = nodes.get(drag.id)?.g;
     if (g) g.style.transform = `translate(${at.x - drag.dx}px, ${at.y - drag.dy}px)`;
-    drag.target = locate(board, at.x, at.y, drag.id);
+    drag.target = locate(board, at.x, at.y, drag.id, span);
     showHint(drag.target);
   });
 
@@ -804,7 +817,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     }
     const f = format();
     const at = toScene(event);
-    const target = locate(board, at.x, at.y);
+    const target = locate(board, at.x, at.y, undefined, span);
     const snap = { x: event.clientX - 76 * zoom, y: event.clientY - 44 * zoom };
     if (target.kind === "cell") beginAdd(target.type, { col: target.col, ...snap });
     else if (target.kind === "slot" && f?.types[0]) beginAdd(f.types[0].id, { lane: target.lane, ...snap });

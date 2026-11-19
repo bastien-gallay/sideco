@@ -11,11 +11,11 @@ import {
   CARD_W,
   type Card,
   cardHeight,
+  charsFor,
   curve,
   type Room,
   type Scene,
   type Target,
-  WRAP_CHARS,
   WRAP_LINES,
   wrap,
 } from "./scene.ts";
@@ -23,8 +23,13 @@ import { layoutTimeline, locateInTimeline, roomInTimeline, roomOnBoundary } from
 
 const EMPTY: Scene = { width: 0, height: 0, bands: [], cards: [], connectors: [] };
 
-/** The board as geometry and text. `locale` is the reader's language: it names lanes, rows and tooltips. */
-export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE): Scene {
+/**
+ * The board as geometry and text. `locale` is the reader's language: it names
+ * lanes, rows and tooltips. `span` is the width the board has on screen, when
+ * it has one: lanes that can share it out do; without it, as on paper, every
+ * lane keeps its own width.
+ */
+export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE, span?: number): Scene {
   const format = findFormat(board.format);
   if (!format) return EMPTY;
   const card = cardMaker(board, format, locale);
@@ -33,7 +38,7 @@ export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE): Scen
   const scene =
     format.layout === "timeline"
       ? layoutTimeline(board, format, card, locale)
-      : layoutColumns(board, format, card, locale);
+      : layoutColumns(board, format, card, locale, span);
   const byId = new Map(scene.cards.map((c) => [c.id, c]));
   for (const edge of board.edges) {
     const a = byId.get(edge.src);
@@ -44,10 +49,10 @@ export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE): Scen
 }
 
 /** What a point of the scene means on this board: a cell, a slot in a lane, or nothing. */
-export function locate(board: Board, x: number, y: number, moving?: string): Target {
+export function locate(board: Board, x: number, y: number, moving?: string, span?: number): Target {
   const format = findFormat(board.format);
   if (format?.layout === "timeline") return locateInTimeline(board, format, x, y);
-  if (format?.layout === "columns") return locateInColumns(board, format, x, y, moving);
+  if (format?.layout === "columns") return locateInColumns(board, format, x, y, moving, span);
   return { kind: "none" };
 }
 
@@ -57,31 +62,35 @@ export function locate(board: Board, x: number, y: number, moving?: string): Tar
  * Undefined where nothing is added by place: off the board, and on a flow,
  * whose elements are placed by their links.
  */
-export function vacancy(board: Board, target: Target): Room | undefined {
+export function vacancy(board: Board, target: Target, span?: number): Room | undefined {
   const format = findFormat(board.format);
   if (format?.layout === "timeline" && target.kind === "cell")
     return roomInTimeline(board, format, target.col, target.type);
   if (format?.layout === "timeline" && target.kind === "boundary") return roomOnBoundary(target.col);
   if (format?.layout === "columns" && target.kind === "slot")
-    return roomInColumns(board, format, target.lane);
+    return roomInColumns(board, format, target.lane, span);
   return undefined;
 }
 
-function cardMaker(board: Board, format: Format, locale: Locale): (e: Element, x: number, y: number) => Card {
+function cardMaker(
+  board: Board,
+  format: Format,
+  locale: Locale,
+): (e: Element, x: number, y: number, w?: number) => Card {
   const openNotes = new Map<string, number>();
   for (const thread of threads(board)) {
     if (thread.target && !thread.resolved)
       openNotes.set(thread.target, (openNotes.get(thread.target) ?? 0) + 1);
   }
   const maxLines = format.layout === "graph" ? NODE_LINES : WRAP_LINES;
-  return (e, x, y) => {
+  return (e, x, y, w = CARD_W) => {
     const type = findType(format, e.type);
-    const lines = wrap(e.label, WRAP_CHARS, maxLines);
+    const lines = wrap(e.label, charsFor(w), maxLines);
     return {
       id: e.id,
       x,
       y,
-      w: CARD_W,
+      w,
       h: cardHeight(lines.length),
       lines,
       fill: type?.fill ?? "#E8EEF4",
