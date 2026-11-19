@@ -306,6 +306,10 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
       for (const el of board.elements) if (el.col >= e.at) el.col += 1;
       remapColumns(board, (col) => (col >= e.at ? col + 1 : col));
       break;
+    case "ColumnRemoved":
+      for (const el of board.elements) if (el.col > e.at) el.col -= 1;
+      remapColumns(board, (col) => (col > e.at ? col - 1 : col));
+      break;
     case "ColumnMoved": {
       const moved = (col: number): number => columnAfterMove(col, e.from, e.to);
       for (const el of board.elements) el.col = moved(el.col);

@@ -65,7 +65,7 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco rename ID "Label"            sideco detail ID "Text"
   sideco move ID --col N | --lane L [--before ID]   (--before alone: before that card, in its cell)
   sideco done ID                      sideco undone ID
-  sideco rm ID                        sideco insert-col N
+  sideco rm ID                        sideco insert-col N         sideco rm-col N (an empty column)
   sideco move-col FROM TO             a column takes the number TO, its cards with it
   sideco lane LANE "Name"             call a lane of this board your own way
   sideco link SRC DST ["label"]       sideco unlink SRC DST

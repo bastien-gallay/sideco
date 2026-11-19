@@ -155,6 +155,8 @@ function english(e: Recorded): string {
       return `${does("restore")} ${e.id} “${e.label}”`;
     case "ColumnInserted":
       return `${does("insert")} a column at ${e.at}`;
+    case "ColumnRemoved":
+      return `${does("remove")} column ${e.at}`;
     case "ColumnMoved":
       return `${does("move")} column ${e.from} to ${e.to}`;
     case "EdgeAdded":
@@ -236,6 +238,8 @@ function french(e: Recorded): string {
       return `${verb("restaures", "restaure")} ${e.id} « ${e.label} »`;
     case "ColumnInserted":
       return `${verb("insères", "insère")} une colonne en ${e.at}`;
+    case "ColumnRemoved":
+      return `${verb("supprimes", "supprime")} la colonne ${e.at}`;
     case "ColumnMoved":
       return `${verb("déplaces", "déplace")} la colonne ${e.from} en ${e.to}`;
     case "EdgeAdded":

@@ -96,6 +96,16 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       if (format.layout !== "timeline")
         throw new CommandError(`${format.name.en} boards have no columns to insert`);
       return { events: [{ event: "ColumnInserted", board: b, at: cmd.at }] };
+    case "remove-column": {
+      if (format.layout !== "timeline")
+        throw new CommandError(`${format.name.en} boards have no columns to remove`);
+      const last = lastColumn(board);
+      if (cmd.at > last) throw new CommandError(`no column ${cmd.at}: the last one is ${last}`);
+      const held = board.elements.filter((el) => el.col === cmd.at).map((el) => el.id);
+      if (held.length > 0)
+        throw new CommandError(`column ${cmd.at} holds ${held.join(", ")}: move or remove them first`);
+      return { events: [{ event: "ColumnRemoved", board: b, at: cmd.at }] };
+    }
     case "move-column": {
       if (format.layout !== "timeline")
         throw new CommandError(`${format.name.en} boards have no columns to move`);

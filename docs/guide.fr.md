@@ -91,7 +91,7 @@ Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit
 | --- | --- |
 | Cliquer un type dans la palette | Ajoute un post-it à la suite (ou relié au nœud sélectionné, dans un flux) |
 | Survoler une case ou une colonne, cliquer le « + » | Ajoute un post-it à cet endroit : du type de la rangée dans une frise, du type choisi (un « + » par type) dans une colonne. Double-cliquer une zone vide fait de même |
-| Dans une frise, survoler entre deux numéros d'étape, cliquer le « + » | Insère une colonne à cet endroit : les étapes suivantes se décalent d'un cran. ⚠️ Ne s'annule pas encore, et aucun raccourci clavier |
+| Dans une frise, survoler entre deux numéros d'étape, cliquer le « + » | Insère une colonne à cet endroit : les étapes suivantes se décalent d'un cran ; Undo la retire. Une colonne vide se retire par `sideco rm-col N`, pas encore depuis la page. ⚠️ Aucun raccourci clavier |
 | Double-cliquer une carte | La renomme |
 | Double-cliquer le nom d'une colonne (kanban, rétro, Impact / Effort) | Renomme la colonne pour ce tableau ; Entrée valide, Échap abandonne. ⚠️ Revenir au nom de l'atelier ne se fait que par Undo |
 | Glisser une carte | La change d'étape ou de colonne ; la position reste sémantique, jamais en pixels |

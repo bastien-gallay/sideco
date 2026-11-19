@@ -86,6 +86,8 @@ type BoardFact =
       edges: KeptEdge[];
     }
   | { event: "ColumnInserted"; board: string; at: number }
+  /** An empty column taken out: the columns after it close the gap. */
+  | { event: "ColumnRemoved"; board: string; at: number }
   /** The column numbered `from` takes the number `to`, its cards with it; the columns it passes close the gap. */
   | { event: "ColumnMoved"; board: string; from: number; to: number }
   /** `by` is set when a link returns: it keeps the author it had. */
@@ -142,6 +144,7 @@ const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "ElementRemoved",
   "ElementRestored",
   "ColumnInserted",
+  "ColumnRemoved",
   "ColumnMoved",
   "EdgeAdded",
   "EdgeRemoved",

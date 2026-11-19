@@ -88,6 +88,10 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
           },
         ]
       );
+    case "ColumnInserted":
+      return [{ event: "ColumnRemoved", board: b, at: e.at }];
+    case "ColumnRemoved":
+      return [{ event: "ColumnInserted", board: b, at: e.at }];
     case "ColumnMoved":
       return [{ event: "ColumnMoved", board: b, from: e.to, to: e.from }];
     case "EdgeAdded": {
@@ -167,6 +171,7 @@ function writes(e: BoardEvent): string[] {
     case "LaneNamed":
       return [`lane:${e.lane}`];
     case "ColumnInserted":
+    case "ColumnRemoved":
     case "ColumnMoved":
       return ["columns"];
     case "ElementRenamed":

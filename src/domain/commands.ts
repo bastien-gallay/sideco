@@ -40,6 +40,8 @@ export type Command =
   | { kind: "move"; board: string; id: string; col?: number; lane?: string; before?: string }
   | { kind: "remove"; board: string; id: string }
   | { kind: "insert-column"; board: string; at: number }
+  /** Removes an empty column of a timeline; refused while it holds cards. */
+  | { kind: "remove-column"; board: string; at: number }
   /** Moves a whole column of a timeline: it takes the number `to`. */
   | { kind: "move-column"; board: string; from: number; to: number }
   | { kind: "link"; board: string; src: string; dst: string; label?: string }
@@ -171,6 +173,7 @@ export function parseCommand(input: unknown): Command {
     case "remove":
       return { kind, board: boardId(f), id: idOrName(f, "id") };
     case "insert-column":
+    case "remove-column":
       return { kind, board: boardId(f), at: column(f, "at") };
     case "move-column":
       return { kind, board: boardId(f), from: column(f, "from"), to: column(f, "to") };

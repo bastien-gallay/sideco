@@ -202,6 +202,7 @@ type Change =
   | { kind: "marked"; id: string; done: boolean }
   | { kind: "removed"; id: string; type: string; label: string }
   | { kind: "column-inserted"; at: number }
+  | { kind: "column-removed"; at: number }
   | { kind: "column-moved"; from: number; to: number }
   | { kind: "linked"; src: string; dst: string; label?: string }
   | { kind: "unlinked"; src: string; dst: string }
@@ -369,6 +370,9 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
         case "ColumnInserted":
           put("column", String(e.seq), { kind: "column-inserted", at: e.at });
           break;
+        case "ColumnRemoved":
+          put("column", String(e.seq), { kind: "column-removed", at: e.at });
+          break;
         case "ColumnMoved":
           put("column", String(e.seq), { kind: "column-moved", from: e.from, to: e.to });
           break;
@@ -465,6 +469,8 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
       return `− ${change.id} ${change.type} ${quote(change.label)} removed`;
     case "column-inserted":
       return `+ empty column inserted at ${change.at} (columns from ${change.at} shifted right)`;
+    case "column-removed":
+      return `− empty column ${change.at} removed (columns from ${change.at + 1} shifted left)`;
     case "column-moved": {
       const [first, last] =
         change.from < change.to ? [change.from + 1, change.to] : [change.to, change.from - 1];
@@ -514,6 +520,7 @@ function named(change: Change): { elements: string[]; thread?: string } {
     case "board-removed":
     case "board-restored":
     case "column-inserted":
+    case "column-removed":
     case "column-moved":
       return { elements: [] };
   }

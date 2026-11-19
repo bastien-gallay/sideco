@@ -112,7 +112,7 @@ sideco board rm ID                  (removes the board; its history stays)
 sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--from ID [--edge "label"]] [--detail "…"]
 sideco rename ID "Label"            sideco detail ID "Text"
 sideco move ID --col N | --lane L [--before ID]   # --before alone: before that card, in its cell
-sideco rm ID       sideco insert-col N       sideco move-col FROM TO   (the column takes the number TO, with its cards)
+sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)
 sideco lane LANE "Name"             call a lane of this board your own way
 sideco done ID                      sideco undone ID
 sideco link SRC DST ["label"]       sideco unlink SRC DST
