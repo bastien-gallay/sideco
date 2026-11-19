@@ -4,7 +4,6 @@
   "description": "Visual companion for Claude Code: a live, event-sourced modelling board shared by a developer and their agent.",
   "license": "MIT",
   "type": "module",
-  "private": true,
   "bin": {
     "sideco": "./bin/sideco"
   },
