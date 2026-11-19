@@ -5,7 +5,14 @@
 import { type Format, findFormat, findType } from "../formats.ts";
 import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
 import { type Board, type Element, threads } from "../workspace.ts";
-import { laneHeading, layoutColumns, locateInColumns, roomInColumns, roomOnLaneEdge } from "./columns.ts";
+import {
+  dropLane,
+  laneHeading,
+  layoutColumns,
+  locateInColumns,
+  roomInColumns,
+  roomOnLaneEdge,
+} from "./columns.ts";
 import { layoutGraph, NODE_LINES } from "./graph.ts";
 import {
   CARD_W,
@@ -72,6 +79,17 @@ export function vacancy(board: Board, target: Target, span?: number): Room | und
   if (format?.layout === "columns" && target.kind === "lane-edge")
     return roomOnLaneEdge(board, format, target.before, span);
   return undefined;
+}
+
+/** Where a lane of a kanban dragged by its heading would land; undefined where it is, or off a kanban. */
+export function laneDrop(
+  board: Board,
+  x: number,
+  moving: string,
+  span?: number,
+): { before?: string; x: number } | undefined {
+  const format = findFormat(board.format);
+  return format?.ownLanes && !format.grid ? dropLane(board, format, x, moving, span) : undefined;
 }
 
 /** The heading of a lane of a columns board: where what is done to the whole lane is offered. */

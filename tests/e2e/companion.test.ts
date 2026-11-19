@@ -1512,6 +1512,23 @@ describe("a kanban's own lanes, from the page", () => {
     await until("the lane is gone", async () => !(await lanes()).includes("lane-1"));
     await page.locator(".toast", { hasText: "Lane Prêt removed." }).getByRole("button").click();
     await until("the lane is back", async () => (await lanes()).join() === "todo,lane-1,doing,done");
+  });
+
+  test("a lane dragged by its heading lands where it is dropped, its cards with it", async () => {
+    const doing = await heading("Doing");
+    const todo = await heading("To do");
+    await page.mouse.move(doing.x + 60, doing.y + doing.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(todo.x - 10, doing.y + doing.height / 2, { steps: 12 });
+    await page.locator(".drop-hint.is-lane-drop").waitFor();
+    await shot("42-move-lane");
+    await page.mouse.up();
+    await until("Doing is first", async () => (await lanes()).join() === "doing,todo,lane-1,done");
+    expect((await elementOf(BOARD, "T1"))?.lane).toBe("doing");
+    // A double click on the name still renames it: the drag takes the heading only once it moves.
+    await page.locator(".layer-heads .lane-label", { hasText: /^Doing$/ }).dblclick();
+    await typeInEditor("En cours");
+    await page.locator(".layer-heads .lane-label", { hasText: /^En cours$/ }).waitFor();
     await agent(`board rm ${BOARD}`);
     await until("the page has left the board removed", async () => {
       return (await page.locator(".board-picker select").inputValue()) !== BOARD;

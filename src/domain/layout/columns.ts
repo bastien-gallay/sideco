@@ -271,3 +271,23 @@ export function laneHeading(board: Board, format: Format, lane: string, span?: n
   const found = plan(board, format, undefined, span).lanes.find((candidate) => candidate.id === lane);
   return found && { x: found.x, y: found.y, w: found.w, h: HEADER_H };
 }
+
+/**
+ * Where a lane dragged by its heading would land with the pointer at `x`: before
+ * the first other lane whose middle is right of it, else last; `x` is the edge
+ * it would land on. Undefined where it already is.
+ */
+export function dropLane(
+  board: Board,
+  format: Format,
+  x: number,
+  moving: string,
+  span?: number,
+): { before?: string; x: number } | undefined {
+  const planned = plan(board, format, undefined, span);
+  const others = planned.lanes.filter((lane) => lane.id !== moving);
+  const next = others.find((lane) => x < lane.x + lane.w / 2);
+  const order = planned.lanes.map((lane) => lane.id);
+  if (order[order.indexOf(moving) + 1] === next?.id) return undefined;
+  return next ? { before: next.id, x: next.x - LANE_GAP / 2 } : { x: planned.right + LANE_GAP / 2 };
+}

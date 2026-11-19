@@ -8,7 +8,7 @@ import { toMarkdown } from "../../src/domain/export/markdown.ts";
 import { toMermaid } from "../../src/domain/export/mermaid.ts";
 import { fromModel, toModel } from "../../src/domain/export/model.ts";
 import { lanesOf } from "../../src/domain/formats.ts";
-import { layoutBoard, locate } from "../../src/domain/layout/index.ts";
+import { laneDrop, layoutBoard, locate } from "../../src/domain/layout/index.ts";
 import { addOffers, describeEvent, keyMove } from "../../src/web/view.ts";
 import { IMPACT_EFFORT, KANBAN, ORDERING, type Table, table } from "../support.ts";
 
@@ -209,5 +209,21 @@ describe("the page offers to add and remove lanes", () => {
     expect(
       addOffers(lone.board(), { kind: "slot", lane: "todo" }, "en").some((o) => o.type === "remove-lane"),
     ).toBe(false);
+  });
+});
+
+describe("a lane dragged by its heading", () => {
+  test("lands before the first other lane whose middle is right of the pointer, else last", () => {
+    const t = table(KANBAN);
+    const [todo, doing, done] = layoutBoard(t.board()).bands.filter((b) => b.kind === "lane");
+    if (!todo || !doing || !done) throw new Error("three lanes");
+    const middle = (b: { x: number; w: number }) => b.x + b.w / 2;
+    expect(laneDrop(t.board(), middle(done) + 1, "todo")).toEqual({ x: done.x + done.w + 8 });
+    expect(laneDrop(t.board(), middle(done) - 1, "todo")).toMatchObject({ before: "done" });
+    expect(laneDrop(t.board(), middle(todo) - 1, "done")).toMatchObject({ before: "todo" });
+    // Where it already is: no move.
+    expect(laneDrop(t.board(), middle(todo), "todo")).toBeUndefined();
+    // The hint stands on the edge it would land on.
+    expect(laneDrop(t.board(), middle(done) - 1, "todo")?.x).toBe(done.x - 8);
   });
 });

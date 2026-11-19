@@ -5,7 +5,7 @@
  */
 import type { Command } from "../domain/commands.ts";
 import { type Format, findFormat, findType } from "../domain/formats.ts";
-import { layoutBoard, locate, type Scene, type Target, vacancy } from "../domain/layout/index.ts";
+import { laneDrop, layoutBoard, locate, type Scene, type Target, vacancy } from "../domain/layout/index.ts";
 import { cardName } from "../domain/layout/scene.ts";
 import { arrowDefs, bandMarkup, cardMarkup, connectorMarkup, esc } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
@@ -144,6 +144,16 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   let current: string | undefined;
   /** The reader put the keyboard on `current`, or selected it: until then, Tab enters at the first card read. */
   let chosen = false;
+  /** A lane of a kanban taken by its heading, how far it was carried, and where it would land. */
+  let laneDrag:
+    | {
+        lane: string;
+        startX: number;
+        dx: number;
+        moving: boolean;
+        drop?: { before?: string; x: number };
+      }
+    | undefined;
   /** A card the human just added, not drawn yet: it comes back on the stream, after the save is answered. */
   let arriving: string | undefined;
   /** The group of each lane or step a screen reader enters, by its name. */
@@ -313,6 +323,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       });
     host.classList.toggle("is-linking", state.linking !== null);
     host.classList.toggle("is-past", !isLive());
+    host.classList.toggle("has-own-lanes", Boolean(format()?.ownLanes && !format()?.grid));
     paintTools();
     paintOffers();
   }
@@ -336,7 +347,10 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       const band = scene.bands[Number(head.dataset.band)];
       if (band?.kind !== "lane") continue;
       // A lane's heading goes down to its last card at most: it never leaves its own lane.
-      head.setAttribute("transform", `translate(0 ${headDrop(band)})`);
+      // The heading in the human's hand stays there, whatever is painted meanwhile.
+      const held = laneDrag?.moving === true && laneDrag.lane === band.id;
+      head.classList.toggle("is-dragging", held);
+      head.setAttribute("transform", `translate(${held ? laneDrag?.dx : 0} ${headDrop(band)})`);
     }
     paintOffers();
     // A card the keyboard or a search brings into view lands clear of the frozen names, never under them.
@@ -409,7 +423,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   /** Draws a "+" for each kind of card that can be added where the pointer is. */
   function paintOffers(): void {
-    const quiet = !board || !isLive() || editing !== undefined || drag?.moving === true;
+    const quiet =
+      !board || !isLive() || editing !== undefined || drag?.moving === true || laneDrag?.moving === true;
     const offers = quiet || !board ? [] : addOffers(board, pointed, locale, span);
     const drop = lanesDrop();
     const signature = JSON.stringify({ offers, drop });
@@ -823,6 +838,20 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     (target as Element | null)?.closest?.<SVGGElement>("g.add-here") ?? null;
 
   root.addEventListener("pointerdown", (event) => {
+    const head = (event.target as Element | null)?.closest?.<SVGGElement>("g.head.band-lane");
+    const band = head ? scene.bands[Number(head.dataset.band)] : undefined;
+    if (
+      head &&
+      band?.kind === "lane" &&
+      event.button === 0 &&
+      isLive() &&
+      format()?.ownLanes &&
+      !format()?.grid
+    ) {
+      // The pointer is held once the heading moves: a click or a double click stays the heading's own.
+      laneDrag = { lane: band.id, startX: toScene(event).x, dx: 0, moving: false };
+      return;
+    }
     const id = cardAt(event.target);
     if (!id || event.button !== 0) return;
     const start = toScene(event);
@@ -842,7 +871,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   // A mouse or a pen says where it is before it presses: that is where a card can be offered.
   root.addEventListener("pointermove", (event) => {
-    if (drag || !board || event.pointerType === "touch" || offerAt(event.target)) return;
+    if (drag || laneDrag?.moving || !board || event.pointerType === "touch" || offerAt(event.target)) return;
     const at = toScene(event);
     // The headings of a kanban come down with the scroll: their edges are where they are drawn.
     const edge = locate(board, at.x, at.y - lanesDrop(), undefined, span);
@@ -871,7 +900,51 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     showHint(drag.target);
   });
 
+  root.addEventListener("pointermove", (event) => {
+    if (!laneDrag || !board) return;
+    const x = toScene(event).x;
+    if (!laneDrag.moving && Math.abs(x - laneDrag.startX) > DRAG_THRESHOLD) {
+      laneDrag.moving = true;
+      root.setPointerCapture(event.pointerId);
+      pointed = { kind: "none" };
+      paintOffers();
+    }
+    if (!laneDrag.moving) return;
+    laneDrag.dx = x - laneDrag.startX;
+    holdHeadings();
+    laneDrag.drop = laneDrop(board, x, laneDrag.lane, span);
+    const band = scene.bands.find((b) => b.kind === "lane" && b.id === laneDrag?.lane);
+    if (!laneDrag.drop || !band) {
+      hint.setAttribute("visibility", "hidden");
+      return;
+    }
+    hint.classList.add("is-lane-drop");
+    hint.setAttribute("x", String(laneDrag.drop.x - 3));
+    hint.setAttribute("y", String(band.y));
+    hint.setAttribute("width", "6");
+    hint.setAttribute("height", String(band.h));
+    hint.setAttribute("visibility", "visible");
+  });
+
   root.addEventListener("pointerup", (event) => {
+    const lane = laneDrag;
+    laneDrag = undefined;
+    if (lane) {
+      hint.setAttribute("visibility", "hidden");
+      hint.classList.remove("is-lane-drop");
+      if (root.hasPointerCapture(event.pointerId)) root.releasePointerCapture(event.pointerId);
+      if (!lane.moving || !board) return;
+      dropped = true;
+      holdHeadings();
+      if (lane.drop)
+        void send({
+          kind: "move-lane",
+          board: board.id,
+          lane: lane.lane,
+          ...(lane.drop.before ? { before: lane.drop.before } : {}),
+        });
+      return;
+    }
     const done = drag;
     drag = undefined;
     hint.setAttribute("visibility", "hidden");
