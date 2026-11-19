@@ -1210,6 +1210,40 @@ describe("the board for who cannot see it", () => {
   });
 });
 
+describe("adding from the keyboard", () => {
+  const BOARD = "ajout-clavier";
+  const active = () =>
+    page.evaluate(() => {
+      const el = document.activeElement;
+      return {
+        id: el?.getAttribute("data-id") ?? null,
+        tag: el?.tagName ?? null,
+        cls: el?.className ?? null,
+      };
+    });
+
+  test("on an empty board, « Skip to the board » leads to the cards one can add", async () => {
+    await agent(`board new "Ajout clavier" --format kanban --id ${BOARD}`);
+    await page.locator(".board-picker select").selectOption(BOARD);
+    await until("the board is shown, empty", async () => (await page.locator("g.card").count()) === 0);
+    await page.locator(".skip").focus();
+    await page.keyboard.press("Enter");
+    expect(await active()).toMatchObject({ tag: "BUTTON", cls: "type" });
+  });
+
+  test("the card just added has the keyboard, not the page", async () => {
+    await page.keyboard.press("Enter");
+    await typeInEditor("Premier");
+    await card("T1").waitFor();
+    await until("the keyboard is on T1", async () => (await active()).id === "T1");
+    expect(await page.locator('g.card[tabindex="0"]').getAttribute("data-id")).toBe("T1");
+    await agent(`board rm ${BOARD}`);
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== BOARD;
+    });
+  });
+});
+
 describe("Claude waits for the human", () => {
   const BOARD = "attente";
   const pill = () => page.locator(`.top .waits button[data-board="${BOARD}"]`);

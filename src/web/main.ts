@@ -163,8 +163,12 @@ const skip = h(
     href: "#board",
     onclick: (event: Event) => {
       event.preventDefault();
-      const card = canvas.querySelector<SVGGElement>('g.card[tabindex="0"]');
-      if (card) card.focus();
+      // No card yet: to what adds one — a kind of card on a board, a workshop on no board.
+      const to =
+        canvas.querySelector<SVGGElement>('g.card[tabindex="0"]') ??
+        palette.querySelector<HTMLButtonElement>("button.type:not(:disabled)") ??
+        empty.querySelector<HTMLButtonElement>("button.format:not(:disabled)");
+      to?.focus();
     },
   },
   t.skipToBoard,

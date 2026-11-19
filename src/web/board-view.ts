@@ -143,6 +143,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   let current: string | undefined;
   /** The reader put the keyboard on `current`, or selected it: until then, Tab enters at the first card read. */
   let chosen = false;
+  /** A card the human just added, not drawn yet: it comes back on the stream, after the save is answered. */
+  let arriving: string | undefined;
   /** The group of each lane or step a screen reader enters, by its name. */
   const groups = new Map<string, SVGGElement>();
 
@@ -297,6 +299,13 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       chosen = false;
     }
     for (const [id, node] of nodes) node.g.setAttribute("tabindex", id === current ? "0" : "-1");
+    // The card just added takes the keyboard once drawn, unless the human has gone on elsewhere.
+    if (arriving && alive.has(arriving)) {
+      const id = arriving;
+      arriving = undefined;
+      const at = document.activeElement;
+      if (at === null || at === document.body || at === editor) focusCard(id);
+    }
     if (switched)
       requestAnimationFrame(() => {
         for (const g of cards.querySelectorAll(".no-motion")) g.classList.remove("no-motion");
@@ -724,6 +733,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
           const id = minted?.[0];
           if (id) {
             state.selected = id;
+            arriving = id;
             changed();
           }
           return minted;
