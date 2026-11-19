@@ -799,15 +799,15 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const id = cardAt(event.target);
     if (!id || !board) return;
     const direction = ARROWS[event.key];
-    // The arrows read, so they work on the past too; Alt and an arrow move, so only live.
-    if (direction && !event.altKey && !event.metaKey && !event.ctrlKey) {
+    // The arrows read, so they work on the past too; Shift and an arrow move, so only live.
+    if (direction && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
       event.preventDefault();
       const next = neighbour(scene.cards, id, direction);
       if (next) focusCard(next);
       return;
     }
     if (!isLive()) return;
-    if (direction && event.altKey) {
+    if (direction && event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
       event.preventDefault();
       const command = keyMove(board, id, direction);
       if (command?.kind !== "move") return;

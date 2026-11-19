@@ -839,6 +839,18 @@ describe("talking it through, note by note", () => {
     await thread("N1").locator(".thread-on").click();
     await until("the card is selected", async () => (await classes(card("E2"))).includes("is-selected"));
     await page.keyboard.press("Escape");
+    await until(
+      "nothing is selected again",
+      async () => !(await classes(card("E2"))).includes("is-selected"),
+    );
+    // Answering a note shows its card as its title does, and leaves the keyboard in the answer.
+    await thread("N1").locator(".thread-reply textarea").click();
+    await until("the card is selected by the answer", async () =>
+      (await classes(card("E2"))).includes("is-selected"),
+    );
+    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe("TEXTAREA");
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press("Escape");
   });
 
   test("resolving closes the whole thread", async () => {
@@ -1130,7 +1142,7 @@ describe("the board from the keyboard", () => {
     await page.keyboard.press("?");
     const sheet = page.locator("dialog.keys");
     await sheet.waitFor({ state: "visible" });
-    expect(await sheet.locator("kbd", { hasText: "Alt + ← → ↑ ↓" }).count()).toBe(1);
+    expect(await sheet.locator("kbd", { hasText: "Shift + ← → ↑ ↓" }).count()).toBe(1);
     await page.keyboard.press("Escape");
     await sheet.waitFor({ state: "hidden" });
   });

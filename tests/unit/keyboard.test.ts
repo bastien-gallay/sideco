@@ -57,7 +57,7 @@ describe("a card says where it is, for who cannot see the board", () => {
   });
 });
 
-describe("Alt and an arrow move the focused card, by the board's own rules", () => {
+describe("Shift and an arrow move the focused card, by the board's own rules", () => {
   test("on a timeline, left and right change its column, never below the first", () => {
     const board = table(ORDERING).board();
     expect(keyMove(board, "C1", "right")).toEqual({ kind: "move", board: "commande", id: "C1", col: 2 });

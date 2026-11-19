@@ -646,6 +646,10 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel, resolved
     drafts.delete(key);
     return text ? [{ kind: "reply", board: boardId, to: thread.id, text }] : [];
   };
+  // Answering a note shows its card, as its title does: the keyboard stays in the answer.
+  field.addEventListener("focus", () => {
+    if (on?.label !== undefined && state.selected !== on.id) select(on.id);
+  });
   const reply = (event: Event): void => {
     event.preventDefault();
     const saying = typed();

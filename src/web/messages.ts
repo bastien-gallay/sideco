@@ -351,7 +351,7 @@ const en: Messages = {
   shortcutList: [
     ["Tab", "Into the board, then out of it"],
     ["← → ↑ ↓", "From a card to the next one"],
-    ["Alt + ← → ↑ ↓", "Move the card: column or lane, then its place"],
+    ["Shift + ← → ↑ ↓", "Move the card: column or lane, then its place"],
     ["Enter or F2", "Rename the card"],
     ["Space", "Select the card and show its actions"],
     ["D", "Mark the card done, or not done"],
@@ -528,7 +528,7 @@ const fr: Messages = {
   shortcutList: [
     ["Tab", "Entrer dans le tableau, puis en sortir"],
     ["← → ↑ ↓", "D'une carte à la suivante"],
-    ["Alt + ← → ↑ ↓", "Déplacer la carte : colonne ou couloir, puis sa place"],
+    ["Maj + ← → ↑ ↓", "Déplacer la carte : colonne ou couloir, puis sa place"],
     ["Entrée ou F2", "Renommer la carte"],
     ["Espace", "Sélectionner la carte et montrer ses actions"],
     ["D", "Marquer la carte faite, ou non faite"],
