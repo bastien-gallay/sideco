@@ -859,6 +859,16 @@ kbd {
   opacity: 0.85;
 }
 
+/* On a timeline, a step is taken by its number and moved, its cards with it. */
+.has-steps:not(.is-past) .layer-heads .heads-steps .heads-strip {
+  pointer-events: auto;
+  cursor: grab;
+}
+.layer-heads .heads-steps text.is-dragging {
+  fill: var(--accent);
+  font-weight: 700;
+}
+
 /* On a kanban, a lane is taken by its heading and moved, its cards with it. */
 .has-own-lanes:not(.is-past) .layer-heads .heads-lane-strip {
   pointer-events: auto;

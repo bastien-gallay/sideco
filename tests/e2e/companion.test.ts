@@ -1605,6 +1605,23 @@ describe("a card reordered in its cell, by the mouse", () => {
     await page.mouse.up();
     await until("E3 is first in its cell", async () => (await stack()) === "E3,E1,E2");
     expect((await elementOf(BOARD, "E3"))?.col).toBe(1);
+  });
+
+  test("a step dragged by its number takes the number of the step it is dropped on, its cards with it", async () => {
+    await agent("insert-col 1", BOARD);
+    // The page has the empty step too: three numbers, the spare one included.
+    await page.locator(".band-step-label", { hasText: /^3$/ }).waitFor();
+    const two = await page.locator(".band-step-label", { hasText: /^2$/ }).boundingBox();
+    const one = await page.locator(".band-step-label", { hasText: /^1$/ }).boundingBox();
+    if (!one || !two) throw new Error("no step numbers");
+    await page.mouse.move(two.x + two.width / 2, two.y + two.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(one.x + one.width / 2, one.y + one.height / 2, { steps: 12 });
+    await page.locator(".drop-hint.is-lane-drop").waitFor();
+    await shot("46-move-step");
+    await page.mouse.up();
+    await until("the cards are in step 1", async () => (await elementOf(BOARD, "E1"))?.col === 1);
+    expect((await elementOf(BOARD, "E2"))?.col).toBe(1);
     await agent(`board rm ${BOARD}`);
     await until("the page has left the board removed", async () => {
       return (await page.locator(".board-picker select").inputValue()) !== BOARD;

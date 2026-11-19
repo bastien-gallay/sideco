@@ -27,6 +27,7 @@ import {
   wrap,
 } from "./scene.ts";
 import {
+  dropStep,
   layoutTimeline,
   locateInTimeline,
   roomInTimeline,
@@ -87,6 +88,11 @@ export function vacancy(board: Board, target: Target, span?: number): Room | und
   if (format?.layout === "columns" && target.kind === "lane-edge")
     return roomOnLaneEdge(board, format, target.before, span);
   return undefined;
+}
+
+/** The number a step of a timeline dragged by its heading would take; undefined where it is, or off a timeline. */
+export function stepDrop(board: Board, x: number, from: number): number | undefined {
+  return findFormat(board.format)?.layout === "timeline" ? dropStep(board, x, from) : undefined;
 }
 
 /** Where a lane of a kanban dragged by its heading would land; undefined where it is, or off a kanban. */

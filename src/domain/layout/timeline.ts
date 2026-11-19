@@ -183,3 +183,10 @@ function columnBoundary(x: number): number {
 function columnX(col: number): number {
   return HEADER_W + (col - 1) * COL_W;
 }
+
+/** The step a column dragged by its heading would take the number of, with the pointer at `x`; undefined where it is. */
+export function dropStep(board: Board, x: number, from: number): number | undefined {
+  const last = lastColumn(board);
+  const to = Math.min(last, Math.max(1, Math.floor((x - HEADER_W) / COL_W) + 1));
+  return to === from ? undefined : to;
+}

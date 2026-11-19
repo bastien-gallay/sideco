@@ -270,7 +270,7 @@ const en: Messages = {
   removeStep: (col) => `Remove step ${col}`,
   stepRemoved: (col) => `Step ${col} removed.`,
   howTimeline:
-    "Point at a cell and click its +, or click a type to add it at the end. Point between two step numbers to insert a column; an empty step offers a × to remove it.",
+    "Point at a cell and click its +, or click a type to add it at the end. Between two step numbers, a + inserts a column; an empty step offers a × to remove it; drag a number to move its step.",
   howColumns: "Point at a column and click a +, or click a type. Drag to move.",
   howGraph: "Select an element so that the next one is linked to it.",
   howGraphFrom: (id) => `The new element will be linked to ${id}.`,
@@ -427,7 +427,11 @@ const en: Messages = {
         : "Move it; a line shows where it lands",
     ],
     ...(how === "timeline"
-      ? ([["+ between two step numbers", "Insert a column there"]] as [string, string][])
+      ? ([
+          ["+ between two step numbers", "Insert a column there"],
+          ["× on an empty step", "Remove it (Undo brings it back)"],
+          ["Drag a step number", "Move the step, its cards with it"],
+        ] as [string, string][])
       : []),
     ...(how === "kanban"
       ? ([
@@ -500,7 +504,7 @@ const fr: Messages = {
   removeStep: (col) => `Supprimer l'étape ${col}`,
   stepRemoved: (col) => `Étape ${col} supprimée.`,
   howTimeline:
-    "Survole une case et clique son +, ou clique un type pour l'ajouter à la suite. Survole entre deux numéros d'étape pour insérer une colonne ; une étape vide offre un × pour la retirer.",
+    "Survole une case et clique son +, ou clique un type pour l'ajouter à la suite. Entre deux numéros d'étape, un + insère une colonne ; une étape vide offre un × pour la retirer ; glisse un numéro pour déplacer son étape.",
   howColumns: "Survole une colonne et clique un +, ou clique un type. Glisse pour déplacer.",
   howGraph: "Sélectionne un élément pour que le suivant lui soit relié.",
   howGraphFrom: (id) => `Le nouvel élément sera relié à ${id}.`,
@@ -660,7 +664,11 @@ const fr: Messages = {
         : "La déplacer ; une ligne montre où elle tombe",
     ],
     ...(how === "timeline"
-      ? ([["+ entre deux numéros d'étape", "Insérer une colonne là"]] as [string, string][])
+      ? ([
+          ["+ entre deux numéros d'étape", "Insérer une colonne là"],
+          ["× sur une étape vide", "La supprimer (Annuler la ramène)"],
+          ["Glisser un numéro d'étape", "Déplacer l'étape, ses cartes avec elle"],
+        ] as [string, string][])
       : []),
     ...(how === "kanban"
       ? ([

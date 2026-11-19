@@ -3,7 +3,7 @@
  * mouse, a card lands before the first card whose upper half is under the pointer.
  */
 import { describe, expect, test } from "bun:test";
-import { layoutBoard, locate } from "../../src/domain/layout/index.ts";
+import { layoutBoard, locate, stepDrop } from "../../src/domain/layout/index.ts";
 import { table } from "../support.ts";
 
 const STACKED = `
@@ -58,5 +58,26 @@ add event "Trois" --col 3
     const two = step(2);
     expect(locate(t.board(), two.x + 3, 10)).toEqual({ kind: "boundary", col: 2 });
     expect(locate(t.board(), two.x + two.w / 2, 10)).toEqual({ kind: "step-head", col: 2 });
+  });
+});
+
+describe("a step dragged by its heading", () => {
+  const t = table(`
+board new "Glisse" --id glisse
+add event "Un" --col 1
+add event "Deux" --col 2
+add event "Trois" --col 3
+`);
+  const middle = (col: number) => {
+    const band = layoutBoard(t.board()).bands.find((b) => b.kind === "step" && b.id === String(col));
+    if (!band) throw new Error(`no step ${col}`);
+    return band.x + band.w / 2;
+  };
+
+  test("takes the number of the step it is dropped on; on itself, or past the last, nothing", () => {
+    expect(stepDrop(t.board(), middle(3), 1)).toBe(3);
+    expect(stepDrop(t.board(), middle(1), 3)).toBe(1);
+    expect(stepDrop(t.board(), middle(2), 2)).toBeUndefined();
+    expect(stepDrop(t.board(), middle(4), 1)).toBe(3);
   });
 });

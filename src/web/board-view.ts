@@ -5,7 +5,15 @@
  */
 import type { Command } from "../domain/commands.ts";
 import { type Format, findFormat, findType, isDone, lanesOf } from "../domain/formats.ts";
-import { laneDrop, layoutBoard, locate, type Scene, type Target, vacancy } from "../domain/layout/index.ts";
+import {
+  laneDrop,
+  layoutBoard,
+  locate,
+  type Scene,
+  stepDrop,
+  type Target,
+  vacancy,
+} from "../domain/layout/index.ts";
 import { cardName } from "../domain/layout/scene.ts";
 import { arrowDefs, bandMarkup, cardMarkup, connectorMarkup, esc } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
@@ -27,6 +35,8 @@ import {
 } from "./view.ts";
 
 const DRAG_THRESHOLD = 4;
+/** The offers drawn in the headings: they come down with them when the board scrolls. */
+const HEADING_OFFERS: ReadonlySet<string> = new Set(["lane", "remove-lane", "column", "remove-column"]);
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5];
 /** How tall the head of a lane is: its name, or its name and what it stands for. Above the first card, both. */
@@ -160,6 +170,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         drop?: { before?: string; x: number };
       }
     | undefined;
+  /** A step of a timeline taken by its number, how far it was carried, and the number it would take. */
+  let stepDrag: { from: number; startX: number; dx: number; moving: boolean; to?: number } | undefined;
   /** A card the human just added, not drawn yet: it comes back on the stream, after the save is answered. */
   let arriving: string | undefined;
   /** The group of each lane or step a screen reader enters, by its name. */
@@ -329,6 +341,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       });
     host.classList.toggle("is-linking", state.linking !== null);
     host.classList.toggle("is-past", !isLive());
+    host.classList.toggle("has-steps", format()?.layout === "timeline");
     host.classList.toggle("has-own-lanes", Boolean(format()?.ownLanes && !format()?.grid));
     paintTools();
     paintOffers();
@@ -348,6 +361,13 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const sx = scroll.scrollLeft / zoom;
     const sy = scroll.scrollTop / zoom;
     heads.querySelector(".heads-steps")?.setAttribute("transform", `translate(0 ${sy})`);
+    // The step number in the human's hand stays there, whatever is painted meanwhile.
+    for (const label of heads.querySelectorAll<SVGTextElement>(".heads-steps text")) {
+      const held = stepDrag?.moving === true && label.textContent === String(stepDrag.from);
+      label.classList.toggle("is-dragging", held);
+      if (held) label.setAttribute("transform", `translate(${stepDrag?.dx ?? 0} 0)`);
+      else label.removeAttribute("transform");
+    }
     heads.querySelector(".heads-rows")?.setAttribute("transform", `translate(${sx} 0)`);
     for (const head of heads.querySelectorAll<SVGGElement>("g.head")) {
       const band = scene.bands[Number(head.dataset.band)];
@@ -373,6 +393,20 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   function lanesDrop(): number {
     const first = scene.bands.find((band) => band.kind === "lane");
     return first && format()?.ownLanes ? headDrop(first) : 0;
+  }
+
+  /** How far the headings came down with the scroll, step numbers or kanban headings: what is offered there comes down too. */
+  function headsDrop(): number {
+    return format()?.layout === "timeline" ? scroll.scrollTop / zoom : lanesDrop();
+  }
+
+  /** What the pointer is on among the headings, as they are drawn after the scroll. */
+  function inHeadings(x: number, y: number): Target | undefined {
+    if (!board) return undefined;
+    const target = locate(board, x, y - headsDrop(), undefined, span);
+    return target.kind === "lane-edge" || target.kind === "boundary" || target.kind === "step-head"
+      ? target
+      : undefined;
   }
 
   /** How much of the top and of the left the frozen names cover, in scene units. */
@@ -430,9 +464,14 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   /** Draws a "+" for each kind of card that can be added where the pointer is. */
   function paintOffers(): void {
     const quiet =
-      !board || !isLive() || editing !== undefined || drag?.moving === true || laneDrag?.moving === true;
+      !board ||
+      !isLive() ||
+      editing !== undefined ||
+      drag?.moving === true ||
+      laneDrag?.moving === true ||
+      stepDrag?.moving === true;
     const offers = quiet || !board ? [] : addOffers(board, pointed, locale, span);
-    const drop = lanesDrop();
+    const drop = headsDrop();
     const signature = JSON.stringify({ offers, drop });
     if (signature === offered) return;
     offered = signature;
@@ -446,7 +485,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
           ...(offer.lane === undefined ? {} : { "data-lane": offer.lane }),
           role: "button",
           "aria-label": offer.label,
-          transform: `translate(${offer.x} ${offer.y + (offer.type === "lane" || offer.type === "remove-lane" ? drop : 0)})`,
+          transform: `translate(${offer.x} ${offer.y + (HEADING_OFFERS.has(offer.type) ? drop : 0)})`,
         });
         const title = svg("title", {});
         title.textContent = offer.label;
@@ -909,6 +948,13 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       return;
     }
     const id = cardAt(event.target);
+    const at = toScene(event);
+    const step = !id && event.button === 0 && isLive() ? inHeadings(at.x, at.y) : undefined;
+    if (step?.kind === "step-head" && !offerAt(event.target)) {
+      // As for a lane: the pointer is held once the number moves, so a click stays a click.
+      stepDrag = { from: step.col, startX: at.x, dx: 0, moving: false };
+      return;
+    }
     if (!id || event.button !== 0) return;
     const start = toScene(event);
     const card = scene.cards.find((c) => c.id === id);
@@ -927,11 +973,11 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   // A mouse or a pen says where it is before it presses: that is where a card can be offered.
   root.addEventListener("pointermove", (event) => {
-    if (drag || laneDrag?.moving || !board || event.pointerType === "touch" || offerAt(event.target)) return;
+    if (drag || laneDrag?.moving || stepDrag?.moving || !board || event.pointerType === "touch") return;
+    if (offerAt(event.target)) return;
     const at = toScene(event);
-    // The headings of a kanban come down with the scroll: their edges are where they are drawn.
-    const edge = locate(board, at.x, at.y - lanesDrop(), undefined, span);
-    pointed = edge.kind === "lane-edge" ? edge : locate(board, at.x, at.y, undefined, span);
+    // The headings come down with the scroll: what they offer is where they are drawn.
+    pointed = inHeadings(at.x, at.y) ?? locate(board, at.x, at.y, undefined, span);
     paintOffers();
   });
   root.addEventListener("pointerleave", () => {
@@ -982,7 +1028,49 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     hint.setAttribute("visibility", "visible");
   });
 
+  root.addEventListener("pointermove", (event) => {
+    if (!stepDrag || !board) return;
+    const x = toScene(event).x;
+    if (!stepDrag.moving && Math.abs(x - stepDrag.startX) > DRAG_THRESHOLD) {
+      stepDrag.moving = true;
+      root.setPointerCapture(event.pointerId);
+      pointed = { kind: "none" };
+      paintOffers();
+    }
+    if (!stepDrag.moving) return;
+    stepDrag.dx = x - stepDrag.startX;
+    holdHeadings();
+    stepDrag.to = stepDrop(board, x, stepDrag.from);
+    const to = stepDrag.to;
+    const band = scene.bands.find((b) => b.kind === "step" && b.id === String(to));
+    if (to === undefined || !band) {
+      hint.setAttribute("visibility", "hidden");
+      return;
+    }
+    // The bar stands on the side of the step it would take the place of, the side it comes from.
+    const edge = to > stepDrag.from ? band.x + band.w : band.x;
+    hint.classList.add("is-lane-drop");
+    hint.setAttribute("x", String(edge - 3));
+    hint.setAttribute("y", String(band.y));
+    hint.setAttribute("width", "6");
+    hint.setAttribute("height", String(band.h));
+    hint.setAttribute("visibility", "visible");
+  });
+
   root.addEventListener("pointerup", (event) => {
+    const step = stepDrag;
+    stepDrag = undefined;
+    if (step) {
+      hint.setAttribute("visibility", "hidden");
+      hint.classList.remove("is-lane-drop");
+      if (root.hasPointerCapture(event.pointerId)) root.releasePointerCapture(event.pointerId);
+      if (!step.moving || !board) return;
+      dropped = true;
+      holdHeadings();
+      if (step.to !== undefined)
+        void send({ kind: "move-column", board: board.id, from: step.from, to: step.to });
+      return;
+    }
     const lane = laneDrag;
     laneDrag = undefined;
     if (lane) {
