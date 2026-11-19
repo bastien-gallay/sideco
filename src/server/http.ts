@@ -55,6 +55,10 @@ export function handler(site: Site): Handler {
           return new Response(page.html, {
             headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
           });
+        case "/stream-worker.js":
+          return new Response(page.worker, {
+            headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-store" },
+          });
         case "/health":
           return json({
             ok: true,

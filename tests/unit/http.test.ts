@@ -19,7 +19,7 @@ beforeEach(() => {
   hub = new Hub(memoryJournal(), () => new Date(T0));
   handle = handler({
     hub,
-    page: { html: "<!doctype html><title>Sideco</title>", build: BUILD },
+    page: { html: "<!doctype html><title>Sideco</title>", build: BUILD, worker: "/* worker */" },
     root: "/repo",
     siteDir: join(dir, "site"),
   });
@@ -92,6 +92,13 @@ describe("reading", () => {
     await say(ORDERING);
     const ws = (await (await get("/api/workspace")).json()) as { boards: { id: string }[] };
     expect(ws.boards.map((b) => b.id)).toEqual(["commande"]);
+  });
+
+  test("the worker that shares one event stream between the tabs", async () => {
+    const worker = await get(`/stream-worker.js?build=${BUILD}`);
+    expect(worker.headers.get("content-type")).toBe("text/javascript; charset=utf-8");
+    expect(worker.headers.get("cache-control")).toBe("no-store");
+    expect(await worker.text()).toBe("/* worker */");
   });
 
   test("anything else is a 404 in JSON", async () => {
@@ -341,7 +348,7 @@ describe("showing the page", () => {
   const able = (answer: boolean): Handler =>
     handler({
       hub,
-      page: { html: "", build: BUILD },
+      page: { html: "", build: BUILD, worker: "" },
       root: "/repo",
       siteDir: join(dir, "site"),
       show: async (address) => {

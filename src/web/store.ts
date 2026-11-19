@@ -17,6 +17,8 @@ import {
   type Workspace,
 } from "../domain/workspace.ts";
 import { t } from "./locale.ts";
+import type { Frame } from "./relay.ts";
+import { connect } from "./stream.ts";
 
 export interface State {
   events: Recorded[];
@@ -63,9 +65,6 @@ export const state: State = {
  */
 let caughtUp = false;
 
-/** The run of the companion this state was folded from. */
-let run: string | null = null;
-
 const FRESH_MS = 2600;
 let scheduled = false;
 let onChange: () => void = () => {};
@@ -84,37 +83,38 @@ export function start(render: () => void): void {
 
 /** Follows the journal: its replay first, then each event as it is recorded. */
 function follow(): void {
-  const source = new EventSource("/api/events");
-  source.onopen = () => {
-    state.connected = true;
-    changed();
-  };
-  source.onerror = () => {
-    state.connected = false;
-    changed();
-  };
-  source.onmessage = (message) => receive(JSON.parse(message.data) as Recorded);
-  source.addEventListener("presence", (message) => {
-    const presence = JSON.parse((message as MessageEvent<string>).data) as Presence;
-    if (run !== null && presence.run !== run) {
-      // Another run of the companion answered: its journal may not be the one folded here.
-      source.close();
-      forget();
-      follow();
+  const build = document.querySelector<HTMLMetaElement>('meta[name="sideco-build"]')?.content;
+  connect(build, hear);
+}
+
+function hear(frame: Frame): void {
+  switch (frame.kind) {
+    case "open":
+    case "error":
+      state.connected = frame.kind === "open";
+      changed();
       return;
+    case "event":
+      receive(JSON.parse(frame.data) as Recorded);
+      return;
+    case "reset":
+      // Another run of the companion answered: its journal may not be the one folded here.
+      forget();
+      changed();
+      return;
+    case "presence": {
+      const presence = JSON.parse(frame.data) as Presence;
+      state.listening = presence.listening;
+      state.served = presence.build;
+      if (!caughtUp) leaveMissingBoard();
+      caughtUp = true;
+      changed();
     }
-    run = presence.run;
-    state.listening = presence.listening;
-    state.served = presence.build;
-    if (!caughtUp) leaveMissingBoard();
-    caughtUp = true;
-    changed();
-  });
+  }
 }
 
 /** Drops everything folded so far; the next replay rebuilds it. */
 function forget(): void {
-  run = null;
   caughtUp = false;
   state.events = [];
   state.live = emptyWorkspace();

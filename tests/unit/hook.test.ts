@@ -20,7 +20,12 @@ let server: Server;
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "sideco-hook-"));
   hub = new Hub(memoryJournal(), () => new Date(T0));
-  const handle = handler({ hub, page: { html: "", build: "" }, root: "/repo", siteDir: join(dir, "site") });
+  const handle = handler({
+    hub,
+    page: { html: "", build: "", worker: "" },
+    root: "/repo",
+    siteDir: join(dir, "site"),
+  });
   server = {
     url: BASE,
     fetch: (url, init) =>

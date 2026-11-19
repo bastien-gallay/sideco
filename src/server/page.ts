@@ -18,21 +18,33 @@ export interface Page {
    * build and hears the companion serve another knows it is out of date.
    */
   build: string;
+  /** The shared worker that holds the page's only event stream, whatever the number of tabs. */
+  worker: string;
 }
 
 /** Where the document says which build it is; empty in the source, and while it is fingerprinted. */
 const signature = (build: string): string => `<meta name="sideco-build" content="${build}">`;
 
-export async function buildPage(locale: Locale = DEFAULT_LOCALE): Promise<Page> {
-  const built = await Bun.build({ entrypoints: [join(WEB, "main.ts")], target: "browser", minify: true });
-  if (!built.success) throw new Error(`the page did not build:\n${built.logs.join("\n")}`);
+/** The build of a document and its worker: either one changed, the tabs must fetch them again. */
+export function fingerprint(unsigned: string, worker: string): string {
+  return new Bun.CryptoHasher("sha256").update(unsigned).update(worker).digest("hex").slice(0, 16);
+}
+
+async function bundle(entry: string): Promise<string> {
+  const built = await Bun.build({ entrypoints: [join(WEB, entry)], target: "browser", minify: true });
+  if (!built.success) throw new Error(`${entry} did not build:\n${built.logs.join("\n")}`);
   const script = await built.outputs[0]?.text();
-  if (script === undefined) throw new Error("the page build produced no script");
+  if (script === undefined) throw new Error(`${entry} built to nothing`);
+  return script;
+}
+
+export async function buildPage(locale: Locale = DEFAULT_LOCALE): Promise<Page> {
+  const [script, worker] = await Promise.all([bundle("main.ts"), bundle("stream-worker.ts")]);
   const styles = readFileSync(join(WEB, "styles.css"), "utf8");
   const unsigned = readFileSync(join(WEB, "index.html"), "utf8")
     .replace('<html lang="en">', () => `<html lang="${locale}">`)
     .replace("/*__STYLES__*/", () => styles)
     .replace("/*__SCRIPT__*/", () => script.replace(/<\/script/gi, "<\\/script"));
-  const build = new Bun.CryptoHasher("sha256").update(unsigned).digest("hex").slice(0, 16);
-  return { html: unsigned.replace(signature(""), () => signature(build)), build };
+  const build = fingerprint(unsigned, worker);
+  return { html: unsigned.replace(signature(""), () => signature(build)), build, worker };
 }

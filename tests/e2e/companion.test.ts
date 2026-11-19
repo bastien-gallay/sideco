@@ -1249,6 +1249,46 @@ describe("an editor kept while the board changes under it", () => {
   });
 });
 
+describe("many tabs open on the companion", () => {
+  const BOARD = "onglets";
+
+  // A browser keeps six connections per host. With one event stream per tab,
+  // the sixth tab's writes queued behind the streams and never left.
+  test("the seventh tab still writes at once, and every tab hears it", async () => {
+    await agent(`board new "Onglets" --id ${BOARD}\nadd event "Ouverte partout" --col 1`);
+    const context = await browser.newContext();
+    const tabs: Page[] = [];
+    for (let i = 0; i < 7; i++) {
+      const tab = await context.newPage();
+      tab.setDefaultTimeout(4000);
+      await tab.goto(`${running.url}/#/b/${BOARD}`);
+      await tab.locator('g.card[data-id="E1"]').waitFor();
+      tabs.push(tab);
+    }
+    const last = tabs.at(-1) as Page;
+    const answered = await last.evaluate(async () => {
+      const started = performance.now();
+      const response = await fetch("/api/commands", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          actor: "human",
+          commands: [{ kind: "rename", board: "", id: "E1", label: "" }],
+        }),
+        signal: AbortSignal.timeout(3000),
+      }).catch(() => null);
+      return { status: response?.status ?? "stalled", ms: performance.now() - started };
+    });
+    // Refused for its empty label, but answered: the request reached the companion.
+    expect(answered.status).toBe(400);
+    expect(answered.ms).toBeLessThan(1000);
+    await agent('add event "Vue partout" --col 2', BOARD);
+    for (const tab of tabs) await tab.locator('g.card[data-id="E2"]').waitFor();
+    await agent(`board rm ${BOARD}`);
+    await context.close();
+  });
+});
+
 describe("tidying up", () => {
   const listed = (): Promise<string[]> =>
     page

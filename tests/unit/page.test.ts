@@ -3,7 +3,7 @@
  * until the reader picks another, signed with the fingerprint of what it is.
  */
 import { expect, test } from "bun:test";
-import { buildPage } from "../../src/server/page.ts";
+import { buildPage, fingerprint } from "../../src/server/page.ts";
 
 test("the page is one self-contained document, in English by default", async () => {
   const { html } = await buildPage();
@@ -31,4 +31,15 @@ test("the page carries its build, and the same sources give the same build", asy
 test("a page that opens in another language is another build", async () => {
   // An open tab must fetch it: what it runs is no longer what the companion serves.
   expect((await buildPage("fr")).build).not.toBe((await buildPage("en")).build);
+});
+
+test("the page comes with the worker its tabs share for the event stream", async () => {
+  const page = await buildPage();
+  expect(page.worker).toContain("/api/events");
+  // A tab of one build must not share the stream of another: the address carries the build.
+  expect(page.html).toContain("/stream-worker.js?build=");
+});
+
+test("a change to the worker alone is another build", () => {
+  expect(fingerprint("<html>", "worker one")).not.toBe(fingerprint("<html>", "worker two"));
 });
