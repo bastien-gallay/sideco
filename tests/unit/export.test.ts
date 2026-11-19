@@ -268,11 +268,15 @@ test("elements without an id get one above the ids the file names, whatever thei
 
 describe("a card marked done", () => {
   test("wears its sign in every export a human reads", () => {
-    const board = table(KANBAN).script("done T1").board();
-    expect(toMermaid(board)).toContain("T1[T1 ✓ Écrire le PRD]");
-    expect(toMermaid(board)).toContain("T2[T2 Brancher les hooks]");
-    expect(toMarkdown(board, META)).toContain("| T1 | Task | ✓ Écrire le PRD |");
-    expect(toHtml(board, META)).toContain("<td>✓ Écrire le PRD</td>");
+    const board = table(
+      'board new "Rétro" --format retro\nadd point "Revue rapide" --lane keep\nadd point "Lent" --lane drop',
+    )
+      .script("done K1")
+      .board();
+    expect(toMermaid(board)).toContain("K1[K1 ✓ Revue rapide]");
+    expect(toMermaid(board)).toContain("K2[K2 Lent]");
+    expect(toMarkdown(board, META)).toContain("| K1 | Observation | ✓ Revue rapide |");
+    expect(toHtml(board, META)).toContain("<td>✓ Revue rapide</td>");
     const timeline = table(ORDERING).script("done E1").board();
     expect(toMermaid(timeline)).toContain('"✓ Commande passée"');
   });

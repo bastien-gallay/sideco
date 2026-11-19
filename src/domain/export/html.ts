@@ -51,7 +51,7 @@ export function toHtml(board: Board, meta: ExportMeta): string {
           : layout === "columns"
             ? `<td>${esc(lane(e.lane))}</td>`
             : "";
-      return `<tr><td class="id">${esc(e.id)}</td><td><span class="swatch" style="background:${esc(t?.fill ?? "#E8EEF4")}"></span>${esc(t?.label[locale] ?? e.type)}</td><td>${esc(labelSaid(e))}</td>${place}<td>${esc(e.detail ?? "")}</td><td>${w.who[e.by]}</td></tr>`;
+      return `<tr><td class="id">${esc(e.id)}</td><td><span class="swatch" style="background:${esc(t?.fill ?? "#E8EEF4")}"></span>${esc(t?.label[locale] ?? e.type)}</td><td>${esc(labelSaid(board, e))}</td>${place}<td>${esc(e.detail ?? "")}</td><td>${w.who[e.by]}</td></tr>`;
     })
     .join("\n");
 

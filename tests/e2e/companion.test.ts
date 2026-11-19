@@ -495,20 +495,19 @@ describe("other workshops", () => {
     await shot("23-lane-renamed");
   });
 
-  test("kanban: a task is marked done from its toolbar or the keyboard, and the card shows a tick", async () => {
-    const tick = (id: string) => card(id).locator(".card-done");
+  test("kanban: Mark done takes a task to the last lane, D to the lane before; the lane says it, not a tick", async () => {
     await card("T2").click();
     await page.locator(".card-tools button", { hasText: "Mark done" }).click();
-    await tick("T2").waitFor();
-    expect((await elementOf("sprint", "T2"))?.done).toBe(true);
-    expect(await pending()).toContain("~ T2 marked done");
+    await until("T2 is in Done", async () => (await elementOf("sprint", "T2"))?.lane === "done");
+    expect(await pending()).toContain("→ T2 moved lane todo → done");
+    expect(await card("T2").locator(".card-done").count()).toBe(0);
     await page.locator(".card-tools button", { hasText: "Not done" }).waitFor();
     await shot("21-done");
 
     await card("T2").focus();
     await page.keyboard.press("d");
-    await tick("T2").waitFor({ state: "detached" });
-    expect((await elementOf("sprint", "T2"))?.done).toBeUndefined();
+    await until("T2 is in À valider", async () => (await elementOf("sprint", "T2"))?.lane === "doing");
+    await page.locator(".spoken", { hasText: "À valider" }).waitFor({ state: "attached" });
   });
 
   test("flow: a step added while another is selected is linked to it", async () => {

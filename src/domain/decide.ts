@@ -126,9 +126,18 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
     case "annotate":
       if ((requireElement(board, cmd.id).detail ?? "") === cmd.detail) return unchanged();
       return { events: [{ event: "ElementAnnotated", board: b, id: cmd.id, detail: cmd.detail }] };
-    case "mark":
-      if ((requireElement(board, cmd.id).done ?? false) === cmd.done) return unchanged();
+    case "mark": {
+      const el = requireElement(board, cmd.id);
+      if (format.ownLanes) {
+        // Done is the last lane: the card goes there, or back to the lane before it.
+        const lanes = lanesOf(board);
+        const to = cmd.done ? lanes.at(-1) : el.lane === lanes.at(-1) ? lanes.at(-2) : undefined;
+        if (to === undefined || to === el.lane) return unchanged();
+        return { events: [{ event: "ElementMoved", board: b, id: el.id, col: el.col, lane: to }] };
+      }
+      if ((el.done ?? false) === cmd.done) return unchanged();
       return { events: [{ event: "ElementMarked", board: b, id: cmd.id, done: cmd.done }] };
+    }
     case "move":
       return { events: [move(board, format, cmd)] };
     case "remove":

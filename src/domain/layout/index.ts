@@ -2,7 +2,7 @@
  * From a board to its scene. The format picks the layout; this module is the only
  * place that knows there are several.
  */
-import { type Format, findFormat, findType } from "../formats.ts";
+import { type Format, findFormat, findType, wearsDone } from "../formats.ts";
 import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
 import { type Board, type Element, threads } from "../workspace.ts";
 import {
@@ -123,11 +123,11 @@ function cardMaker(
       ink: type?.ink ?? "#1F2328",
       shape: type?.shape ?? "box",
       label: oneLineOf(e.label),
-      tip: `${e.id} · ${type?.label[locale] ?? e.type} · ${WORDS[locale].addedBy[e.by]}${e.done ? ` · ${WORDS[locale].done}` : ""}`,
+      tip: `${e.id} · ${type?.label[locale] ?? e.type} · ${WORDS[locale].addedBy[e.by]}${wearsDone(board, e) ? ` · ${WORDS[locale].done}` : ""}`,
       by: e.by,
       hasDetail: Boolean(e.detail),
       ...(e.detail ? { detail: e.detail } : {}),
-      done: e.done === true,
+      done: wearsDone(board, e),
       notes: openNotes.get(e.id) ?? 0,
     };
   };

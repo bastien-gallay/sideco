@@ -62,7 +62,7 @@ export interface Format {
   grid?: Grid;
   /**
    * Only for `columns` layouts: each board adds, moves and removes its own lanes,
-   * starting from these.
+   * starting from these; a card in the last one is done, and wears no other mark.
    */
   ownLanes?: true;
 }
@@ -384,6 +384,20 @@ export const LANE_PREFIX = "lane-";
 /** The lanes of a board, in order: its own when it changed them, else its workshop's. */
 export function lanesOf(board: { format: string; laneOrder?: readonly string[] }): string[] {
   return board.laneOrder ? [...board.laneOrder] : (findFormat(board.format)?.lanes.map((l) => l.id) ?? []);
+}
+
+/** Whether what a card stands for is done: on a kanban, it sits in the last lane; elsewhere, it was marked so. */
+export function isDone(
+  board: { format: string; laneOrder?: readonly string[] },
+  el: { lane: string; done?: boolean },
+): boolean {
+  if (findFormat(board.format)?.ownLanes) return el.lane === lanesOf(board).at(-1);
+  return el.done === true;
+}
+
+/** Whether a card wears the tick and the strike: where done is a mark, not a lane. */
+export function wearsDone(board: { format: string }, el: { done?: boolean }): boolean {
+  return !findFormat(board.format)?.ownLanes && el.done === true;
 }
 
 export function findType(format: Format, typeId: string): ElementType | undefined {

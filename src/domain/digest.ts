@@ -11,7 +11,7 @@
  */
 import { CommandError } from "./commands.ts";
 import type { Actor, Recorded } from "./events.ts";
-import { findFormat, laneName, lanesOf } from "./formats.ts";
+import { findFormat, laneName, lanesOf, wearsDone } from "./formats.ts";
 import {
   apply,
   type Board,
@@ -42,9 +42,9 @@ function heading(board: Board, part: string[]): string {
   return part.length === 0 ? whole : `${whole} · part: ${part.join(", ")}`;
 }
 
-function cardLine(e: Element, brief = false): string {
+function cardLine(board: Board, e: Element, brief = false): string {
   const detail = e.detail && !brief ? ` — ${under(e.detail)}` : "";
-  return `  ${e.id} ${e.type} ${quote(e.label)}${e.done ? " ✓ done" : ""}${detail}`;
+  return `  ${e.id} ${e.type} ${quote(e.label)}${wearsDone(board, e) ? " ✓ done" : ""}${detail}`;
 }
 
 function linkLine(edge: { src: string; dst: string; label?: string }): string {
@@ -86,7 +86,7 @@ export function describeBoard(board: Board, part: Part = {}): string {
       (part.lane === undefined || e.lane === part.lane) && (part.col === undefined || e.col === part.col),
   );
   const shown = new Set(elements.map((e) => e.id));
-  const show = (e: Element): string => cardLine(e, part.brief);
+  const show = (e: Element): string => cardLine(board, e, part.brief);
 
   if (part.notes) {
     // The notes alone: the cards are left out.
@@ -132,7 +132,7 @@ export function describeCard(board: Board, id: string): string {
   const e = findElement(board, id);
   if (!e) throw new CommandError(`no element ${id} on "${board.id}"`);
   const format = findFormat(board.format);
-  const lines = [heading(board, [`card ${id}`]), cardLine(e)];
+  const lines = [heading(board, [`card ${id}`]), cardLine(board, e)];
   if (format?.layout === "timeline") lines.push(`  in col ${e.col}`);
   else if (format?.layout === "columns")
     lines.push(`  in lane ${e.lane} (${laneName(format, board, e.lane, "en")})`);

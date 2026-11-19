@@ -3,7 +3,7 @@
  * Mermaid cannot say everything a board says; each export names what it drops in
  * a leading `%% lossy:` comment instead of dropping it silently.
  */
-import { type Format, findFormat, laneName, lanesOf } from "../formats.ts";
+import { type Format, findFormat, laneName, lanesOf, wearsDone } from "../formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
 
@@ -43,7 +43,7 @@ function flowchart(board: Board, format: Format): string {
 }
 
 function node(e: Element, format: Format): string {
-  const label = `"${text(labelSaid(e))}"`;
+  const label = `"${text(labelSaid({ format: format.id }, e))}"`;
   const shape = format.types.find((t) => t.id === e.type)?.shape;
   if (shape === "diamond") return `${e.id}{${label}}`;
   if (shape === "pill") return `${e.id}([${label}])`;
@@ -57,14 +57,14 @@ function kanban(board: Board, format: Format, locale: Locale): string {
   for (const lane of lanesOf(board)) {
     lines.push(`  ${lane}[${plain(laneName(format, board, lane, locale))}]`);
     for (const e of board.elements)
-      if (e.lane === lane) lines.push(`    ${e.id}[${plain(`${e.id} ${labelSaid(e)}`)}]`);
+      if (e.lane === lane) lines.push(`    ${e.id}[${plain(`${e.id} ${labelSaid(board, e)}`)}]`);
   }
   return lines.join("\n");
 }
 
 /** A card's label as a text export says it: a card marked done wears the sign, since nothing is struck through there. */
-export function labelSaid(e: { label: string; done?: boolean }): string {
-  return e.done ? `✓ ${e.label}` : e.label;
+export function labelSaid(board: { format: string }, e: { label: string; done?: boolean }): string {
+  return wearsDone(board, e) ? `✓ ${e.label}` : e.label;
 }
 
 /** Inside a quoted Mermaid label. */

@@ -37,7 +37,7 @@ export function toMarkdown(board: Board, meta: ExportMeta): string {
     const sorted = [...board.elements].sort((a, b) => a.col - b.col);
     for (const e of sorted) {
       const place = layout === "timeline" ? [String(e.col)] : layout === "columns" ? [laneLabel(e.lane)] : [];
-      out.push(row([e.id, typeLabel(e.type), labelSaid(e), ...place, e.detail ?? "", w.who[e.by]]));
+      out.push(row([e.id, typeLabel(e.type), labelSaid(board, e), ...place, e.detail ?? "", w.who[e.by]]));
     }
     out.push("");
   }

@@ -4,7 +4,7 @@
  * command, and the board changes when the event comes back.
  */
 import type { Command } from "../domain/commands.ts";
-import { type Format, findFormat, findType } from "../domain/formats.ts";
+import { type Format, findFormat, findType, isDone, lanesOf } from "../domain/formats.ts";
 import { laneDrop, layoutBoard, locate, type Scene, type Target, vacancy } from "../domain/layout/index.ts";
 import { cardName } from "../domain/layout/scene.ts";
 import { arrowDefs, bandMarkup, cardMarkup, connectorMarkup, esc } from "../domain/render/svg.ts";
@@ -497,7 +497,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const element = board.elements.find((e) => e.id === id);
     // Each action says its key too: the shortcuts are learnt where they are used.
     const keyed = (label: string, key: string): { title: string } => ({ title: t.withKey(label, key) });
-    const doneLabel = element?.done ? t.notDone : t.done;
+    const done = element !== undefined && isDone(board, element);
+    const doneLabel = done ? t.notDone : t.done;
     tools.replaceChildren(
       h("button", { type: "button", ...keyed(t.rename, "Enter"), onclick: () => rename(id) }, t.rename),
       h(
@@ -511,7 +512,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         {
           type: "button",
           ...keyed(doneLabel, "D"),
-          onclick: () => void send({ kind: "mark", board: boardId, id, done: !element?.done }),
+          onclick: () => markDone(id, !done),
         },
         doneLabel,
       ),
@@ -755,6 +756,21 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       },
       { name: t.noteOn(id), lines: true, from: id },
     );
+  }
+
+  /** Done, or no longer: on a kanban the card changes lane, and the ear is told where it went. */
+  function markDone(id: string, done: boolean): void {
+    if (!board) return;
+    const lanes = lanesOf(board);
+    const was = board.elements.find((e) => e.id === id)?.lane;
+    const to = done ? lanes.at(-1) : was === lanes.at(-1) ? lanes.at(-2) : was;
+    const place =
+      format()?.ownLanes && to !== was
+        ? scene.bands.find((band) => band.kind === "lane" && band.id === to)?.label
+        : undefined;
+    void send({ kind: "mark", board: board.id, id, done }).then((answer) => {
+      if (answer !== undefined && place) hooks.announce(t.moved(id, place));
+    });
   }
 
   function beginLink(id: string): void {
@@ -1095,14 +1111,10 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         hooks.removed(t.cardRemoved(id));
         if (next) focusCard(next);
       });
-    } else if (event.key.toLowerCase() === "d")
-      void send({
-        kind: "mark",
-        board: board.id,
-        id,
-        done: !board.elements.find((e) => e.id === id)?.done,
-      });
-    else if (event.key.toLowerCase() === "l") beginLink(id);
+    } else if (event.key.toLowerCase() === "d") {
+      const element = board.elements.find((e) => e.id === id);
+      markDone(id, !(element && isDone(board, element)));
+    } else if (event.key.toLowerCase() === "l") beginLink(id);
     else if (event.key.toLowerCase() === "n") noteOn(id);
     else return;
     event.preventDefault();

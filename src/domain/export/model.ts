@@ -5,7 +5,7 @@
  * pairs, and unknown fields are ignored on the way in.
  */
 import { type Command, CommandError, isElementId } from "../commands.ts";
-import { type Format, findFormat, findType } from "../formats.ts";
+import { type Format, findFormat, findType, wearsDone } from "../formats.ts";
 import { type Board, idNumber } from "../workspace.ts";
 
 export interface ModelElement {
@@ -46,7 +46,7 @@ export function toModel(board: Board): Model {
       ...(layout === "timeline" ? { col: e.col - 1 } : {}),
       ...(layout === "columns" ? { lane: e.lane } : {}),
       ...(e.detail ? { detail: e.detail } : {}),
-      ...(e.done ? { done: true } : {}),
+      ...(wearsDone(board, e) ? { done: true } : {}),
     })),
     edges: board.edges.map((edge) => ({
       src: edge.src,
@@ -106,7 +106,8 @@ export function fromModel(input: unknown, board: string): Command[] {
       lane: layout === "columns" ? e.lane : undefined,
       detail: e.detail,
     });
-    if (e.done && id) commands.push({ kind: "mark", board, id, done: true });
+    // On a kanban, done is the lane the card is in: a mark would move it.
+    if (e.done && id && !format?.ownLanes) commands.push({ kind: "mark", board, id, done: true });
   }
   for (const edge of Array.isArray(model.edges) ? model.edges : []) {
     const [src, dst, label] = readEdge(edge);
