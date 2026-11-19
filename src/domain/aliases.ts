@@ -41,7 +41,7 @@ export function resolveAliases(command: Command, aliases: Aliases): Command {
 
   switch (command.kind) {
     case "add":
-      return { ...command, from: optional(command.from) };
+      return { ...command, from: optional(command.from), before: optional(command.before) };
     case "rename":
     case "annotate":
     case "mark":

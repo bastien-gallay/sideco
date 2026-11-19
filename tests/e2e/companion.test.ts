@@ -1237,6 +1237,37 @@ describe("adding from the keyboard", () => {
     await card("T1").waitFor();
     await until("the keyboard is on T1", async () => (await active()).id === "T1");
     expect(await page.locator('g.card[tabindex="0"]').getAttribute("data-id")).toBe("T1");
+  });
+
+  const lanes = () =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        [...document.querySelectorAll(".layer-cards > g.card-group")].map((group) => [
+          group.getAttribute("aria-label"),
+          [...group.querySelectorAll("g.card")].map((g) => g.getAttribute("data-id")),
+        ]),
+      ),
+    );
+
+  test("Alt and an arrow add a card of its kind beside the focused one, and give it the keyboard", async () => {
+    await card("T1").focus();
+    await page.keyboard.press("Alt+ArrowRight");
+    await typeInEditor("À droite");
+    await card("T2").waitFor();
+    await until("the keyboard is on T2", async () => (await active()).id === "T2");
+    expect(await lanes()).toEqual({ "To do": ["T1"], Doing: ["T2"] });
+
+    await card("T1").focus();
+    await page.keyboard.press("Alt+ArrowUp");
+    await typeInEditor("Au-dessus");
+    await card("T3").waitFor();
+    expect((await lanes())["To do"]).toEqual(["T3", "T1"]);
+  });
+
+  test("one Undo takes the card added beside back", async () => {
+    await page.keyboard.press("Control+z");
+    await card("T3").waitFor({ state: "detached" });
+    expect((await lanes())["To do"]).toEqual(["T1"]);
     await agent(`board rm ${BOARD}`);
     await until("the page has left the board removed", async () => {
       return (await page.locator(".board-picker select").inputValue()) !== BOARD;

@@ -25,6 +25,8 @@ export type Command =
       col?: number;
       lane?: string;
       detail?: string;
+      /** Place the new element just before this one of its cell or lane. */
+      before?: string;
       /** Also link from this element to the new one. */
       from?: string;
       edgeLabel?: string;
@@ -141,6 +143,7 @@ export function parseCommand(input: unknown): Command {
         col: optional(f, "col", column),
         lane: optional(f, "lane", (x, k) => text(x, k, 40)),
         detail: optional(f, "detail", (x, k) => text(x, k, LIMITS.detail)),
+        before: optional(f, "before", idOrName),
         from: optional(f, "from", idOrName),
         edgeLabel: optional(f, "edgeLabel", (x, k) => text(x, k, LIMITS.label)),
         alias: optional(f, "alias", alias),

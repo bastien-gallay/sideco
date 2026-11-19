@@ -142,6 +142,7 @@ export function boardAction(tokens: readonly string[], board: string | undefined
           col: number("col"),
           lane: flags.get("lane"),
           detail: flags.get("detail"),
+          before: flags.get("before"),
           from: flags.get("from"),
           edgeLabel: flags.get("edge"),
           alias: flags.get("alias"),

@@ -109,7 +109,7 @@ sideco boards      sideco show [BOARD] [--lane L | --col N] [--brief] [--notes] 
 sideco show ID                      (one card: where it is, its links, its threads)
 sideco board new "Title" [--format F] [--id ID]
 sideco board rm ID                  (removes the board; its history stays)
-sideco add TYPE "Label" [--col N | --lane L] [--from ID [--edge "label"]] [--detail "…"]
+sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--from ID [--edge "label"]] [--detail "…"]
 sideco rename ID "Label"            sideco detail ID "Text"
 sideco move ID --col N | --lane L [--before ID]   # --before alone: before that card, in its cell
 sideco rm ID       sideco insert-col N       sideco move-col FROM TO   (the column takes the number TO, with its cards)

@@ -95,6 +95,7 @@ Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit
 | Double-cliquer une carte | La renomme |
 | Double-cliquer le nom d'une colonne (kanban, rétro, Impact / Effort) | Renomme la colonne pour ce tableau ; Entrée valide, Échap abandonne. ⚠️ Revenir au nom de l'atelier ne se fait que par Undo |
 | Glisser une carte | La change d'étape ou de colonne ; la position reste sémantique, jamais en pixels |
+| Sur une carte qui a le focus, `Alt` + flèche (`⌥` sur Mac) | Ajoute une carte du même type à côté, du côté de la flèche, et ouvre sa saisie : étape ou colonne voisine à gauche et à droite, juste au-dessus ou au-dessous dans la même case ; dans un flux, `→` et `↓` ajoutent l'étape suivante, reliée. Un seul Undo la retire. Claude fait de même par `sideco add … --before ID` |
 | Sélectionner une carte, « Mark done » dans sa barre, ou la touche `d` | La marque comme faite : une coche et le libellé barré. Le même geste retire la marque ; Claude le fait par `sideco done ID` et `sideco undone ID` |
 | Sélectionner une carte | Barre d'actions : renommer, détail, relier, note pour Claude, supprimer |
 | Pastille « Claude waits », en haut à droite | Juste avant le zoom, quand Claude t'a passé la main : sur le tableau à l'écran ou sur un autre, qu'elle nomme et ouvre d'un clic. Son point s'anime doucement, sauf si le système demande moins de mouvement |

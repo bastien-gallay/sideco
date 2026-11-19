@@ -61,7 +61,7 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco show [BOARD]                 a board as text; a part of it with --lane L, --col N, --brief (no details),
                                     --notes (the open notes only). The first line names the part.
   sideco show ID                      one card: where it is, its links, its threads
-  sideco add TYPE "Label" [--col N | --lane L] [--id E1] [--from ID [--edge "label"]] [--detail "…"]
+  sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--id E1] [--from ID [--edge "label"]] [--detail "…"]
   sideco rename ID "Label"            sideco detail ID "Text"
   sideco move ID --col N | --lane L [--before ID]   (--before alone: before that card, in its cell)
   sideco done ID                      sideco undone ID

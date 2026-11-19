@@ -641,7 +641,18 @@ function gridMove(
   el: { id: string; lane?: string },
   direction: Direction,
 ): Command | undefined {
-  const at = lanes.findIndex((lane) => lane.id === el.lane);
+  const lane = gridCell(lanes, perRow, el.lane, direction);
+  return lane ? { kind: "move", board: board.id, id: el.id, lane } : undefined;
+}
+
+/** The cell of a plan an arrow points to from `from`: never off the plan, never round to the next row. */
+function gridCell(
+  lanes: readonly { id: string }[],
+  perRow: number,
+  from: string | undefined,
+  direction: Direction,
+): string | undefined {
+  const at = lanes.findIndex((lane) => lane.id === from);
   if (at < 0) return undefined;
   const row = Math.floor(at / perRow);
   const col = at % perRow;
@@ -652,8 +663,54 @@ function gridMove(
         ? [row + 1, col]
         : [row, col + (direction === "right" ? 1 : -1)];
   if (c < 0 || c >= perRow || r < 0) return undefined;
-  const lane = lanes[r * perRow + c];
-  return lane ? { kind: "move", board: board.id, id: el.id, lane: lane.id } : undefined;
+  return lanes[r * perRow + c]?.id;
+}
+
+/** Where a card added beside another goes: an `add` command, less its board and label. */
+export interface AddPlace {
+  type: string;
+  col?: number;
+  lane?: string;
+  before?: string;
+  from?: string;
+}
+
+/**
+ * The card Alt and an arrow add beside a focused one, of its kind, where the
+ * arrow points: on a timeline, the step either way or just above or below it
+ * in its cell; in lanes, the lane either way or its place in the lane; on a
+ * plan, the cell beside it; on a graph, the next node, linked from it.
+ * Undefined where nothing can go.
+ */
+export function keyAdd(board: Board, id: string, direction: Direction): AddPlace | undefined {
+  const format = findFormat(board.format);
+  const el = findElement(board, id);
+  if (!format || !el) return undefined;
+  const type = el.type;
+  if (format.layout === "graph")
+    return direction === "right" || direction === "down" ? { type, from: id } : undefined;
+  if (format.grid) {
+    const lane = gridCell(format.lanes, format.grid.perRow, el.lane, direction);
+    return lane ? { type, lane } : undefined;
+  }
+  const timeline = format.layout === "timeline";
+  const place = timeline ? { col: el.col } : { lane: el.lane };
+  if (direction === "up") return { type, ...place, before: id };
+  if (direction === "down") {
+    const siblings = board.elements.filter((other) =>
+      timeline ? other.col === el.col && other.type === el.type : other.lane === el.lane,
+    );
+    const after = siblings[siblings.indexOf(el) + 1];
+    return { type, ...place, ...(after ? { before: after.id } : {}) };
+  }
+  const step = direction === "right" ? 1 : -1;
+  if (timeline) {
+    const col = (el.col ?? 1) + step;
+    return col < 1 ? undefined : { type, col };
+  }
+  const lanes = format.lanes.map((lane) => lane.id);
+  const lane = lanes[lanes.indexOf(el.lane ?? "") + step];
+  return lane && lanes.includes(el.lane ?? "") ? { type, lane } : undefined;
 }
 
 /** A "+" to click: adds a card of one kind where it is drawn. Scene coordinates. */

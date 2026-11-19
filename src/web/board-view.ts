@@ -18,6 +18,7 @@ import {
   cardPlace,
   type Direction,
   keptLines,
+  keyAdd,
   keyMove,
   neighbour,
   oneLine,
@@ -708,7 +709,22 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     changed();
   }
 
-  function beginAdd(typeId: string, place?: { col?: number; lane?: string; x: number; y: number }): void {
+  /** Opens the editor for a card of the focused one's kind, beside it where the arrow points. */
+  function addBeside(id: string, direction: Direction): void {
+    const node = nodes.get(id);
+    const place = board ? keyAdd(board, id, direction) : undefined;
+    if (!node || !place) return;
+    const r = node.g.getBoundingClientRect();
+    const gap = 12 * zoom;
+    const x = direction === "right" ? r.right + gap : direction === "left" ? r.left - r.width - gap : r.left;
+    const y = direction === "down" ? r.bottom + gap : direction === "up" ? r.top - r.height - gap : r.top;
+    beginAdd(place.type, { ...place, x, y });
+  }
+
+  function beginAdd(
+    typeId: string,
+    place?: { col?: number; lane?: string; before?: string; from?: string; x: number; y: number },
+  ): void {
     const f = format();
     const type = f ? findType(f, typeId) : undefined;
     if (!board || !f || !type || !isLive()) return;
@@ -717,7 +733,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const box = place
       ? new DOMRect(place.x, place.y, 152 * zoom, 88 * zoom)
       : new DOMRect(frame.left + 16, frame.top + 16, 168, 88);
-    const from = f.layout === "graph" ? (state.selected ?? undefined) : undefined;
+    const from = place?.from ?? (f.layout === "graph" ? (state.selected ?? undefined) : undefined);
     openEditor(box, "", t.newCard(type.label[locale], type.hint[locale]), type, (label) => {
       const command: Command = {
         kind: "add",
@@ -726,6 +742,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         label,
         col: place?.col,
         lane: place?.lane,
+        before: place?.before,
         from,
       };
       return saved(
@@ -945,6 +962,11 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" });
         if (place) hooks.announce(t.moved(id, place));
       });
+      return;
+    }
+    if (direction && event.altKey && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+      event.preventDefault();
+      addBeside(id, direction);
       return;
     }
     if (event.key === "Enter" || event.key === "F2") rename(id);

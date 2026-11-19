@@ -182,7 +182,12 @@ function add(board: Board, format: Format, cmd: Extract<Command, { kind: "add" }
   }
   if (cmd.from) requireElement(board, cmd.from);
   const id = cmd.id === undefined ? mint(board, type.prefix) : claim(board, type, cmd.id);
-  const { col, lane } = placeNew(board, format, cmd);
+  const anchor = cmd.before === undefined ? undefined : requireElement(board, cmd.before);
+  const { col, lane } = placeNew(board, format, {
+    col: cmd.col ?? (format.layout === "timeline" ? anchor?.col : undefined),
+    lane: cmd.lane ?? (format.layout === "columns" ? anchor?.lane : undefined),
+  });
+  if (anchor) besideIn(format, anchor, { type: type.id, col, lane });
   const events: BoardEvent[] = [
     {
       event: "ElementAdded",
@@ -195,9 +200,29 @@ function add(board: Board, format: Format, cmd: Extract<Command, { kind: "add" }
       detail: cmd.detail,
     },
   ];
+  // Added last in its cell, then put in its place: one gesture, one undo.
+  if (anchor) events.push({ event: "ElementMoved", board: board.id, id, col, lane, before: anchor.id });
   if (cmd.from)
     events.push({ event: "EdgeAdded", board: board.id, src: cmd.from, dst: id, label: cmd.edgeLabel });
   return { events, minted: id };
+}
+
+/** A new card goes before `anchor` only if they share a cell: a lane, or a column and a row. */
+function besideIn(format: Format, anchor: Element, place: { type: string; col: number; lane: string }): void {
+  switch (format.layout) {
+    case "timeline":
+      if (anchor.type !== place.type)
+        throw new CommandError(`${anchor.id} is a ${anchor.type}, not a ${place.type}`);
+      if (anchor.col !== place.col) throw new CommandError(`${anchor.id} is not in column ${place.col}`);
+      return;
+    case "columns":
+      if (anchor.lane !== place.lane) throw new CommandError(`${anchor.id} is not in lane "${place.lane}"`);
+      return;
+    case "graph":
+      throw new CommandError(
+        `${format.name.en} boards place elements from their links; link or unlink instead`,
+      );
+  }
 }
 
 function placeNew(
