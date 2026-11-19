@@ -39,7 +39,6 @@ import {
   historyBoard,
   historyPlace,
   historyStep,
-  historyStopAt,
   historyStops,
   mentions,
   pendingChanges,
@@ -107,9 +106,9 @@ const cardPanel = h("section", {
 
 // ── The right panel's tabs: what Claude's session does, and the chosen card ───
 
-type Tab = "session" | "detail";
-const TABS: Tab[] = ["session", "detail"];
-const TAB_ICON: Record<Tab, string> = { session: "◷", detail: "ⓘ" };
+type Tab = "session" | "history" | "detail";
+const TABS: Tab[] = ["session", "history", "detail"];
+const TAB_ICON: Record<Tab, string> = { session: "≡", history: "◷", detail: "ⓘ" };
 let tab: Tab = "session";
 /** The card the Detail tab was last opened for: a new choice opens it again, a repaint does not. */
 let detailFor: string | null = null;
@@ -148,7 +147,7 @@ function chooseTab(id: Tab, focus = false): void {
 }
 
 function paintTabs(): void {
-  const can: Record<Tab, boolean> = { session: true, detail: !cardPanel.dataset.empty };
+  const can: Record<Tab, boolean> = { session: true, history: true, detail: !cardPanel.dataset.empty };
   if (!can[tab]) tab = "session";
   for (const id of TABS) {
     const button = tabButtons[id];
@@ -160,6 +159,7 @@ function paintTabs(): void {
     button.title = can[id] ? t.tabs[id] : t.detailTabEmpty;
   }
   sessionPanel.hidden = tab !== "session";
+  historyPanel.hidden = tab !== "history";
   cardPanel.hidden = tab !== "detail";
 }
 
@@ -182,15 +182,8 @@ tabList.addEventListener("keydown", (event) => {
   chooseTab(next, true);
 });
 const historyLabel = h("output", { class: "history-label" });
-const historyRange = h("input", {
-  type: "range",
-  name: "history",
-  min: 0,
-  max: 0,
-  value: 0,
-  step: 1,
-  "aria-label": t.history,
-});
+/** The events, newest first: a click shows the board as that event left it. Repainted on its own. */
+const historyList = h("ol", { class: "history-list", "aria-label": t.history });
 /** The reader asked the history for every event, not only the board's. Kept while the page is open. */
 let wholeJournal = false;
 const historyScope = h(
@@ -206,6 +199,48 @@ const historyScope = h(
   h("option", { value: "board" }, t.thisBoard),
   h("option", { value: "everything" }, t.everything),
 );
+/** The board's history, a tab of the right panel: where it stands, how far it reaches, and its events. */
+const historyPanel = h(
+  "section",
+  {
+    class: "history-panel",
+    id: "tab-history-panel",
+    role: "tabpanel",
+    "aria-labelledby": "tab-history",
+    hidden: true,
+  },
+  h(
+    "div",
+    { class: "history" },
+    h(
+      "button",
+      { type: "button", "aria-label": t.previousEvent, title: t.previousEvent, onclick: () => step(-1) },
+      "◄",
+    ),
+    h(
+      "button",
+      { type: "button", "aria-label": t.nextEvent, title: t.nextEvent, onclick: () => step(1) },
+      "►",
+    ),
+    historyScope,
+    historyLabel,
+  ),
+  historyList,
+);
+/** How many of the latest events the list shows; "Earlier" shows more. */
+const HISTORY_PAGE = 200;
+let historyShown = HISTORY_PAGE;
+
+// In the list, ↑ goes to a newer moment, ↓ to an older one, and the keyboard follows.
+historyList.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+  event.preventDefault();
+  step(event.key === "ArrowUp" ? 1 : -1);
+  keepHistoryFocus = true;
+});
+/** The list is repainted under the keyboard: it goes back to the moment shown. */
+let keepHistoryFocus = false;
+
 /** What the bar says of the turn. Repainted apart from the message beside it. */
 const turnSays = h("div", { class: "turn-says" });
 /** Made once: a message being typed for Claude keeps its words and the keyboard through every repaint. */
@@ -502,22 +537,17 @@ app.append(
     { class: "work" },
     h("aside", { class: "left", id: "panel-left" }, folds.left, palette, notes),
     h("section", { class: "stage" }, focusBar, findBar, canvas, empty),
-    h("aside", { class: "right", id: "panel-right" }, folds.right, tabList, sessionPanel, cardPanel),
-  ),
-  h(
-    "footer",
-    { class: "bottom" },
     h(
-      "div",
-      { class: "history" },
-      h("button", { type: "button", "aria-label": t.previousEvent, onclick: () => step(-1) }, "◄"),
-      historyRange,
-      h("button", { type: "button", "aria-label": t.nextEvent, onclick: () => step(1) }, "►"),
-      historyScope,
-      historyLabel,
+      "aside",
+      { class: "right", id: "panel-right" },
+      folds.right,
+      tabList,
+      sessionPanel,
+      historyPanel,
+      cardPanel,
     ),
-    turnBar,
   ),
+  h("footer", { class: "bottom" }, turnBar),
   toast,
   dialog,
   removal,
@@ -535,10 +565,6 @@ function historyFollows(): string | undefined {
 function historyStopsShown(): number[] {
   return historyStops(state.events, historyFollows());
 }
-
-historyRange.addEventListener("input", () =>
-  travelTo(historyStopAt(historyStopsShown(), Number(historyRange.value))),
-);
 
 function step(by: -1 | 1): void {
   travelTo(historyStep(historyStopsShown(), state.cursor, by));
@@ -1149,9 +1175,6 @@ function paintTurn(m: TurnModel): void {
 }
 
 interface HistoryModel {
-  /** Where the slider's handle sits, and how far it goes. */
-  at: number;
-  max: number;
   live: boolean;
   label: string;
   /** The history follows a board; otherwise it steps through every event. */
@@ -1160,14 +1183,61 @@ interface HistoryModel {
   choice: boolean;
 }
 
-/** Not a region: the slider stays the same element, so a drag on it goes on through a repaint. */
 function paintHistory(m: HistoryModel): void {
-  historyRange.max = String(m.max);
-  if (document.activeElement !== historyRange || m.live) historyRange.value = String(m.at);
   historyLabel.textContent = m.label;
   historyScope.value = m.board ? "board" : "everything";
   historyScope.disabled = !m.choice;
 }
+
+interface HistoryListModel {
+  live: boolean;
+  /** The moment shown, or null when live. */
+  current: number | null;
+  more: number;
+  moments: { seq: number; to: number | null; at: string; by: string; text: string }[];
+}
+
+const paintHistoryList = region(historyList, (m: HistoryListModel) => {
+  const shown = (seq: number, k: number): boolean => (m.current === null ? k === 0 : seq === m.current);
+  const items = m.moments.map((moment, k) =>
+    h(
+      "li",
+      {},
+      h(
+        "button",
+        {
+          type: "button",
+          class: `moment by-${moment.by || "none"}`,
+          "aria-current": shown(moment.seq, k) ? "step" : undefined,
+          onclick: () => travelTo(moment.to),
+        },
+        k === 0 && h("span", { class: "moment-live" }, m.live ? t.liveNow : t.backToLive),
+        moment.at && h("time", {}, moment.at),
+        h("span", { class: "moment-text" }, moment.text),
+      ),
+    ),
+  );
+  return [
+    ...items,
+    m.more > 0 &&
+      h(
+        "li",
+        {},
+        h(
+          "button",
+          {
+            type: "button",
+            class: "quiet history-more",
+            onclick: () => {
+              historyShown += HISTORY_PAGE;
+              changed();
+            },
+          },
+          t.earlier(m.more),
+        ),
+      ),
+  ];
+});
 
 // ── Actions ──────────────────────────────────────────────────────────────────
 
@@ -1510,8 +1580,6 @@ function render(): void {
   const place = historyPlace(stops, state.cursor);
   const latest = state.events.find((e) => e.seq === place.seq);
   paintHistory({
-    at: place.index,
-    max: stops.length - 1,
     live,
     // Cut off from the companion, the page is not live: it says so here too, where "Live" would be.
     label: !state.connected
@@ -1524,6 +1592,34 @@ function render(): void {
     board: followed,
     choice: wholeJournal || followed,
   });
+
+  paintHistoryList({
+    live,
+    current: live ? null : (place.seq ?? 0),
+    more: Math.max(0, stops.length - historyShown),
+    moments: stops
+      .slice(-historyShown)
+      .reverse()
+      .map((seq, k) => {
+        const e = seq > 0 ? state.events.find((ev) => ev.seq === seq) : undefined;
+        return {
+          seq,
+          // The newest stop is the present: choosing it is going back to live.
+          to: k === 0 ? null : seq,
+          at: e ? clock(e.ts) : "",
+          by: e?.actor ?? "",
+          text: e ? describeEvent(e, locale, state.live) : t.beforeFirst,
+        };
+      }),
+  });
+
+  // The moment shown stays in sight in the list, and keeps the keyboard when it had it.
+  const current = historyList.querySelector<HTMLButtonElement>('[aria-current="step"]');
+  if (!historyPanel.hidden && !live) current?.scrollIntoView({ block: "nearest" });
+  if (keepHistoryFocus) {
+    keepHistoryFocus = false;
+    current?.focus();
+  }
 
   banner.hidden = live;
   if (!live && banner.childElementCount === 0) {

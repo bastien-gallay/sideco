@@ -58,6 +58,12 @@ const paletteType = (label: string) =>
     .filter({ has: page.locator(".type-label", { hasText: new RegExp(`^${label}$`) }) });
 const status = () => page.locator(".status-text");
 
+/** The history is a tab of the right panel: open it before stepping through it. */
+async function openHistory(): Promise<void> {
+  await page.locator("#tab-history").click();
+  await page.locator(".history-list").waitFor();
+}
+
 async function shot(name: string): Promise<void> {
   if (!SHOTS) return;
   mkdirSync(SHOTS, { recursive: true });
@@ -372,10 +378,13 @@ describe("the human edits, the agent is told", () => {
 describe("history", () => {
   test("stepping back shows the board as it was, read-only, and comes back", async () => {
     const live = await page.locator("g.card").count();
+    await openHistory();
     expect(await page.locator(".history-label").textContent()).toStartWith("Live · ");
+    // The present on top, marked as the moment shown.
+    expect(await page.locator('.history-list [aria-current="step"]').textContent()).toStartWith("● Live");
 
-    // The slider counts the board's own events: its creation, then one per card.
-    await page.locator(".history input").fill("3");
+    // A moment of the list shows the board as that event left it: its creation, then one per card.
+    await page.locator(".history-list .moment", { hasText: /Claude adds E1 / }).click();
     await page.locator(".banner").waitFor({ state: "visible" });
     expect(await page.locator("g.card").count()).toBe(3);
     expect(await page.locator(".history-label").textContent()).toMatch(/^4 \/ \d+ · .*Claude adds E1/);
@@ -383,10 +392,12 @@ describe("history", () => {
     expect(await page.locator(".board-menu button.remove-board").isDisabled()).toBe(true);
     await shot("06-history");
 
-    await page.locator(".history button", { hasText: "►" }).click();
+    // The keyboard goes on from there: ↑ is a newer moment.
+    await page.locator('.history-list [aria-current="step"]').press("ArrowUp");
     await page.waitForFunction(() =>
       document.querySelector(".history-label")?.textContent?.startsWith("5 / "),
     );
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("aria-current"))).toBe("step");
 
     await page.locator(".banner button").click();
     await page.locator(".banner").waitFor({ state: "hidden" });
@@ -394,6 +405,7 @@ describe("history", () => {
   });
 
   test("the arrows and the slider stop at the events of the board on screen, or at every event when asked", async () => {
+    await openHistory();
     const scope = page.getByRole("combobox", { name: "The history steps through" });
     const back = page.locator(".history button", { hasText: "◄" });
     const forward = page.locator(".history button", { hasText: "►" });
@@ -431,7 +443,7 @@ describe("history", () => {
     expect(await page.title()).toBe("Devis · Sideco");
     await page.locator(".banner button").click();
     await reads(/^Live · 3 events$/);
-    await page.locator(".history input").press("ArrowLeft");
+    await page.locator('.history-list [aria-current="step"]').press("ArrowDown");
     await reads(/^2 \/ 3 · /);
     await page.locator(".banner button").click();
 
@@ -687,6 +699,7 @@ describe("the reader's language", () => {
     expect(await page.locator(".pass button.primary").textContent()).toBe("Passer la main à Claude");
     expect(await page.locator(".palette h2").textContent()).toBe("Event Storming");
     expect(await paletteType("Événement").count()).toBe(1);
+    await openHistory();
     expect(await page.locator(".history-label").textContent()).toStartWith("En direct · ");
     expect(await page.locator(".history select option").allTextContents()).toEqual(["Ce tableau", "Tout"]);
     expect(await page.locator("g.card[data-id='E1'] title").textContent()).toMatch(
@@ -955,6 +968,7 @@ describe("what Claude has not read yet", () => {
     await shot("18-unread");
 
     // The marks tell about now: a board shown as it was carries none.
+    await openHistory();
     await page.locator(".history button", { hasText: "◄" }).click();
     await page.locator(".banner").waitFor({ state: "visible" });
     await card("E1").getByText("Facture envoyée").waitFor();
@@ -1089,6 +1103,7 @@ describe("adding where the pointer is", () => {
     await page.mouse.move(700, 20);
     await until("the offer is gone", async () => (await offers().count()) === 0);
 
+    await openHistory();
     await page.locator(".history button", { hasText: "◄" }).click();
     await page.locator(".banner").waitFor({ state: "visible" });
     await page.mouse.move(e2.x, e2.y + 4);
@@ -1256,6 +1271,9 @@ describe("the chosen card, read in the right panel", () => {
     await detail.click({ force: true });
     expect(await page.locator("#tab-session").getAttribute("aria-selected")).toBe("true");
     await page.locator("#tab-session").focus();
+    await page.keyboard.press("ArrowRight");
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe("tab-history");
+    // From History, past the quiet Detail, back round to Session.
     await page.keyboard.press("ArrowRight");
     expect(await page.evaluate(() => document.activeElement?.id)).toBe("tab-session");
     await shot("57-tabs");

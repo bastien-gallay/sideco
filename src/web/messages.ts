@@ -124,7 +124,9 @@ export interface Messages {
   cardPanel: string;
   cardPanelOf: (id: string) => string;
   sidePanel: string;
-  tabs: Record<"session" | "detail", string>;
+  tabs: Record<"session" | "history" | "detail", string>;
+  liveNow: string;
+  earlier: (more: number) => string;
   detailTabEmpty: string;
   noDetail: string;
   editDetail: string;
@@ -352,7 +354,9 @@ const en: Messages = {
   cardPanel: "Chosen card",
   cardPanelOf: (id) => `Card ${id}`,
   sidePanel: "Side panel",
-  tabs: { session: "Session", detail: "Detail" },
+  tabs: { session: "Session", history: "History", detail: "Detail" },
+  liveNow: "● Live",
+  earlier: (more) => `Earlier… (${more} more)`,
   detailTabEmpty: "Detail: choose a card on the board",
   noDetail: "No detail yet.",
   editDetail: "Edit the detail",
@@ -619,7 +623,9 @@ const fr: Messages = {
   cardPanel: "Carte choisie",
   cardPanelOf: (id) => `Carte ${id}`,
   sidePanel: "Panneau latéral",
-  tabs: { session: "Session", detail: "Détail" },
+  tabs: { session: "Session", history: "Historique", detail: "Détail" },
+  liveNow: "● En direct",
+  earlier: (more) => `Plus ancien… (encore ${more})`,
   detailTabEmpty: "Détail : choisis une carte sur le tableau",
   noDetail: "Pas encore de détail.",
   editDetail: "Modifier le détail",
