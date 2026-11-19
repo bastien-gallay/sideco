@@ -21,7 +21,7 @@ export interface Site {
   page: Page;
   /** The workspace this server speaks for; callers check it before writing. */
   root: string;
-  /** Where `vico publish` writes; served read-only under /pub/. */
+  /** Where `sideco publish` writes; served read-only under /pub/. */
   siteDir: string;
   /** Shows the page at this address to the human on this machine; absent when the server cannot. */
   show?: (address: string) => Promise<boolean>;
@@ -58,7 +58,7 @@ export function handler(site: Site): Handler {
         case "/health":
           return json({
             ok: true,
-            name: "vico",
+            name: "sideco",
             workspace: root,
             seq: hub.workspace.seq,
             listening: hub.listening,

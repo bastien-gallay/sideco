@@ -1,5 +1,5 @@
 #!/bin/sh
-# Resolves symlinks so `vico` works from a PATH link as well as from the plugin.
+# Resolves symlinks so `sideco` works from a PATH link as well as from the plugin.
 self="$0"
 while [ -L "$self" ]; do
   target="$(readlink "$self")"

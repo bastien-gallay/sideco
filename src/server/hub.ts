@@ -7,7 +7,7 @@ import { type Aliases, bindAlias, resolveAliases } from "../domain/aliases.ts";
 import { type Command, CommandError } from "../domain/commands.ts";
 import { type Context, decide } from "../domain/decide.ts";
 import { type Changes, describeChanges } from "../domain/digest.ts";
-import type { Recorded, VicoEvent } from "../domain/events.ts";
+import type { Recorded, SidecoEvent } from "../domain/events.ts";
 import { apply, concerns, findSession, replay, type Workspace } from "../domain/workspace.ts";
 import type { Journal } from "./journal.ts";
 
@@ -85,7 +85,7 @@ export class Hub {
     return { events: staged, minted };
   }
 
-  private stamp(event: VicoEvent, ctx: Context, ts: string, seq: number): Recorded {
+  private stamp(event: SidecoEvent, ctx: Context, ts: string, seq: number): Recorded {
     return { seq, ts, actor: ctx.actor, ...(ctx.session ? { session: ctx.session } : {}), ...event };
   }
 

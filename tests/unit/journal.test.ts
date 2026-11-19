@@ -9,7 +9,7 @@ import { ORDERING, table } from "../support.ts";
 
 let dir: string;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "vico-journal-"));
+  dir = mkdtempSync(join(tmpdir(), "sideco-journal-"));
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 

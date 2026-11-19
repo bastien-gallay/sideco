@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `vico`: the companion from the terminal. Reading commands replay the journal
+ * `sideco`: the companion from the terminal. Reading commands replay the journal
  * from disk and need no server; writing commands go through the running
  * companion, which is started on demand.
  */
@@ -42,57 +42,58 @@ import {
   stopServer,
 } from "./client.ts";
 import { runHook } from "./hook.ts";
+import { readSetting } from "./setting.ts";
 
-const HELP = `vico — a visual companion for Claude Code
+const HELP = `sideco — a visual companion for Claude Code
 
-  vico open                         start the companion if needed and show the page (a page already open is left alone)
-  vico url                          print its address
-  vico serve [--port N] [--lang L]  run it in the foreground
-  vico stop                         stop the companion; the journal stays
-  vico init                         create a workspace (.vico/) here
-  vico status                       boards, sessions, server
+  sideco open                         start the companion if needed and show the page (a page already open is left alone)
+  sideco url                          print its address
+  sideco serve [--port N] [--lang L]  run it in the foreground
+  sideco stop                         stop the companion; the journal stays
+  sideco init                         create a workspace (.sideco/) here
+  sideco status                       boards, sessions, server
 
-Model (BOARD defaults to the only board, or --board ID, or $VICO_BOARD)
-  vico formats                      the workshops and their element types
-  vico board new "Title" [--format F] [--id ID]
-  vico board rm ID                  remove a board; its history stays in the journal
-  vico boards
-  vico show [BOARD]                 a board as text; a part of it with --lane L, --col N, --brief (no details),
+Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
+  sideco formats                      the workshops and their element types
+  sideco board new "Title" [--format F] [--id ID]
+  sideco board rm ID                  remove a board; its history stays in the journal
+  sideco boards
+  sideco show [BOARD]                 a board as text; a part of it with --lane L, --col N, --brief (no details),
                                     --notes (the open notes only). The first line names the part.
-  vico show ID                      one card: where it is, its links, its threads
-  vico add TYPE "Label" [--col N | --lane L] [--id E1] [--from ID [--edge "label"]] [--detail "…"]
-  vico rename ID "Label"            vico detail ID "Text"
-  vico move ID --col N | --lane L [--before ID]   (--before alone: before that card, in its cell)
-  vico done ID                      vico undone ID
-  vico rm ID                        vico insert-col N
-  vico move-col FROM TO             a column takes the number TO, its cards with it
-  vico lane LANE "Name"             call a lane of this board your own way
-  vico link SRC DST ["label"]       vico unlink SRC DST
-  vico focus [ID…] [--why "…"]      no id clears the focus
-  vico note "Text" [--on ID]        open a discussion, on the board or on one element
-  vico reply N1 "Text"              answer in the thread of a note
-  vico resolve N1                   close the thread
-  vico apply [FILE]                 run a batch of the commands above, all or nothing (stdin by default)
+  sideco show ID                      one card: where it is, its links, its threads
+  sideco add TYPE "Label" [--col N | --lane L] [--id E1] [--from ID [--edge "label"]] [--detail "…"]
+  sideco rename ID "Label"            sideco detail ID "Text"
+  sideco move ID --col N | --lane L [--before ID]   (--before alone: before that card, in its cell)
+  sideco done ID                      sideco undone ID
+  sideco rm ID                        sideco insert-col N
+  sideco move-col FROM TO             a column takes the number TO, its cards with it
+  sideco lane LANE "Name"             call a lane of this board your own way
+  sideco link SRC DST ["label"]       sideco unlink SRC DST
+  sideco focus [ID…] [--why "…"]      no id clears the focus
+  sideco note "Text" [--on ID]        open a discussion, on the board or on one element
+  sideco reply N1 "Text"              answer in the thread of a note
+  sideco resolve N1                   close the thread
+  sideco apply [FILE]                 run a batch of the commands above, all or nothing (stdin by default)
                                     in a batch, \`add … --alias NAME\` (or \`note … --alias NAME\`) names what the line
                                     creates, and @NAME is its id on the lines after it: \`link @NAME E1\`
 
 Work with the human
-  vico changes                      what the human changed since you last asked
-  vico pass ["message"]             hand the turn to the human
-  vico follow BOARD…                take these boards: you are told what the human changes on the boards you
-                                    follow (those you wrote on or read with \`vico show\`), not on another session's
-  vico unfollow BOARD…              let go of boards, until you write on one again
-  vico wait [--timeout SECONDS]     block until the human hands it back, then print their changes
+  sideco changes                      what the human changed since you last asked
+  sideco pass ["message"]             hand the turn to the human
+  sideco follow BOARD…                take these boards: you are told what the human changes on the boards you
+                                    follow (those you wrote on or read with \`sideco show\`), not on another session's
+  sideco unfollow BOARD…              let go of boards, until you write on one again
+  sideco wait [--timeout SECONDS]     block until the human hands it back, then print their changes
 
 Share
-  vico export [BOARD] --format md|html|svg|mermaid|json [-o FILE] [--lang L]
-  vico import FILE [--id ID]        a model.json (faceto files load as they are)
-  vico publish [--out DIR] [--lang L]  every board as a static site
+  sideco export [BOARD] --format md|html|svg|mermaid|json [-o FILE] [--lang L]
+  sideco import FILE [--id ID]        a model.json (faceto files load as they are)
+  sideco publish [--out DIR] [--lang L]  every board as a static site
 
 Options: --as human|agent   --session ID   --board ID
 
 Language: this terminal speaks English. The page and the exports are in English too,
-or in French with --lang fr or VICO_LANG=fr; in the page, each reader picks their own.
+or in French with --lang fr or SIDECO_LANG=fr; in the page, each reader picks their own.
 `;
 
 /** Every verb that is not a board command; with `BOARD_VERBS`, the whole CLI. */
@@ -135,11 +136,11 @@ export async function main(argv: string[]): Promise<number> {
     return await run(verb, rest);
   } catch (error) {
     if (error instanceof UsageError || error instanceof ClientError) {
-      console.error(`vico: ${error.message}`);
+      console.error(`sideco: ${error.message}`);
       return 1;
     }
     if (isSystemError(error)) {
-      console.error(`vico: ${error.message}`);
+      console.error(`sideco: ${error.message}`);
       return 1;
     }
     throw error;
@@ -175,7 +176,7 @@ async function run(verb: string, rest: string[]): Promise<number> {
   }
 
   const root = verb === "open" ? initRoot(findRoot(cwd) ?? cwd) : findRoot(cwd);
-  if (!root) throw new UsageError("no Vico workspace here or above; run `vico init` or `vico open`");
+  if (!root) throw new UsageError("no Sideco workspace here or above; run `sideco init` or `sideco open`");
   const read = (): Workspace => replay(openJournal(dataDir(root)).load());
 
   switch (verb) {
@@ -194,7 +195,7 @@ async function run(verb: string, rest: string[]): Promise<number> {
       // This shell first; failing that the companion, which the plugin starts outside any sandbox.
       if (!((await openBrowser(server.url)) || (await showPage(server))))
         throw new ClientError(
-          "could not open the browser, from this shell or from the companion (a sandbox blocks it, or no browser is set). Run `vico open` outside the sandbox, or give the user the address above.",
+          "could not open the browser, from this shell or from the companion (a sandbox blocks it, or no browser is set). Run `sideco open` outside the sandbox, or give the user the address above.",
         );
       console.log("opened in the browser");
       return 0;
@@ -218,7 +219,7 @@ async function run(verb: string, rest: string[]): Promise<number> {
       const card = named !== undefined && isElementId(named) ? named : undefined;
       const board = chooseBoard(read(), card ? args.flags.get("board") : (named ?? args.flags.get("board")));
       console.log(shown(board, card, args));
-      await followQuietly(root, args.flags.get("session") ?? setting("VICO_SESSION"), board.id);
+      await followQuietly(root, args.flags.get("session") ?? setting("SIDECO_SESSION"), board.id);
       return 0;
     }
     case "export":
@@ -228,8 +229,8 @@ async function run(verb: string, rest: string[]): Promise<number> {
   }
 
   const server = await ensureServer(root);
-  const actor = args.flags.get("as") ?? setting("VICO_ACTOR") ?? "agent";
-  const session = args.flags.get("session") ?? setting("VICO_SESSION") ?? latestSession(read())?.id;
+  const actor = args.flags.get("as") ?? setting("SIDECO_ACTOR") ?? "agent";
+  const session = args.flags.get("session") ?? setting("SIDECO_SESSION") ?? latestSession(read())?.id;
 
   switch (verb) {
     case "changes": {
@@ -246,13 +247,13 @@ async function run(verb: string, rest: string[]): Promise<number> {
       console.log(
         waited.outcome === "passed"
           ? waited.text
-          : `no hand-over yet (${waited.outcome}); run \`vico wait\` again to keep listening`,
+          : `no hand-over yet (${waited.outcome}); run \`sideco wait\` again to keep listening`,
       );
       return 0;
     }
     case "follow":
     case "unfollow": {
-      if (args.positional.length === 0) throw new UsageError(`usage: vico ${verb} BOARD…`);
+      if (args.positional.length === 0) throw new UsageError(`usage: sideco ${verb} BOARD…`);
       if (!session) throw new UsageError(`\`${verb}\` is said by a session: none is known here`);
       await post(server, actor, session, [{ kind: verb, boards: args.positional }]);
       const boards = args.positional.join(", ");
@@ -273,7 +274,7 @@ async function run(verb: string, rest: string[]): Promise<number> {
     }
     case "import": {
       const file = args.positional[0];
-      if (!file) throw new UsageError("usage: vico import FILE [--id ID]");
+      if (!file) throw new UsageError("usage: sideco import FILE [--id ID]");
       const model: unknown = JSON.parse(readFileSync(file, "utf8"));
       const title = (model as { title?: unknown }).title;
       const id =
@@ -285,7 +286,7 @@ async function run(verb: string, rest: string[]): Promise<number> {
     }
   }
 
-  if (!BOARD_VERBS.has(verb)) throw new UsageError(`unknown command "${verb}" (try \`vico help\`)`);
+  if (!BOARD_VERBS.has(verb)) throw new UsageError(`unknown command "${verb}" (try \`sideco help\`)`);
   // `board new` and `board rm` name their board themselves: no default applies.
   const action = boardAction(
     [verb, ...rest.filter((_token, i) => !isGlobalFlag(rest, i))],
@@ -303,19 +304,18 @@ function outcome(action: Action, done: Posted, url: string): string {
   return done.minted[0] ?? `ok (seq ${done.seq})`;
 }
 
-/** An environment variable; set but empty counts as not set. */
 function setting(name: string): string | undefined {
-  return process.env[name] || undefined;
+  return readSetting(name, process.env);
 }
 
 /**
  * The language of what a human will read (an export, the page a companion
- * opens in): `--lang`, else `$VICO_LANG`, else English. What the agent reads
+ * opens in): `--lang`, else `$SIDECO_LANG`, else English. What the agent reads
  * on this terminal stays English.
  */
 function language(args: Args): Locale {
   const asked = args.flags.get("lang");
-  if (asked === undefined) return asLocale(setting("VICO_LANG")) ?? DEFAULT_LOCALE;
+  if (asked === undefined) return asLocale(setting("SIDECO_LANG")) ?? DEFAULT_LOCALE;
   const locale = asLocale(asked);
   if (!locale) throw new UsageError(`--lang is one of: ${LOCALES.join(", ")}`);
   return locale;
@@ -348,19 +348,19 @@ function isGlobalFlag(tokens: string[], index: number): boolean {
 }
 
 function defaultBoard(ws: Workspace, args: Args, required: boolean): string | undefined {
-  const chosen = args.flags.get("board") ?? setting("VICO_BOARD");
+  const chosen = args.flags.get("board") ?? setting("SIDECO_BOARD");
   if (chosen) return chosen;
   if (ws.boards.length === 1) return ws.boards[0]?.id;
   if (!required) return undefined;
   throw new UsageError(
     ws.boards.length === 0
-      ? 'no board yet; create one with `vico board new "Title"`'
+      ? 'no board yet; create one with `sideco board new "Title"`'
       : `which board? pass --board ID (boards: ${ws.boards.map((b) => b.id).join(", ")})`,
   );
 }
 
 function chooseBoard(ws: Workspace, id: string | undefined): Board {
-  const chosen = id ?? setting("VICO_BOARD") ?? (ws.boards.length === 1 ? ws.boards[0]?.id : undefined);
+  const chosen = id ?? setting("SIDECO_BOARD") ?? (ws.boards.length === 1 ? ws.boards[0]?.id : undefined);
   if (!chosen)
     throw new UsageError(`which board? (boards: ${ws.boards.map((b) => b.id).join(", ") || "none yet"})`);
   const board = findBoard(ws, chosen);
@@ -388,9 +388,9 @@ async function hook(rewake: boolean): Promise<number> {
 
 async function serveForeground(given: string, args: Args): Promise<number> {
   const root = initRoot(given);
-  const port = Number(args.flags.get("port") ?? setting("VICO_PORT") ?? DEFAULT_PORT);
+  const port = Number(args.flags.get("port") ?? setting("SIDECO_PORT") ?? DEFAULT_PORT);
   const running = await start(root, port, { show: openBrowser, locale: language(args) });
-  console.log(`vico is serving ${root}\n  ${running.url}`);
+  console.log(`sideco is serving ${root}\n  ${running.url}`);
   const stop = (): void => {
     running.stop();
     process.exit(0);
@@ -409,8 +409,8 @@ async function serveForeground(given: string, args: Args): Promise<number> {
 const PAGE_RETURN_MS = 8000;
 
 function pageReturnMs(): number {
-  const asked = Number(process.env.VICO_PAGE_RETURN_MS);
-  return Number.isFinite(asked) && asked >= 0 && process.env.VICO_PAGE_RETURN_MS ? asked : PAGE_RETURN_MS;
+  const asked = Number(process.env.SIDECO_PAGE_RETURN_MS);
+  return Number.isFinite(asked) && asked >= 0 && process.env.SIDECO_PAGE_RETURN_MS ? asked : PAGE_RETURN_MS;
 }
 
 /** Whether a page shows the board, looking again for up to `withinMs`: time for one left open to come back. */
@@ -445,7 +445,7 @@ function formatsText(): string {
 }
 
 function boardsText(ws: Workspace): string {
-  if (ws.boards.length === 0) return 'no board yet; create one with `vico board new "Title"`';
+  if (ws.boards.length === 0) return 'no board yet; create one with `sideco board new "Title"`';
   return ws.boards.map((b) => `${b.id}  ${b.format}  ${b.elements.length} elements  "${b.title}"`).join("\n");
 }
 
@@ -459,10 +459,10 @@ async function statusText(root: string, ws: Workspace): Promise<string> {
   const page =
     watching > 0
       ? `open in ${watching} window${watching === 1 ? "" : "s"}`
-      : "not open (open it with `vico open`)";
+      : "not open (open it with `sideco open`)";
   return [
     `workspace  ${root}`,
-    `server     ${typeof server === "string" ? server : server ? server.url : "not running (start it with `vico open`)"}`,
+    `server     ${typeof server === "string" ? server : server ? server.url : "not running (start it with `sideco open`)"}`,
     `page       ${page}`,
     `journal    seq ${ws.seq}, ${ws.boards.length} board${ws.boards.length === 1 ? "" : "s"}, ${ws.sessions.length} session${ws.sessions.length === 1 ? "" : "s"}`,
     ...(session ? [`session    ${session.id} is ${session.status}`] : []),

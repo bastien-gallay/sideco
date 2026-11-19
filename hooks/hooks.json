@@ -1,12 +1,12 @@
 {
-  "description": "Vico: mirrors the session on the board (prompts, tool calls, tasks) and brings the human's board edits back into Claude's context.",
+  "description": "Sideco: mirrors the session on the board (prompts, tool calls, tasks) and brings the human's board edits back into Claude's context.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/sideco\" hook",
             "timeout": 15
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/sideco\" hook",
             "timeout": 5
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/sideco\" hook",
             "timeout": 5
           }
         ]
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/sideco\" hook",
             "timeout": 5
           }
         ]
@@ -50,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/sideco\" hook",
             "timeout": 5
           }
         ]
@@ -61,7 +61,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/sideco\" hook",
             "timeout": 5
           }
         ]
@@ -72,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/sideco\" hook",
             "timeout": 5
           }
         ]
@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/sideco\" hook",
             "timeout": 5
           }
         ]
@@ -94,12 +94,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/sideco\" hook",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook --rewake",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/sideco\" hook --rewake",
             "asyncRewake": true,
             "timeout": 43500
           }
@@ -111,7 +111,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/vico\" hook",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/sideco\" hook",
             "timeout": 5
           }
         ]

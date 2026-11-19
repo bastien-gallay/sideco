@@ -28,10 +28,10 @@ describe("the notice that Claude waits", () => {
 
   test("the tab names the wait first, then the board", () => {
     expect(tabTitle(waitsNotice(WAITING, false, 0), "Backlog")).toBe(
-      "● Claude waits for you · Backlog · Vico",
+      "● Claude waits for you · Backlog · Sideco",
     );
-    expect(tabTitle(undefined, "Backlog")).toBe("Backlog · Vico");
-    expect(tabTitle(undefined, undefined)).toBe("Vico");
+    expect(tabTitle(undefined, "Backlog")).toBe("Backlog · Sideco");
+    expect(tabTitle(undefined, undefined)).toBe("Sideco");
   });
 
   test("in French too", () => {

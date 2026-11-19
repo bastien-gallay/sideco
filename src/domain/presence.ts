@@ -3,7 +3,7 @@
  * The server writes it, the page reads it: one shape for both.
  */
 export interface Presence {
-  /** Agent sessions blocked on `vico wait` right now. */
+  /** Agent sessions blocked on `sideco wait` right now. */
   listening: number;
   /** This run of the companion. A page that meets another run starts over from the journal. */
   run: string;

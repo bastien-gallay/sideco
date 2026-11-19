@@ -1,5 +1,5 @@
 {
-  "name": "vico",
+  "name": "sideco",
   "version": "0.1.0",
   "description": "Visual companion for Claude Code: a live modelling board, in a browser window beside the terminal, that the developer and the agent edit together.",
   "license": "MIT",

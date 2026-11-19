@@ -15,11 +15,11 @@ let hub: Hub;
 let handle: Handler;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "vico-http-"));
+  dir = mkdtempSync(join(tmpdir(), "sideco-http-"));
   hub = new Hub(memoryJournal(), () => new Date(T0));
   handle = handler({
     hub,
-    page: { html: "<!doctype html><title>Vico</title>", build: BUILD },
+    page: { html: "<!doctype html><title>Sideco</title>", build: BUILD },
     root: "/repo",
     siteDir: join(dir, "site"),
   });
@@ -75,16 +75,16 @@ describe("reading", () => {
   test("the page, the health note and the workspace", async () => {
     const page = await get("/");
     expect(page.headers.get("content-type")).toBe("text/html; charset=utf-8");
-    expect(await page.text()).toContain("<title>Vico</title>");
+    expect(await page.text()).toContain("<title>Sideco</title>");
     expect(await (await get("/health")).json()).toEqual({
       ok: true,
-      name: "vico",
+      name: "sideco",
       workspace: "/repo",
       seq: 0,
       listening: 0,
       watching: 0,
     });
-    // A page following the journal is a watcher: `vico open` need not open another.
+    // A page following the journal is a watcher: `sideco open` need not open another.
     const stream = frames(await get("/api/events"));
     await stream.next();
     expect(await (await get("/health")).json()).toMatchObject({ watching: 1 });

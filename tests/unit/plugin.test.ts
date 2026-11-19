@@ -40,13 +40,13 @@ describe("the manifest", () => {
   test("names the plugin and carries the package's version", () => {
     const manifest = JSON.parse(read(".claude-plugin/plugin.json")) as Record<string, unknown>;
     const pkg = JSON.parse(read("package.json")) as { version: string };
-    expect(manifest.name).toBe("vico");
+    expect(manifest.name).toBe("sideco");
     expect(manifest.version).toBe(pkg.version);
     expect(typeof manifest.description).toBe("string");
   });
 
   test("the launcher it points hooks at exists and is executable", () => {
-    expect(statSync(join(ROOT, "bin", "vico")).mode & 0o111).not.toBe(0);
+    expect(statSync(join(ROOT, "bin", "sideco")).mode & 0o111).not.toBe(0);
   });
 });
 
@@ -58,7 +58,7 @@ describe("hooks/hooks.json", () => {
   test("every hook is the bundled launcher, quoted against spaces in the plugin path", () => {
     for (const [, hook] of entries(hooksFile())) {
       expect(hook.type).toBe("command");
-      expect(hook.command).toMatch(/^"\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/vico" hook( --rewake)?$/);
+      expect(hook.command).toMatch(/^"\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/sideco" hook( --rewake)?$/);
     }
   });
 
@@ -87,7 +87,7 @@ describe("every registered event leaves a trace in the journal", () => {
   let server: Server;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "vico-plugin-"));
+    dir = mkdtempSync(join(tmpdir(), "sideco-plugin-"));
     hub = new Hub(openJournal(dir));
     const handle = handler({ hub, page: { html: "", build: "" }, root: "/repo", siteDir: join(dir, "site") });
     server = {
@@ -124,23 +124,30 @@ function payload(event: string): Record<string, unknown> {
 }
 
 describe("the skill", () => {
-  const skill = (): string => read("skills/vico/SKILL.md");
+  const skill = (): string => read("skills/sideco/SKILL.md");
 
   test("has the frontmatter Claude Code reads to decide when to load it", () => {
     const front = /^---\n([\s\S]*?)\n---\n/.exec(skill())?.[1] ?? "";
-    expect(front).toMatch(/^name: vico$/m);
+    expect(front).toMatch(/^name: sideco$/m);
     expect(/^description: (.+)$/m.exec(front)?.[1]?.length ?? 0).toBeGreaterThan(80);
   });
 
   test("teaches only commands that exist", () => {
-    const taught = new Set([...skill().matchAll(/\bvico ([a-z][a-z-]*)/g)].map((match) => match[1] ?? ""));
+    const taught = new Set([...skill().matchAll(/\bsideco ([a-z][a-z-]*)/g)].map((match) => match[1] ?? ""));
     expect(taught.size).toBeGreaterThan(10);
     const known = new Set([...BOARD_VERBS, ...CLI_VERBS]);
     expect([...taught].filter((verb) => !known.has(verb))).toEqual([]);
   });
 
   test("teaches the loop: read before writing, pass the turn, wait for the human", () => {
-    for (const verb of ["vico show", "vico apply", "vico pass", "vico wait", "vico changes", "vico focus"])
+    for (const verb of [
+      "sideco show",
+      "sideco apply",
+      "sideco pass",
+      "sideco wait",
+      "sideco changes",
+      "sideco focus",
+    ])
       expect(skill()).toContain(verb);
   });
 
@@ -161,20 +168,20 @@ test("the repository is its own marketplace, so the plugin installs without --pl
     owner: { name: string };
     plugins: { name: string; source: string; version: string; description: string }[];
   };
-  expect(market.name).toBe("vico");
+  expect(market.name).toBe("sideco");
   expect(market.owner.name).not.toBe("");
   expect(market.plugins).toHaveLength(1);
   expect(market.plugins[0]).toMatchObject({ name: plugin.name, source: "./", version: plugin.version });
-  expect(read("README.md")).toContain("claude plugin install vico@vico");
+  expect(read("README.md")).toContain("claude plugin install sideco@sideco");
 });
 
 test("the skill has the agent open the board itself, before it writes", () => {
-  const loop = read("skills/vico/SKILL.md").split("## The loop")[1]?.split("## Rules")[0] ?? "";
-  expect(loop.indexOf("vico open")).toBeGreaterThan(-1);
-  expect(loop.indexOf("vico open")).toBeLessThan(loop.indexOf("vico apply"));
+  const loop = read("skills/sideco/SKILL.md").split("## The loop")[1]?.split("## Rules")[0] ?? "";
+  expect(loop.indexOf("sideco open")).toBeGreaterThan(-1);
+  expect(loop.indexOf("sideco open")).toBeLessThan(loop.indexOf("sideco apply"));
 });
 
 test("the skill names the hand-over button as the page shows it, in every language", () => {
-  const skill = read("skills/vico/SKILL.md");
+  const skill = read("skills/sideco/SKILL.md");
   for (const locale of LOCALES) expect(skill).toContain(`"${MESSAGES[locale].handOver}"`);
 });

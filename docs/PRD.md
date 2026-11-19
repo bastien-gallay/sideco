@@ -1,6 +1,6 @@
-# Vico, compagnon visuel de Claude Code : PRD
+# Sideco, compagnon visuel de Claude Code : PRD
 
-Vico est une page web locale, ouverte à côté du terminal, où un développeur et son agent construisent ensemble un modèle visuel (event storming, flux, kanban…) pendant que l'agent travaille. Tout ce qui s'y passe est un événement dans un journal : le tableau, l'historique et les exports en sont des projections.
+Sideco est une page web locale, ouverte à côté du terminal, où un développeur et son agent construisent ensemble un modèle visuel (event storming, flux, kanban…) pendant que l'agent travaille. Tout ce qui s'y passe est un événement dans un journal : le tableau, l'historique et les exports en sont des projections.
 
 Rédigé le 2026-11-17. Niveau de preuve : ✅ lu sur une source primaire, ⚠️ source secondaire ou non testé, ❓ non vérifié.
 
@@ -10,7 +10,7 @@ Rédigé le 2026-11-17. Niveau de preuve : ✅ lu sur une source primaire, ⚠�
 | --- | --- | --- | --- |
 | D1 | Surface partagée | − canevas libre en x/y, façon Miro | + modèle sémantique (type, étape, colonne, lien), mise en page calculée |
 | D2 | Source de vérité | − fichier d'état réécrit | + journal en ajout seul, tableau = projection |
-| D3 | Agent → page | − serveur MCP dès le MVP | + CLI `vico` et hooks Claude Code |
+| D3 | Agent → page | − serveur MCP dès le MVP | + CLI `sideco` et hooks Claude Code |
 | D4 | Page → agent | − la page écrit dans le terminal | + contexte injecté par hook, attente bloquante, réveil |
 | D5 | Ateliers | − un moteur de rendu par atelier | + un atelier = des données, sur 3 mises en page |
 | D6 | Stack | − framework front, base de données | + Bun, TypeScript, zéro dépendance à l'exécution |
@@ -30,15 +30,15 @@ Rédigé le 2026-11-17. Niveau de preuve : ✅ lu sur une source primaire, ⚠�
 
 **Différence** : c'est l'interaction quotidienne du développeur avec son agent qui est représentée, pas un atelier à part.
 
-**Complément, pas remplacement** : Vico ne remplace pas la CLI de l'agent. La conversation reste dans le terminal ; la page est la surface de modélisation posée à côté.
+**Complément, pas remplacement** : Sideco ne remplace pas la CLI de l'agent. La conversation reste dans le terminal ; la page est la surface de modélisation posée à côté.
 
 | Où | Ce qui s'y fait |
 | --- | --- |
 | Terminal (Claude Code) | Prompts, réponses, permissions, code : inchangé |
-| Page Vico | Modifier le tableau, épingler une note, passer la main ; suivre la session en lecture seule |
+| Page Sideco | Modifier le tableau, épingler une note, passer la main ; suivre la session en lecture seule |
 | ❌ Hors périmètre | Saisir un prompt dans la page, piloter le terminal, relire tout le transcript |
 
-| Besoin exprimé | Réponse de Vico | MVP |
+| Besoin exprimé | Réponse de Sideco | MVP |
 | --- | --- | --- |
 | Base commune visuelle, comme en atelier | Tableau partagé, chacun pose et déplace des post-its, auteur marqué sur chacun | ✅ |
 | Un problème à la fois | Un tableau = une question ; focus posé par l'agent avec sa raison | ✅ |
@@ -48,13 +48,13 @@ Rédigé le 2026-11-17. Niveau de preuve : ✅ lu sur une source primaire, ⚠�
 | Historiser, sur plusieurs sessions | Journal persistant, curseur d'historique | ✅ |
 | Éviter le coût de Miro ou FigJam | Local, open source, aucun compte | ✅ |
 | Exporter en document de conception | Markdown + Mermaid, HTML, SVG, JSON | ✅ |
-| Publier et servir | `vico publish` : site statique | ✅ |
+| Publier et servir | `sideco publish` : site statique | ✅ |
 
 ## 2. Ce que l'exploration apporte
 
 **Reprendre** les mécanismes, pas le code : chacun des cinq projets couvre une face du besoin, aucun la boucle complète.
 
-| Projet | Ce qu'il fait bien | Repris dans Vico | Laissé |
+| Projet | Ce qu'il fait bien | Repris dans Sideco | Laissé |
 | --- | --- | --- | --- |
 | show-me | Choisir le visuel d'après le contenu ; repères stables `D1…Dn` ; marqueurs en tête | Identifiants courts partagés (`E1`, `C2`), signe en plus de la couleur, hook `UserPromptSubmit` | Matrice des cibles Jira, Slack |
 | truepath | Processus en couches, déterministe, zéro dépendance | Mise en page de graphe portée de `layout.py` | Oracle, grille de cas, HTML figé |
@@ -77,7 +77,7 @@ Sources : rapports d'exploration du 2026-11-17 sur `oss/skills/show-me`, `oss/sk
 | Proches | mcp_excalidraw (MIT ✅), kamiazya/whiteboard (Apache-2.0 ✅), Inkwire (⚠️ fiche d'annuaire seulement), superpowers « visual companion » ✅ | L'agent lit à la demande, rien n'est poussé ; ni ateliers, ni export de conception |
 | Event storming | Qlerify (21 à 33 $/utilisateur/mois ✅), EventCatalog, Context Mapper | Payant ou documentaire, pas de boucle avec l'agent de code |
 
-⚠️ Collision de nom : le skill brainstorming de superpowers s'appelle déjà « visual companion ». D'où « Vico ».
+⚠️ Collision de nom : le skill brainstorming de superpowers s'appelle déjà « visual companion ». D'où « Sideco ».
 
 Sources : miro.com/pricing, figma.com/pricing, tldraw.dev/blog/license-update-for-the-tldraw-sdk, github.com/excalidraw/excalidraw-mcp, github.com/yctimlin/mcp_excalidraw, github.com/kamiazya/whiteboard, github.com/obra/superpowers, qlerify.com/pricing, code.claude.com/docs/en/artifacts.md, consultées le 2026-11-17.
 
@@ -115,7 +115,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 
 ### 5.1 Parcours de référence
 
-1. Le développeur lance `vico open` : la page s'ouvre, vide, et propose six ateliers.
+1. Le développeur lance `sideco open` : la page s'ouvre, vide, et propose six ateliers.
 2. Il demande à Claude un event storming du passage de commande.
 3. Claude crée le tableau en un lot ; les post-its apparaissent pendant qu'il continue à lire le code.
 4. Le développeur renomme un événement, en déplace un autre, épingle une note, puis clique « Hand over to Claude ».
@@ -130,7 +130,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F2 | Ajouter, renommer, détailler, déplacer, relier, supprimer un élément, des deux côtés | ✅ |
 | F3 | Mise en page calculée ; aucun x/y stocké | ✅ |
 | F4 | Lot atomique : tout ou rien | ✅ |
-| F5 | Lire un tableau en texte compact (`vico show`) | ✅ |
+| F5 | Lire un tableau en texte compact (`sideco show`) | ✅ |
 | F6 | Résumé net des changements humains depuis la dernière lecture de l'agent | ✅ |
 | F7 | Passer la main ; attente bloquante côté agent | ✅ |
 | F8 | Notes adressées, à résoudre | ✅ |
@@ -142,9 +142,9 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F14 | Publication en site statique | ✅ |
 | F15 | Ateliers définis par la communauté dans des fichiers | ❌ plus tard |
 | F16 | Plusieurs humains ou plusieurs agents sur un même tableau | ❌ plus tard |
-| F17 | Page, dessin et exports en anglais par défaut, en français au choix du lecteur (sélecteur de la page, `--lang`, `VICO_LANG`) ; le texte lu par l'agent reste en anglais | ✅ |
+| F17 | Page, dessin et exports en anglais par défaut, en français au choix du lecteur (sélecteur de la page, `--lang`, `SIDECO_LANG`) ; le texte lu par l'agent reste en anglais | ✅ |
 | F18 | Annuler et rétablir ses propres gestes dans la page (`Undo`, `Redo`, raccourcis), tableau supprimé compris ; l'agent n'est informé que du résultat net | ✅ |
-| F19 | Discuter par notes : répondre dans le fil d'une note, depuis la page ou par `vico reply` ; chaque fil nomme sa carte, la carte montre ses fils, et le fil dit qui est attendu | ✅ |
+| F19 | Discuter par notes : répondre dans le fil d'une note, depuis la page ou par `sideco reply` ; chaque fil nomme sa carte, la carte montre ses fils, et le fil dit qui est attendu | ✅ |
 | F20 | Ajouter là où l'on pointe : un « + » apparaît au survol d'une case ou d'une colonne, un par type possible, et la carte se pose à cet endroit (S1 du story map du 2026-11-18) | ✅ |
 | F21 | Cartes à la hauteur de leur libellé, de 48 à 88 px ; piles, rangées et zones de dépôt suivent (S22) | ✅ |
 | F22 | Une commande qui ne change rien (même libellé, même détail, même titre) n'enregistre rien ; rouvrir une carte dans la page sans la modifier n'envoie rien (S5) | ✅ |
@@ -152,13 +152,13 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F24 | Marquer ce que Claude n'a pas encore lu : une pastille sur chaque carte et un mot sous chaque fil que nomme le résumé en attente, jusqu'à sa remise à la session ; jamais dans l'historique (S4) | ✅ |
 | F25 | Atelier Impact / Effort : la matrice 2 × 2 dépliée en quatre colonnes (gains rapides, gros paris, remplissage, à éviter), chacune disant sous son nom l'impact et l'effort qu'elle représente (T29, S24) | ✅ |
 | F26 | Insérer une colonne depuis la page : dans une frise, un « + » apparaît au survol de la frontière entre deux étapes, et les étapes suivantes se décalent (T41, S32) | ✅ ; ⚠️ ne s'annule pas encore, souris seulement |
-| F27 | Marquer une carte comme faite, depuis la page (barre de la carte, touche `d`) ou par Claude (`vico done`, `vico undone`) : coche et libellé barré, annulable, dit à l'agent, gardé par l'export en modèle (T27, S37) | ✅ ; ⚠️ les exports Markdown, Mermaid et HTML ne le montrent pas |
+| F27 | Marquer une carte comme faite, depuis la page (barre de la carte, touche `d`) ou par Claude (`sideco done`, `sideco undone`) : coche et libellé barré, annulable, dit à l'agent, gardé par l'export en modèle (T27, S37) | ✅ ; ⚠️ les exports Markdown, Mermaid et HTML ne le montrent pas |
 | F28 | Impact / Effort en vrai plan 2 × 2 : les quatre couloirs deviennent quatre cases (impact fort en haut, effort faible à gauche), deux cartes de front par case, les deux axes nommés à côté ; les données ne changent pas (T47, S44) | ✅ ; ⚠️ pas de placement fin dans une case, et la grille n'est pas encore offerte aux autres ateliers |
-| F29 | Une colonne de kanban, de rétro ou d'Impact / Effort se renomme pour un tableau : `vico lane LANE "Nom"`. Le nom vaut pour ce tableau, dans toutes les langues et tous les exports ; il s'annule. Dans la page : double-clic sur le nom de la colonne | Livré |
-| F30 | Une colonne d'une frise se déplace d'un bloc, ses cartes avec elle : `vico move-col DE VERS`. Les colonnes traversées se resserrent ; un seul Undo la remet | Livré (commande) ; le glisser dans la page reste à faire |
-| F31 | Plusieurs sessions dans un même projet : chacune ne reçoit que les changements et les passages de main des tableaux qu'elle suit. Elle suit un tableau en y écrivant, en le lisant (`vico show`) ou en le disant (`vico follow`) ; `vico unfollow` le lâche. Un tableau qu'aucune session en cours ne suit est remis à toutes | Livré ; cible : un passage de main adressé à une session, visible dans la page |
-| F32 | Quand Claude a passé la main, l'en-tête le dit par une pastille, quel que soit le tableau à l'écran, et le titre de l'onglet commence par « ● Claude t'attend ». Si une session écoute la réponse (`vico wait`), la pastille et l'onglet disent « Claude est bloqué sur toi », dans la couleur de ce qui arrête le travail | Livré ; une notification du navigateur reste à étudier (S107) |
-| F33 | L'agent lit une partie d'un tableau : `vico show BOARD --lane L`, `--col N`, `--brief` (sans les détails), `--notes` (les fils ouverts seuls), et `vico show ID` pour une carte avec sa place, ses liens et ses fils. La première ligne nomme la partie lue, pour qu'elle ne passe pas pour le tout | Livré |
+| F29 | Une colonne de kanban, de rétro ou d'Impact / Effort se renomme pour un tableau : `sideco lane LANE "Nom"`. Le nom vaut pour ce tableau, dans toutes les langues et tous les exports ; il s'annule. Dans la page : double-clic sur le nom de la colonne | Livré |
+| F30 | Une colonne d'une frise se déplace d'un bloc, ses cartes avec elle : `sideco move-col DE VERS`. Les colonnes traversées se resserrent ; un seul Undo la remet | Livré (commande) ; le glisser dans la page reste à faire |
+| F31 | Plusieurs sessions dans un même projet : chacune ne reçoit que les changements et les passages de main des tableaux qu'elle suit. Elle suit un tableau en y écrivant, en le lisant (`sideco show`) ou en le disant (`sideco follow`) ; `sideco unfollow` le lâche. Un tableau qu'aucune session en cours ne suit est remis à toutes | Livré ; cible : un passage de main adressé à une session, visible dans la page |
+| F32 | Quand Claude a passé la main, l'en-tête le dit par une pastille, quel que soit le tableau à l'écran, et le titre de l'onglet commence par « ● Claude t'attend ». Si une session écoute la réponse (`sideco wait`), la pastille et l'onglet disent « Claude est bloqué sur toi », dans la couleur de ce qui arrête le travail | Livré ; une notification du navigateur reste à étudier (S107) |
+| F33 | L'agent lit une partie d'un tableau : `sideco show BOARD --lane L`, `--col N`, `--brief` (sans les détails), `--notes` (les fils ouverts seuls), et `sideco show ID` pour une carte avec sa place, ses liens et ses fils. La première ligne nomme la partie lue, pour qu'elle ne passe pas pour le tout | Livré |
 | F34 | L'éditeur d'une carte reste ouvert, avec son texte et le curseur, quand Claude écrit sur le tableau pendant la saisie ; ce que l'humain valide l'emporte. Si la carte est supprimée entre-temps, l'éditeur se ferme et le texte saisi est rendu dans un message | Livré |
 
 ### 5.3 Exigences de qualité
@@ -182,14 +182,14 @@ flowchart LR
   subgraph terminal["Terminal"]
     CC["Claude Code"]
     HK["hooks du plugin"]
-    CLI["CLI vico"]
+    CLI["CLI sideco"]
   end
   subgraph serveur["Serveur local (127.0.0.1)"]
     HTTP["HTTP : commandes, SSE, attente"]
     HUB["hub : écrivain unique"]
     DOM["domaine : decide, apply"]
   end
-  subgraph disque[".vico/"]
+  subgraph disque[".sideco/"]
     BJ[("boards.jsonl")]
     SJ[("sessions.jsonl")]
     SITE["site/ publié"]
@@ -216,7 +216,7 @@ Le même code de domaine tourne dans le serveur, la CLI et la page : les trois r
 | --- | --- | --- |
 | `src/domain` | Événements, commandes, décision, projection, mises en page, exports, capture. Pur : ni E/S ni horloge | rien |
 | `src/server` | Journal sur disque, hub, HTTP | domaine |
-| `src/cli` | Commandes `vico`, point d'entrée des hooks | domaine, serveur (démarrage) |
+| `src/cli` | Commandes `sideco`, point d'entrée des hooks | domaine, serveur (démarrage) |
 | `src/web` | Page : peinture SVG, gestes, fil de session | domaine |
 
 ### 6.2 Modèle d'événements
@@ -239,11 +239,11 @@ sequenceDiagram
   participant H as Humain (page)
   participant S as Serveur
   participant A as Agent (terminal)
-  A->>S: vico apply (lot de commandes)
+  A->>S: sideco apply (lot de commandes)
   S-->>H: SSE, les post-its apparaissent
   H->>S: renomme E3, note sur E5
   H->>S: Passer la main
-  alt l'agent attend (vico wait)
+  alt l'agent attend (sideco wait)
     S-->>A: réponse de l'attente, résumé des changements
   else l'agent travaille
     S-->>A: additionalContext au prochain PostToolUse
@@ -258,7 +258,7 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | Au prochain message | Toujours | `UserPromptSubmit` → `additionalContext` | ✅ documenté |
 | En cours de tour | Après « Passer la main » | `PostToolUse` → `additionalContext` | ✅ documenté |
-| Attente explicite | L'agent lance `vico wait` | Commande bloquante, attente longue HTTP | ✅ ne dépend pas de Claude Code |
+| Attente explicite | L'agent lance `sideco wait` | Commande bloquante, attente longue HTTP | ✅ ne dépend pas de Claude Code |
 | Au repos | Après « Passer la main » | Hook `Stop` avec `asyncRewake`, code de sortie 2 | ⚠️ documenté, mais les événements autorisés ne sont pas listés : à tester en session réelle |
 
 Source : code.claude.com/docs/en/hooks, lue le 2026-11-17 (limite de 10 000 caractères par `additionalContext` ✅).
@@ -296,7 +296,7 @@ Un atelier déclare ses types (libellé, préfixe d'identifiant, couleur, forme)
 
 Hors MVP, assumé : dessin libre, images, curseurs multiples, comptes, synchronisation distante.
 
-**Traiter** « Ensuite » et « Manques connus » avant toute nouvelle idée : priorité donnée le 2026-11-18. Ordre arrêté le même jour, du prochain au dernier : L1, L6, B5, L2, B7, L3, B3, B1, B4, B2, L4, B6. B8 et B9, ajoutés le 2026-11-18, sont en fin de liste, pas encore ordonnés. Le kanban « backlog » de Vico porte l'ordre courant ; il n'est pas versionné pour l'instant.
+**Traiter** « Ensuite » et « Manques connus » avant toute nouvelle idée : priorité donnée le 2026-11-18. Ordre arrêté le même jour, du prochain au dernier : L1, L6, B5, L2, B7, L3, B3, B1, B4, B2, L4, B6. B8 et B9, ajoutés le 2026-11-18, sont en fin de liste, pas encore ordonnés. Le kanban « backlog » de Sideco porte l'ordre courant ; il n'est pas versionné pour l'instant.
 
 | Repère | Ensuite |
 | --- | --- |
@@ -308,15 +308,15 @@ Hors MVP, assumé : dessin libre, images, curseurs multiples, comptes, synchroni
 | B6 | Binaire unique |
 | B7 | Diff « depuis ma dernière visite » |
 | B8 | Annulation sans surprise : quand le geste à annuler a été modifié ailleurs que sur la page ouverte, la page demande confirmation au lieu de passer au geste précédent |
-| B9 | `vico undo` pour Claude, avec des précautions ; modèle à étudier : `git revert` (geste nommé, effet montré avant d'écrire, refus en cas de conflit) |
+| B9 | `sideco undo` pour Claude, avec des précautions ; modèle à étudier : `git revert` (geste nommé, effet montré avant d'écrire, refus en cas de conflit) |
 
 | Repère | Manque connu | Conséquence aujourd'hui |
 | --- | --- | --- |
 | L1 | ✅ Levé le 2026-11-18 : bouton `Remove` à côté du choix du tableau, avec confirmation | ✅ Rien : `Undo` restaure le tableau supprimé (B5) |
 | L2 | Seule la session la plus récente est affichée | Deux sessions Claude Code dans le même projet : une seule est suivie |
-| L3 | Le compagnon reste en marche après la fin de la session | L'arrêter avec `vico stop` |
+| L3 | Le compagnon reste en marche après la fin de la session | L'arrêter avec `sideco stop` |
 | L4 | Deux branches qui écrivent dans `boards.jsonl` | ⚠️ Conflit de fusion probable, non essayé ; vérification : fusionner deux branches qui ont chacune ajouté des événements |
-| L6 | Premier `vico open` d'un projet sous bac à sable | ✅ Observé le 2026-11-18 avec `allowLocalBinding` : espace de travail créé, compagnon démarré, écritures acceptées ; seule l'ouverture de la page échoue, avec la consigne de relancer hors bac à sable. ⚠️ Bac à sable par défaut (sans `allowLocalBinding`) : toujours non observé, refus attendu avec `this shell may not start the companion` (test unitaire seulement) ; vérification : retirer le réglage le temps d'un essai |
+| L6 | Premier `sideco open` d'un projet sous bac à sable | ✅ Observé le 2026-11-18 avec `allowLocalBinding` : espace de travail créé, compagnon démarré, écritures acceptées ; seule l'ouverture de la page échoue, avec la consigne de relancer hors bac à sable. ⚠️ Bac à sable par défaut (sans `allowLocalBinding`) : toujours non observé, refus attendu avec `this shell may not start the companion` (test unitaire seulement) ; vérification : retirer le réglage le temps d'un essai |
 
 <sub>Source : backlog présenté en session le 2026-11-18 ; L1 à L3 : `src/web/main.ts`, `src/domain/workspace.ts` (`latestSession`), `src/cli/main.ts` (`stop`) ; L5 n'est pas une tâche mais un risque : voir R2.</sub>
 
@@ -325,14 +325,14 @@ Hors MVP, assumé : dessin libre, images, curseurs multiples, comptes, synchroni
 | Repère | Risque | Parade |
 | --- | --- | --- |
 | R1 | ✅ `asyncRewake` sur `Stop` réveille bien une session interactive au repos (essai réel du 2026-11-17, Claude Code 2.1.326). Revers constaté : un hook en attente empêche `claude -p` de se terminer | Le hook n'attend que si une page est ouverte, et jamais dans une session sans interface |
-| R1b | Le client HTTP de Bun abandonne une requête restée muette (`TimeoutError` à 360 s, mesuré le 2026-11-18 avec Bun 1.4.4) : `vico wait` au-delà de 6 min plantait, et le hook de réveil s'éteignait sans rien dire après 6 min de repos | L'écoute se fait par requêtes de 4 min enchaînées (`listen`) ; ⚠️ réveil après plus de 6 min de repos à réessayer en session réelle |
+| R1b | Le client HTTP de Bun abandonne une requête restée muette (`TimeoutError` à 360 s, mesuré le 2026-11-18 avec Bun 1.4.4) : `sideco wait` au-delà de 6 min plantait, et le hook de réveil s'éteignait sans rien dire après 6 min de repos | L'écoute se fait par requêtes de 4 min enchaînées (`listen`) ; ⚠️ réveil après plus de 6 min de repos à réessayer en session réelle |
 | R1c | Essai du 2026-11-18 : un passage de main 4 h 10 après le dernier tour n'a réveillé personne, l'écoute ne durait que 25 min. La doc de Claude Code ne donne pas de plafond au `timeout` d'un hook, et ne dit pas ce que devient un hook parqué à la fermeture d'une session interactive ni à la compaction | Écoute de 12 h (`REWAKE_WAIT_MS`, `timeout` du hook à 43 500 s) ; hook `SessionEnd` qui libère l'écoute (20 ms mesurés, pour 1,5 s accordée à un plugin) ; ⚠️ à observer en session réelle : tenue sur plusieurs heures, et effet d'une compaction |
 | R2 | ⚠️ Le schéma de `TodoWrite` n'est pas documenté dans la page des hooks : le panneau de tâches peut se vider sans prévenir à une mise à jour de Claude Code (`src/cli/hook.ts`) | Lecture défensive ; `TaskCreated` et `TaskCompleted`, documentés, en second |
 | R3 | Le contenu du tableau sert de vecteur d'injection | Boucle locale, origine vérifiée, cadrage du texte injecté |
 | R4 | Le journal grossit (une ligne par outil lancé) | Résumés courts, sorties d'outil jamais stockées ; compaction plus tard |
 | R5 | `boards.jsonl` en conflit de fusion entre deux développeurs | Non traité au MVP ; à résoudre avant F16 |
 | R6 | L'agent n'utilise pas le tableau spontanément | Skill dédié ; rappel au démarrage de session par le hook |
-| R7 | Le bac à sable de Bash bloque les connexions locales : les écritures `vico` de l'agent échouent (constaté le 2026-11-17) | Message d'erreur explicite, consigne dans le skill ; ✅ `sandbox.network.allowLocalBinding` essayé le 2026-11-18 (démarrage, écriture, arrêt depuis le bac à sable) ; le compagnon ouvre lui-même la page quand le shell ne le peut pas (`POST /api/open`) ; ⚠️ `excludedCommands` non essayé |
+| R7 | Le bac à sable de Bash bloque les connexions locales : les écritures `sideco` de l'agent échouent (constaté le 2026-11-17) | Message d'erreur explicite, consigne dans le skill ; ✅ `sandbox.network.allowLocalBinding` essayé le 2026-11-18 (démarrage, écriture, arrêt depuis le bac à sable) ; le compagnon ouvre lui-même la page quand le shell ne le peut pas (`POST /api/open`) ; ⚠️ `excludedCommands` non essayé |
 
 ## 10. Mesures de succès
 

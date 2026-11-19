@@ -158,7 +158,7 @@ describe("markdown", () => {
       true,
     );
     expect(md).toContain("```mermaid\n%% lossy");
-    expect(md).toContain(`Source: Vico journal, board \`commande\`, seq ${t.seq}, exported on 2026-11-17.`);
+    expect(md).toContain(`Source: Sideco journal, board \`commande\`, seq ${t.seq}, exported on 2026-11-17.`);
     expect(md).toContain("| Id | Type | Label | Step | Detail | By |");
     expect(md).toContain("| E1 | Event | Commande passée | 1 |  | agent |");
     expect(md).toContain("## Links\n\n| From | To | Label |");
@@ -171,7 +171,9 @@ describe("markdown", () => {
   test("speaks French when the export asks for it", () => {
     const fr = toMarkdown(t.board(), { ...META, locale: "fr" });
     expect(fr).toContain("> **Event Storming** — Que se passe-t-il dans le domaine");
-    expect(fr).toContain(`Source : journal Vico, tableau \`commande\`, seq ${t.seq}, exporté le 2026-11-17.`);
+    expect(fr).toContain(
+      `Source : journal Sideco, tableau \`commande\`, seq ${t.seq}, exporté le 2026-11-17.`,
+    );
     expect(fr).toContain("| Id | Type | Libellé | Étape | Détail | Par |");
     expect(fr).toContain("| E1 | Événement | Commande passée | 1 |  | agent |");
     expect(fr).toContain("## Liens\n\n| De | Vers | Libellé |");
@@ -213,11 +215,11 @@ describe("html", () => {
     expect(en).toContain('<html lang="en">');
     expect(en).toContain("<h2>Elements</h2>");
     expect(en).toContain("<th>Label</th><th>Step</th><th>Detail</th><th>By</th>");
-    expect(en).toContain("Source: Vico journal, board <code>commande</code>");
+    expect(en).toContain("Source: Sideco journal, board <code>commande</code>");
     const fr = toHtml(board, { ...META, locale: "fr" });
     expect(fr).toContain('<html lang="fr">');
     expect(fr).toContain("<h2>Éléments</h2>");
-    expect(fr).toContain("Source : journal Vico, tableau <code>commande</code>");
+    expect(fr).toContain("Source : journal Sideco, tableau <code>commande</code>");
     // The drawing inside follows.
     expect(en).toContain(">Event</text>");
     expect(fr).toContain(">Événement</text>");

@@ -1,6 +1,6 @@
 /**
  * Board to one self-contained HTML file: the drawing as inline SVG, the facts as
- * tables, no script and no network. This is what `vico publish` serves.
+ * tables, no script and no network. This is what `sideco publish` serves.
  */
 import { findFormat, laneName } from "../formats.ts";
 import { DEFAULT_LOCALE, WORDS } from "../i18n.ts";
@@ -11,25 +11,25 @@ import type { ExportMeta } from "./markdown.ts";
 import { labelSaid } from "./mermaid.ts";
 
 export const PAGE_STYLE = `
-:root { --vico-bg: #FFFFFF; --vico-ink: #1F2328; --vico-muted: #59636E; --vico-faint: #8C959F; --vico-rule: #E3E6EA; --vico-lane: #F3F4F6; --vico-conn: #6E7781; }
+:root { --sideco-bg: #FFFFFF; --sideco-ink: #1F2328; --sideco-muted: #59636E; --sideco-faint: #8C959F; --sideco-rule: #E3E6EA; --sideco-lane: #F3F4F6; --sideco-conn: #6E7781; }
 @media (prefers-color-scheme: dark) {
-  :root { --vico-bg: #15181C; --vico-ink: #E6EAEF; --vico-muted: #A3ADB8; --vico-faint: #7A8490; --vico-rule: #2B3138; --vico-lane: #1D2126; --vico-conn: #8C959F; }
+  :root { --sideco-bg: #15181C; --sideco-ink: #E6EAEF; --sideco-muted: #A3ADB8; --sideco-faint: #7A8490; --sideco-rule: #2B3138; --sideco-lane: #1D2126; --sideco-conn: #8C959F; }
 }
 * { box-sizing: border-box; }
-body { margin: 0; padding: 32px 16px 64px; background: var(--vico-bg); color: var(--vico-ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { margin: 0; padding: 32px 16px 64px; background: var(--sideco-bg); color: var(--sideco-ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 main { max-width: 1100px; margin: 0 auto; }
 h1 { font-size: 26px; margin: 0 0 4px; }
 h2 { font-size: 17px; margin: 32px 0 8px; }
-.meta { color: var(--vico-muted); margin: 0 0 20px; }
-.drawing { overflow-x: auto; border: 1px solid var(--vico-rule); border-radius: 10px; padding: 8px; }
+.meta { color: var(--sideco-muted); margin: 0 0 20px; }
+.drawing { overflow-x: auto; border: 1px solid var(--sideco-rule); border-radius: 10px; padding: 8px; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
-th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--vico-rule); vertical-align: top; }
-th { color: var(--vico-muted); font-weight: 600; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--sideco-rule); vertical-align: top; }
+th { color: var(--sideco-muted); font-weight: 600; }
 td.id { font-weight: 700; white-space: nowrap; }
 .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 2px; border: 1px solid rgba(0,0,0,.2); margin-right: 6px; vertical-align: -1px; }
 ul { padding-left: 20px; }
 a { color: #1A6FAE; }
-footer { margin-top: 40px; color: var(--vico-faint); font-size: 13px; }
+footer { margin-top: 40px; color: var(--sideco-faint); font-size: 13px; }
 `;
 
 export function toHtml(board: Board, meta: ExportMeta): string {

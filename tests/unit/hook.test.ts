@@ -18,7 +18,7 @@ let hub: Hub;
 let server: Server;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "vico-hook-"));
+  dir = mkdtempSync(join(tmpdir(), "sideco-hook-"));
   hub = new Hub(memoryJournal(), () => new Date(T0));
   const handle = handler({ hub, page: { html: "", build: "" }, root: "/repo", siteDir: join(dir, "site") });
   server = {
@@ -70,24 +70,26 @@ describe("the session trace", () => {
     writeFileSync(envFile, "export OTHER=1\n");
     const result = await fire("SessionStart", { source: "startup" }, { env: { CLAUDE_ENV_FILE: envFile } });
     expect(session().cwd).toBe("/repo");
-    // The session id for later `vico` calls, and the launcher on PATH so the agent can type `vico`.
+    // The session id for later `sideco` calls, and the launcher on PATH so the agent can type `sideco`.
     const bin = join(import.meta.dir, "..", "..", "bin");
     expect(readFileSync(envFile, "utf8")).toBe(
-      `export OTHER=1\nexport VICO_SESSION='s1'\nexport PATH='${bin}':"$PATH"\n`,
+      `export OTHER=1\nexport SIDECO_SESSION='s1'\nexport PATH='${bin}':"$PATH"\n`,
     );
-    expect(existsSync(join(bin, "vico"))).toBe(true);
+    expect(existsSync(join(bin, "sideco"))).toBe(true);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain(BASE);
     expect(result.stdout).toContain("commande (event-storming)");
     // Nobody looks at the board yet: the agent opens it itself when the user wants to model.
-    expect(result.stdout).toContain("The page is not open: run `vico open` before you model with the user.");
+    expect(result.stdout).toContain(
+      "The page is not open: run `sideco open` before you model with the user.",
+    );
   });
 
   test("SessionStart says when the user already has the page open", async () => {
     hub.subscribe(() => {});
     const result = await fire("SessionStart", { source: "startup" });
     expect(result.stdout).toContain("The user has the page open.");
-    expect(result.stdout).not.toContain("vico open");
+    expect(result.stdout).not.toContain("sideco open");
   });
 
   test("a prompt opens a turn; tools show as steps with a one-line summary", async () => {
@@ -187,7 +189,7 @@ describe("bringing the human's changes back to the agent", () => {
     });
     expect(context(first)).toContain('~ E1 renamed "Commande passée" → "Commande validée"');
     expect(context(first)).toContain("− H1 hotspot");
-    expect(context(first)).toContain("vico show");
+    expect(context(first)).toContain("sideco show");
     expect(await fire("UserPromptSubmit", { prompt: "encore" })).toEqual(QUIET);
   });
 
@@ -227,7 +229,7 @@ describe("bringing the human's changes back to the agent", () => {
     expect(told.length).toBeLessThanOrEqual(CONTEXT_LIMIT);
     expect(CONTEXT_LIMIT).toBeLessThanOrEqual(10_000);
     expect(told).toContain("more lines were cut");
-    expect(told).toContain("vico show");
+    expect(told).toContain("sideco show");
   });
 
   test("with no page open nobody can hand over, so nothing is parked", async () => {

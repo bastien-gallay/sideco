@@ -28,7 +28,7 @@ export interface State {
   selected: string | null;
   /** The element a link is being drawn from. */
   linking: string | null;
-  /** Agent sessions blocked on `vico wait` right now. */
+  /** Agent sessions blocked on `sideco wait` right now. */
   listening: number;
   connected: boolean;
   /** The build of the page the companion serves now; null until it has said. */

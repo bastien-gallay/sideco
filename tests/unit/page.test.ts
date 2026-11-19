@@ -24,7 +24,7 @@ test("the page is served in the companion's language, both languages on board", 
 test("the page carries its build, and the same sources give the same build", async () => {
   const page = await buildPage();
   expect(page.build).toMatch(/^[0-9a-f]{16}$/);
-  expect(page.html).toContain(`<meta name="vico-build" content="${page.build}">`);
+  expect(page.html).toContain(`<meta name="sideco-build" content="${page.build}">`);
   expect(await buildPage()).toEqual(page);
 });
 

@@ -3,7 +3,7 @@
  * never changes it; every rule about what a board may contain lives in this file.
  */
 import { type Command, CommandError } from "./commands.ts";
-import type { Actor, BoardEvent, Todo, VicoEvent } from "./events.ts";
+import type { Actor, BoardEvent, SidecoEvent, Todo } from "./events.ts";
 import { type ElementType, type Format, findFormat, findType, NOTE_PREFIX } from "./formats.ts";
 import {
   type Board,
@@ -24,7 +24,7 @@ export interface Context {
 }
 
 export interface Decision {
-  events: VicoEvent[];
+  events: SidecoEvent[];
   /** The id given to the element or note this command created, if any. */
   minted?: string;
 }
@@ -290,7 +290,7 @@ function claim(board: Board, type: ElementType, id: string): string {
   return id;
 }
 
-function decideOnSession(ws: Workspace, cmd: SessionCommand, ctx: Context): VicoEvent[] {
+function decideOnSession(ws: Workspace, cmd: SessionCommand, ctx: Context): SidecoEvent[] {
   if (!ctx.session) throw new CommandError(`\`${cmd.kind}\` needs a session`);
   const todos = findSession(ws, ctx.session)?.todos ?? [];
   switch (cmd.kind) {

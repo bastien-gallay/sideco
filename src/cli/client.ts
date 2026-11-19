@@ -29,7 +29,7 @@ export function mayListen(): boolean {
 }
 
 /**
- * The nearest directory at or above `from` that holds a `.vico/`, by its real
+ * The nearest directory at or above `from` that holds a `.sideco/`, by its real
  * path: a workspace reached through a symlink is the same workspace.
  */
 export function findRoot(from: string): string | undefined {
@@ -83,7 +83,7 @@ export async function findServer(
   try {
     const response = await fetcher(`${url}/health`, { signal: AbortSignal.timeout(timeoutMs) });
     const health = (await response.json()) as { name?: string; workspace?: string };
-    return health.name === "vico" && health.workspace === root ? { url, fetch: fetcher } : undefined;
+    return health.name === "sideco" && health.workspace === root ? { url, fetch: fetcher } : undefined;
   } catch (error) {
     if ((error as { code?: unknown }).code === "EPERM")
       throw new Blocked(`connect to the companion at ${url} (EPERM): a sandbox blocks local connections`);
@@ -125,7 +125,7 @@ export async function ensureServer(
     const server = await findServer(root, undefined, fetcher);
     if (server) return server;
   }
-  throw new ClientError("the companion did not start; run `vico serve` to see why");
+  throw new ClientError("the companion did not start; run `sideco serve` to see why");
 }
 
 export interface Posted {

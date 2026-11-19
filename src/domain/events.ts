@@ -114,9 +114,9 @@ export type SessionEvent =
   | { event: "SessionEnded" }
   | { event: "ChangesDelivered"; upTo: number };
 
-export type VicoEvent = BoardEvent | SessionEvent;
+export type SidecoEvent = BoardEvent | SessionEvent;
 
-export type EventName = VicoEvent["event"];
+export type EventName = SidecoEvent["event"];
 
 /** Who, when, and in which terminal session. `seq` is the journal's total order. */
 export interface Envelope {
@@ -126,7 +126,7 @@ export interface Envelope {
   session?: string;
 }
 
-export type Recorded = Envelope & VicoEvent;
+export type Recorded = Envelope & SidecoEvent;
 
 const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "BoardCreated",
@@ -166,7 +166,7 @@ const SESSION_EVENTS: ReadonlySet<string> = new Set<SessionEvent["event"]>([
   "ChangesDelivered",
 ]);
 
-export function isBoardEvent(e: VicoEvent): e is BoardEvent {
+export function isBoardEvent(e: SidecoEvent): e is BoardEvent {
   return BOARD_EVENTS.has(e.event);
 }
 

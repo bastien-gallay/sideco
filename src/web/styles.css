@@ -1,4 +1,4 @@
-/* Vico: a calm instrument. Grey chrome, one accent, colour only on the stickies. */
+/* Sideco: a calm instrument. Grey chrome, one accent, colour only on the stickies. */
 
 :root {
   color-scheme: light dark;
@@ -13,13 +13,13 @@
   --danger: #b42318;
   --ok: #1a7f37;
   --warn: #9a6700;
-  --vico-bg: var(--surface);
-  --vico-rule: var(--rule);
-  --vico-muted: var(--muted);
-  --vico-faint: var(--faint);
-  --vico-ink: var(--ink);
-  --vico-lane: #f1f2f4;
-  --vico-conn: #6e7781;
+  --sideco-bg: var(--surface);
+  --sideco-rule: var(--rule);
+  --sideco-muted: var(--muted);
+  --sideco-faint: var(--faint);
+  --sideco-ink: var(--ink);
+  --sideco-lane: #f1f2f4;
+  --sideco-conn: #6e7781;
   font:
     14px / 1.45 system-ui,
     -apple-system,
@@ -40,8 +40,8 @@
     --danger: #f97066;
     --ok: #4ac26b;
     --warn: #d4a72c;
-    --vico-lane: #1e2126;
-    --vico-conn: #8b949e;
+    --sideco-lane: #1e2126;
+    --sideco-conn: #8b949e;
   }
 }
 
@@ -644,7 +644,7 @@ kbd {
 /* Your own words sit to the right, as in any conversation. */
 .thread-notes li.by-human {
   margin-left: 16px;
-  background: var(--vico-lane);
+  background: var(--sideco-lane);
 }
 
 .thread-notes li.by-agent {
@@ -733,7 +733,7 @@ kbd {
   align-items: center;
   gap: 8px;
   padding: 6px 14px;
-  background: var(--vico-lane);
+  background: var(--sideco-lane);
   border-bottom: 1px solid var(--rule);
 }
 
@@ -757,7 +757,7 @@ kbd {
   justify-content: space-between;
   gap: 12px;
   padding: 6px 14px;
-  background: var(--vico-lane);
+  background: var(--sideco-lane);
   border-bottom: 1px solid var(--rule);
 }
 
@@ -774,7 +774,7 @@ kbd {
   overflow: auto;
 }
 
-.vico-board {
+.sideco-board {
   display: block;
   user-select: none;
   -webkit-user-select: none;
@@ -801,7 +801,7 @@ kbd {
 }
 
 .heads-lane-strip {
-  fill: var(--vico-lane);
+  fill: var(--sideco-lane);
 }
 
 /* Straight to the board: out of sight until the keyboard reaches it, first thing on the page. */
@@ -832,11 +832,11 @@ kbd {
   white-space: nowrap;
 }
 
-.vico-board .lane-label,
-.vico-board .lane-count,
-.vico-board .lane-hint {
+.sideco-board .lane-label,
+.sideco-board .lane-count,
+.sideco-board .lane-hint {
   paint-order: stroke;
-  stroke: var(--vico-lane);
+  stroke: var(--sideco-lane);
   stroke-width: 5px;
   stroke-linejoin: round;
 }
@@ -909,7 +909,7 @@ kbd {
 /* A change of yours Claude has not read: a dot on the card's corner, ringed so it reads on any card colour. */
 .card-unread circle {
   fill: var(--warn);
-  stroke: var(--vico-bg);
+  stroke: var(--sideco-bg);
   stroke-width: 2;
 }
 

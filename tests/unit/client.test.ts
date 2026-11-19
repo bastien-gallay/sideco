@@ -26,11 +26,11 @@ import {
 
 let dir: string;
 beforeEach(() => {
-  dir = realpathSync(mkdtempSync(join(tmpdir(), "vico-client-")));
+  dir = realpathSync(mkdtempSync(join(tmpdir(), "sideco-client-")));
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-test("findRoot climbs to the nearest directory holding .vico", () => {
+test("findRoot climbs to the nearest directory holding .sideco", () => {
   const root = join(dir, "repo");
   const deep = join(root, "src", "domain");
   mkdirSync(deep, { recursive: true });
@@ -54,7 +54,7 @@ test("findRoot of a directory that does not exist is undefined, not an exception
 
 test("initRoot keeps session traces out of git, and leaves an edited .gitignore alone", () => {
   initRoot(dir);
-  const ignore = join(dir, ".vico", ".gitignore");
+  const ignore = join(dir, ".sideco", ".gitignore");
   expect(readFileSync(ignore, "utf8")).toContain("sessions.jsonl\nserver.json\nsite/\n");
   expect(readFileSync(ignore, "utf8")).not.toContain("boards.jsonl");
   writeFileSync(ignore, "mine\n");
@@ -65,16 +65,16 @@ test("initRoot keeps session traces out of git, and leaves an edited .gitignore 
 test("findServer is undefined without a note, and with a note that is not JSON", async () => {
   initRoot(dir);
   expect(await findServer(dir)).toBeUndefined();
-  writeFileSync(join(dir, ".vico", "server.json"), "not json");
+  writeFileSync(join(dir, ".sideco", "server.json"), "not json");
   expect(await findServer(dir)).toBeUndefined();
-  writeFileSync(join(dir, ".vico", "server.json"), JSON.stringify({ url: 4747 }));
+  writeFileSync(join(dir, ".sideco", "server.json"), JSON.stringify({ url: 4747 }));
   expect(await findServer(dir)).toBeUndefined();
 });
 
 /** A workspace whose note points at a companion, and a fetch that fails the way `code` says. */
 function noted(code: string): Fetch {
   initRoot(dir);
-  writeFileSync(join(dir, ".vico", "server.json"), JSON.stringify({ url: "http://127.0.0.1:4747" }));
+  writeFileSync(join(dir, ".sideco", "server.json"), JSON.stringify({ url: "http://127.0.0.1:4747" }));
   return (async () => {
     throw Object.assign(new TypeError(`${code}: Was there a typo in the url or port?`), { code });
   }) as unknown as Fetch;
@@ -97,7 +97,7 @@ test("a blocked shell does not try to start a second companion, and answers at o
   expect(ensureServer(dir, noted("EPERM"))).rejects.toBeInstanceOf(Blocked);
   await ensureServer(dir, noted("EPERM")).catch(() => {});
   expect(performance.now() - started).toBeLessThan(500);
-  expect(JSON.parse(readFileSync(join(dir, ".vico", "server.json"), "utf8"))).toEqual({
+  expect(JSON.parse(readFileSync(join(dir, ".sideco", "server.json"), "utf8"))).toEqual({
     url: "http://127.0.0.1:4747",
   });
 });
@@ -112,7 +112,7 @@ test("a shell forbidden to listen does not wait for a companion that cannot star
   );
   await refused.catch(() => {});
   expect(performance.now() - started).toBeLessThan(500);
-  expect(existsSync(join(dir, ".vico", "server.json"))).toBe(false);
+  expect(existsSync(join(dir, ".sideco", "server.json"))).toBe(false);
 });
 
 test("showPage asks the companion to open its page, and takes any other answer as a no", async () => {

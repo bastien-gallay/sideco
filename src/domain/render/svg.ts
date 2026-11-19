@@ -8,25 +8,25 @@
 import { type Band, type Card, type Connector, cardName, LINE_H, type Scene } from "../layout/scene.ts";
 
 export const SVG_STYLE = `
-.vico-board { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-.band-rule { stroke: var(--vico-rule, #E3E6EA); stroke-width: 1; }
-.band-label { fill: var(--vico-muted, #59636E); font-size: 12px; font-weight: 600; }
-.band-step-label { fill: var(--vico-muted, #59636E); font-size: 11px; text-anchor: middle; }
-.lane-bg { fill: var(--vico-lane, #F3F4F6); }
-.lane-label { fill: var(--vico-ink, #1F2328); font-size: 13px; font-weight: 600; }
-.lane-count { fill: var(--vico-muted, #59636E); font-size: 12px; text-anchor: end; }
-.axis-label { fill: var(--vico-muted, #59636E); font-size: 12px; font-weight: 600; text-anchor: middle; letter-spacing: 0.04em; }
-.lane-hint { fill: var(--vico-muted, #59636E); font-size: 11px; }
-.conn path { fill: none; stroke: var(--vico-conn, #6E7781); stroke-width: 1.5; }
-.conn-label { fill: var(--vico-muted, #59636E); font-size: 11px; paint-order: stroke; stroke: var(--vico-bg, #FFFFFF); stroke-width: 4px; stroke-linejoin: round; }
-.vico-arrow { fill: var(--vico-conn, #6E7781); }
+.sideco-board { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.band-rule { stroke: var(--sideco-rule, #E3E6EA); stroke-width: 1; }
+.band-label { fill: var(--sideco-muted, #59636E); font-size: 12px; font-weight: 600; }
+.band-step-label { fill: var(--sideco-muted, #59636E); font-size: 11px; text-anchor: middle; }
+.lane-bg { fill: var(--sideco-lane, #F3F4F6); }
+.lane-label { fill: var(--sideco-ink, #1F2328); font-size: 13px; font-weight: 600; }
+.lane-count { fill: var(--sideco-muted, #59636E); font-size: 12px; text-anchor: end; }
+.axis-label { fill: var(--sideco-muted, #59636E); font-size: 12px; font-weight: 600; text-anchor: middle; letter-spacing: 0.04em; }
+.lane-hint { fill: var(--sideco-muted, #59636E); font-size: 11px; }
+.conn path { fill: none; stroke: var(--sideco-conn, #6E7781); stroke-width: 1.5; }
+.conn-label { fill: var(--sideco-muted, #59636E); font-size: 11px; paint-order: stroke; stroke: var(--sideco-bg, #FFFFFF); stroke-width: 4px; stroke-linejoin: round; }
+.sideco-arrow { fill: var(--sideco-conn, #6E7781); }
 .card-shape { stroke: rgba(0, 0, 0, 0.2); stroke-width: 1; }
 .card-id { font-size: 10px; font-weight: 700; }
 .card-label { font-size: 13px; text-anchor: middle; }
 .card-detail { font-size: 11px; text-anchor: end; }
 .card-done { font-size: 13px; font-weight: 700; }
 .card-label-done { text-decoration: line-through; opacity: 0.65; }
-.card-notes circle { fill: #1A6FAE; stroke: var(--vico-bg, #FFFFFF); stroke-width: 2; }
+.card-notes circle { fill: #1A6FAE; stroke: var(--sideco-bg, #FFFFFF); stroke-width: 2; }
 .card-notes text { fill: #FFFFFF; font-size: 10px; font-weight: 700; text-anchor: middle; }
 `;
 
@@ -40,7 +40,7 @@ export function sceneToSvg(scene: Scene, title: string): string {
   const w = Math.max(scene.width, 1);
   const h = Math.max(scene.height, 1);
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" class="vico-board" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${esc(title)}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" class="sideco-board" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${esc(title)}">`,
     `<title>${esc(title)}</title>`,
     `<style>${SVG_STYLE}</style>`,
     arrowDefs(),
@@ -52,7 +52,7 @@ export function sceneToSvg(scene: Scene, title: string): string {
 }
 
 export function arrowDefs(): string {
-  return `<defs><marker id="vico-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="vico-arrow" d="M0 0L10 5L0 10z"/></marker></defs>`;
+  return `<defs><marker id="sideco-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sideco-arrow" d="M0 0L10 5L0 10z"/></marker></defs>`;
 }
 
 export function bandMarkup(b: Band): string {
@@ -85,7 +85,7 @@ export function connectorMarkup(c: Connector): string {
   const label = c.label
     ? `<text class="conn-label" x="${c.labelX}" y="${c.labelY}">${esc(c.label)}</text>`
     : "";
-  return `<g class="conn" data-src="${esc(c.src)}" data-dst="${esc(c.dst)}"><path d="${c.d}" marker-end="url(#vico-arrow)"/>${label}</g>`;
+  return `<g class="conn" data-src="${esc(c.src)}" data-dst="${esc(c.dst)}"><path d="${c.d}" marker-end="url(#sideco-arrow)"/>${label}</g>`;
 }
 
 /** A card drawn at the origin; the caller positions it. */

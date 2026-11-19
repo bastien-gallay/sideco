@@ -40,8 +40,8 @@ test("small labels of the chrome use the muted ink, never the faint one", () => 
   const svg = svgOf(ORDERING);
   for (const rule of [".band-step-label", ".lane-count"]) {
     const css = svg.match(new RegExp(`\\${rule} \\{[^}]*\\}`))?.[0] ?? "";
-    expect(css).toContain("--vico-muted");
-    expect(css).not.toContain("--vico-faint");
+    expect(css).toContain("--sideco-muted");
+    expect(css).not.toContain("--sideco-faint");
   }
 });
 
@@ -87,7 +87,7 @@ test("every element shows its id, and every link an arrow", () => {
   const svg = sceneToSvg(layoutBoard(board), board.title);
   for (const e of board.elements)
     expect(svg).toMatch(new RegExp(`<text class="card-id" x="\\d+" y="14" fill="#1F2328">${e.id}</text>`));
-  expect(count(svg, 'marker-end="url\\(#vico-arrow\\)"')).toBe(board.edges.length);
+  expect(count(svg, 'marker-end="url\\(#sideco-arrow\\)"')).toBe(board.edges.length);
   expect(svg).toContain(">oui</text>");
 });
 

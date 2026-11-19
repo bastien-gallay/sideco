@@ -1,5 +1,5 @@
 /**
- * The languages Vico speaks to its readers. English unless the reader asks
+ * The languages Sideco speaks to its readers. English unless the reader asks
  * otherwise; what the agent reads (the digest, the errors) is always English.
  */
 import type { Actor } from "./events.ts";
@@ -69,12 +69,12 @@ export const WORDS: Record<Locale, Words> = {
     resolvedNotes: "Resolved notes",
     on: (target) => `on ${target}`,
     colon: ":",
-    source: (board, seq, day) => `Source: Vico journal, board ${board}, seq ${seq}, exported on ${day}.`,
+    source: (board, seq, day) => `Source: Sideco journal, board ${board}, seq ${seq}, exported on ${day}.`,
     board: "Board",
     workshop: "Workshop",
     otherFormats: "Other formats",
     published: (boards, day) => `${boards} board${boards > 1 ? "s" : ""}, published on ${day}.`,
-    site: "Vico boards",
+    site: "Sideco boards",
   },
   fr: {
     addedBy: { agent: "ajouté par Claude", human: "ajouté par toi", system: "ajouté par le système" },
@@ -94,12 +94,12 @@ export const WORDS: Record<Locale, Words> = {
     resolvedNotes: "Notes résolues",
     on: (target) => `sur ${target}`,
     colon: " :",
-    source: (board, seq, day) => `Source : journal Vico, tableau ${board}, seq ${seq}, exporté le ${day}.`,
+    source: (board, seq, day) => `Source : journal Sideco, tableau ${board}, seq ${seq}, exporté le ${day}.`,
     board: "Tableau",
     workshop: "Atelier",
     otherFormats: "Autres formats",
     published: (boards, day) =>
       `${boards} tableau${boards > 1 ? "x" : ""}, publié${boards > 1 ? "s" : ""} le ${day}.`,
-    site: "Tableaux Vico",
+    site: "Tableaux Sideco",
   },
 };

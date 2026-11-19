@@ -288,7 +288,7 @@ app.append(
   h(
     "header",
     { class: "top" },
-    h("strong", { class: "brand" }, "Vico"),
+    h("strong", { class: "brand" }, "Sideco"),
     boardPicker,
     undoGroup,
     statusPill,
@@ -1016,8 +1016,8 @@ function say(text: string, offer?: { label: string; run: () => void }): void {
 }
 
 /** The build this page is, as the companion signed it into the document. */
-const BUILD = document.querySelector<HTMLMetaElement>('meta[name="vico-build"]')?.content;
-const RELOADED_FOR = "vico.reloadedFor";
+const BUILD = document.querySelector<HTMLMetaElement>('meta[name="sideco-build"]')?.content;
+const RELOADED_FOR = "sideco.reloadedFor";
 /** The served build this page has offered to reload for: it says so once. */
 let offered: string | null = null;
 
@@ -1058,7 +1058,7 @@ function forgetReload(): void {
 }
 
 /**
- * The companion came back serving another page than this one: Vico was updated.
+ * The companion came back serving another page than this one: Sideco was updated.
  * The tab reloads to become that page as soon as no words would be lost. Until
  * then, or when a reload already failed to bring it, it says so once, and
  * reloading is the reader's to choose.

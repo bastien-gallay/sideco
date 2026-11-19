@@ -86,7 +86,7 @@ export interface BoardView {
 }
 
 export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
-  const root = svg("svg", { class: "vico-board", role: "group" });
+  const root = svg("svg", { class: "sideco-board", role: "group" });
   root.innerHTML = arrowDefs();
   const bands = root.appendChild(svg("g", { class: "layer-bands" }));
   const hint = root.appendChild(svg("rect", { class: "drop-hint", rx: 8, visibility: "hidden" }));

@@ -1,5 +1,6 @@
 node_modules/
 dist/
-.vico/server.json
+.sideco/server.json
 tests/e2e/artifacts/
 .impeccable/
+.vico/server.json

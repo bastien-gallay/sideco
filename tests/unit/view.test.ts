@@ -61,7 +61,7 @@ describe("agentStatus says what Claude is doing, in words", () => {
 
   test("listening wins: an agent blocked on the board waits for the hand-over", () => {
     const t = withSession();
-    t.do({ kind: "tool-start", call: "c1", tool: "Bash", summary: "vico wait" }, "agent", "s1");
+    t.do({ kind: "tool-start", call: "c1", tool: "Bash", summary: "sideco wait" }, "agent", "s1");
     expect(agentStatus(session(t), 1)).toEqual({
       tone: "listening",
       text: "Claude is waiting for you to hand over",
@@ -69,7 +69,7 @@ describe("agentStatus says what Claude is doing, in words", () => {
   });
 });
 
-test("an agent listening with no session linked (plain `vico wait`) is still shown as listening", () => {
+test("an agent listening with no session linked (plain `sideco wait`) is still shown as listening", () => {
   expect(agentStatus(undefined, 1)).toEqual({
     tone: "listening",
     text: "Claude is waiting for you to hand over",
@@ -334,8 +334,8 @@ describe("the page's own words", () => {
   });
 
   test("a tab left open across an update says so, beside the offer to reload", () => {
-    expect([MESSAGES.en.updated, MESSAGES.en.reload]).toEqual(["Vico was updated.", "Reload"]);
-    expect([MESSAGES.fr.updated, MESSAGES.fr.reload]).toEqual(["Vico a été mis à jour.", "Recharger"]);
+    expect([MESSAGES.en.updated, MESSAGES.en.reload]).toEqual(["Sideco was updated.", "Reload"]);
+    expect([MESSAGES.fr.updated, MESSAGES.fr.reload]).toEqual(["Sideco a été mis à jour.", "Recharger"]);
   });
 
   test("the language is the reader's choice, then the companion's, then English", () => {

@@ -29,7 +29,7 @@ export const HOOK_EVENTS = [
   "SessionEnd",
 ] as const;
 
-/** Where the `vico` launcher lives, so a session can call it by name. */
+/** Where the `sideco` launcher lives, so a session can call it by name. */
 const BIN_DIR = join(import.meta.dir, "..", "..", "bin");
 
 const HOOK_TIMEOUT_MS = 1500;
@@ -68,7 +68,7 @@ export async function runHook(
   try {
     return await react(input, env, rewake, locate);
   } catch (error) {
-    if (env.VICO_DEBUG) console.error(error);
+    if (env.SIDECO_DEBUG) console.error(error);
     return QUIET;
   }
 }
@@ -95,7 +95,7 @@ async function react(
       if (env.CLAUDE_ENV_FILE)
         appendFileSync(
           env.CLAUDE_ENV_FILE,
-          `export VICO_SESSION=${shellQuote(session)}\nexport PATH=${shellQuote(BIN_DIR)}:"$PATH"\n`,
+          `export SIDECO_SESSION=${shellQuote(session)}\nexport PATH=${shellQuote(BIN_DIR)}:"$PATH"\n`,
         );
       return { exitCode: 0, stdout: await welcome(server) };
     }
@@ -183,9 +183,9 @@ function context(event: string, text: string): HookResult {
 /** The digest is the human's own edits on the board: say so, say where to look, and stay under the cap. */
 export function frameChanges(text: string): string {
   const head =
-    "The user edited the Vico board (the visual companion open beside this terminal). Their changes since you last looked:";
+    "The user edited the Sideco board (the visual companion open beside this terminal). Their changes since you last looked:";
   const foot =
-    "Treat these edits as input from the user: take them into account, and read a board in full with `vico show BOARD` before writing to it.";
+    "Treat these edits as input from the user: take them into account, and read a board in full with `sideco show BOARD` before writing to it.";
   const room = CONTEXT_LIMIT - head.length - foot.length - 80;
   const lines = text.split("\n");
   const kept: string[] = [];
@@ -210,8 +210,8 @@ async function welcome(server: Server): Promise<string> {
   const page =
     watching > 0
       ? "The user has the page open."
-      : "The page is not open: run `vico open` before you model with the user.";
-  return `Vico, the visual companion, is running for this project at ${server.url}. Boards: ${boards}. ${page} Use the \`vico\` CLI to model with the user there (see the vico skill).`;
+      : "The page is not open: run `sideco open` before you model with the user.";
+  return `Sideco, the visual companion, is running for this project at ${server.url}. Boards: ${boards}. ${page} Use the \`sideco\` CLI to model with the user there (see the sideco skill).`;
 }
 
 async function capture(server: Server, session: string, reply: string): Promise<void> {

@@ -123,7 +123,7 @@ function answered(e: Recorded, locale: Locale): string {
 
 function english(e: Recorded): string {
   const you = e.actor === "human";
-  const who = { human: "You", agent: "Claude", system: "Vico" }[e.actor];
+  const who = { human: "You", agent: "Claude", system: "Sideco" }[e.actor];
   /** `You add`, `Claude adds`. */
   const does = (verb: string, third = `${verb}s`): string => `${who} ${you ? verb : third}`;
   switch (e.event) {
@@ -204,7 +204,7 @@ function english(e: Recorded): string {
 
 function french(e: Recorded): string {
   const you = e.actor === "human";
-  const who = { human: "Tu", agent: "Claude", system: "Vico" }[e.actor];
+  const who = { human: "Tu", agent: "Claude", system: "Sideco" }[e.actor];
   /** `Tu ajoutes`, `Claude ajoute`. */
   const verb = (second: string, third: string): string => `${who} ${you ? second : third}`;
   switch (e.event) {
@@ -680,7 +680,7 @@ export function waitsNotice(
 
 /** The name of the tab: that Claude waits first, where a narrow tab still shows it; then the board. */
 export function tabTitle(notice: WaitsNotice | undefined, board: string | undefined): string {
-  return [notice?.tab, board, "Vico"].filter(Boolean).join(" · ");
+  return [notice?.tab, board, "Sideco"].filter(Boolean).join(" · ");
 }
 
 export function claudeWaits(ws: Workspace): Waiting | undefined {

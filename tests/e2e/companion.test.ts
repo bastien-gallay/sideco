@@ -3,7 +3,7 @@
  * terminal side, the human edits in the page, and each sees the other.
  *
  * Needs a local port and Chrome: run it outside the sandbox (`bun run test:e2e`).
- * Screenshots go to $VICO_SHOTS when set.
+ * Screenshots go to $SIDECO_SHOTS when set.
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync } from "node:fs";
@@ -20,7 +20,7 @@ import { type Running, start } from "../../src/server/start.ts";
 // Playwright gives up first (4 s) and says which locator it was waiting for.
 setDefaultTimeout(20_000);
 
-const SHOTS = process.env.VICO_SHOTS;
+const SHOTS = process.env.SIDECO_SHOTS;
 const SESSION = "s1";
 
 let root: string;
@@ -109,7 +109,7 @@ async function centre(id: string): Promise<{ x: number; y: number }> {
 }
 
 beforeAll(async () => {
-  root = initRoot(realpathSync(mkdtempSync(join(tmpdir(), "vico-e2e-"))));
+  root = initRoot(realpathSync(mkdtempSync(join(tmpdir(), "sideco-e2e-"))));
   running = await start(root, 0);
   browser = await chromium.launch({ channel: "chrome", headless: true });
   page = await browser.newPage({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
@@ -173,7 +173,7 @@ describe("the agent writes, the page follows", () => {
     expect(await page.locator("g.card").count()).toBe(6);
     expect(await page.locator("g.conn").count()).toBe(4);
     expect(await card("E1").textContent()).toContain("Commande passée");
-    expect(await page.title()).toBe("Passage de commande · Vico");
+    expect(await page.title()).toBe("Passage de commande · Sideco");
     expect(page.url()).toEndWith("#/b/commande");
   });
 
@@ -426,7 +426,7 @@ describe("history", () => {
     await back.click();
     await Bun.sleep(150);
     expect(await page.locator(".history-label").textContent()).toStartWith("1 / 3 · ");
-    expect(await page.title()).toBe("Devis · Vico");
+    expect(await page.title()).toBe("Devis · Sideco");
     await page.locator(".banner button").click();
     await reads(/^Live · 3 events$/);
     await page.locator(".history input").press("ArrowLeft");
@@ -926,8 +926,8 @@ describe("what Claude has not read yet", () => {
 });
 
 describe("adding where the pointer is", () => {
-  const offer = (type: string) => page.locator(`.vico-board .add-here[data-type="${type}"]`);
-  const offers = () => page.locator(".vico-board .add-here");
+  const offer = (type: string) => page.locator(`.sideco-board .add-here[data-type="${type}"]`);
+  const offers = () => page.locator(".sideco-board .add-here");
 
   test("retro: a column offers one + per kind of card, and the card lands in that column", async () => {
     await agent(
@@ -988,7 +988,7 @@ describe("adding where the pointer is", () => {
     if (!heading) throw new Error("no heading for step 2");
     // Just right of the rule that opens step 2, as high as the step numbers.
     await page.mouse.move(e2.x - 4, heading.y + heading.height / 2);
-    const column = page.locator('.vico-board .add-here[data-column="2"]');
+    const column = page.locator('.sideco-board .add-here[data-column="2"]');
     await column.waitFor();
     expect(await offers().count()).toBe(1);
     expect(await column.getAttribute("aria-label")).toBe("Insert a column here");
@@ -1192,12 +1192,12 @@ describe("Claude waits for the human", () => {
     );
     await page.locator(".top .waits button.is-blocked").waitFor();
     expect(await pill().textContent()).toStartWith("Claude is blocked on you");
-    expect(await page.title()).toBe("● Claude is blocked on you · Attente · Vico");
+    expect(await page.title()).toBe("● Claude is blocked on you · Attente · Sideco");
     await shot("24-claude-blocked");
     await page.locator(".turn button", { hasText: "Hand over to Claude" }).click();
     await listening;
     await pill().waitFor({ state: "detached" });
-    expect(await page.title()).toBe("Attente · Vico");
+    expect(await page.title()).toBe("Attente · Sideco");
   });
 
   test("handing the turn back ends the wait", async () => {
@@ -1255,7 +1255,7 @@ describe("tidying up", () => {
       .locator(".board-picker option")
       .evaluateAll((options) => options.map((o) => (o as HTMLOptionElement).value));
 
-  /** Stops the companion and starts it again on the same port, as an update of Vico does. */
+  /** Stops the companion and starts it again on the same port, as an update of Sideco does. */
   const restart = async (locale?: Locale): Promise<void> => {
     const port = running.port;
     running.stop();
@@ -1322,16 +1322,16 @@ describe("tidying up", () => {
     const port = running.port;
     const before = problems.length;
     running.stop();
-    renameSync(join(root, ".vico", "boards.jsonl"), join(root, ".vico", "boards.jsonl.bak"));
+    renameSync(join(root, ".sideco", "boards.jsonl"), join(root, ".sideco", "boards.jsonl.bak"));
     running = await start(root, port);
-    await agent('board new "Flux Vico" --id flux-vico\nadd event "Session démarrée" --col 1');
+    await agent('board new "Flux Sideco" --id flux-sideco\nadd event "Session démarrée" --col 1');
 
-    for (let attempt = 0; attempt < 200 && (await listed()).join() !== "flux-vico"; attempt++)
+    for (let attempt = 0; attempt < 200 && (await listed()).join() !== "flux-sideco"; attempt++)
       await Bun.sleep(50);
-    expect(await listed()).toEqual(["flux-vico"]);
+    expect(await listed()).toEqual(["flux-sideco"]);
     await card("E1").waitFor();
     expect(await page.locator("g.card").count()).toBe(1);
-    expect(page.url()).toEndWith("#/b/flux-vico");
+    expect(page.url()).toEndWith("#/b/flux-sideco");
     expect(await status().textContent()).not.toContain("disconnected");
     forgiveTheCut(before);
   });
@@ -1342,7 +1342,7 @@ describe("tidying up", () => {
     await restart();
     // Once the tab follows the new run, its presence frame is sent: a card added then comes after it.
     for (let attempt = 0; attempt < 200 && running.hub.watching === 0; attempt++) await Bun.sleep(50);
-    await agent('add event "Session reprise" --col 2', "flux-vico");
+    await agent('add event "Session reprise" --col 2', "flux-sideco");
     await card("E2").waitFor();
     expect(await marked()).toBe(true);
     forgiveTheCut(before);
@@ -1360,7 +1360,7 @@ describe("tidying up", () => {
 
     // The page it got is the page served: it stays.
     await mark();
-    await agent('add event "Session rechargée" --col 3', "flux-vico");
+    await agent('add event "Session rechargée" --col 3', "flux-sideco");
     await card("E3").waitFor();
     expect(await marked()).toBe(true);
     forgiveTheCut(before);
@@ -1368,14 +1368,14 @@ describe("tidying up", () => {
 
   test("a reply typed and not sent keeps the tab from reloading: it offers to, and the reply stays", async () => {
     const before = problems.length;
-    await agent('note "Et ensuite ?"', "flux-vico");
+    await agent('note "Et ensuite ?"', "flux-sideco");
     const reply = page.locator(".notes .thread-reply [name^=reply-]");
     await reply.fill("Je cherche encore");
     await mark();
     // Back to the page that opens in English: another build again.
     await restart("en");
 
-    const toast = page.locator(".toast", { hasText: "Vico was updated." });
+    const toast = page.locator(".toast", { hasText: "Sideco was updated." });
     await toast.waitFor({ timeout: 15_000 });
     expect(await marked()).toBe(true);
     expect(await reply.inputValue()).toBe("Je cherche encore");
@@ -1395,7 +1395,7 @@ describe("tidying up", () => {
     await reply.fill("Trouvé");
     await mark();
     await restart("fr");
-    await page.locator(".toast", { hasText: "Vico was updated." }).waitFor({ timeout: 15_000 });
+    await page.locator(".toast", { hasText: "Sideco was updated." }).waitFor({ timeout: 15_000 });
     expect(await marked()).toBe(true);
 
     // The offer may be gone by then: the tab must not stay the old page for that.
@@ -1410,7 +1410,7 @@ describe("tidying up", () => {
   test("a reload that does not bring the page served is not tried twice: the tab offers instead", async () => {
     // A copy of another build answers in place of the companion, as a cache in the way would.
     const stale = (await (await fetch(running.url)).text()).replace(
-      /(name="vico-build" content=")[^"]+/,
+      /(name="sideco-build" content=")[^"]+/,
       "$1stale",
     );
     const thePage = (url: URL): boolean => url.pathname === "/";
@@ -1419,7 +1419,7 @@ describe("tidying up", () => {
     const count = (): void => void loads++;
     page.on("load", count);
     await page.reload();
-    const toast = page.locator(".toast", { hasText: "Vico was updated." });
+    const toast = page.locator(".toast", { hasText: "Sideco was updated." });
     await toast.waitFor();
     // The reload asked for above, then the one the tab tried by itself.
     expect(loads).toBe(2);
@@ -1433,7 +1433,7 @@ describe("tidying up", () => {
   });
 
   test("the last board removed brings back the first screen", async () => {
-    await agent("board rm flux-vico");
+    await agent("board rm flux-sideco");
     await page.locator(".empty h1").waitFor();
     expect(await listed()).toEqual([]);
     expect(page.url()).not.toContain("#/b/");

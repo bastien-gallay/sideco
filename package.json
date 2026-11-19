@@ -1,12 +1,12 @@
 {
-  "name": "vico",
+  "name": "sideco",
   "version": "0.1.0",
   "description": "Visual companion for Claude Code: a live, event-sourced modelling board shared by a developer and their agent.",
   "license": "MIT",
   "type": "module",
   "private": true,
   "bin": {
-    "vico": "./bin/vico"
+    "sideco": "./bin/sideco"
   },
   "scripts": {
     "serve": "bun run src/cli/main.ts serve",

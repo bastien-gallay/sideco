@@ -1,9 +1,9 @@
 /**
  * Starts the companion for one workspace: opens the journal, builds the page,
- * finds a free port and leaves a note (`.vico/server.json`) so the CLI and the
+ * finds a free port and leaves a note (`.sideco/server.json`) so the CLI and the
  * hooks can find it.
  */
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locale } from "../domain/i18n.ts";
 import { serve } from "./http.ts";
@@ -21,8 +21,14 @@ export interface Running {
   stop(): void;
 }
 
+/**
+ * Where a workspace keeps its boards: `.sideco/`, or the `.vico/` of a
+ * workspace made before the rename, until it is moved.
+ */
 export function dataDir(root: string): string {
-  return join(root, ".vico");
+  const current = join(root, ".sideco");
+  const legacy = join(root, ".vico");
+  return !existsSync(current) && existsSync(legacy) ? legacy : current;
 }
 
 export function serverNote(root: string): string {

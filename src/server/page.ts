@@ -21,7 +21,7 @@ export interface Page {
 }
 
 /** Where the document says which build it is; empty in the source, and while it is fingerprinted. */
-const signature = (build: string): string => `<meta name="vico-build" content="${build}">`;
+const signature = (build: string): string => `<meta name="sideco-build" content="${build}">`;
 
 export async function buildPage(locale: Locale = DEFAULT_LOCALE): Promise<Page> {
   const built = await Bun.build({ entrypoints: [join(WEB, "main.ts")], target: "browser", minify: true });

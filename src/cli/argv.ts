@@ -1,6 +1,6 @@
 /**
- * The command language. One grammar serves the shell (`vico add event "Paid"`)
- * and batch files (`vico apply`, one command per line), so what the agent learns
+ * The command language. One grammar serves the shell (`sideco add event "Paid"`)
+ * and batch files (`sideco apply`, one command per line), so what the agent learns
  * once works in both.
  */
 import { slugify } from "../domain/commands.ts";
@@ -94,7 +94,7 @@ export function boardAction(tokens: readonly string[], board: string | undefined
   const { positional: p, flags } = parseArgs(rest);
   const target = (): string => {
     const chosen = flags.get("board") ?? board;
-    if (!chosen) throw new UsageError("which board? pass --board ID (see `vico boards`)");
+    if (!chosen) throw new UsageError("which board? pass --board ID (see `sideco boards`)");
     return chosen;
   };
   const need = (index: number, what: string): string => {
@@ -113,7 +113,7 @@ export function boardAction(tokens: readonly string[], board: string | undefined
     case "board": {
       if (p[0] === "rm") {
         const id = p[1];
-        if (!id) throw new UsageError("`board rm` needs the id of the board to remove (see `vico boards`)");
+        if (!id) throw new UsageError("`board rm` needs the id of the board to remove (see `sideco boards`)");
         return { command: { kind: "remove-board", board: id } };
       }
       if (p[0] !== "new")
@@ -220,7 +220,7 @@ export function boardAction(tokens: readonly string[], board: string | undefined
     case "pass":
       return { command: { kind: "pass", board: target(), to: flags.get("to") ?? "human", message: p[0] } };
     default:
-      throw new UsageError(`unknown command "${verb}" (try \`vico help\`)`);
+      throw new UsageError(`unknown command "${verb}" (try \`sideco help\`)`);
   }
 }
 

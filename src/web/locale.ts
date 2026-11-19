@@ -5,7 +5,7 @@
 import type { Locale } from "../domain/i18n.ts";
 import { MESSAGES, type Messages, pickLocale } from "./messages.ts";
 
-const KEY = "vico.lang";
+const KEY = "sideco.lang";
 
 /** The reader's own choice in this browser; absent in a private window or with storage blocked. */
 function chosen(): string | null {

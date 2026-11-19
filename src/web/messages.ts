@@ -152,7 +152,7 @@ export interface Messages {
   /** Said to the reader who just removed a board, beside the offer to undo. */
   boardRemoved: (title: string) => string;
 
-  /** Said in a tab left open across an update of Vico, when reloading it would lose words; and the offer. */
+  /** Said in a tab left open across an update of Sideco, when reloading it would lose words; and the offer. */
   updated: string;
   reload: string;
 
@@ -229,7 +229,7 @@ const en: Messages = {
     json: "JSON model (can be imported back)",
   },
   copyMermaid: "Copy the Mermaid",
-  publishAll: "Publish everything at once: vico publish",
+  publishAll: "Publish everything at once: sideco publish",
   mermaidCopied: "Mermaid copied to the clipboard.",
   clipboardRefused: "The browser refused access to the clipboard; use the Mermaid export.",
 
@@ -247,7 +247,7 @@ const en: Messages = {
   openNotes: (count) => `Open notes (${count})`,
   wholeBoard: "Whole board",
   cardGone: (id) => `${id} (removed)`,
-  author: { human: "You", agent: "Claude", system: "Vico" },
+  author: { human: "You", agent: "Claude", system: "Sideco" },
   waits: { you: "Awaits your answer", claude: "Awaits Claude" },
   replyTo: (id) => `Reply to ${id}`,
   showCard: (id) => `Show ${id} on the board`,
@@ -325,7 +325,7 @@ const en: Messages = {
   boardRemoved: (title) => `Board “${title}” removed.`,
   agentCreatedBoard: (title) => `Claude created the board “${title}”: it is in the board list, at the top.`,
 
-  updated: "Vico was updated.",
+  updated: "Sideco was updated.",
   reload: "Reload",
 
   colon: ":",
@@ -403,7 +403,7 @@ const fr: Messages = {
     json: "Modèle JSON (réimportable)",
   },
   copyMermaid: "Copier le Mermaid",
-  publishAll: "Tout publier d'un coup : vico publish",
+  publishAll: "Tout publier d'un coup : sideco publish",
   mermaidCopied: "Mermaid copié dans le presse-papiers.",
   clipboardRefused: "Le navigateur a refusé l'accès au presse-papiers ; utilise l'export Mermaid.",
 
@@ -421,7 +421,7 @@ const fr: Messages = {
   openNotes: (count) => `Notes ouvertes (${count})`,
   wholeBoard: "Tout le tableau",
   cardGone: (id) => `${id} (supprimé)`,
-  author: { human: "Toi", agent: "Claude", system: "Vico" },
+  author: { human: "Toi", agent: "Claude", system: "Sideco" },
   waits: { you: "Attend ta réponse", claude: "Attend Claude" },
   replyTo: (id) => `Répondre à ${id}`,
   showCard: (id) => `Montrer ${id} sur le tableau`,
@@ -502,7 +502,7 @@ const fr: Messages = {
   agentCreatedBoard: (title) =>
     `Claude a créé le tableau « ${title} » : il est dans la liste des tableaux, en haut.`,
 
-  updated: "Vico a été mis à jour.",
+  updated: "Sideco a été mis à jour.",
   reload: "Recharger",
 
   colon: " :",

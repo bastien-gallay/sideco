@@ -1,15 +1,15 @@
 {
-  "name": "vico",
+  "name": "sideco",
   "owner": {
     "name": "Bastien Gallay"
   },
   "metadata": {
-    "description": "Vico — single-plugin marketplace.",
+    "description": "Sideco — single-plugin marketplace.",
     "version": "0.1.0"
   },
   "plugins": [
     {
-      "name": "vico",
+      "name": "sideco",
       "source": "./",
       "description": "Visual companion for Claude Code: a live modelling board, in a browser window beside the terminal, that the developer and the agent edit together.",
       "version": "0.1.0",
