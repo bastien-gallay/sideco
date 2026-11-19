@@ -13,6 +13,7 @@ import { addressee, findBoard, latestSession, readerOf } from "../domain/workspa
 import { mountBoard } from "./board-view.ts";
 import { clock, h, type Props, region } from "./dom.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
+import { markdownNodes } from "./markdown.ts";
 import { MESSAGES, type SheetKind } from "./messages.ts";
 import {
   changed,
@@ -830,7 +831,7 @@ const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
   h("p", { class: "card-panel-name" }, m.label),
   m.type !== undefined && h("p", { class: "hint" }, m.type),
   m.detail
-    ? h("div", { class: "card-panel-detail" }, m.detail)
+    ? h("div", { class: "card-panel-detail" }, ...markdownNodes(m.detail))
     : h("p", { class: "hint card-panel-detail" }, t.noDetail),
   m.live && h("button", { type: "button", onclick: () => view.annotate(m.id) }, t.editDetail),
 ]);

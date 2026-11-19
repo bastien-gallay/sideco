@@ -1188,10 +1188,37 @@ describe("the chosen card, read in the right panel", () => {
     expect(await panel().locator(".card-panel-name").textContent()).toBe(
       (await elementOf("ajout-case", "E1"))?.label ?? null,
     );
-    expect(await panel().locator(".card-panel-detail").textContent()).toBe(
-      "Paiement par carte.\nVirement refusé.",
+    // One paragraph, its two lines kept.
+    expect(await panel().locator(".card-panel-detail p").count()).toBe(1);
+    expect(await panel().locator(".card-panel-detail p br").count()).toBe(1);
+    expect(await panel().locator(".card-panel-detail p").textContent()).toBe(
+      "Paiement par carte.Virement refusé.",
     );
     await shot("55-card-panel");
+  });
+
+  test("reads the detail as simple markdown, and HTML as words", async () => {
+    const detail =
+      "**Règle** : voir [la doc](https://example.org/regle).\n- payer\n- livrer\n\n<b>pas du gras</b>";
+    await fetch(`${running.url}/api/commands`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        actor: "agent",
+        session: SESSION,
+        commands: [{ kind: "annotate", board: "ajout-case", id: "E1", detail }],
+      }),
+    });
+    const shown = panel().locator(".card-panel-detail");
+    await shown.locator("strong").waitFor();
+    expect(await shown.locator("strong").textContent()).toBe("Règle");
+    const link = shown.locator("a");
+    expect(await link.getAttribute("href")).toBe("https://example.org/regle");
+    expect(await link.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(await shown.locator("li").allTextContents()).toEqual(["payer", "livrer"]);
+    expect(await shown.locator("b").count()).toBe(0);
+    expect(await shown.locator("p").last().textContent()).toBe("<b>pas du gras</b>");
+    await shot("56-card-panel-markdown");
   });
 
   test("opens the detail editor from the panel", async () => {

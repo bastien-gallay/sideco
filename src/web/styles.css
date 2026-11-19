@@ -474,10 +474,48 @@ input[type="text"] {
 }
 
 .card-panel-detail {
+  display: grid;
+  gap: 6px;
   margin: 8px 0 10px;
   line-height: 1.45;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* The detail's small markdown: lists, code and links read as they do in a document. */
+.card-panel-detail ul {
+  list-style: disc;
+  padding-left: 18px;
+}
+
+.card-panel-detail ol {
+  list-style: decimal;
+  padding-left: 22px;
+}
+
+.card-panel-detail code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--bg);
+}
+
+.card-panel-detail pre {
+  margin: 0;
+  padding: 6px 8px;
+  overflow-x: auto;
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.card-panel-detail pre code {
+  padding: 0;
+  background: none;
+  white-space: pre;
+}
+
+.card-panel-detail a {
+  color: var(--accent);
 }
 
 .session {
