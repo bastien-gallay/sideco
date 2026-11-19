@@ -1132,21 +1132,22 @@ describe("reopening a card without changing it", () => {
     expect(posted.ok).toBe(true);
     await card("E1").locator(".card-detail").waitFor();
     const before = (await workspace()).seq;
+    const field = page.locator("textarea.card-panel-editor");
     const editor = page.locator("textarea.card-editor");
 
     await card("E1").click();
     await page.locator(".card-tools button", { hasText: "Detail" }).click();
-    await editor.waitFor({ state: "visible" });
-    // A detail is read before it is changed: nothing comes selected, the caret waits at its end.
+    await field.waitFor({ state: "visible" });
+    // A detail is read before it is changed: nothing comes selected, the caret waits at its start.
     expect(
-      await editor.evaluate(
-        (field: HTMLTextAreaElement) =>
-          field.selectionStart === field.value.length && field.selectionEnd === field.value.length,
+      await field.evaluate(
+        (f: HTMLTextAreaElement) =>
+          document.activeElement === f && f.selectionStart === 0 && f.selectionEnd === 0,
       ),
     ).toBe(true);
-    expect(await editor.getAttribute("aria-label")).toBe("Detail of E1");
-    await editor.press("Enter");
-    await editor.waitFor({ state: "hidden" });
+    expect(await field.getAttribute("aria-label")).toBe("Detail of E1");
+    await field.press("ControlOrMeta+Enter");
+    await field.waitFor({ state: "hidden" });
 
     await card("E1").dblclick();
     await editor.waitFor({ state: "visible" });
@@ -1158,21 +1159,25 @@ describe("reopening a card without changing it", () => {
     expect((await elementOf("ajout-case", "E1"))?.detail).toBe(detail);
   });
 
-  test("a detail typed on several lines keeps its lines", async () => {
-    const editor = page.locator("textarea.card-editor");
+  test("a detail typed on several lines keeps its lines: Enter breaks the line, ⌘/Ctrl+Enter saves", async () => {
+    const field = page.locator("textarea.card-panel-editor");
     await card("E1").click();
     await page.locator(".card-tools button", { hasText: "Detail" }).click();
-    await editor.waitFor({ state: "visible" });
-    await editor.fill("Première  ligne");
-    await editor.press("Shift+Enter");
-    await editor.pressSequentially("seconde ligne");
-    await editor.press("Enter");
-    await editor.waitFor({ state: "hidden" });
-    // The keyboard is back on the card the detail is about.
+    await field.waitFor({ state: "visible" });
+    await field.fill("Première  ligne");
+    await field.press("Enter");
+    await field.pressSequentially("seconde ligne");
+    await field.press("ControlOrMeta+Enter");
+    await field.waitFor({ state: "hidden" });
+    // The keyboard is back on the card the detail is about, and the ear is told it is kept.
     expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe("E1");
     await until(
       "the detail is kept line by line",
       async () => (await elementOf("ajout-case", "E1"))?.detail === "Première ligne\nseconde ligne",
+    );
+    await until(
+      "the save is said",
+      async () => (await page.locator(".spoken").textContent()) === "Detail of E1 saved",
     );
     await page.keyboard.press("Escape");
   });
@@ -1241,13 +1246,40 @@ describe("the chosen card, read in the right panel", () => {
     await shot("56-card-panel-markdown");
   });
 
-  test("opens the detail editor from the panel", async () => {
+  test("writes the detail where it is read, and Esc leaves it as it was", async () => {
+    const field = panel().locator("textarea.card-panel-editor");
     await panel().locator("button", { hasText: "Edit the detail" }).click();
-    const editor = page.locator("textarea.card-editor");
-    await editor.waitFor({ state: "visible" });
-    expect(await editor.getAttribute("aria-label")).toBe("Detail of E1");
-    await editor.press("Escape");
-    await editor.waitFor({ state: "hidden" });
+    await field.waitFor({ state: "visible" });
+    expect(await field.getAttribute("aria-label")).toBe("Detail of E1");
+    // The whole detail from its first line: the field grows with its words.
+    expect(await field.evaluate((f: HTMLTextAreaElement) => f.scrollHeight <= f.clientHeight + 2)).toBe(true);
+    expect(await panel().locator(".card-panel-keys").textContent()).toContain("⌘/Ctrl+Enter saves");
+    await shot("58-card-panel-editing");
+    const before = (await workspace()).seq;
+    await field.press("End");
+    await field.pressSequentially(" brouillon");
+    await field.press("Escape");
+    await field.waitFor({ state: "hidden" });
+    // Nothing was kept, and the keyboard is back on the button it left.
+    expect((await workspace()).seq).toBe(before);
+    expect(await page.evaluate(() => document.activeElement?.classList.contains("edit-detail"))).toBe(true);
+  });
+
+  test("E on a card opens its detail in the panel; another card chosen meanwhile waits", async () => {
+    await card("E1").focus();
+    await page.keyboard.press("e");
+    const field = panel().locator("textarea.card-panel-editor");
+    await field.waitFor({ state: "visible" });
+    expect(await page.evaluate(() => document.activeElement?.classList.contains("card-panel-editor"))).toBe(
+      true,
+    );
+    // Choosing another card does not take the words away: the panel stays on the one being written.
+    await card("E2").click();
+    expect(await panel().locator("h2").textContent()).toBe("Card E1");
+    await panel().locator("button", { hasText: "Cancel" }).click();
+    await field.waitFor({ state: "hidden" });
+    expect(await panel().locator("h2").textContent()).toBe("Card E2");
+    await card("E1").click();
   });
 
   test("the Session tab, once chosen, stays while the board changes under it", async () => {

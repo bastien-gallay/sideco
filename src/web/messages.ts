@@ -130,6 +130,11 @@ export interface Messages {
   detailTabEmpty: string;
   noDetail: string;
   editDetail: string;
+  addDetail: string;
+  saveDetail: string;
+  /** Under the detail being written: its keys, and the little markdown it is read in. */
+  detailKeys: string;
+  detailSaved: (id: string) => string;
 
   // The hand-over.
   messageForClaude: string;
@@ -360,6 +365,11 @@ const en: Messages = {
   detailTabEmpty: "Detail: choose a card on the board",
   noDetail: "No detail yet.",
   editDetail: "Edit the detail",
+  addDetail: "Add a detail",
+  saveDetail: "Save",
+  detailKeys:
+    "⌘/Ctrl+Enter saves, Esc cancels. Markdown: **bold**, *italic*, `code`, - lists, [words](https://…)",
+  detailSaved: (id) => `Detail of ${id} saved`,
 
   messageForClaude: "Message for Claude",
   messagePlaceholder: "A word for Claude (optional)",
@@ -463,6 +473,7 @@ const en: Messages = {
         : "Mark the card done, or not done",
     ],
     ["L", "Link from the card: then Space on the other one"],
+    ["E", "Write the card's detail, in the panel on the right"],
     ["N", "Note for Claude on the card"],
     ["Delete", "Remove the card (Undo brings it back)"],
     ["/", "Find a card by its id or its words"],
@@ -629,6 +640,11 @@ const fr: Messages = {
   detailTabEmpty: "Détail : choisis une carte sur le tableau",
   noDetail: "Pas encore de détail.",
   editDetail: "Modifier le détail",
+  addDetail: "Ajouter un détail",
+  saveDetail: "Enregistrer",
+  detailKeys:
+    "⌘/Ctrl+Entrée enregistre, Échap annule. Markdown : **gras**, *italique*, `code`, - listes, [mots](https://…)",
+  detailSaved: (id) => `Détail de ${id} enregistré`,
 
   messageForClaude: "Message pour Claude",
   messagePlaceholder: "Un mot pour Claude (facultatif)",
@@ -733,6 +749,7 @@ const fr: Messages = {
         : "Marquer la carte faite, ou non faite",
     ],
     ["L", "Relier depuis la carte : puis Espace sur l'autre"],
+    ["E", "Écrire le détail de la carte, dans le panneau de droite"],
     ["N", "Note pour Claude sur la carte"],
     ["Suppr", "Supprimer la carte (Annuler la ramène)"],
     ["/", "Trouver une carte par son id ou ses mots"],

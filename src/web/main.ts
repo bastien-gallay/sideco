@@ -40,6 +40,7 @@ import {
   historyPlace,
   historyStep,
   historyStops,
+  keptLines,
   mentions,
   pendingChanges,
   recentTurns,
@@ -336,6 +337,7 @@ const view = mountBoard(canvas, {
   removed: (said) => say(said, { label: t.undoAction, run: () => void undo() }),
   announce: speak,
   notice: (text) => say(text),
+  editDetail: (id) => editDetail(id, "card"),
 });
 
 /** A search over the cards of the board shown: `/` opens it, Enter goes from one card found to the next. */
@@ -1038,19 +1040,122 @@ interface CardPanelModel {
   id: string;
   label: string;
   type: string | undefined;
+  /** None while it is being written: the field holds the words then. */
   detail: string | undefined;
   live: boolean;
+  editing: boolean;
+  saving: boolean;
 }
+
+/** The detail being written in the panel: its card, and where the keyboard was when it was asked for. */
+let detailEdit: { id: string; from: "card" | "panel" } | undefined;
+/** Made once: the words being written keep their place and the keyboard through every repaint. */
+const detailField = h("textarea", {
+  name: "detail",
+  class: "card-panel-editor",
+  rows: 3,
+  "aria-describedby": "detail-keys",
+});
+const fitDetailField = (): void => {
+  detailField.style.height = "auto";
+  detailField.style.height = `${detailField.scrollHeight + 2}px`;
+};
+detailField.addEventListener("input", fitDetailField);
+detailField.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    event.preventDefault();
+    event.stopPropagation();
+    closeDetail();
+  } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+    event.preventDefault();
+    void saveDetail();
+  }
+});
+let detailSaving = false;
 
 const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
   h("h2", {}, t.cardPanelOf(m.id)),
   h("p", { class: "card-panel-name" }, m.label),
   m.type !== undefined && h("p", { class: "hint" }, m.type),
-  m.detail
-    ? h("div", { class: "card-panel-detail" }, ...markdownNodes(m.detail))
-    : h("p", { class: "hint card-panel-detail" }, t.noDetail),
-  m.live && h("button", { type: "button", onclick: () => view.annotate(m.id) }, t.editDetail),
+  ...(m.editing
+    ? [
+        detailField,
+        h("p", { class: "hint card-panel-keys", id: "detail-keys" }, t.detailKeys),
+        h(
+          "div",
+          { class: "card-panel-actions" },
+          h(
+            "button",
+            { type: "button", class: "primary", disabled: m.saving, onclick: () => void saveDetail() },
+            t.saveDetail,
+          ),
+          h("button", { type: "button", disabled: m.saving, onclick: () => closeDetail() }, t.cancel),
+        ),
+      ]
+    : [
+        m.detail
+          ? h("div", { class: "card-panel-detail" }, ...markdownNodes(m.detail))
+          : h("p", { class: "hint card-panel-detail" }, t.noDetail),
+        m.live &&
+          h(
+            "button",
+            { type: "button", class: "edit-detail", onclick: () => editDetail(m.id, "panel") },
+            m.detail ? t.editDetail : t.addDetail,
+          ),
+      ]),
 ]);
+
+/** Opens the card's detail for writing, in the panel: the words from their first line, the keyboard in them. */
+function editDetail(id: string, from: "card" | "panel"): void {
+  const element = currentBoard()?.elements.find((e) => e.id === id);
+  if (!element || !isLive()) return;
+  if (detailEdit?.id !== id) detailField.value = element.detail ?? "";
+  detailEdit = { id, from };
+  detailField.setAttribute("aria-label", t.detailOf(id));
+  // Written in the Detail tab: it is opened, and the panel with it if it was folded.
+  tab = "detail";
+  if (isFolded("right")) toggleFold("right");
+  render();
+  fitDetailField();
+  detailField.focus();
+  detailField.setSelectionRange(0, 0);
+  detailField.scrollTop = 0;
+}
+
+/** Leaves the detail as it was, and gives the keyboard back where it was taken from. */
+function closeDetail(): void {
+  const edit = detailEdit;
+  detailEdit = undefined;
+  render();
+  if (!edit) return;
+  if (edit.from === "panel") cardPanel.querySelector<HTMLButtonElement>("button.edit-detail")?.focus();
+  else view.focus(edit.id);
+}
+
+/** Keeps the words written: nothing is sent when they say what the card already says. */
+async function saveDetail(): Promise<void> {
+  const edit = detailEdit;
+  const board = currentBoard();
+  const element = board?.elements.find((e) => e.id === edit?.id);
+  if (!edit || !board || !element || detailSaving) return;
+  const detail = keptLines(detailField.value);
+  if (detail === (element.detail ?? "")) {
+    closeDetail();
+    return;
+  }
+  detailSaving = true;
+  render();
+  const done = await send({ kind: "annotate", board: board.id, id: edit.id, detail });
+  detailSaving = false;
+  if (done === undefined) {
+    // Refused or not sent: the words stay, to be saved again or cancelled.
+    render();
+    detailField.focus();
+    return;
+  }
+  closeDetail();
+  speak(t.detailSaved(edit.id));
+}
 
 interface SessionModel {
   status: { tone: string; text: string };
@@ -1543,21 +1648,33 @@ function render(): void {
   if (!board) paintEmpty({ live });
   view.paint(board, unread.cards);
 
-  const chosen = board?.elements.find((e) => e.id === state.selected);
+  // The card whose detail is being written stays in the panel until it is saved or left.
+  if (detailEdit && !board?.elements.some((e) => e.id === detailEdit?.id)) {
+    const words = detailField.value.trim();
+    if (words) say(t.wordsOrphaned(detailEdit.id, words));
+    detailEdit = undefined;
+  }
+  const editing = live && detailEdit !== undefined;
+  const chosen = board?.elements.find((e) => e.id === (editing ? detailEdit?.id : state.selected));
   // A card newly chosen opens its tab; while it stays chosen, the reader's tab is theirs.
   if (chosen && chosen.id !== detailFor) tab = "detail";
   detailFor = chosen?.id ?? null;
   if (chosen) delete cardPanel.dataset.empty;
   else cardPanel.dataset.empty = "true";
+  cardPanel.classList.toggle("is-editing", editing);
   if (board && chosen) {
     const format = findFormat(board.format);
+    const typing = document.activeElement === detailField;
     paintCardPanel({
       id: chosen.id,
       label: chosen.label,
       type: format && findType(format, chosen.type)?.label[locale],
-      detail: chosen.detail,
+      detail: editing ? undefined : chosen.detail,
       live,
+      editing,
+      saving: detailSaving,
     });
+    if (typing && document.activeElement !== detailField) detailField.focus();
   }
 
   paintTabs();

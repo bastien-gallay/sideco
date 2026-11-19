@@ -695,6 +695,42 @@ input[type="text"] {
   overflow-wrap: anywhere;
 }
 
+/* Written where it is read: the field takes the column's width and grows with its words. */
+.card-panel.is-editing {
+  max-height: 75%;
+}
+
+.card-panel-editor {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 96px;
+  max-height: 60vh;
+  margin: 8px 0 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent-text);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.card-panel-editor:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 1px;
+}
+
+.card-panel-keys {
+  margin-bottom: 10px;
+}
+
+.card-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .card-panel-detail {
   display: grid;
   gap: 6px;

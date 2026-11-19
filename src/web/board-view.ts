@@ -89,6 +89,8 @@ export interface BoardHooks {
   announce(text: string): void;
   /** Something every reader is told, in the page's notice: why a key did nothing. */
   notice(text: string): void;
+  /** The card's detail is to be written: the page opens it in its panel. */
+  editDetail(id: string): void;
 }
 
 /**
@@ -111,8 +113,6 @@ export interface BoardView {
   reveal(id: string): void;
   /** Gives the card the keyboard: it is where Tab enters the board from now on. */
   focus(id: string): void;
-  /** Opens the editor of the card's detail, under the card. */
-  annotate(id: string): void;
 }
 
 export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
@@ -598,10 +598,12 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const doneLabel = done ? t.notDone : t.done;
     tools.replaceChildren(
       h("button", { type: "button", ...keyed(t.rename, "Enter"), onclick: () => rename(id) }, t.rename),
+      // The ≡ the card wears when it has a detail: seen here too, not heard.
       h(
         "button",
-        { type: "button", onclick: () => annotate(id) },
-        element?.detail ? `${t.detail} ≡` : t.detail,
+        { type: "button", ...keyed(t.detail, "E"), onclick: () => hooks.editDetail(id) },
+        t.detail,
+        element?.detail ? h("span", { "aria-hidden": "true" }, " ≡") : undefined,
       ),
       h("button", { type: "button", ...keyed(t.link, "L"), onclick: () => beginLink(id) }, t.link),
       h(
@@ -661,9 +663,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   /**
    * Opens the editor over a card, or under it. A label is a few words replaced
-   * at once: they come selected, and Enter saves them. A detail or a note is
-   * read before it is changed: it opens with the caret at its end, left-aligned,
-   * Enter breaks the line and ⌘ or Ctrl with Enter saves.
+   * at once: they come selected, and Enter saves them. A note is a few lines
+   * written at once: Enter saves it and Shift with Enter breaks the line. A
+   * card's detail is not written here but in the page's panel.
    */
   function openEditor(
     box: DOMRect,
@@ -864,25 +866,6 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       { fill: "var(--surface)", ink: "var(--ink)" },
       (label) => saved(send({ kind: "link", board: boardId, src, dst, ...(label ? { label } : {}) })),
       { name: t.linkNameOf(src, dst), lines: false, blank: true },
-    );
-  }
-
-  function annotate(id: string): void {
-    const node = nodes.get(id);
-    const element = board?.elements.find((e) => e.id === id);
-    if (!board || !node || !element) return;
-    const boardId = board.id;
-    const box = node.g.getBoundingClientRect();
-    const below = new DOMRect(box.left, box.bottom + 6, 300, 120);
-    openEditor(
-      below,
-      element.detail ?? "",
-      t.detailPlaceholder,
-      { fill: "var(--surface)", ink: "var(--ink)" },
-      (detail) => {
-        return saved(send({ kind: "annotate", board: boardId, id, detail }));
-      },
-      { name: t.detailOf(id), lines: true, from: id },
     );
   }
 
@@ -1380,6 +1363,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       markDone(id, !(element && isDone(board, element)));
     } else if (event.key.toLowerCase() === "l") beginLink(id);
     else if (event.key.toLowerCase() === "n") noteOn(id);
+    else if (event.key.toLowerCase() === "e") hooks.editDetail(id);
     else return;
     event.preventDefault();
   });
@@ -1473,7 +1457,6 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" });
     },
     focus: focusCard,
-    annotate,
     zoomBy(step) {
       // From a fitted zoom, the next step that way.
       const next = step > 0 ? ZOOMS.find((z) => z > zoom + 0.001) : ZOOMS.findLast((z) => z < zoom - 0.001);
