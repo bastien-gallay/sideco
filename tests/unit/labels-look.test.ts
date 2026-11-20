@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
-import { chipText, LABEL_COLOURS, labelColours } from "../../src/domain/render/labels.ts";
+import { cardChipText, chipText, LABEL_COLOURS, labelColours } from "../../src/domain/render/labels.ts";
 import { cardMarkup } from "../../src/domain/render/svg.ts";
 import { table } from "../support.ts";
 
@@ -53,6 +53,14 @@ describe("a label's words on a chip", () => {
     expect(chipText("assignee:bastien")).toBe("@bastien");
     expect(chipText("type:bug")).toBe("type:bug");
   });
+
+  test("on the card, a keyed label shows its value alone: its colour already says the key", () => {
+    expect(cardChipText("type:bug")).toBe("bug");
+    expect(cardChipText("release:2026.12")).toBe("2026.12");
+    expect(cardChipText("assignee:bastien")).toBe("@bastien");
+    expect(cardChipText("urgent")).toBe("urgent");
+    expect(cardChipText("a:b:c")).toBe("b:c");
+  });
 });
 
 const KANBAN = `
@@ -85,9 +93,11 @@ describe("a card with labels", () => {
     if (!card) throw new Error("no T2");
     const svg = cardMarkup(card);
     expect(svg).toContain('class="card-labels"');
-    expect(svg).toContain(">type:bug</text>");
-    // Five labels on a card 152 wide: the first, then how many more; the tooltip and the Detail name them all.
-    expect(svg).toContain(">+4</text>");
+    expect(svg).toContain(">bug</text>");
+    expect(svg).not.toContain(">type:bug</text>");
+    // Five labels on a card 152 wide: the first two, then how many more; the tooltip and the Detail name them all.
+    expect(svg).toContain(">@bastien</text>");
+    expect(svg).toContain(">+3</text>");
     expect(chipText("assignee:bastien")).toBe("@bastien");
     const ys = [...svg.matchAll(/<rect class="card-label-chip" x="[\d.]+" y="([\d.]+)"/g)].map((m) =>
       Number(m[1]),

@@ -2858,7 +2858,8 @@ describe("labels on a card, from the page", () => {
     await page.locator(".board-picker select").selectOption("etiquettes");
     await card("T2").waitFor();
     // On the card: a chip each, and its name says them.
-    expect(await card("T1").locator(".card-labels text").allTextContents()).toEqual(["type:bug", "@bastien"]);
+    // The chip says the value, its colour the key; the name says the label whole.
+    expect(await card("T1").locator(".card-labels text").allTextContents()).toEqual(["bug", "@bastien"]);
     expect(await card("T1").getAttribute("aria-label")).toContain("labels type:bug, @bastien");
 
     await card("T1").click();

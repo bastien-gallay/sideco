@@ -42,3 +42,14 @@ export function labelColours(label: string): LabelColours {
 export function chipText(label: string): string {
   return label.toLowerCase().startsWith("assignee:") ? `@${label.slice("assignee:".length)}` : label;
 }
+
+/**
+ * The words a chip shows on a card, where room is short: a keyed label its value alone, since its colour
+ * already says the key (`type:bug` reads `bug`); an assignee `@name`. Its tooltip and name say it whole.
+ */
+export function cardChipText(label: string): string {
+  const short = chipText(label);
+  if (short !== label) return short;
+  const colon = label.indexOf(":");
+  return colon > 0 && colon < label.length - 1 ? label.slice(colon + 1) : label;
+}

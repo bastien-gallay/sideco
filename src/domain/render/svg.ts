@@ -16,7 +16,7 @@ import {
   labelsHeight,
   type Scene,
 } from "../layout/scene.ts";
-import { chipText, labelColours } from "./labels.ts";
+import { cardChipText, chipText, labelColours } from "./labels.ts";
 
 export const SVG_STYLE = `
 .sideco-board { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -197,7 +197,7 @@ function labelsMarkup(c: Card): string {
   for (const [i, label] of labels.entries()) {
     const rest = labels.length - i - 1;
     const more = rest > 0 ? width(`+${rest}`) + CHIP_GAP : 0;
-    let text = chipText(label);
+    let text = cardChipText(label);
     const room = right - x - more;
     if (width(text) > room) {
       // The first chip is cut to fit; a later one gives way to the count of those left out.
