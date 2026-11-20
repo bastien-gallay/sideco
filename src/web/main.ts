@@ -14,7 +14,7 @@ import { mountBoard } from "./board-view.ts";
 import { clock, h, type Props, region } from "./dom.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
-import { MESSAGES, type SheetKind } from "./messages.ts";
+import { type CardMark, MESSAGES, type SheetKind } from "./messages.ts";
 import {
   caughtUpYet,
   changed,
@@ -494,6 +494,29 @@ function sheetKind(): SheetKind {
   return format.ownLanes ? "kanban" : "lanes";
 }
 
+/** Each mark drawn as the card draws it, in a box of its own; the words beside it say what it means. */
+const MARK_DRAWN: Record<CardMark, string> = {
+  agent: '<path class="card-author" d="M0 -4l4 4l-4 4l-4-4z"/>',
+  human: '<circle class="card-author" r="3"/>',
+  detail: '<text class="card-detail" y="4" text-anchor="middle">≡</text>',
+  done: '<text class="card-done" y="4" text-anchor="middle">✓</text>',
+  notes: '<g class="card-notes"><circle r="8"/><text y="3.5">1</text></g>',
+  unread: '<g class="card-unread"><circle r="5"/></g>',
+  changed: '<g class="card-changed"><path d="M0 -6 L8 7 L-8 7 Z"/></g>',
+};
+
+function markLegend(): HTMLElement {
+  return h(
+    "dl",
+    { class: "key-list mark-list" },
+    ...(Object.keys(MARK_DRAWN) as CardMark[]).flatMap((mark) => {
+      const drawn = h("dt", {});
+      drawn.innerHTML = `<svg viewBox="-11 -11 22 22" width="22" height="22" aria-hidden="true">${MARK_DRAWN[mark]}</svg>`;
+      return [drawn, h("dd", {}, t.marks[mark])];
+    }),
+  );
+}
+
 function openKeys(): void {
   const how = sheetKind();
   /** Keys wear the look of keys; a gesture of the mouse is said in words. */
@@ -508,6 +531,8 @@ function openKeys(): void {
     list(t.shortcutList(how, Boolean(findFormat(currentBoard()?.format ?? "")?.doneLast)), true),
     h("h3", {}, t.withTheMouse),
     list(t.mouseList(how), false),
+    h("h3", {}, t.onACard),
+    markLegend(),
     h(
       "div",
       { class: "actions" },

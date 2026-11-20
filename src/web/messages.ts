@@ -253,9 +253,15 @@ export interface Messages {
   /** What the mouse does there that no key says. */
   mouseList: (how: SheetKind) => [gesture: string, does: string][];
   withTheMouse: string;
+  /** The legend of the marks a card wears, in the sheet of keys. */
+  onACard: string;
+  marks: Record<CardMark, string>;
   placedByLinks: (id: string) => string;
   close: string;
 }
+
+/** The marks a card can wear, each told in the sheet of keys. */
+export type CardMark = "agent" | "human" | "detail" | "done" | "notes" | "unread" | "changed";
 
 /** How a board is laid out, as far as its keys and gestures go. */
 export type SheetKind = "timeline" | "lanes" | "kanban" | "grid" | "graph";
@@ -542,6 +548,16 @@ const en: Messages = {
       : ([["Double-click a lane's name", "Rename it for this board"]] as [string, string][])),
   ],
   withTheMouse: "With the mouse",
+  onACard: "On a card",
+  marks: {
+    agent: "Added by Claude",
+    human: "Added by you",
+    detail: "Has a detail: press ≡ to read it",
+    done: "Done",
+    notes: "Open notes on it: press the count to read them",
+    unread: "Changed by you, not read by Claude yet",
+    changed: "Changed by Claude since your last visit",
+  },
   placedByLinks: (id) => `${id} is placed by its links: link or unlink it to move it.`,
   close: "Close",
 };
@@ -830,6 +846,16 @@ const fr: Messages = {
       : ([["Double-clic sur le nom d'une colonne", "La renommer pour ce tableau"]] as [string, string][])),
   ],
   withTheMouse: "À la souris",
+  onACard: "Sur une carte",
+  marks: {
+    agent: "Ajoutée par Claude",
+    human: "Ajoutée par toi",
+    detail: "A un détail : appuie sur ≡ pour le lire",
+    done: "Faite",
+    notes: "Notes ouvertes sur elle : appuie sur le nombre pour les lire",
+    unread: "Changée par toi, pas encore lue par Claude",
+    changed: "Changée par Claude depuis ta dernière visite",
+  },
   placedByLinks: (id) => `${id} est placé d'après ses liens : relie-le ou délie-le pour le déplacer.`,
   close: "Fermer",
 };

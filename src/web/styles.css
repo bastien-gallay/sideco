@@ -2050,3 +2050,21 @@ legend {
 .card-notes {
   cursor: pointer;
 }
+
+/* The marks of a card, drawn in the ink of the page; the coloured ones keep the colour they wear on the card. */
+.mark-list dt {
+  display: flex;
+  align-items: center;
+  color: var(--ink);
+  fill: currentColor;
+}
+
+.mark-list .card-author {
+  opacity: 0.7;
+}
+
+.mark-list .card-detail,
+.mark-list .card-done {
+  font-size: 13px;
+  font-weight: 700;
+}
