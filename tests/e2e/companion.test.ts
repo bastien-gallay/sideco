@@ -717,38 +717,6 @@ describe("keeping the model", () => {
     expect(await page.locator("g.card.is-fresh").count()).toBe(0);
     expect(await card("E1").textContent()).toContain("Commande validée");
   });
-
-  test("a reload shows the board once, whole: never a board half replayed", async () => {
-    // Long enough that its replay spans several frames: a batch holds 500 commands at most.
-    await agent(`board new "Long" --format kanban --id long`);
-    for (let batch = 0; batch < 3; batch++)
-      await agent(
-        Array.from({ length: 500 }, (_, i) => `add task "Carte ${batch * 500 + i}" --lane todo`).join("\n"),
-        "long",
-      );
-    await page.goto(`${running.url}/#/b/long`);
-    await until("the long board is drawn", async () => (await page.locator("g.card").count()) === 1500);
-    // Counts the cards at every frame of the next load; only a page that asks for it is watched.
-    await page.evaluate(() => sessionStorage.setItem("sideco.watch-paint", "1"));
-    await page.addInitScript(() => {
-      if (sessionStorage.getItem("sideco.watch-paint") !== "1") return;
-      const seen: number[] = [];
-      (window as unknown as { cardCounts: number[] }).cardCounts = seen;
-      const look = (): void => {
-        const n = document.querySelectorAll("g.card").length;
-        if (n !== seen.at(-1)) seen.push(n);
-        requestAnimationFrame(look);
-      };
-      requestAnimationFrame(look);
-    });
-    await page.reload();
-    await until("every card is back", async () => (await page.locator("g.card").count()) === 1500);
-    const counts = await page.evaluate(() => (window as unknown as { cardCounts: number[] }).cardCounts);
-    await page.evaluate(() => sessionStorage.removeItem("sideco.watch-paint"));
-    expect(counts.filter((n) => n > 0)).toEqual([1500]);
-    await page.goto(`${running.url}/#/b/commande`);
-    await card("E1").waitFor();
-  });
 });
 
 describe("the reader's language", () => {
@@ -3124,5 +3092,39 @@ describe("look", () => {
 
   test("nothing went wrong in the page along the way", () => {
     expect(problems).toEqual([]);
+  });
+});
+
+// Last, for its long board would slow every test after it.
+describe("a long journal", () => {
+  test("a reload shows the board once, whole: never a board half replayed", async () => {
+    // Long enough that its replay spans several frames: a batch holds 500 commands at most.
+    await agent(`board new "Long" --format kanban --id long`);
+    for (let batch = 0; batch < 3; batch++)
+      await agent(
+        Array.from({ length: 500 }, (_, i) => `add task "Carte ${batch * 500 + i}" --lane todo`).join("\n"),
+        "long",
+      );
+    await page.goto(`${running.url}/#/b/long`);
+    await until("the long board is drawn", async () => (await page.locator("g.card").count()) === 1500);
+    // Counts the cards at every frame of the next load; only a page that asks for it is watched.
+    await page.evaluate(() => sessionStorage.setItem("sideco.watch-paint", "1"));
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem("sideco.watch-paint") !== "1") return;
+      const seen: number[] = [];
+      (window as unknown as { cardCounts: number[] }).cardCounts = seen;
+      const look = (): void => {
+        const n = document.querySelectorAll("g.card").length;
+        if (n !== seen.at(-1)) seen.push(n);
+        requestAnimationFrame(look);
+      };
+      requestAnimationFrame(look);
+    });
+    await page.reload();
+    await until("every card is back", async () => (await page.locator("g.card").count()) === 1500);
+    const counts = await page.evaluate(() => (window as unknown as { cardCounts: number[] }).cardCounts);
+    await page.evaluate(() => sessionStorage.removeItem("sideco.watch-paint"));
+    expect(counts.filter((n) => n > 0)).toEqual([1500]);
+    await agent("board rm long");
   });
 });
