@@ -2472,6 +2472,24 @@ describe("what Claude changed while the reader was away", () => {
     expect(marked.sort()).toEqual(["E1", "E3"]);
     expect(await card("E1").getAttribute("aria-label")).toContain("Changed by Claude since your last visit");
     expect(await page.locator("g.card.is-new", { has: page.locator("text") }).count()).toBe(2);
+    // A sign of its own, in a corner: not the dashed ring a note or a link points with.
+    const sign = card("E1").locator(".card-changed");
+    expect(await sign.count()).toBe(1);
+    expect(await sign.locator("title").textContent()).toBe("Changed by Claude since your last visit");
+    expect(
+      await card("E1")
+        .locator(".card-shape")
+        .evaluate((shape) => getComputedStyle(shape).strokeDasharray),
+    ).toBe("none");
+    // The bar goes from one changed card to the next, round to the first.
+    const next = bar().getByRole("button", { name: "Next changed card (2)" });
+    const focused = () => page.evaluate(() => document.activeElement?.getAttribute("data-id") ?? null);
+    await next.click();
+    await until("on the first changed card", async () => (await focused()) === "E1");
+    await next.click();
+    await until("on the second", async () => (await focused()) === "E3");
+    await next.click();
+    await until("round to the first", async () => (await focused()) === "E1");
     await shot("59-since-last-visit");
 
     // In History, the moments missed stand out.

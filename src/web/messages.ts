@@ -149,6 +149,8 @@ export interface Messages {
   /** What Claude changed on the board shown while the reader was away; a card it changed, for the ear. */
   sinceVisit: (count: number) => string;
   seeInHistory: string;
+  /** Goes to the changed cards one by one; says how many there are. */
+  nextChanged: (cards: number) => string;
   gotIt: string;
   changedSinceVisit: string;
   theirTurn: string;
@@ -388,6 +390,7 @@ const en: Messages = {
   unread: "Not read by Claude yet",
   sinceVisit: (count) => `Since your last visit, Claude made ${count} change${plural(count)} here.`,
   seeInHistory: "See them in History",
+  nextChanged: (cards) => `Next changed card (${cards})`,
   gotIt: "Got it",
   changedSinceVisit: "Changed by Claude since your last visit",
   theirTurn: "Your turn",
@@ -671,6 +674,7 @@ const fr: Messages = {
   unread: "Pas encore lu par Claude",
   sinceVisit: (count) => `Depuis ta dernière visite, Claude a fait ${count} changement${plural(count)} ici.`,
   seeInHistory: "Les voir dans l'historique",
+  nextChanged: (cards) => `Carte changée suivante (${cards})`,
   gotIt: "Vu",
   changedSinceVisit: "Changé par Claude depuis ta dernière visite",
   theirTurn: "À toi",

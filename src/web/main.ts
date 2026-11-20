@@ -1426,6 +1426,7 @@ function arrive(board: string, latest: number): void {
   const since = readSeen()[board];
   const found =
     since !== undefined && since < latest ? sinceLastVisit(state.events, board, since, latest) : undefined;
+  visitAt = -1;
   visit = {
     board,
     since: since ?? latest,
@@ -1440,7 +1441,19 @@ function seeVisit(): void {
   render();
 }
 
-const paintVisit = region(visitBar, (m: { count: number }) =>
+/** The changed card the bar went to last: the next press goes on to the one after. */
+let visitAt = -1;
+function nextChanged(): void {
+  const cards = visit?.cards ?? [];
+  if (cards.length === 0) return;
+  visitAt = (visitAt + 1) % cards.length;
+  const id = cards[visitAt];
+  if (id === undefined) return;
+  select(id);
+  view.focus(id);
+}
+
+const paintVisit = region(visitBar, (m: { count: number; cards: number }) =>
   m.count === 0
     ? []
     : [
@@ -1448,6 +1461,8 @@ const paintVisit = region(visitBar, (m: { count: number }) =>
         h(
           "span",
           { class: "visit-actions" },
+          m.cards > 0 &&
+            h("button", { type: "button", class: "quiet", onclick: nextChanged }, t.nextChanged(m.cards)),
           h(
             "button",
             {
@@ -1837,7 +1852,7 @@ function render(): void {
     if (document.visibilityState === "visible") writeSeen(board.id, newest);
   }
   const away = live && board && visit?.board === board.id ? visit : undefined;
-  paintVisit({ count: away?.count ?? 0 });
+  paintVisit({ count: away?.count ?? 0, cards: away?.cards.length ?? 0 });
   visitBar.hidden = !away?.count;
   view.paint(board, unread.cards, away?.cards ?? []);
 

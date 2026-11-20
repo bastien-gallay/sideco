@@ -1317,10 +1317,12 @@ kbd {
 }
 
 /* Changed by Claude while the reader was away: a dashed edge, until seen. */
-.card.is-new .card-shape {
-  stroke: var(--accent-text);
-  stroke-width: 2.5;
-  stroke-dasharray: 6 3;
+/* Changed while the reader was away: a triangle in the accent, ringed by the board so it shows on any sticky. */
+.card-changed path {
+  fill: var(--accent-text);
+  stroke: var(--sideco-bg);
+  stroke-width: 2;
+  stroke-linejoin: round;
 }
 
 /*

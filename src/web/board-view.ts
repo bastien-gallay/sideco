@@ -103,6 +103,13 @@ export interface BoardHooks {
  */
 const UNREAD_MARK = `<g class="card-unread"><title>${esc(t.unread)}</title><circle cx="2" cy="2" r="5"/></g>`;
 
+/**
+ * The mark of a card Claude changed while the reader was away: a triangle on
+ * the bottom corner nothing else takes, a shape of its own beside the dot.
+ */
+const changedMark = (height: number): string =>
+  `<g class="card-changed" transform="translate(0 ${height})"><title>${esc(t.changedSinceVisit)}</title><path d="M0 -8 L8 5 L-8 5 Z"/></g>`;
+
 export interface BoardView {
   /** `unread` lists the cards that carry a change Claude has not read; `changed`, those Claude changed while the reader was away. */
   paint(board: Board | undefined, unread: readonly string[], changed?: readonly string[]): void;
@@ -303,7 +310,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       const { x, y, ...look } = card;
       const isUnread = unread.includes(card.id);
       const isNew = missed.includes(card.id);
-      const signature = JSON.stringify({ ...look, isUnread });
+      const signature = JSON.stringify({ ...look, isUnread, isNew });
       let node = nodes.get(card.id);
       if (!node) {
         const g = svg("g", { class: "card", "data-id": card.id, tabindex: -1, role: "button" });
@@ -313,7 +320,11 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         nodes.set(card.id, node);
       }
       if (node.signature !== signature) {
-        node.g.innerHTML = ringMarkup(card) + cardMarkup(card) + (isUnread ? UNREAD_MARK : "");
+        node.g.innerHTML =
+          ringMarkup(card) +
+          cardMarkup(card) +
+          (isUnread ? UNREAD_MARK : "") +
+          (isNew ? changedMark(card.h) : "");
         node.signature = signature;
       }
       // A screen reader hears a card as one name: its words, where it is, then the mark's. Its detail stays in the tooltip.
