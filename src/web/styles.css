@@ -1054,7 +1054,7 @@ kbd {
 
 .stage {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
 }
@@ -1083,6 +1083,23 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
+/* What Claude changed while the reader was away: over the board, in the accent's own tint, until seen. */
+.visit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 14px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  border-bottom: 1px solid var(--rule);
+}
+
+.visit-actions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+
 .focus-bar {
   display: flex;
   align-items: center;
@@ -1095,7 +1112,7 @@ kbd {
 
 .canvas {
   position: relative;
-  grid-row: 3;
+  grid-row: 4;
   overflow: hidden;
   background: var(--surface);
 }
@@ -1238,6 +1255,13 @@ kbd {
 .card.is-focus .card-shape {
   stroke: var(--ink);
   stroke-width: 3;
+}
+
+/* Changed by Claude while the reader was away: a dashed edge, until seen. */
+.card.is-new .card-shape {
+  stroke: var(--accent-text);
+  stroke-width: 2.5;
+  stroke-dasharray: 6 3;
 }
 
 /*
@@ -1424,7 +1448,7 @@ kbd {
 /* ── Empty state and the new-board dialog ─────────────────────────────────── */
 
 .empty {
-  grid-row: 3;
+  grid-row: 4;
   overflow-y: auto;
   padding: 48px 32px;
 }
@@ -1710,6 +1734,12 @@ legend {
 .moment-text {
   grid-column: 2;
   overflow-wrap: anywhere;
+}
+
+/* Claude's, while the reader was away: its time in the accent, as the dashed cards on the board. */
+.moment-missed time {
+  color: var(--accent-text);
+  font-weight: 600;
 }
 
 .moment-live {

@@ -16,6 +16,7 @@ import { chooseLocale, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
 import { MESSAGES, type SheetKind } from "./messages.ts";
 import {
+  caughtUpYet,
   changed,
   currentBoard,
   currentSession,
@@ -47,6 +48,7 @@ import {
   redoTarget,
   resolvedDiscussions,
   sessionName,
+  sinceLastVisit,
   tabTitle,
   undoTarget,
   unreadOn,
@@ -87,6 +89,8 @@ const banner = h("div", { class: "banner", hidden: true });
 const palette = h("section", { class: "palette", "aria-label": t.palette });
 const notes = h("section", { class: "notes", "aria-label": t.notes });
 const focusBar = h("div", { class: "focus-bar", hidden: true });
+/** What Claude changed on the board while the reader was away: said once, over the board, until they have seen it. */
+const visitBar = h("div", { class: "visit-bar", role: "status", hidden: true });
 const canvas = h("div", { class: "canvas" });
 const empty = h("div", { class: "empty", hidden: true });
 /** What Claude's session does, under the card panel: it scrolls on its own, to its latest step. */
@@ -545,7 +549,7 @@ app.append(
     "main",
     { class: "work" },
     h("aside", { class: "left", id: "panel-left" }, folds.left, palette, notes),
-    h("section", { class: "stage" }, focusBar, findBar, canvas, empty),
+    h("section", { class: "stage" }, visitBar, focusBar, findBar, canvas, empty),
     h(
       "aside",
       { class: "right", id: "panel-right" },
@@ -1299,12 +1303,84 @@ function paintHistory(m: HistoryModel): void {
   historyScope.disabled = !m.choice;
 }
 
+// ── What changed while the reader was away ───────────────────────────────────
+
+/** Where the journal stood the last time each board was on screen in this browser. */
+const SEEN = "sideco.seen";
+
+function readSeen(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(SEEN) ?? "{}") as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function writeSeen(board: string, seq: number): void {
+  try {
+    const seen = readSeen();
+    if (seen[board] === seq) return;
+    seen[board] = seq;
+    localStorage.setItem(SEEN, JSON.stringify(seen));
+  } catch {
+    // Without storage, every visit is a first one: nothing is marked.
+  }
+}
+
+/** The visit under way: the board, the reader's last look before it, their return, and what changed between. */
+let visit: { board: string; since: number; until: number; count: number; cards: string[] } | undefined;
+
+/** A board comes on screen: what Claude did there since it was last seen is measured once, for this visit. */
+function arrive(board: string, latest: number): void {
+  const since = readSeen()[board];
+  const found =
+    since !== undefined && since < latest ? sinceLastVisit(state.events, board, since, latest) : undefined;
+  visit = {
+    board,
+    since: since ?? latest,
+    until: latest,
+    count: found?.count ?? 0,
+    cards: found?.cards ?? [],
+  };
+}
+
+function seeVisit(): void {
+  if (visit) visit = { ...visit, count: 0, cards: [] };
+  render();
+}
+
+const paintVisit = region(visitBar, (m: { count: number }) =>
+  m.count === 0
+    ? []
+    : [
+        h("span", {}, t.sinceVisit(m.count)),
+        h(
+          "span",
+          { class: "visit-actions" },
+          h(
+            "button",
+            {
+              type: "button",
+              class: "quiet",
+              onclick: () => {
+                tab = "history";
+                if (isFolded("right")) toggleFold("right");
+                render();
+              },
+            },
+            t.seeInHistory,
+          ),
+          h("button", { type: "button", onclick: seeVisit }, t.gotIt),
+        ),
+      ],
+);
+
 interface HistoryListModel {
   live: boolean;
   /** The moment shown, or null when live. */
   current: number | null;
   more: number;
-  moments: { seq: number; to: number | null; at: string; by: string; text: string }[];
+  moments: { seq: number; to: number | null; at: string; by: string; text: string; missed: boolean }[];
 }
 
 const paintHistoryList = region(historyList, (m: HistoryListModel) => {
@@ -1317,8 +1393,9 @@ const paintHistoryList = region(historyList, (m: HistoryListModel) => {
         "button",
         {
           type: "button",
-          class: `moment by-${moment.by || "none"}`,
+          class: `moment by-${moment.by || "none"}${moment.missed ? " moment-missed" : ""}`,
           "aria-current": shown(moment.seq, k) ? "step" : undefined,
+          "aria-description": moment.missed ? t.changedSinceVisit : undefined,
           onclick: () => travelTo(moment.to),
         },
         k === 0 && h("span", { class: "moment-live" }, m.live ? t.liveNow : t.backToLive),
@@ -1654,7 +1731,16 @@ function render(): void {
   canvas.hidden = !board;
   empty.hidden = Boolean(board);
   if (!board) paintEmpty({ live });
-  view.paint(board, unread.cards);
+  // The board's visit: measured on arrival; the last look moves on while the board is on screen.
+  const newest = state.events.at(-1)?.seq ?? 0;
+  if (live && board && newest > 0 && caughtUpYet()) {
+    if (visit?.board !== board.id) arrive(board.id, newest);
+    if (document.visibilityState === "visible") writeSeen(board.id, newest);
+  }
+  const away = live && board && visit?.board === board.id ? visit : undefined;
+  paintVisit({ count: away?.count ?? 0 });
+  visitBar.hidden = !away?.count;
+  view.paint(board, unread.cards, away?.cards ?? []);
 
   // The card whose detail is being written stays in the panel until it is saved or left.
   if (detailEdit && !board?.elements.some((e) => e.id === detailEdit?.id)) {
@@ -1734,6 +1820,13 @@ function render(): void {
           at: e ? clock(e.ts) : "",
           by: e?.actor ?? "",
           text: e ? describeEvent(e, locale, state.live) : t.beforeFirst,
+          // Claude's, while the reader was away and not yet seen: the list marks them too.
+          missed:
+            visit !== undefined &&
+            visit.count > 0 &&
+            e?.actor === "agent" &&
+            seq > visit.since &&
+            seq <= visit.until,
         };
       }),
   });

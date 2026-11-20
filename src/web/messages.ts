@@ -140,6 +140,11 @@ export interface Messages {
   pending: (count: number) => string;
   /** On a card or a discussion that carries a change Claude has not read. */
   unread: string;
+  /** What Claude changed on the board shown while the reader was away; a card it changed, for the ear. */
+  sinceVisit: (count: number) => string;
+  seeInHistory: string;
+  gotIt: string;
+  changedSinceVisit: string;
   theirTurn: string;
   claudeWaits: string;
   claudeWaitsOn: (title: string) => string;
@@ -367,6 +372,10 @@ const en: Messages = {
   upToDate: "Claude is up to date",
   pending: (count) => `${count} change${plural(count)} not read yet`,
   unread: "Not read by Claude yet",
+  sinceVisit: (count) => `Since your last visit, Claude made ${count} change${plural(count)} here.`,
+  seeInHistory: "See them in History",
+  gotIt: "Got it",
+  changedSinceVisit: "Changed by Claude since your last visit",
   theirTurn: "Your turn",
   claudeWaits: "Claude waits for you",
   claudeWaitsOn: (title) => `Claude waits · ${title}`,
@@ -637,6 +646,10 @@ const fr: Messages = {
   upToDate: "Claude est à jour",
   pending: (count) => `${count} changement${plural(count)} pas encore lu${plural(count)}`,
   unread: "Pas encore lu par Claude",
+  sinceVisit: (count) => `Depuis ta dernière visite, Claude a fait ${count} changement${plural(count)} ici.`,
+  seeInHistory: "Les voir dans l'historique",
+  gotIt: "Vu",
+  changedSinceVisit: "Changé par Claude depuis ta dernière visite",
   theirTurn: "À toi",
   claudeWaits: "Claude t'attend",
   claudeWaitsOn: (title) => `Claude attend · ${title}`,

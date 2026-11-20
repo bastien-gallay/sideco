@@ -69,6 +69,11 @@ export const state: State = {
  */
 let caughtUp = false;
 
+/** Whether the journal is all here: what was missed is measured on it whole, never on a replay half done. */
+export function caughtUpYet(): boolean {
+  return caughtUp;
+}
+
 const FRESH_MS = 2600;
 let scheduled = false;
 let onChange: () => void = () => {};

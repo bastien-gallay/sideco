@@ -66,6 +66,36 @@ export function pendingChanges(events: readonly Recorded[], session: Session | u
   return describeChanges(events, session?.deliveredUpTo ?? 0);
 }
 
+/** What Claude changed on a board while the reader was away: how many changes, and the cards still there to mark. */
+export interface Visit {
+  count: number;
+  cards: string[];
+}
+
+/**
+ * Claude's changes to one board between the reader's last look (`since`) and
+ * their return (`until`): netted as Claude is told the reader's, so a card
+ * added then removed meanwhile is no news. What arrives after the return is
+ * seen arriving, not missed.
+ */
+export function sinceLastVisit(
+  events: readonly Recorded[],
+  board: string,
+  since: number,
+  until: number,
+): Visit {
+  const span = events.filter((e) => e.seq <= until);
+  const changes = describeChanges(span, since, "agent", (b) => b === board);
+  const gone = new Set<string>();
+  for (const e of span) {
+    if (!("board" in e) || e.board !== board || !("id" in e)) continue;
+    if (e.event === "ElementRemoved") gone.add(e.id);
+    else if (e.event === "ElementRestored" || e.event === "ElementAdded") gone.delete(e.id);
+  }
+  const named = changes.about.find((subjects) => subjects.board === board)?.elements ?? [];
+  return { count: changes.count, cards: named.filter((id) => !gone.has(id)) };
+}
+
 /** What carries a change of the human that Claude has not read yet, on one board. */
 export interface Unread {
   cards: string[];

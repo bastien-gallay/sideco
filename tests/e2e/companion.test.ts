@@ -2335,6 +2335,84 @@ describe("side panels folded away", () => {
   });
 });
 
+describe("what Claude changed while the reader was away", () => {
+  // A page of its own: its storage starts empty, and it has heard the whole journal.
+  let shared: Page;
+  beforeAll(async () => {
+    shared = page;
+    page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    page.setDefaultTimeout(4000);
+    // In English whatever the companion's language is by now: the words are part of what is checked.
+    await page.addInitScript(() => localStorage.setItem("sideco.lang", "en"));
+    await page.goto(running.url);
+  });
+  afterAll(async () => {
+    await page.close();
+    page = shared;
+  });
+  const bar = () => page.locator(".visit-bar");
+  const show = async (board: string, title: string) => {
+    // The picker learns of a board Claude just made a moment later: chosen too early, it would not move.
+    await page.locator(`.board-picker option[value="${board}"]`).waitFor({ state: "attached" });
+    await page.locator(".board-picker select").selectOption(board);
+    // Drawn, not only chosen: a card of the same id on the board before would not tell them apart.
+    await page.locator(`svg[aria-label="Cards of “${title}”"]`).waitFor({ state: "attached" });
+  };
+
+  test("back on a board, the page says what Claude changed there meanwhile, and marks it", async () => {
+    await agent(
+      'board new "Visite" --id visite\nadd event "Commande passée" --col 1\nadd event "Stock réservé" --col 2',
+    );
+    await agent('board new "Ailleurs" --id ailleurs\nadd event "Autre chose" --col 1');
+    await show("visite", "Visite");
+    expect(await bar().isHidden()).toBe(true);
+    await show("ailleurs", "Ailleurs");
+    // While the reader looks elsewhere, Claude works on the first board.
+    await agent('rename E1 "Commande validée"\nadd event "Paiement accepté" --col 3', "visite");
+    // The page has heard it all: the board on screen keeps its last look at the newest event.
+    const seq = (await workspace()).seq;
+    await until("the page has heard Claude's changes", async () => {
+      const seen = await page.evaluate(() => localStorage.getItem("sideco.seen") ?? "{}");
+      return (JSON.parse(seen) as Record<string, number>).ailleurs === seq;
+    });
+    await show("visite", "Visite");
+    await card("E3").waitFor();
+    await bar().waitFor({ state: "visible" });
+    expect(await bar().textContent()).toContain("Since your last visit, Claude made 2 changes here.");
+    const marked = await page
+      .locator("g.card.is-new")
+      .evaluateAll((gs) => gs.map((g) => g.getAttribute("data-id")));
+    expect(marked.sort()).toEqual(["E1", "E3"]);
+    expect(await card("E1").getAttribute("aria-label")).toContain("Changed by Claude since your last visit");
+    expect(await page.locator("g.card.is-new", { has: page.locator("text") }).count()).toBe(2);
+    await shot("59-since-last-visit");
+
+    // In History, the moments missed stand out.
+    await bar().getByRole("button", { name: "See them in History" }).click();
+    expect(await page.locator("#tab-history").getAttribute("aria-selected")).toBe("true");
+    expect(await page.locator(".moment-missed").count()).toBe(2);
+
+    // Seen: the marks go, and a reload has nothing new to say.
+    await bar().getByRole("button", { name: "Got it" }).click();
+    await bar().waitFor({ state: "hidden" });
+    expect(await page.locator("g.card.is-new").count()).toBe(0);
+    expect(await page.locator(".moment-missed").count()).toBe(0);
+    await page.reload();
+    await card("E3").waitFor();
+    expect(await bar().isHidden()).toBe(true);
+  });
+
+  test("what Claude does while the board is on screen is seen arriving, not reported as missed", async () => {
+    await agent('add event "Facture envoyée" --col 4', "visite");
+    await card("E4").waitFor();
+    expect(await bar().isHidden()).toBe(true);
+    expect(await page.locator("g.card.is-new").count()).toBe(0);
+    await page.reload();
+    await card("E4").waitFor();
+    expect(await bar().isHidden()).toBe(true);
+  });
+});
+
 describe("look", () => {
   test("dark scheme and a narrow window keep the board usable", async () => {
     await page.emulateMedia({ colorScheme: "dark" });

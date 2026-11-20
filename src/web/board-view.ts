@@ -102,8 +102,8 @@ export interface BoardHooks {
 const UNREAD_MARK = `<g class="card-unread"><title>${esc(t.unread)}</title><circle cx="2" cy="2" r="5"/></g>`;
 
 export interface BoardView {
-  /** `unread` lists the cards that carry a change Claude has not read. */
-  paint(board: Board | undefined, unread: readonly string[]): void;
+  /** `unread` lists the cards that carry a change Claude has not read; `changed`, those Claude changed while the reader was away. */
+  paint(board: Board | undefined, unread: readonly string[], changed?: readonly string[]): void;
   /** Opens the label editor for a new element of this type. */
   beginAdd(typeId: string, place?: { col?: number; lane?: string; x: number; y: number }): void;
   zoomBy(step: -1 | 1): number;
@@ -154,6 +154,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   const nodes = new Map<string, { g: SVGGElement; signature: string }>();
   let board: Board | undefined;
   let unread: readonly string[] = [];
+  let missed: readonly string[] = [];
   let scene: Scene = { width: 0, height: 0, bands: [], cards: [], connectors: [] };
   let zoom = 1;
   /**
@@ -248,9 +249,14 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   const format = (): Format | undefined => (board ? findFormat(board.format) : undefined);
 
-  function paint(next: Board | undefined, notRead: readonly string[]): void {
+  function paint(
+    next: Board | undefined,
+    notRead: readonly string[],
+    sinceVisit: readonly string[] = [],
+  ): void {
     board = next;
     unread = notRead;
+    missed = sinceVisit;
     if (!board) {
       root.setAttribute("visibility", "hidden");
       tools.hidden = true;
@@ -294,6 +300,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       alive.add(card.id);
       const { x, y, ...look } = card;
       const isUnread = unread.includes(card.id);
+      const isNew = missed.includes(card.id);
       const signature = JSON.stringify({ ...look, isUnread });
       let node = nodes.get(card.id);
       if (!node) {
@@ -309,7 +316,14 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       }
       // A screen reader hears a card as one name: its words, where it is, then the mark's. Its detail stays in the tooltip.
       const place = cardPlace(board, scene.bands, card.id, locale);
-      const name = [cardName(card), place, isUnread ? t.unread : undefined].filter(Boolean).join(" · ");
+      const name = [
+        cardName(card),
+        place,
+        isUnread ? t.unread : undefined,
+        isNew ? t.changedSinceVisit : undefined,
+      ]
+        .filter(Boolean)
+        .join(" · ");
       if (node.g.getAttribute("aria-label") !== name) node.g.setAttribute("aria-label", name);
       // Its links, which the eye follows along the arrows, are told after its name.
       const links = cardLinks(board, card.id, locale);
@@ -322,6 +336,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       node.g.classList.toggle("is-selected", state.selected === card.id);
       node.g.classList.toggle("is-link-source", state.linking === card.id);
       node.g.classList.toggle("is-fresh", state.fresh.has(`${board.id}/${card.id}`));
+      node.g.classList.toggle("is-new", isNew);
       node.g.classList.toggle("is-focus", focus?.has(card.id) ?? false);
       node.g.classList.toggle("is-dim", focus !== undefined && !focus.has(card.id));
     }
@@ -1454,7 +1469,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   function zoomTo(next: number): number {
     zoom = next;
-    paint(board, unread);
+    paint(board, unread, missed);
     return zoom;
   }
 
