@@ -1381,7 +1381,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       addBeside(id, direction);
       return;
     }
-    if (event.key === "Enter" || event.key === "F2") rename(id);
+    // ⌘↵ or Ctrl+Enter is the page's: it sends to Claude, whatever holds the keyboard.
+    const plainEnter = event.key === "Enter" && !event.metaKey && !event.ctrlKey;
+    if (plainEnter || event.key === "F2") rename(id);
     else if (event.key === " ") choose(id);
     else if (event.key === "Delete" || event.key === "Backspace") {
       // The keyboard goes on to the next card, and the page offers to take this one back.
@@ -1437,7 +1439,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     } else if (event.key === "+") {
       const box = label.getBoundingClientRect();
       nameLaneAt(new DOMRect(box.left - 6, box.bottom + 6, 180, 36), lanes[at + 1]);
-    } else if (event.key === "Enter" || event.key === "F2") {
+    } else if ((event.key === "Enter" && !event.metaKey && !event.ctrlKey) || event.key === "F2") {
       laneArriving = lane;
       renameLane(label);
     } else if (event.key === "Delete" || event.key === "Backspace") {

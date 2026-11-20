@@ -340,9 +340,11 @@ describe("the human edits, the agent is told", () => {
 
     await page.locator(".pass input").fill("J'ai corrigé la règle, continue");
     // From the board, not only from the field: ⌘↵ or Ctrl+Enter sends, the word typed with it.
-    await page.locator(".stage").click({ position: { x: 900, y: 600 } });
+    // A card holding the keyboard does not take the chord for its own Enter, which renames it.
+    await card("P1").focus();
     await page.keyboard.press("ControlOrMeta+Enter");
     const waited = await waiting;
+    expect(await page.locator("textarea.card-editor").isVisible()).toBe(false);
     expect(waited.outcome).toBe("passed");
     expect(waited.text).toContain("J'ai corrigé la règle, continue");
     expect(waited.text).toContain("Paiement accepté");
