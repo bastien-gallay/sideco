@@ -6,9 +6,9 @@
 import { describe, expect, test } from "bun:test";
 import { boardAction } from "../../src/cli/argv.ts";
 import { describeSessions } from "../../src/domain/digest.ts";
-import { sessionLabel, shownSession } from "../../src/domain/workspace.ts";
+import { isOpen, STALE_SESSION_MS, sessionLabel, shownSession } from "../../src/domain/workspace.ts";
 import { describeEvent } from "../../src/web/view.ts";
-import { KANBAN, table } from "../support.ts";
+import { KANBAN, T0, table } from "../support.ts";
 
 const label = (t: { ws: { sessions: Parameters<typeof sessionLabel>[0][] } }): string | undefined => {
   const first = t.ws.sessions[0];
@@ -59,13 +59,28 @@ describe("`sideco sessions`", () => {
   test("lists the sessions still open, latest first, with what each follows; the caller's is marked", () => {
     const t = two();
     t.do({ kind: "name-session", name: "sideco-gq" }, "agent", GQ);
-    expect(describeSessions(t.ws, UI)).toBe(
+    expect(describeSessions(t.ws, UI, Date.parse(T0))).toBe(
       ["sideco-gq (810b7a97)  idle  follows sprint", "33236aaa  thinking  follows parcours  ← you"].join(
         "\n",
       ),
     );
     t.do({ kind: "session-end" }, "system", GQ);
-    expect(describeSessions(t.ws)).toBe("33236aaa  thinking  follows parcours");
+    expect(describeSessions(t.ws, undefined, Date.parse(T0))).toBe("33236aaa  thinking  follows parcours");
+  });
+});
+
+describe("a session silent for half a day", () => {
+  test("was killed rather than ended: it is no longer open, nor listed", () => {
+    const t = two();
+    const now = Date.parse(T0);
+    const [gq] = t.ws.sessions;
+    if (!gq) throw new Error("no session");
+    expect(gq.lastAt).toBe(T0);
+    expect(isOpen(gq, now + STALE_SESSION_MS - 1)).toBe(true);
+    expect(isOpen(gq, now + STALE_SESSION_MS)).toBe(false);
+    expect(describeSessions(t.ws, UI, now + STALE_SESSION_MS)).toBe("no session open");
+    t.do({ kind: "session-end" }, "system", GQ);
+    expect(isOpen(gq, now)).toBe(false);
   });
 });
 

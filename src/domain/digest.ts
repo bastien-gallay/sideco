@@ -20,6 +20,7 @@ import {
   emptyWorkspace,
   findBoard,
   findElement,
+  isOpen,
   type Thread,
   threads,
   type Workspace,
@@ -63,8 +64,8 @@ function threadLines(thread: Thread, sayClosed = false): string[] {
 }
 
 /** The sessions still open, the latest to act first: who each is, what it does, what it follows. */
-export function describeSessions(ws: Workspace, me?: string): string {
-  const open = ws.sessions.filter((s) => s.status !== "ended").sort((a, b) => b.lastSeq - a.lastSeq);
+export function describeSessions(ws: Workspace, me?: string, now = Date.now()): string {
+  const open = ws.sessions.filter((s) => isOpen(s, now)).sort((a, b) => b.lastSeq - a.lastSeq);
   if (open.length === 0) return "no session open";
   return open
     .map((s) => {

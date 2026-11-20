@@ -12,6 +12,7 @@ import { SVG_STYLE } from "../domain/render/svg.ts";
 import {
   addressee,
   findBoard,
+  isOpen,
   latestSession,
   readerOf,
   type Session,
@@ -760,7 +761,8 @@ interface SessionPickerModel {
 
 /** The sessions worth choosing between: the open ones, and the one shown even once it ended. */
 function sessionChoices(sessions: readonly Session[], shown: Session | undefined): SessionPickerModel {
-  const open = sessions.filter((s) => s.status !== "ended" || s.id === shown?.id);
+  const now = Date.now();
+  const open = sessions.filter((s) => isOpen(s, now) || s.id === shown?.id);
   return { sessions: open.map((s) => ({ id: s.id, label: sessionLabel(s) })), current: shown?.id };
 }
 
@@ -2112,7 +2114,7 @@ function render(): void {
     hint: handOverHint(liveSession?.status, state.listening, locale),
     theirs: turn?.to === "human" ? (turn.message ?? "") : undefined,
     to: addressed ? sessionName(addressed) : undefined,
-    several: state.live.sessions.filter((s) => s.status !== "ended").length > 1,
+    several: state.live.sessions.filter((s) => isOpen(s, Date.now())).length > 1,
     known: board ? [...board.elements.map((e) => e.id), ...board.notes.map((n) => n.id)] : [],
   });
 

@@ -145,6 +145,19 @@ export interface Session {
   /** Human changes up to this seq have been handed to the agent. */
   deliveredUpTo: number;
   lastSeq: number;
+  /** When it last said anything: a session silent too long was killed (see `isOpen`). */
+  lastAt: string;
+}
+
+/**
+ * A session silent for this long was killed rather than ended: it never sent
+ * `SessionEnded`. A working day, as long as a session at rest stays reachable.
+ */
+export const STALE_SESSION_MS = 12 * 60 * 60 * 1000;
+
+/** Whether a session is still open at `now`: it has not ended, and spoke within `staleMs`. */
+export function isOpen(session: Session, now: number, staleMs = STALE_SESSION_MS): boolean {
+  return session.status !== "ended" && now - Date.parse(session.lastAt) < staleMs;
 }
 
 export interface Workspace {
@@ -550,10 +563,12 @@ function applyToSession(ws: Workspace, e: Recorded & { session: string }): void 
       status: "idle",
       deliveredUpTo: 0,
       lastSeq: e.seq,
+      lastAt: e.ts,
     };
     ws.sessions.push(session);
   }
   session.lastSeq = e.seq;
+  session.lastAt = e.ts;
   const turn = session.turns.at(-1);
 
   switch (e.event) {
