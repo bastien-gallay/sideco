@@ -112,6 +112,17 @@ describe("a card", () => {
     expect(markup("E1")).not.toContain("card-notes");
   });
 
+  test("gives its ≡ a target a finger can take: 22 by 24, around the glyph, under it", () => {
+    const svg = markup("P1");
+    const hit = /<rect class="card-detail-hit" x="([\d.-]+)" y="0" width="22" height="24"/.exec(svg);
+    expect(hit).not.toBeNull();
+    const glyph = Number(/class="card-detail" x="([\d.]+)"/.exec(svg)?.[1]);
+    const left = Number(hit?.[1]);
+    expect(left).toBeLessThan(glyph - 7);
+    expect(left + 22).toBeGreaterThan(glyph);
+    expect(svg.indexOf("card-detail-hit")).toBeLessThan(svg.indexOf('class="card-detail"'));
+  });
+
   test("keeps its marks in the strip of its id, where a long last line of label never runs into them", () => {
     expect(markup("P1")).toMatch(/<text class="card-detail" x="[\d.]+" y="14"/);
     const detailX = Number(markup("P1").match(/class="card-detail" x="([\d.]+)"/)?.[1]);

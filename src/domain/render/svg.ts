@@ -41,7 +41,7 @@ export const SVG_STYLE = `
 .card-label { font-size: 13px; text-anchor: middle; }
 .card-detail { font-size: 11px; text-anchor: end; }
 .card-done { font-size: 11px; font-weight: 700; }
-.card-blurb { font-size: 11px; text-anchor: middle; opacity: 0.85; }
+.card-blurb { font-size: 11px; text-anchor: middle; }
 .card-label-done { text-decoration: line-through; opacity: 0.65; }
 .card-notes circle { fill: #1A6FAE; stroke: var(--sideco-bg, #FFFFFF); stroke-width: 2; }
 .card-notes text { fill: #FFFFFF; font-size: 10px; font-weight: 700; text-anchor: middle; }
@@ -147,7 +147,10 @@ export function cardMarkup(c: Card): string {
     `<text class="${c.done ? "card-label card-label-done" : "card-label"}" fill="${esc(c.ink)}">${lines}</text>`,
     said.length > 0 ? `<text class="card-blurb" fill="${esc(c.ink)}">${blurb}</text>` : "",
     c.done ? `<text class="card-done" x="${doneX(c)}" y="14" fill="${esc(c.ink)}">✓</text>` : "",
-    c.hasDetail ? `<text class="card-detail" x="${detailX(c)}" y="14" fill="${esc(c.ink)}">≡</text>` : "",
+    // The glyph is small; the target around it is not: 22 by 24, under it, so a finger takes it too.
+    c.hasDetail
+      ? `<rect class="card-detail-hit" x="${detailX(c) - 15}" y="0" width="22" height="24" fill="transparent"/><text class="card-detail" x="${detailX(c)}" y="14" fill="${esc(c.ink)}">≡</text>`
+      : "",
     c.notes > 0
       ? `<g class="card-notes"><circle cx="${c.w - 3}" cy="3" r="9"/><text x="${c.w - 3}" y="6.5">${c.notes}</text></g>`
       : "",

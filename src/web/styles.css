@@ -2066,6 +2066,7 @@ legend {
 
 /* The ≡ of a card with a detail: pressed, it opens the detail in the side panel. */
 .card-detail,
+.card-detail-hit,
 .card-notes {
   cursor: pointer;
 }

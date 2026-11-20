@@ -44,6 +44,8 @@ const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5];
 /** How tall the head of a lane is: its name, or its name and what it stands for. Above the first card, both. */
 /** A card's move on the board, as styles.css times it (`.card` transition), and a little more. */
 const CARD_MOVE_MS = 300;
+/** The editor's least height: room for two lines of words. */
+const EDITOR_MIN_H = 72;
 const LANE_HEAD = 38;
 const LANE_HEAD_HINTED = 44;
 /** What a lane heading keeps beside its name: the inset on the left and the count on the right. */
@@ -836,7 +838,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     editor.style.left = `${Math.min(Math.max(0, frame.width - width - 8), box.left - frame.left)}px`;
     editor.style.top = `${box.top - frame.top}px`;
     editor.style.width = `${width}px`;
-    editor.style.height = `${Math.max(box.height, 72)}px`;
+    editor.style.height = `${Math.max(box.height, EDITOR_MIN_H)}px`;
     editor.style.background = colours.fill;
     editor.style.color = colours.ink;
     editor.hidden = false;
@@ -981,6 +983,25 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   }
 
   /**
+   * Where the editor opens on a word of an axis: over the word it replaces,
+   * starting where it starts. The axis across the bottom has its editor above
+   * it, clear of the footer; the upright one has it beside it.
+   */
+  function axisEditorBox(box: DOMRect, axis: string, bound: string | undefined): DOMRect {
+    const w = 220;
+    const h = 36;
+    if (axis === "y") return new DOMRect(box.right + 6, box.top + box.height / 2 - h / 2, w, h);
+    const left =
+      bound === "low"
+        ? box.left - 6
+        : bound === "high"
+          ? box.right + 6 - w
+          : box.left + box.width / 2 - w / 2;
+    // The editor is never less than EDITOR_MIN_H tall: it is lifted by that much, not by the box asked for.
+    return new DOMRect(left, box.top - EDITOR_MIN_H - 4, w, h);
+  }
+
+  /**
    * Opens the editor on an axis of a plan: its name, or the word at one of its
    * ends. Emptied, the name gives back the workshop's axis, its ends with it;
    * an end gives back the workshop's word for it.
@@ -995,7 +1016,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const value = bound ? (band[bound] ?? "") : band.label;
     const placeholder = bound === "low" ? t.axisLow : bound === "high" ? t.axisHigh : t.axisName;
     openEditor(
-      new DOMRect(box.left + box.width / 2 - 110, box.top + box.height / 2 - 18, 220, 36),
+      axisEditorBox(box, axis, bound),
       value,
       placeholder,
       { fill: "var(--surface)", ink: "var(--ink)" },
@@ -1448,7 +1469,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     dropped = false;
     const target = under(event);
     // The ≡ a card wears with a detail leads to it; the rest of the card was handled as it was pressed.
-    const marked = target?.closest(".card-detail") ? cardAt(target) : undefined;
+    const marked = target?.closest(".card-detail, .card-detail-hit") ? cardAt(target) : undefined;
     if (!wasDrop && marked) hooks.showDetail(marked);
     // Its note count leads to its discussions.
     const counted = target?.closest(".card-notes") ? cardAt(target) : undefined;

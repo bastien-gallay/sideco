@@ -7,7 +7,7 @@ import { describe, expect, test } from "bun:test";
 import { findFormat } from "../../src/domain/formats.ts";
 import { NODE_H } from "../../src/domain/layout/graph.ts";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
-import { cardMarkup } from "../../src/domain/render/svg.ts";
+import { cardMarkup, SVG_STYLE } from "../../src/domain/render/svg.ts";
 import { table } from "../support.ts";
 
 const SHOP = `
@@ -61,6 +61,10 @@ describe("a C4 card's description", () => {
   test("is drawn smaller than the name, under it", () => {
     const svg = cardMarkup(cardOf(SHOP, "P1"));
     expect(svg).toContain('class="card-blurb"');
+    // In full ink: at 11px on the grey of an external system, a faded line fell under 4.5:1.
+    const rule = /\.card-blurb \{[^}]*\}/.exec(SVG_STYLE)?.[0];
+    expect(rule).toBeDefined();
+    expect(rule).not.toContain("opacity");
     const name = Number(/class="card-label[^"]*"[^>]*><tspan x="[^"]+" y="([\d.]+)"/.exec(svg)?.[1]);
     const blurb = Number(/class="card-blurb"[^>]*><tspan x="[^"]+" y="([\d.]+)"/.exec(svg)?.[1]);
     expect(blurb).toBeGreaterThan(name);

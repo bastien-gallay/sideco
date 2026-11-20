@@ -2813,6 +2813,19 @@ describe("a lane's subtitle and a plan's axes, rewritten by the mouse", () => {
     );
     await page.keyboard.press("Escape");
 
+    // The editor opens on the word it replaces, above the axis across the bottom, clear of the footer.
+    const across = page.locator('.band-axis .axis-bound[data-axis="x"][data-bound="low"]');
+    await across.dblclick();
+    const [word, field, footer] = await Promise.all([
+      across.boundingBox(),
+      editor().boundingBox(),
+      page.locator(".bottom").boundingBox(),
+    ]);
+    if (!word || !field || !footer) throw new Error("not on screen");
+    expect(Math.abs(field.x - word.x)).toBeLessThanOrEqual(12);
+    expect(field.y + field.height).toBeLessThanOrEqual(word.y + 2);
+    expect(field.y + field.height).toBeLessThanOrEqual(footer.y);
+    await page.keyboard.press("Escape");
     const low = page.locator('.band-axis .axis-bound[data-axis="y"][data-bound="low"]');
     await low.dblclick();
     expect(await editor().inputValue()).toBe("low");
