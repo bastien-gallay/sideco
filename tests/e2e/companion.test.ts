@@ -2734,6 +2734,26 @@ describe("a lane's subtitle and a plan's axes, rewritten by the mouse", () => {
     await until("the offer back", async () => (await blank.count()) === 1);
   });
 
+  test("the page keeps what only some readers see out of the others' way, and its lane headings readable", async () => {
+    // A stylesheet that lost its rules once showed all of this: black headings, the skip link and the spoken lines.
+    const looks = await page.evaluate(() => {
+      const style = (selector: string) => {
+        const el = document.querySelector(selector);
+        return el ? getComputedStyle(el) : undefined;
+      };
+      return {
+        strip: style(".layer-heads .heads-lane-strip")?.fill,
+        skip: style(".skip")?.transform,
+        spoken: style(".spoken")?.width,
+        card: style("g.card")?.cursor,
+      };
+    });
+    expect(looks.strip).not.toBe("rgb(0, 0, 0)");
+    expect(looks.skip).not.toBe("none");
+    expect(looks.spoken).toBe("1px");
+    expect(looks.card).toBe("grab");
+  });
+
   test("an axis takes a new name and new words at its ends; emptied, each gives the workshop's back", async () => {
     await agent('board new "Axes" --format impact-effort --id axes-t118\nadd item "Un" --lane quick');
     await page.locator(".board-picker select").selectOption("axes-t118");
