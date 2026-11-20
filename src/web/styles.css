@@ -8,6 +8,8 @@
   --muted: #59636e;
   --faint: #8c959f;
   --rule: #e3e6ea;
+  /* Code in a detail: a tint of the ink, so the chip shows on the panel's white. */
+  --code-bg: #eef0f2;
   --accent: #1a6fae;
   --accent-text: #1a6fae;
   --danger: #b42318;
@@ -36,6 +38,7 @@
     --muted: #a0a8b2;
     --faint: #737b85;
     --rule: #2a2e34;
+    --code-bg: #22252a;
     --accent-text: #6cb6ee;
     --danger: #f97066;
     --ok: #4ac26b;
@@ -168,6 +171,12 @@ input[type="text"] {
   max-height: 9lh;
   resize: none;
   field-sizing: content;
+}
+
+/* An invitation in a field reads as the muted words do, past AA in both themes. */
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 /* Empty, it stays one line tall: its invitation is cut short rather than wrapped. */
@@ -739,26 +748,29 @@ input[type="text"] {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.92em;
   padding: 0 3px;
+  border: 1px solid var(--rule);
   border-radius: 3px;
-  background: var(--bg);
+  background: var(--code-bg);
 }
 
 .card-panel-detail pre {
   margin: 0;
   padding: 6px 8px;
   overflow-x: auto;
+  border: 1px solid var(--rule);
   border-radius: 4px;
-  background: var(--bg);
+  background: var(--code-bg);
 }
 
 .card-panel-detail pre code {
   padding: 0;
+  border: 0;
   background: none;
   white-space: pre;
 }
 
 .card-panel-detail a {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .session {

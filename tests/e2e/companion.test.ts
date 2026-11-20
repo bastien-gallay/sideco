@@ -1270,7 +1270,7 @@ describe("the chosen card, read in the right panel", () => {
 
   test("reads the detail as simple markdown, and HTML as words", async () => {
     const detail =
-      "**Règle** : voir [la doc](https://example.org/regle).\n- payer\n- livrer\n\n<b>pas du gras</b>";
+      "**Règle** : voir [la doc](https://example.org/regle), `stock`.\n- payer\n- livrer\n\n<b>pas du gras</b>";
     await fetch(`${running.url}/api/commands`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -1286,6 +1286,23 @@ describe("the chosen card, read in the right panel", () => {
     const link = shown.locator("a");
     expect(await link.getAttribute("href")).toBe("https://example.org/regle");
     expect(await link.getAttribute("rel")).toBe("noopener noreferrer");
+    // Read on the panel: the link in the accent made for words, the code in a chip that shows.
+    const style = (locator: ReturnType<typeof page.locator>, property: string) =>
+      locator.evaluate((e, p) => getComputedStyle(e).getPropertyValue(p), property);
+    const accentText = await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue("--accent-text").trim(),
+    );
+    expect(await style(link, "color")).toBe(
+      await page.evaluate((c) => {
+        const probe = document.createElement("i");
+        probe.style.color = c;
+        document.body.append(probe);
+        const rgb = getComputedStyle(probe).color;
+        probe.remove();
+        return rgb;
+      }, accentText),
+    );
+    expect(await style(shown.locator("code"), "border-top-style")).toBe("solid");
     expect(await shown.locator("li").allTextContents()).toEqual(["payer", "livrer"]);
     expect(await shown.locator("b").count()).toBe(0);
     expect(await shown.locator("p").last().textContent()).toBe("<b>pas du gras</b>");
