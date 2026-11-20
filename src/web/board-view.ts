@@ -42,6 +42,8 @@ const HEADING_OFFERS: ReadonlySet<string> = new Set(["lane", "remove-lane", "col
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5];
 /** How tall the head of a lane is: its name, or its name and what it stands for. Above the first card, both. */
+/** A card's move on the board, as styles.css times it (`.card` transition), and a little more. */
+const CARD_MOVE_MS = 300;
 const LANE_HEAD = 38;
 const LANE_HEAD_HINTED = 44;
 /** What a lane heading keeps beside its name: the inset on the left and the count on the right. */
@@ -617,6 +619,26 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     else if (pointed.kind === "slot") beginAdd(typeId, { lane: pointed.lane, ...place });
   }
 
+  /** A card scrolled out of the board's window: its toolbar would stand alone at the edge, so it goes. */
+  function outOfSight(g: SVGGElement): boolean {
+    const card = g.getBoundingClientRect();
+    const seen = scroll.getBoundingClientRect();
+    return (
+      card.right < seen.left || card.left > seen.right || card.bottom < seen.top || card.top > seen.bottom
+    );
+  }
+
+  /**
+   * A card the keyboard sent elsewhere: once it has landed, it is brought into
+   * view, and its toolbar follows it there rather than stay where it was.
+   */
+  function follow(id: string): void {
+    window.setTimeout(() => {
+      nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" });
+      paintTools();
+    }, CARD_MOVE_MS);
+  }
+
   function paintTools(): void {
     const id = state.selected;
     const node = id ? nodes.get(id) : undefined;
@@ -644,7 +666,16 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       return;
     }
     pickedLink = undefined;
-    if (!board || !id || !node || !isLive() || state.linking || editing || keyboardAway()) {
+    if (
+      !board ||
+      !id ||
+      !node ||
+      !isLive() ||
+      state.linking ||
+      editing ||
+      keyboardAway() ||
+      outOfSight(node.g)
+    ) {
       tools.hidden = true;
       return;
     }
@@ -1074,7 +1105,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         ? scene.bands.find((band) => band.kind === "lane" && band.id === to)?.label
         : undefined;
     void send({ kind: "mark", board: board.id, id, done }).then((answer) => {
-      if (answer !== undefined && place) hooks.announce(t.moved(id, place));
+      if (answer === undefined) return;
+      if (to !== was) follow(id);
+      if (place) hooks.announce(t.moved(id, place));
     });
   }
 
@@ -1535,7 +1568,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
           : scene.bands.find((band) => band.kind === "lane" && band.id === command.lane)?.label;
       void send(command).then((done) => {
         if (done === undefined) return;
-        nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" });
+        follow(id);
         if (place) hooks.announce(t.moved(id, place));
       });
       return;
@@ -1633,6 +1666,11 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       state.linking = null;
       changed();
     }
+  });
+
+  // A chosen card that moved, by the keyboard or by Claude, has its toolbar put back once it landed.
+  cards.addEventListener("transitionend", (event) => {
+    if (state.selected && cardAt(event.target as Element) === state.selected) paintTools();
   });
 
   scroll.addEventListener(

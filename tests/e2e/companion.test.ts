@@ -2551,6 +2551,47 @@ describe("the card toolbar", () => {
     await page.keyboard.press("Escape");
     await picker.selectOption(before);
   });
+
+  test("follows its card when the keyboard sends it out of sight, and never stays behind alone", async () => {
+    const picker = page.locator(".board-picker select");
+    const before = await picker.inputValue();
+    await page.setViewportSize({ width: 760, height: 700 });
+    await agent(
+      'board new "Loin" --format kanban --id loin\nadd task "Partir" --lane todo\nadd task "Rester" --lane todo',
+    );
+    await page.locator('.board-picker option[value="loin"]').waitFor({ state: "attached" });
+    await picker.selectOption("loin");
+    await card("T1").waitFor();
+    const tools = page.locator(".card-tools");
+    const near = async () => {
+      const [c, b, seen] = await Promise.all([
+        card("T1").boundingBox(),
+        tools.boundingBox(),
+        page.locator(".canvas-scroll").boundingBox(),
+      ]);
+      if (!c || !b || !seen) return false;
+      const inView = c.x >= seen.x - 1 && c.x + c.width <= seen.x + seen.width + 1;
+      const gap = Math.max(
+        b.x - (c.x + c.width),
+        c.x - (b.x + b.width),
+        b.y - (c.y + c.height),
+        c.y - (b.y + b.height),
+      );
+      return inView && gap <= 12;
+    };
+    await card("T1").click();
+    await tools.waitFor();
+    // Done sends it to the last lane, out of a narrow window: it is brought into view, its toolbar with it.
+    await page.keyboard.press("d");
+    await until("T1 in Done", async () => (await elementOf("loin", "T1"))?.lane === "done");
+    await until("the card in view, its toolbar beside it", near);
+    // Scrolled away from it by hand, the toolbar goes rather than stand alone at the edge.
+    await page.locator(".canvas-scroll").evaluate((el) => el.scrollTo({ left: 0 }));
+    await until("the toolbar hidden", async () => await tools.isHidden());
+    await page.keyboard.press("Escape");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await picker.selectOption(before);
+  });
 });
 
 describe("what Claude changed while the reader was away", () => {
