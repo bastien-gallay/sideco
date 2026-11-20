@@ -11,11 +11,9 @@ import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { chipText, labelColours } from "../domain/render/labels.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import {
-  addressee,
   type Board,
   findBoard,
   isOpen,
-  latestSession,
   readerOf,
   type Session,
   sameLabel,
@@ -343,19 +341,18 @@ const turnBar = h(
       onsubmit: (event: Event) => {
         event.preventDefault();
         if (!passOn) return;
+        // The turn goes to the session the page tells about: the one chosen at the top, else the board's.
+        const to = shownSession(state.live, passOn, state.sessionId ?? undefined);
         void send({
           kind: "pass",
           board: passOn,
           to: "agent",
           message: passMessage.value.trim() || undefined,
+          ...(to ? { target: to.id } : {}),
         });
         passMessage.value = "";
         // The page cannot wake a terminal at rest: say what will make Claude read this.
-        const notice = handOverNotice(
-          (addressee(state.live, passOn) ?? latestSession(state.live))?.status,
-          state.listening,
-          locale,
-        );
+        const notice = handOverNotice(to?.status, state.listening, locale);
         if (notice) say(notice);
       },
     },
@@ -2378,7 +2375,8 @@ function render(): void {
   }
 
   const turn = board ? findBoard(state.live, board.id)?.turn : undefined;
-  const addressed = live && board ? addressee(state.live, board.id) : undefined;
+  // The button names the session the turn goes to: the one the page tells about.
+  const addressed = live && board ? liveSession : undefined;
   paintTurn({
     board: board?.id,
     live,

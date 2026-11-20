@@ -2742,6 +2742,15 @@ describe("two sessions on one project", () => {
 
     await picker().selectOption({ label: "sideco-ui" });
     await until("the chosen session's turns", async () => (await prompts()) === 0);
+    // Handed over from the page, the turn goes to the session chosen, not to the board's last writer.
+    expect(await page.locator(".pass button").getAttribute("title")).toContain("To the session sideco-ui");
+    await page.locator(".pass input").fill("Pour la session choisie");
+    await page.locator(".pass input").press("Enter");
+    await until("the turn handed over", async () =>
+      (await workspace()).boards.some((b) => b.turn?.message === "Pour la session choisie"),
+    );
+    const turn = (await workspace()).boards.find((b) => b.turn?.message === "Pour la session choisie")?.turn;
+    expect(turn?.target).toBe(OTHER);
     // Chosen once, kept: a reload shows the same session.
     await page.reload();
     await picker().waitFor();
