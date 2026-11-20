@@ -54,8 +54,11 @@ the school that serves it best:
 
 - A value that has kinds is a **discriminated union** on `type` or `kind`,
   never a bag of optional fields: an `ElementAdded` cannot lack its element.
-- A `switch` on a union ends with an exhaustiveness check, so that a new kind
-  breaks the build where it is not handled.
+- A `switch` on a union handles every kind, so that a new kind breaks the
+  build where it is not handled. When each case returns a value, the
+  function's return type already checks it; when the cases do things, the
+  switch ends with `default: handledAll(value)`
+  ([src/domain/handled-all.ts](../src/domain/handled-all.ts)).
 - **Parse, don't validate**: input from outside (argv, HTTP, the journal) is
   turned into domain types once, at the edge. Inside, no function re-checks
   what the type already says.
@@ -221,7 +224,7 @@ changes nothing else.
 | Gap | Where | Target |
 | --- | --- | --- |
 | Ids are plain `string` (the first to close) | Domain types | Branded `BoardId`, `ElementId` |
-| No `switch` has an exhaustiveness check | Whole tree | A `never` check on each `switch` over a union |
+| Switches that do things, not all checked yet | `src/domain/undo.ts`, `src/domain/digest.ts`, `src/web/view.ts`; `apply` and the page's stream are | `handledAll`, or a comment saying the switch is partial on purpose |
 | No `Result` type yet | Domain | The small module above, with the first code that needs it |
 | Nine modules over 400 lines, each capped at its size by an override in `biome.json` | The largest: `src/web/main.ts`, `src/web/board-view.ts`, `src/web/view.ts` | Split by job; a commit that shrinks one lowers its cap, and drops it under 400 |
 | Nested `else` chains | `src/web/board-view.ts`, `src/domain/digest.ts`, `src/web/main.ts` | Early returns |

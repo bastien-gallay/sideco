@@ -5,6 +5,7 @@
  */
 import type { Command } from "../domain/commands.ts";
 import type { Recorded } from "../domain/events.ts";
+import { handledAll } from "../domain/handled-all.ts";
 import type { Presence } from "../domain/presence.ts";
 import {
   apply,
@@ -125,7 +126,10 @@ function hear(frame: Frame): void {
       }
       caughtUp = true;
       changed();
+      return;
     }
+    default:
+      handledAll(frame);
   }
 }
 
