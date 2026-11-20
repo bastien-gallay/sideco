@@ -7,7 +7,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CommandError, isElementId, slugify } from "../domain/commands.ts";
+import { decide } from "../domain/decide.ts";
 import { describeBoard, describeCard } from "../domain/digest.ts";
+import { ACTORS, type Actor } from "../domain/events.ts";
 import { toIndexHtml } from "../domain/export/html.ts";
 import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.ts";
 import { fromModel } from "../domain/export/model.ts";
@@ -67,6 +69,8 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco rename ID "Label"            sideco detail ID "Text"
   sideco move ID --col N | --lane L [--before ID]   (--before alone: before that card, in its cell)
   sideco done ID                      sideco undone ID
+  sideco undo [--dry-run]             take back your own last gesture, named; sideco redo puts it back.
+                                    Never the human's: one they changed since is refused, and says why
   sideco rm ID                        sideco insert-col N         sideco rm-col N (an empty column)
   sideco move-col FROM TO             a column takes the number TO, its cards with it
   sideco lane LANE "Name"             call a lane of this board your own way
@@ -296,9 +300,46 @@ async function run(verb: string, rest: string[]): Promise<number> {
     [verb, ...rest.filter((_token, i) => !isGlobalFlag(rest, i))],
     verb === "board" ? undefined : defaultBoard(read(), args, true),
   );
+  const { kind, board } = action.command;
+  if ((kind === "undo" || kind === "redo") && typeof board === "string")
+    return takeBack({ kind, board }, read(), asAuthor(actor), args.flags.has("dry-run"), (command) =>
+      post(server, actor, session, [command]),
+    );
   const done = await post(server, actor, session, [action.command]);
   console.log(outcome(action, done, server.url));
   return 0;
+}
+
+/**
+ * Undo or redo, named: the gesture is said in the words of the CLI that did it.
+ * With `--dry-run`, the same decision is made on the journal as read here, and
+ * nothing is written.
+ */
+async function takeBack(
+  command: { kind: "undo" | "redo"; board: string },
+  ws: Workspace,
+  actor: Actor,
+  dryRun: boolean,
+  send: (command: { kind: "undo" | "redo"; board: string }) => Promise<Posted>,
+): Promise<number> {
+  const kept = findBoard(ws, command.board) ?? ws.removed.find((b) => b.id === command.board);
+  const gesture = kept?.trails[actor]?.[command.kind].at(-1);
+  if (dryRun) {
+    const decision = decide(ws, command, { actor });
+    if (decision.refused) console.log(`would be refused: ${decision.refused.replace(/^refused: /, "")}`);
+    else console.log(`would ${command.kind} seq ${gesture?.seq}: ${gesture?.name}`);
+    return 0;
+  }
+  await send(command);
+  console.log(`${command.kind === "undo" ? "undid" : "redid"} seq ${gesture?.seq}: ${gesture?.name}`);
+  return 0;
+}
+
+/** `--as` names one of the authors; anything else is a mistake said in words. */
+function asAuthor(name: string): Actor {
+  const actor = ACTORS.find((a) => a === name);
+  if (!actor) throw new UsageError(`--as is one of: ${ACTORS.join(", ")}`);
+  return actor;
 }
 
 /** What one board command prints: the thing the caller needs next. */

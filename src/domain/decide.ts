@@ -14,6 +14,7 @@ import {
   NOTE_PREFIX,
   SLICE_PREFIX,
 } from "./formats.ts";
+import type { Gesture } from "./undo.ts";
 import {
   addressee,
   type Board,
@@ -37,6 +38,12 @@ export interface Decision {
   events: SidecoEvent[];
   /** The id given to the element or note this command created, if any. */
   minted?: string;
+  /**
+   * The command is refused, and why; its events are still recorded. An undo
+   * blocked by the other author's change says so, and the blocked gestures leave
+   * the trail, so that the next undo takes the one under them.
+   */
+  refused?: string;
 }
 
 /** A command that asks for what already is: accepted, and nothing is recorded. */
@@ -56,10 +63,11 @@ export function decide(ws: Workspace, cmd: Command, ctx: Context): Decision {
 interface BoardDecision {
   events: BoardEvent[];
   minted?: string;
+  refused?: string;
 }
 
 function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDecision {
-  if (cmd.kind === "undo" || cmd.kind === "redo") return { events: reverse(ws, cmd, ctx.actor) };
+  if (cmd.kind === "undo" || cmd.kind === "redo") return reverse(ws, cmd, ctx.actor);
   if (cmd.kind === "create-board") {
     if (findBoard(ws, cmd.board)) {
       throw new CommandError(`board "${cmd.board}" already exists; write to it, or choose another id`);
@@ -253,14 +261,16 @@ function noBoard(ws: Workspace, id: string): CommandError {
  * Undo and redo say again what the board kept as the way back, marked with the
  * gesture they answer. On a removed board, the only thing to take back is the removal.
  */
-function reverse(ws: Workspace, cmd: { kind: "undo" | "redo"; board: string }, actor: Actor): BoardEvent[] {
+function reverse(ws: Workspace, cmd: { kind: "undo" | "redo"; board: string }, actor: Actor): BoardDecision {
   const live = findBoard(ws, cmd.board);
   const board = live ?? ws.removed.find((b) => b.id === cmd.board);
   if (!board) throw noBoard(ws, cmd.board);
-  const gesture = board.trails[actor]?.[cmd.kind].at(-1);
+  const trail = board.trails[actor]?.[cmd.kind] ?? [];
+  const gesture = trail.at(-1);
   if (!gesture || (!live && gesture.inverse[0]?.event !== "BoardRestored")) {
     throw new CommandError(`nothing to ${cmd.kind} on "${board.id}"`);
   }
+  if (live && gesture.blocked) return refuseUndo(board, cmd.kind, trail);
   // A lane goes away only empty: one that got cards since cannot be taken back.
   for (const back of gesture.inverse) {
     if (back.event !== "LaneRemoved") continue;
@@ -270,7 +280,41 @@ function reverse(ws: Workspace, cmd: { kind: "undo" | "redo"; board: string }, a
       );
   }
   const answers = cmd.kind === "undo" ? { undoes: gesture.seq } : { redoes: gesture.seq };
-  return gesture.inverse.map((e): BoardEvent => ({ ...e, ...answers }));
+  return { events: gesture.inverse.map((e): BoardEvent => ({ ...e, ...answers })) };
+}
+
+const WHO: Record<Actor, string> = { human: "the human", agent: "Claude", system: "the system" };
+
+/**
+ * The gestures on top of the trail that the other author changed since: the undo
+ * refuses them all at once, names them and what changed them, and says what the
+ * next undo takes back. Modelled on `git revert`: a conflict stops, and says so.
+ */
+function refuseUndo(board: Board, way: "undo" | "redo", trail: readonly Gesture[]): BoardDecision {
+  let below = trail.length;
+  while (below > 0 && trail[below - 1]?.blocked) below--;
+  const refused = trail.slice(below).reverse();
+  const blocker = refused[0]?.blocked;
+  if (!blocker) throw new CommandError(`nothing to ${way} on "${board.id}"`);
+  const next = trail[below - 1];
+  const named = refused.map((g) => `seq ${g.seq} (${g.name})`).join(", ");
+  const whose = refused.length === 1 ? `your gesture ${named} was` : `your gestures ${named} were`;
+  const then = next
+    ? `the next ${way} takes back seq ${next.seq} (${next.name})`
+    : `nothing left to ${way} on "${board.id}"`;
+  return {
+    events: [
+      {
+        event: "UndoRefused",
+        board: board.id,
+        way,
+        gestures: refused.map((g) => g.seq),
+        by: blocker.actor,
+        at: blocker.seq,
+      },
+    ],
+    refused: `refused: ${whose} changed since by ${WHO[blocker.actor]} (seq ${blocker.seq}: ${blocker.name}); ${then}`,
+  };
 }
 
 function add(board: Board, format: Format, cmd: Extract<Command, { kind: "add" }>): BoardDecision {

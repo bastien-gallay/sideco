@@ -3,7 +3,7 @@
  * `decide`, events through the real `apply`. No server, no clock.
  */
 import { parseBatch } from "../src/cli/argv.ts";
-import { parseCommand } from "../src/domain/commands.ts";
+import { CommandError, parseCommand } from "../src/domain/commands.ts";
 import { decide } from "../src/domain/decide.ts";
 import type { Actor, Recorded } from "../src/domain/events.ts";
 import { apply, type Board, emptyWorkspace, findBoard, type Workspace } from "../src/domain/workspace.ts";
@@ -28,6 +28,7 @@ export class Table {
       this.events.push(recorded);
       apply(this.ws, recorded);
     }
+    if (decision.refused) throw new CommandError(decision.refused);
     return decision.minted;
   }
 

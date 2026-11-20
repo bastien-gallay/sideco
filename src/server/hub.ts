@@ -66,8 +66,15 @@ export class Hub {
     const ts = this.now().toISOString();
     let aliases: Aliases = new Map();
 
+    let refusal: BatchError | undefined;
     commands.forEach((command, index) => {
+      if (refusal) return;
       const decision = atCommand(index, () => decide(draft, resolveAliases(command, aliases), ctx));
+      // A refused undo is recorded alone: in a batch, the batch is refused and leaves no trace.
+      if (decision.refused) {
+        refusal = new BatchError(decision.refused, index);
+        if (!single) return;
+      }
       aliases = bindAlias(aliases, command, decision.minted);
       minted.push(decision.minted);
       for (const event of decision.events) {
@@ -77,11 +84,13 @@ export class Hub {
       }
     });
 
+    if (refusal && !single) throw refusal;
     this.journal.append(staged);
     if (single) for (const event of staged) apply(this.workspace, event);
     else this.workspace = draft;
     this.events.push(...staged);
     for (const event of staged) this.announce(event);
+    if (refusal) throw refusal;
     return { events: staged, minted };
   }
 

@@ -106,7 +106,13 @@ type BoardFact =
   /** `thread` is the note that opened the discussion this one answers; absent, the note opens one. */
   | { event: "NoteAdded"; board: string; id: string; text: string; target?: string; thread?: string }
   | { event: "NoteResolved"; board: string; id: string }
-  | { event: "TurnPassed"; board: string; to: "agent" | "human"; message?: string; target?: string };
+  | { event: "TurnPassed"; board: string; to: "agent" | "human"; message?: string; target?: string }
+  /**
+   * The author's undo (or redo) was refused: the gestures on top of their trail
+   * were changed since by `by`, at `at`. They leave the trail, and the next undo
+   * takes the one under them. Said, not drawn: the board does not change.
+   */
+  | { event: "UndoRefused"; board: string; way: "undo" | "redo"; gestures: number[]; by: Actor; at: number };
 
 /** What happened in the terminal session. The session id travels on the envelope. */
 export type SessionEvent =
@@ -166,6 +172,7 @@ const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "NoteAdded",
   "NoteResolved",
   "TurnPassed",
+  "UndoRefused",
 ]);
 
 const SESSION_EVENTS: ReadonlySet<string> = new Set<SessionEvent["event"]>([

@@ -7,7 +7,7 @@
  * rebuilds them, so they survive a restart and a reload.
  */
 import type { Actor, BoardEvent, Recorded } from "./events.ts";
-import { lanesOf } from "./formats.ts";
+import { findFormat, lanesOf } from "./formats.ts";
 import type { Board, Element } from "./workspace.ts";
 
 /** How many gestures an author can take back on one board. */
@@ -17,6 +17,17 @@ export const UNDO_DEPTH = 50;
 export interface Gesture {
   seq: number;
   inverse: BoardEvent[];
+  /** What the gesture did, in the words of the CLI: `rename E1 "Paid"`. */
+  name: string;
+  /** The other author changed what this gesture wrote: taking it back is refused. */
+  blocked?: Blocker;
+}
+
+/** The change, by another author, that stands in the way of a gesture. */
+export interface Blocker {
+  seq: number;
+  actor: Actor;
+  name: string;
 }
 
 export interface Trail {
@@ -152,12 +163,14 @@ export function remember(board: Board, e: Happened, inverse: BoardEvent[]): void
     open.inverse.unshift(...inverse);
     return;
   }
+  // A gesture undone or redone keeps the name of what it first did.
+  let name = nameOf(board, e);
   if (answered === undefined) trail.redo.length = 0;
   else {
     const at = from.findLastIndex((gesture) => gesture.seq === answered);
-    if (at !== -1) from.splice(at, 1);
+    if (at !== -1) name = from.splice(at, 1)[0]?.name ?? name;
   }
-  to.push({ seq: e.seq, inverse });
+  to.push({ seq: e.seq, inverse, name });
   if (to.length > UNDO_DEPTH) to.shift();
 }
 
@@ -165,7 +178,8 @@ export function remember(board: Board, e: Happened, inverse: BoardEvent[]): void
  * What the other authors can no longer take back once `e` is applied.
  *
  * The rule: an undo never overwrites someone else's later change. A gesture whose
- * inverse would write where `e` just wrote leaves its author's trail.
+ * inverse would write where `e` just wrote is marked blocked, by `e`: its
+ * author's undo is refused, and says why, rather than skipping it unseen.
  */
 export function supersede(board: Board, e: Happened): void {
   const written = writes(e);
@@ -174,10 +188,77 @@ export function supersede(board: Board, e: Happened): void {
     gesture.inverse.some((back) =>
       writes(back).some((mine) => written.some((theirs) => clash(mine, theirs))),
     );
+  const blocker: Blocker = { seq: e.seq, actor: e.actor, name: nameOf(board, e) };
   for (const [actor, trail] of Object.entries(board.trails)) {
     if (actor === e.actor) continue;
-    trail.undo = trail.undo.filter((gesture) => !overwrites(gesture));
-    trail.redo = trail.redo.filter((gesture) => !overwrites(gesture));
+    for (const gesture of [...trail.undo, ...trail.redo])
+      if (!gesture.blocked && overwrites(gesture)) gesture.blocked = blocker;
+  }
+}
+
+/** The refused gestures leave their author's trail: the next undo takes the one under them. */
+export function leaveBehind(
+  board: Board,
+  actor: Actor,
+  way: "undo" | "redo",
+  gestures: readonly number[],
+): void {
+  const trail = board.trails[actor];
+  if (trail) trail[way] = trail[way].filter((gesture) => !gestures.includes(gesture.seq));
+}
+
+/** What an event did, in the words of the CLI that would do it. */
+export function nameOf(board: Board, e: BoardEvent): string {
+  const q = (text: string): string => JSON.stringify(text);
+  switch (e.event) {
+    case "BoardCreated":
+      return `board new ${q(e.title)}`;
+    case "BoardRetitled":
+      return `retitle ${q(e.title)}`;
+    case "LaneNamed":
+      return `lane ${e.lane} ${q(e.label)}`;
+    case "LaneAdded":
+      return `lane add ${q(e.label || e.lane)}`;
+    case "LaneRemoved":
+      return `lane rm ${e.lane}`;
+    case "LaneMoved":
+      return `lane move ${e.lane}${e.before ? ` --before ${e.before}` : ""}`;
+    case "SliceAdded":
+      return `slice add ${q(e.label)}`;
+    case "SliceRemoved":
+      return `slice rm ${e.slice}`;
+    case "BoardRemoved":
+      return `board rm ${e.board}`;
+    case "BoardRestored":
+      return `restore board ${e.board}`;
+    case "ElementAdded":
+      return `add ${e.type} ${q(e.label)} (${e.id})`;
+    case "ElementRestored":
+      return `restore ${e.id}`;
+    case "ElementRenamed":
+      return `rename ${e.id} ${q(e.label)}`;
+    case "ElementAnnotated":
+      return `detail ${e.id}`;
+    case "ElementMarked":
+      return `${e.done ? "done" : "undone"} ${e.id}`;
+    case "ElementMoved":
+      return findFormat(board.format)?.layout === "columns"
+        ? `move ${e.id} --lane ${e.lane}`
+        : `move ${e.id} --col ${e.col}`;
+    case "ElementRemoved":
+      return `rm ${e.id}`;
+    case "ColumnInserted":
+      return `insert-col ${e.at}`;
+    case "ColumnRemoved":
+      return `rm-col ${e.at}`;
+    case "ColumnMoved":
+      return `move-col ${e.from} ${e.to}`;
+    case "EdgeAdded":
+      return `link ${e.src} ${e.dst}${e.label ? ` ${q(e.label)}` : ""}`;
+    case "EdgeRemoved":
+      return `unlink ${e.src} ${e.dst}`;
+    default:
+      return e.event;
   }
 }
 

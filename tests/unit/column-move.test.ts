@@ -55,6 +55,7 @@ describe("moving a column of a timeline", () => {
   test("a column moved by one is no longer taken back by the other who moved one before", () => {
     const t = table(THREE).script("move-col 1 3", "human");
     t.script("move-col 1 2", "agent");
+    expect(() => t.do({ kind: "undo", board: "commande" }, "human")).toThrow("refused: your gesture seq");
     expect(() => t.do({ kind: "undo", board: "commande" }, "human")).toThrow("nothing to undo");
   });
 

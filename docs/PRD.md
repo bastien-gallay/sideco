@@ -173,6 +173,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | F45 | Les panneaux latéraux se replient en rail de 40 px, par leur bouton ou les touches `[` et `]` ; le rail de gauche garde les types pour ajouter d'un clic. Le choix est gardé par le navigateur, et une fenêtre de moins de 1 100 px replie les deux (T84) | ✅ |
 | F46 | Le panneau de droite a deux onglets, Session et Détail : choisir une carte ouvre Détail, grisé tant qu'aucune carte n'est choisie ; les flèches vont d'onglet en onglet, et le rail replié garde un onglet par icône (T85) | ✅ |
 | F47 | L'historique devient un onglet du panneau de droite : la liste des événements, du plus récent au plus ancien, chacun cliquable pour revoir le tableau tel qu'il était ; ↑ ↓ au clavier, ◄ ► en tête, « This board / Everything ». Le curseur du pied de page disparaît : le pied ne garde que le passage de main (T86) | ✅ |
+| F48 | Claude annule et rétablit ses propres gestes : `sideco undo`, `sideco redo`, chacun nommé dans les mots du CLI (`rename E1 "Payée"`) ; `--dry-run` le montre sans écrire. Un geste que l'autre auteur a modifié depuis est refusé, avec la raison (qui, quel numéro) et ce que prendra l'annulation suivante ; le refus est un événement `UndoRefused` du journal, et le geste quitte la piste. Même règle pour l'Undo de la page (B8, T15) | ✅ |
 
 ### 5.3 Exigences de qualité
 
@@ -321,7 +322,7 @@ Hors MVP, assumé : dessin libre, images, curseurs multiples, comptes, synchroni
 | B6 | Binaire unique |
 | B7 | Diff « depuis ma dernière visite » |
 | B8 | Annulation sans surprise : quand le geste à annuler a été modifié ailleurs que sur la page ouverte, la page demande confirmation au lieu de passer au geste précédent |
-| B9 | `sideco undo` pour Claude, avec des précautions ; modèle à étudier : `git revert` (geste nommé, effet montré avant d'écrire, refus en cas de conflit) |
+| B9 | ✅ `sideco undo` et `sideco redo` pour Claude, livrés le 2026-11-20 (F48) sur le modèle de `git revert` : geste nommé, `--dry-run` le montre avant d'écrire, refus en cas de conflit, jamais un geste de l'humain |
 
 | Repère | Manque connu | Conséquence aujourd'hui |
 | --- | --- | --- |

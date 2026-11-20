@@ -305,3 +305,30 @@ test("each hub is one run of the companion: a page can tell a restart from a rec
   expect(first.run).toMatch(/^[0-9a-f-]{36}$/);
   expect(new Hub(memoryJournal()).run).not.toBe(first.run);
 });
+
+describe("a refused undo", () => {
+  const undo: Command = { kind: "undo", board: "commande" };
+
+  test("alone, it is recorded, then refused with the reason", () => {
+    const { hub, journal, run } = setup();
+    run('rename E1 "À moi"', "human");
+    run('rename E1 "À Claude"', "agent");
+    const before = journal.load().length;
+    expect(() => hub.dispatch([undo], { actor: "human" })).toThrow(BatchError);
+    expect(journal.load().length).toBe(before + 1);
+    expect(journal.load().at(-1)).toMatchObject({ event: "UndoRefused", actor: "human" });
+    expect(() => hub.dispatch([undo], { actor: "human" })).toThrow("nothing to undo");
+  });
+
+  test("in a batch, the batch is refused and leaves no trace", () => {
+    const { hub, journal, run } = setup();
+    run('rename E1 "À moi"', "human");
+    run('rename E1 "À Claude"', "agent");
+    const before = journal.load().length;
+    const both = [undo, ...batch('rename E1 "Encore"', "commande")];
+    expect(() => hub.dispatch(both, { actor: "human" })).toThrow("refused");
+    expect(journal.load().length).toBe(before);
+    // Still refused next time: nothing was left behind.
+    expect(() => hub.dispatch([undo], { actor: "human" })).toThrow("refused");
+  });
+});

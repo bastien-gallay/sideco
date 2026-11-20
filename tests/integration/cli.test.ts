@@ -589,6 +589,41 @@ describe("reading a part of a board", () => {
   });
 });
 
+describe("Claude takes back its own gestures", () => {
+  const B = ["--board", "annuler-cli"];
+
+  test("`sideco undo --dry-run` names the gesture and writes nothing; undo and redo name what they did", async () => {
+    await sideco(["board", "new", "Annuler", "--id", "annuler-cli"]);
+    await sideco(["add", "event", "Commande passée", "--col", "1", ...B]);
+    await sideco(["add", "event", "Annulable", "--col", "3", ...B]);
+    const preview = await sideco(["undo", "--dry-run", ...B]);
+    expect(preview.out).toMatch(/^would undo seq \d+: add event "Annulable" \(E\d+\)$/);
+    expect((await sideco(["show", ...B])).out).toContain("Annulable");
+    const undone = await sideco(["undo", ...B]);
+    expect(undone.out).toMatch(/^undid seq \d+: add event "Annulable" \(E\d+\)$/);
+    expect((await sideco(["show", ...B])).out).not.toContain("Annulable");
+    const redone = await sideco(["redo", ...B]);
+    expect(redone.out).toMatch(/^redid seq \d+: add event "Annulable" \(E\d+\)$/);
+    expect((await sideco(["show", ...B])).out).toContain("Annulable");
+  });
+
+  test("a gesture the human changed since is refused, in words, with exit code 1", async () => {
+    await sideco(["rename", "E1", "Par Claude", ...B]);
+    expect((await human({ kind: "rename", board: "annuler-cli", id: "E1", label: "Par toi" })).status).toBe(
+      200,
+    );
+    const preview = await sideco(["undo", "--dry-run", ...B]);
+    expect(preview.code).toBe(0);
+    expect(preview.out).toMatch(/^would be refused: your gesture seq \d+ \(rename E1 "Par Claude"\)/);
+    const refused = await sideco(["undo", ...B]);
+    expect(refused.code).toBe(1);
+    expect(refused.err).toMatch(
+      /^sideco: refused: your gesture seq \d+ \(rename E1 "Par Claude"\) was changed since by the human \(seq \d+: rename E1 "Par toi"\); the next undo takes back seq \d+/,
+    );
+    expect((await sideco(["show", "E1", ...B])).out).toContain("Par toi");
+  });
+});
+
 describe("two sessions in one project", () => {
   const told = async (session: string): Promise<string> =>
     (await hook({ session_id: session, hook_event_name: "UserPromptSubmit", prompt: "Continue" })).out;

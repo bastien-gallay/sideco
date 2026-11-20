@@ -207,8 +207,9 @@ describe("an undo never overwrites what the other author did since", () => {
   test("Claude renamed the element after you: your rename is no longer yours to take back", () => {
     const t = table(ORDERING).script('detail E2 "Une règle"\nrename E1 "À moi"', "human");
     t.script('rename E1 "À Claude"', "agent");
-    undo(t, "commande");
+    expect(() => undo(t, "commande")).toThrow("refused");
     expect(label(t, "E1")).toBe("À Claude");
+    undo(t, "commande");
     expect(findElement(t.board(), "E2")?.detail).toBeUndefined();
   });
 
@@ -223,18 +224,21 @@ describe("an undo never overwrites what the other author did since", () => {
     });
   });
 
-  test("Claude removed the element: your gestures on it, and on its links, leave your trail", () => {
+  test("Claude removed the element: your gestures on it, and on its links, are refused together", () => {
     const t = table(ORDERING).script('rename E1 "À moi"\nlink E1 E2', "human");
     t.script("rm E1", "agent");
+    expect(() => undo(t, "commande")).toThrow(
+      `refused: your gestures seq ${t.seq - 1} (link E1 E2), seq ${t.seq - 2} (rename E1 "À moi") were changed since by Claude (seq ${t.seq}: rm E1); nothing left to undo on "commande"`,
+    );
     expect(() => undo(t, "commande")).toThrow("nothing to undo");
     undo(t, "commande", "agent");
     expect(label(t, "E1")).toBe("À moi");
   });
 
-  test("Claude built on an element you added: removing it is no longer an undo", () => {
+  test("Claude built on an element you added: removing it is refused, and the card stays", () => {
     const t = table(ORDERING).script('add event "Paiement reçu" --col 3', "human");
     t.script("link E2 E3", "agent");
-    expect(() => undo(t, "commande")).toThrow("nothing to undo");
+    expect(() => undo(t, "commande")).toThrow("refused: your gesture seq");
     expect(findElement(t.board(), "E3")).toBeDefined();
   });
 
@@ -242,7 +246,60 @@ describe("an undo never overwrites what the other author did since", () => {
     const t = table(ORDERING).script('rename E1 "À moi"', "human");
     undo(t, "commande");
     t.script('rename E1 "À Claude"', "agent");
+    expect(() => redo(t, "commande")).toThrow("refused: your gesture seq");
     expect(() => redo(t, "commande")).toThrow("nothing to redo");
+  });
+});
+
+describe("a gesture the other author changed since is refused, said, then left behind", () => {
+  test("the refusal names the gesture, what changed it, and what the next undo takes back", () => {
+    const t = table(ORDERING).script('detail E2 "Une règle"', "human");
+    const first = t.seq;
+    t.script('rename E1 "À moi"', "human");
+    const mine = t.seq;
+    t.script('rename E1 "À Claude"', "agent");
+    const theirs = t.seq;
+    expect(() => undo(t, "commande")).toThrow(
+      `refused: your gesture seq ${mine} (rename E1 "À moi") was changed since by Claude (seq ${theirs}: rename E1 "À Claude"); the next undo takes back seq ${first} (detail E2)`,
+    );
+    // Nothing on the board moved; the journal says the refusal.
+    expect(label(t, "E1")).toBe("À Claude");
+    expect(t.events.at(-1)).toMatchObject({
+      event: "UndoRefused",
+      board: "commande",
+      actor: "human",
+      way: "undo",
+      gestures: [mine],
+      by: "agent",
+      at: theirs,
+    });
+    undo(t, "commande");
+    expect(findElement(t.board(), "E2")?.detail).toBeUndefined();
+  });
+
+  test("Claude is refused the same way when the human changed its gesture", () => {
+    const t = table(ORDERING).script("move E2 --col 3", "agent");
+    t.script("move E2 --col 1", "human");
+    expect(() => undo(t, "commande", "agent")).toThrow(
+      /^refused: your gesture seq \d+ \(move E2 --col 3\) was changed since by the human \(seq \d+: move E2 --col 1\)/,
+    );
+  });
+
+  test("a refusal is part of the projection: replayed, the gesture stays left behind", () => {
+    const t = table(ORDERING).script('rename E1 "À moi"', "human");
+    t.script('rename E1 "À Claude"', "agent");
+    expect(() => undo(t, "commande")).toThrow("refused");
+    expect(replay(t.events).boards[0]?.trails).toEqual(t.board().trails);
+    expect(() => undo(t, "commande")).toThrow("nothing to undo");
+  });
+
+  test("a refusal is not a change of the board: Claude is told nothing", () => {
+    const t = table(ORDERING).script('rename E1 "À moi"', "human");
+    t.script('rename E1 "À Claude"', "agent");
+    const read = t.seq;
+    expect(() => undo(t, "commande")).toThrow("refused");
+    expect(describeChanges(t.events, read).count).toBe(0);
+    expect(t.board().changedSeq).toBe(read);
   });
 
   test("a column Claude inserts shifts the place your move comes back to", () => {

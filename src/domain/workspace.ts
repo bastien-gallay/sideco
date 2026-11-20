@@ -7,7 +7,14 @@
  */
 import type { Actor, Recorded, Todo } from "./events.ts";
 import { LANE_PREFIX, lanesOf, SLICE_PREFIX } from "./formats.ts";
-import { invert, remapColumns, remember as rememberGesture, supersede, type Trails } from "./undo.ts";
+import {
+  invert,
+  leaveBehind,
+  remapColumns,
+  remember as rememberGesture,
+  supersede,
+  type Trails,
+} from "./undo.ts";
 
 export interface Element {
   id: string;
@@ -243,6 +250,11 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
   }
   const board = findBoard(ws, e.board);
   if (!board) return;
+  // A refused undo says something about the trail, not about the board.
+  if (e.event === "UndoRefused") {
+    leaveBehind(board, e.actor, e.way, e.gestures);
+    return;
+  }
   if (e.actor === "agent" && e.session) board.writer = e.session;
   const inverse = invert(board, e);
   if (e.event === "BoardRemoved") {

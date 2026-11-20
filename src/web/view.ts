@@ -203,6 +203,10 @@ function english(e: Recorded, to: string): string {
       if (e.to === "agent") return `${does("send")} to Claude${to}${message}`;
       return you ? `You keep the turn${message}` : `Claude passes you the turn${message}`;
     }
+    case "UndoRefused": {
+      const by = { human: "you", agent: "Claude", system: "Sideco" }[e.by];
+      return `${you ? "Your" : "Claude's"} ${e.way} is refused: changed since by ${by}`;
+    }
     case "SessionStarted":
       return "Session started";
     case "BoardsFollowed":
@@ -297,6 +301,14 @@ function french(e: Recorded, to: string): string {
       const message = e.message ? ` : ${e.message}` : "";
       if (e.to === "agent") return `${verb("envoies", "envoie")} à Claude${to}${message}`;
       return you ? `Tu gardes la main${message}` : `Claude te rend la main${message}`;
+    }
+    case "UndoRefused": {
+      const by = { human: "toi", agent: "Claude", system: "Sideco" }[e.by];
+      const what =
+        e.way === "undo"
+          ? ["Ton annulation", "L'annulation", "refusée"]
+          : ["Ton rétablissement", "Le rétablissement", "refusé"];
+      return `${you ? what[0] : `${what[1]} de Claude`} est ${what[2]} : changé depuis par ${by}`;
     }
     case "SessionStarted":
       return "Session démarrée";

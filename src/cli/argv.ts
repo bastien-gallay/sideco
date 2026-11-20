@@ -50,7 +50,7 @@ export interface Args {
 const SHORT: Record<string, string> = { "-o": "--out", "-b": "--board", "-f": "--format" };
 
 /** The flags that say yes by being there. */
-const SWITCHES: ReadonlySet<string> = new Set(["--brief", "--notes"]);
+const SWITCHES: ReadonlySet<string> = new Set(["--brief", "--notes", "--dry-run"]);
 
 /** Every flag takes a value, `--col 3` or `--col=3`, but the switches: `--brief`. */
 export function parseArgs(tokens: readonly string[]): Args {
@@ -187,6 +187,9 @@ export function boardAction(tokens: readonly string[], board: string | undefined
       };
     case "detail":
       return { command: { kind: "annotate", board: target(), id: need(0, "an id"), detail: p[1] ?? "" } };
+    case "undo":
+    case "redo":
+      return { command: { kind: verb, board: target() } };
     case "done":
     case "undone":
       return { command: { kind: "mark", board: target(), id: need(0, "an id"), done: verb === "done" } };
@@ -281,6 +284,8 @@ export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "detail",
   "done",
   "undone",
+  "undo",
+  "redo",
   "move",
   "rm",
   "insert-col",
