@@ -97,6 +97,7 @@ describe("`sideco labels`", () => {
     expect(describeLabels(t.ws, "type")).toBe(
       ["type:bug  2  sprint T1 · livraison S1", "type:story  1  sprint T2"].join("\n"),
     );
+    expect(describeLabels(t.ws, "type:")).toBe(describeLabels(t.ws, "type"));
     expect(describeLabels(t.ws, "@bastien")).toBe("assignee:bastien  1  sprint T1");
     expect(describeLabels(t.ws, "env")).toBe("no label env");
   });

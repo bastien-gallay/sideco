@@ -71,7 +71,7 @@ function threadLines(thread: Thread, sayClosed = false): string[] {
  * key: `type` is every `type:…`.
  */
 export function describeLabels(ws: Workspace, only?: string): string {
-  const wanted = only === undefined ? undefined : normalLabel(only).toLowerCase();
+  const wanted = only === undefined ? undefined : normalLabel(only).toLowerCase().replace(/:$/, "");
   const fits = (label: string): boolean => {
     if (wanted === undefined) return true;
     const low = label.toLowerCase();
