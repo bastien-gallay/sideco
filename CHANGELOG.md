@@ -4,7 +4,7 @@ All notable changes to Sideco are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-11-20
 
 The first installable version: a live board, open in a browser beside the
 terminal, that you and Claude Code model on together.
