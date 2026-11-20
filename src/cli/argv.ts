@@ -144,6 +144,8 @@ export function boardAction(tokens: readonly string[], board: string | undefined
           board: id,
         };
       }
+      case "purpose":
+        return { command: { kind: "purpose", board: target(), purpose: said(0, "a question") } };
       case "retitle":
         return { command: { kind: "retitle", board: target(), title: need(0, "a title") } };
       case "lane":
@@ -322,6 +324,7 @@ export function boardAction(tokens: readonly string[], board: string | undefined
 export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "board",
   "retitle",
+  "purpose",
   "lane",
   "axis",
   "slice",

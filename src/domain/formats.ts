@@ -477,6 +477,15 @@ export function lanesOf(board: { format: string; laneOrder?: readonly string[] }
   return board.laneOrder ? [...board.laneOrder] : (findFormat(board.format)?.lanes.map((l) => l.id) ?? []);
 }
 
+/** The question a board answers: its own, else its workshop's. */
+export function boardPurpose(
+  format: Format | undefined,
+  board: { purpose?: string },
+  locale: Locale,
+): string {
+  return board.purpose ?? format?.purpose[locale] ?? "";
+}
+
 /** What a lane stands for: the board's words, else its workshop's, else nothing. */
 export function laneHint(
   format: Format | undefined,

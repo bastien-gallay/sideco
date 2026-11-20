@@ -82,6 +82,9 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
   const b = board.id;
 
   switch (cmd.kind) {
+    case "purpose":
+      if ((board.purpose ?? "") === cmd.purpose) return unchanged();
+      return { events: [{ event: "BoardPurposed", board: b, purpose: cmd.purpose }] };
     case "retitle":
       if (board.title === cmd.title) return unchanged();
       return { events: [{ event: "BoardRetitled", board: b, title: cmd.title }] };

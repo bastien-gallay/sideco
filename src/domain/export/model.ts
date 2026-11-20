@@ -25,6 +25,8 @@ export interface Model {
   lanes?: Record<string, string>;
   /** The board's lanes in order, when it added, moved or removed some of its workshop's. */
   laneOrder?: string[];
+  /** The question the board asks, where it asks its own. */
+  purpose?: string;
   /** What the board says its lanes stand for, by lane id, where it says it its own way. */
   hints?: Record<string, string>;
   /** The axes of a plan the board names its own way. */
@@ -45,6 +47,7 @@ export function toModel(board: Board): Model {
     format: board.format,
     ...(Object.keys(board.lanes).length > 0 ? { lanes: { ...board.lanes } } : {}),
     ...(board.laneOrder ? { laneOrder: [...board.laneOrder] } : {}),
+    ...(board.purpose ? { purpose: board.purpose } : {}),
     ...(board.hints && Object.keys(board.hints).length > 0 ? { hints: { ...board.hints } } : {}),
     ...(board.axes && Object.keys(board.axes).length > 0 ? { axes: structuredClone(board.axes) } : {}),
     ...(board.slices?.length ? { slices: board.slices.map((s) => ({ id: s.id, label: s.label })) } : {}),
@@ -100,6 +103,8 @@ export function fromModel(input: unknown, board: string): Command[] {
     if (said(lane) && given.has(lane) && (!order || order.includes(lane)))
       commands.push({ kind: "name-lane", board, lane, label: said(lane) });
   }
+  if (typeof model.purpose === "string" && model.purpose)
+    commands.push({ kind: "purpose", board, purpose: model.purpose });
   const lanes = order ?? [...given];
   const hints = (typeof model.hints === "object" && model.hints !== null ? model.hints : {}) as Record<
     string,

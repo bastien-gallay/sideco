@@ -81,6 +81,7 @@ export function describeBoard(board: Board, part: Part = {}): string {
     part.notes && "notes",
   ].filter((word): word is string => typeof word === "string");
   const lines = [heading(board, said)];
+  if (board.purpose) lines.push(`question: ${quote(board.purpose)}`);
   const narrowed = part.lane !== undefined || part.col !== undefined;
   const elements = board.elements.filter(
     (e) =>
@@ -199,6 +200,7 @@ export function describeChanges(
 type Change =
   | { kind: "board-created"; title: string; format: string }
   | { kind: "board-retitled"; title: string }
+  | { kind: "board-purposed"; purpose: string }
   | { kind: "lane-named"; lane: string; label: string }
   | { kind: "lane-hinted"; lane: string; hint: string }
   | { kind: "axis-named"; axis: "x" | "y"; label: string; low?: string; high?: string }
@@ -376,6 +378,9 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
         case "BoardRetitled":
           put("title", "", { kind: "board-retitled", title: e.title });
           break;
+        case "BoardPurposed":
+          put("purpose", "", { kind: "board-purposed", purpose: e.purpose });
+          break;
         case "LaneNamed":
           put("lane", e.lane, { kind: "lane-named", lane: e.lane, label: e.label });
           break;
@@ -527,6 +532,10 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
       return `+ board created: ${quote(change.title)} (${change.format})`;
     case "board-retitled":
       return `~ board retitled ${quote(change.title)}`;
+    case "board-purposed":
+      return change.purpose
+        ? `~ board asks ${quote(change.purpose)}`
+        : "~ board back to its workshop's question";
     case "lane-named":
       return change.label
         ? `~ lane ${change.lane} named ${quote(change.label)}`
@@ -619,6 +628,7 @@ function named(change: Change): { elements: string[]; thread?: string } {
       return { elements: [], thread: change.id };
     case "board-created":
     case "board-retitled":
+    case "board-purposed":
     case "lane-named":
     case "lane-hinted":
     case "axis-named":

@@ -84,6 +84,8 @@ export interface Board {
   format: string;
   /** The lanes this board calls its own way, by lane id; the others keep the name their workshop gives. */
   lanes: Record<string, string>;
+  /** The question the board answers, where it asks its own. */
+  purpose?: string;
   /** What a lane stands for, by lane id, where the board says it its own way. */
   hints?: Record<string, string>;
   /** The axes of a plan the board names its own way. */
@@ -279,6 +281,10 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
   switch (e.event) {
     case "BoardRetitled":
       board.title = e.title;
+      break;
+    case "BoardPurposed":
+      if (e.purpose) board.purpose = e.purpose;
+      else delete board.purpose;
       break;
     case "LaneNamed":
       if (e.label) board.lanes[e.lane] = e.label;

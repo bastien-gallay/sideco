@@ -44,6 +44,8 @@ export type BoardEvent = Lineage & BoardFact;
 type BoardFact =
   | { event: "BoardCreated"; board: string; title: string; format: string }
   | { event: "BoardRetitled"; board: string; title: string }
+  /** The board asks its own question; an empty one gives the workshop's back. */
+  | { event: "BoardPurposed"; board: string; purpose: string }
   /** The board calls a lane of its workshop its own way; an empty label gives the workshop's name back. */
   | { event: "LaneNamed"; board: string; lane: string; label: string }
   /** A lane of the board's own, before `before`, else last. An empty label leaves its workshop's name, if it has one. */
@@ -155,6 +157,7 @@ export type Recorded = Envelope & SidecoEvent;
 const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "BoardCreated",
   "BoardRetitled",
+  "BoardPurposed",
   "LaneNamed",
   "LaneAdded",
   "LaneHinted",

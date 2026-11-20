@@ -50,6 +50,8 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
   switch (e.event) {
     case "BoardRetitled":
       return [{ event: "BoardRetitled", board: b, title: board.title }];
+    case "BoardPurposed":
+      return [{ event: "BoardPurposed", board: b, purpose: board.purpose ?? "" }];
     case "LaneNamed":
       return [{ event: "LaneNamed", board: b, lane: e.lane, label: board.lanes[e.lane] ?? "" }];
     case "LaneHinted":
@@ -222,6 +224,8 @@ export function nameOf(board: Board, e: BoardEvent): string {
       return `board new ${q(e.title)}`;
     case "BoardRetitled":
       return `retitle ${q(e.title)}`;
+    case "BoardPurposed":
+      return `purpose ${q(e.purpose)}`;
     case "LaneNamed":
       return `lane ${e.lane} ${q(e.label)}`;
     case "LaneHinted":
@@ -287,6 +291,8 @@ function writes(e: BoardEvent): string[] {
   switch (e.event) {
     case "BoardRetitled":
       return ["title"];
+    case "BoardPurposed":
+      return ["purpose"];
     case "LaneNamed":
       return [`lane:${e.lane}.label`];
     case "LaneHinted":

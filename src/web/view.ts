@@ -199,6 +199,10 @@ function english(e: Recorded, to: string, lane: LaneCalled): string {
       return `${does("create")} the board “${e.title}”`;
     case "BoardRetitled":
       return `${does("rename")} the board to “${e.title}”`;
+    case "BoardPurposed":
+      return e.purpose
+        ? `${does("ask")} the board “${e.purpose}”`
+        : `${does("give")} the board its workshop's question back`;
     case "LaneNamed":
       return e.label
         ? `${does("name")} the lane ${lane(e.lane, true)} “${e.label}”`
@@ -306,6 +310,10 @@ function french(e: Recorded, to: string, lane: LaneCalled): string {
       return `${verb("crées", "crée")} le tableau « ${e.title} »`;
     case "BoardRetitled":
       return `${verb("renommes", "renomme")} le tableau en « ${e.title} »`;
+    case "BoardPurposed":
+      return e.purpose
+        ? `${verb("poses", "pose")} au tableau la question « ${e.purpose} »`
+        : `${verb("rends", "rend")} au tableau la question de son atelier`;
     case "LaneNamed":
       return e.label
         ? `${verb("nommes", "nomme")} la colonne ${lane(e.lane, true)} « ${e.label} »`

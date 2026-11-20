@@ -6,7 +6,7 @@
 import { type Command, slugify } from "../domain/commands.ts";
 import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../domain/export/index.ts";
 import { toMermaid } from "../domain/export/mermaid.ts";
-import { FORMATS, findFormat, findType } from "../domain/formats.ts";
+import { boardPurpose, FORMATS, findFormat, findType } from "../domain/formats.ts";
 import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import { addressee, findBoard, latestSession, readerOf } from "../domain/workspace.ts";
@@ -846,6 +846,8 @@ const paintBoardMenu = region(boardMenu, (m: BoardMenuModel) => [
 
 interface PaletteModel {
   format: string | undefined;
+  /** The question the board asks, where it asks its own. */
+  purpose: string | undefined;
   live: boolean;
   from: string | null;
 }
@@ -857,7 +859,7 @@ const paintPalette = region(palette, (m: PaletteModel) => {
   const how = format.layout === "graph" && m.from ? t.howGraphFrom(m.from) : undefined;
   return [
     h("h2", {}, format.name[locale]),
-    h("p", { class: "purpose" }, format.purpose[locale]),
+    h("p", { class: "purpose" }, boardPurpose(format, { purpose: m.purpose }, locale)),
     h(
       "ul",
       { class: "types" },
@@ -1887,6 +1889,7 @@ function render(): void {
   });
   paintPalette({
     format: board?.format,
+    purpose: board?.purpose,
     live,
     from: board && findFormat(board.format)?.layout === "graph" ? state.selected : null,
   });

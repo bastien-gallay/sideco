@@ -493,6 +493,9 @@ describe("other workshops", () => {
     await page.locator(".board-picker select").selectOption("sprint");
     await card("T3").waitFor();
     expect(await page.locator(".palette h2").textContent()).toBe("Kanban");
+    // A board that asks its own question: the palette says it, not the workshop's.
+    await agent('purpose "Qu\'est-ce qui bloque le sprint ?" --board sprint');
+    await page.locator(".palette .purpose", { hasText: "Qu'est-ce qui bloque le sprint ?" }).waitFor();
 
     const doing = await centre("B1");
     await dragTo("T1", doing.x, doing.y + 120);

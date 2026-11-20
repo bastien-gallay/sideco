@@ -2,7 +2,7 @@
  * Board to one self-contained HTML file: the drawing as inline SVG, the facts as
  * tables, no script and no network. This is what `sideco publish` serves.
  */
-import { findFormat, laneName } from "../formats.ts";
+import { boardPurpose, findFormat, laneName } from "../formats.ts";
 import { DEFAULT_LOCALE, WORDS } from "../i18n.ts";
 import { layoutBoard } from "../layout/index.ts";
 import { esc, sceneToSvg } from "../render/svg.ts";
@@ -85,7 +85,7 @@ export function toHtml(board: Board, meta: ExportMeta): string {
 <body>
 <main>
 <h1>${esc(board.title)}</h1>
-<p class="meta">${format ? `<strong>${esc(format.name[locale])}</strong> — ${esc(format.purpose[locale])}` : esc(board.format)}</p>
+<p class="meta">${format ? `<strong>${esc(format.name[locale])}</strong> — ${esc(boardPurpose(format, board, locale))}` : esc(board.format)}</p>
 <div class="drawing">
 ${sceneToSvg(layoutBoard(board, locale), board.title)}
 </div>

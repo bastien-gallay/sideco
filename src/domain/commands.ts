@@ -14,6 +14,8 @@ import type { Todo } from "./events.ts";
 export type Command =
   | { kind: "create-board"; board: string; title: string; format: string }
   | { kind: "retitle"; board: string; title: string }
+  /** An empty purpose gives the workshop's question back. */
+  | { kind: "purpose"; board: string; purpose: string }
   | { kind: "name-lane"; board: string; lane: string; label: string }
   /** An empty hint gives the workshop's back. */
   | { kind: "hint-lane"; board: string; lane: string; hint: string }
@@ -140,6 +142,8 @@ export function parseCommand(input: unknown): Command {
         title: text(f, "title", LIMITS.title),
         format: text(f, "format", 40),
       };
+    case "purpose":
+      return { kind, board: boardId(f), purpose: text(f, "purpose", LIMITS.title, true) };
     case "retitle":
       return { kind, board: boardId(f), title: text(f, "title", LIMITS.title) };
     case "name-lane":
