@@ -2141,7 +2141,37 @@ function freeId(slug: string): string {
 
 // ── The paint ────────────────────────────────────────────────────────────────
 
+/** The card chosen, kept by the tab across a reload: the page comes back on it, the keyboard with it. */
+const CHOSEN_CARD = "sideco.chosen-card";
+let toRestore: { board: string; id: string } | undefined = (() => {
+  try {
+    return JSON.parse(sessionStorage.getItem(CHOSEN_CARD) ?? "null") ?? undefined;
+  } catch {
+    return undefined;
+  }
+})();
+
+/** Once the journal is replayed: the card kept is chosen again, then the choice is kept as it changes. */
+function keepChosen(board: string | undefined): void {
+  if (!caughtUpYet() || !board) return;
+  const kept = toRestore;
+  if (kept) {
+    toRestore = undefined;
+    if (kept.board === board && currentBoard()?.elements.some((e) => e.id === kept.id)) {
+      state.selected = kept.id;
+      arriving = kept;
+    }
+  }
+  try {
+    if (state.selected) sessionStorage.setItem(CHOSEN_CARD, JSON.stringify({ board, id: state.selected }));
+    else sessionStorage.removeItem(CHOSEN_CARD);
+  } catch {
+    // Not kept: a reload comes back on the board alone.
+  }
+}
+
 function render(): void {
+  keepChosen(currentBoard()?.id);
   const ws = shown();
   const board = currentBoard();
   const session = currentSession();

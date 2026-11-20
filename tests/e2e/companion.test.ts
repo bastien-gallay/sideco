@@ -2997,6 +2997,36 @@ describe("labels on a card, from the page", () => {
   });
 });
 
+describe("the card chosen, through a reload", () => {
+  test("a reload keeps the card chosen, and the keyboard on it", async () => {
+    await agent(
+      'board new "Rechargement" --format kanban --id recharge-t160\nadd task "Un" --lane todo\nadd task "Deux" --lane todo',
+    );
+    await page.locator(".board-picker select").selectOption("recharge-t160");
+    await card("T2").click();
+    await until("chosen", async () =>
+      ((await card("T2").getAttribute("class")) ?? "").includes("is-selected"),
+    );
+    await page.reload();
+    await until("chosen again after the reload", async () =>
+      ((await card("T2").getAttribute("class")) ?? "").includes("is-selected"),
+    );
+    await until("the keyboard on it", async () =>
+      page.evaluate(() => document.activeElement?.getAttribute("data-id") === "T2"),
+    );
+    // Left, it is not chosen again at the next reload.
+    await page.keyboard.press("Escape");
+    await until(
+      "left",
+      async () => !((await card("T2").getAttribute("class")) ?? "").includes("is-selected"),
+    );
+    await page.reload();
+    await card("T2").waitFor();
+    await Bun.sleep(300);
+    expect(await page.locator("g.card.is-selected").count()).toBe(0);
+  });
+});
+
 describe("search across the boards, from the page", () => {
   const focused = () => page.evaluate(() => document.activeElement?.getAttribute("data-id") ?? null);
 
