@@ -153,6 +153,9 @@ export interface Messages {
   nextChanged: (cards: number) => string;
   gotIt: string;
   changedSinceVisit: string;
+  /** Said in a card's name for a screen reader: what its ≡ and its badge show. */
+  hasDetail: string;
+  openNotesOn: (count: number) => string;
   theirTurn: string;
   claudeWaits: string;
   claudeWaitsOn: (title: string) => string;
@@ -395,6 +398,8 @@ const en: Messages = {
   nextChanged: (cards) => `Next changed card (${cards})`,
   gotIt: "Got it",
   changedSinceVisit: "Changed by Claude since your last visit",
+  hasDetail: "has a detail",
+  openNotesOn: (count) => (count === 1 ? "1 open note" : `${count} open notes`),
   theirTurn: "Your turn",
   claudeWaits: "Claude waits for you",
   claudeWaitsOn: (title) => `Claude waits · ${title}`,
@@ -680,6 +685,8 @@ const fr: Messages = {
   nextChanged: (cards) => `Carte changée suivante (${cards})`,
   gotIt: "Vu",
   changedSinceVisit: "Changé par Claude depuis ta dernière visite",
+  hasDetail: "a un détail",
+  openNotesOn: (count) => (count === 1 ? "1 note ouverte" : `${count} notes ouvertes`),
   theirTurn: "À toi",
   claudeWaits: "Claude t'attend",
   claudeWaitsOn: (title) => `Claude attend · ${title}`,

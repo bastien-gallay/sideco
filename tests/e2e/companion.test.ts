@@ -878,6 +878,9 @@ describe("talking it through, note by note", () => {
     await thread("N1").waitFor();
     expect(await page.locator(".notes h2").textContent()).toBe("Open notes (2)");
     expect(await thread("N1").locator(".thread-on").textContent()).toBe("E2 · Stock réservé");
+    // The card a note is about says so in its name, as its badge does to the eye.
+    expect(await card("E2").getAttribute("aria-label")).toContain(" · 1 open note");
+    expect(await card("E1").getAttribute("aria-label")).not.toContain("open note");
     expect(await thread("N2").locator(".thread-on").textContent()).toBe("Whole board");
     expect(await said("N1").locator(".thread-author").textContent()).toBe("Claude");
     // The id Claude uses in the terminal is on the message it names.
@@ -1431,6 +1434,8 @@ describe("the chosen card, read in the right panel", () => {
     await page.keyboard.press("Escape");
     await page.keyboard.press("]");
     await until("the right panel is folded", foldedRight);
+    // Heard as well as seen: the name says the card has a detail.
+    expect(await card("E1").getAttribute("aria-label")).toContain(" · has a detail");
     await card("E1").locator(".card-detail").click();
     await until("the right panel is open again", async () => !(await foldedRight()));
     expect(await page.locator("#tab-detail").getAttribute("aria-selected")).toBe("true");

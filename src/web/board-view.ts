@@ -342,11 +342,13 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
           (isNew ? changedMark(card.h) : "");
         node.signature = signature;
       }
-      // A screen reader hears a card as one name: its words, where it is, then the mark's. Its detail stays in the tooltip.
+      // A screen reader hears a card as one name: its words, where it is, then what its marks show. Its detail stays in the tooltip.
       const place = cardPlace(board, scene.bands, card.id, locale);
       const name = [
         cardName(card),
         place,
+        card.hasDetail ? t.hasDetail : undefined,
+        card.notes > 0 ? t.openNotesOn(card.notes) : undefined,
         isUnread ? t.unread : undefined,
         isNew ? t.changedSinceVisit : undefined,
       ]
