@@ -1,0 +1,5 @@
+#!/bin/sh
+# Biome on the staged files only: errors block the commit, and the infos say
+# where a function is long or tangled in what you touch. `bun install` turns
+# this folder on (core.hooksPath); see CONTRIBUTING.md.
+exec bunx biome check --staged --no-errors-on-unmatched

@@ -102,7 +102,7 @@ Jeff Bay's nine rules, read for a functional core:
 | First-class collections | Kept: a collection with rules gets its type and its functions (`lanesOf`, `threads`). |
 | One dot per line | Read as *don't reach through*: a function takes what it needs, not the workspace to dig into. |
 | Don't abbreviate | Kept. `element`, not `el`, outside a one-line lambda. |
-| Keep entities small | **A module stays under 400 lines** and does one job: a firm limit, since a reader who sees a large file in pieces misses the function that already does what they add. A function fits on a screen (about 40 lines): a guide. |
+| Keep entities small | **A module stays under 400 lines** and does one job: a firm limit, since a reader who sees a large file in pieces misses the function that already does what they add. A function fits on a screen (about 40 lines), with a cognitive complexity of 15 at most: a guide. Biome checks both: the module limit is an error, the function ones are infos. |
 | Two instance variables at most | Replaced: three parameters at most, beyond that one named object. |
 | No getters or setters | For shell objects: *tell, don't ask*, they expose verbs, not their state. For data: not applicable, data is read directly. |
 
@@ -223,7 +223,7 @@ changes nothing else.
 | Ids are plain `string` (the first to close) | Domain types | Branded `BoardId`, `ElementId` |
 | No `switch` has an exhaustiveness check | Whole tree | A `never` check on each `switch` over a union |
 | No `Result` type yet | Domain | The small module above, with the first code that needs it |
-| Ten modules over 400 lines | The largest: `src/web/main.ts` (2 400), `src/web/board-view.ts` (1 800), `src/web/view.ts` (1 100) | Split by job |
+| Nine modules over 400 lines, each capped at its size by an override in `biome.json` | The largest: `src/web/main.ts`, `src/web/board-view.ts`, `src/web/view.ts` | Split by job; a commit that shrinks one lowers its cap, and drops it under 400 |
 | Nested `else` chains | `src/web/board-view.ts`, `src/domain/digest.ts`, `src/web/main.ts` | Early returns |
 | One default clock in the domain | `describeSessions` in `src/domain/digest.ts` (`now = Date.now()`) | `now` passed by the caller |
 | The `Journal` port is declared beside its adapter | `src/server/journal.ts` | Declared beside the hub that needs it |

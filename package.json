@@ -12,8 +12,9 @@
     "test": "bun test tests/unit tests/integration",
     "test:e2e": "bun test tests/e2e",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check . && bunx markdownlint-cli2 '**/*.md' '#node_modules'",
-    "check": "bun run typecheck && bun run lint && bun run test"
+    "lint": "biome check --diagnostic-level=warn . && bunx markdownlint-cli2 '**/*.md' '#node_modules'",
+    "check": "bun run typecheck && bun run lint && bun run test",
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.8",

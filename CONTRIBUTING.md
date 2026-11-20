@@ -49,13 +49,16 @@ flowchart TD
 
    ```bash
    bun run typecheck
-   bunx biome check .
-   bunx markdownlint-cli2 '**/*.md' '#node_modules'
+   bun run lint
    bun run test
    bun test tests/e2e
    ```
 
-   `biome check` exits 0 with warnings: read their count, and leave it at 0.
+   `bun run lint` runs Biome and markdownlint. Biome exits 0 with warnings:
+   read their count, and leave it at 0. `bun install` also turns on a
+   pre-commit hook (`.githooks/pre-commit`) that runs Biome on the staged
+   files: an error blocks the commit, and its infos point at the long or
+   tangled functions in what you touch.
 7. **Simplify.** Read the diff: duplicates, names, and the
    [CUPID properties](docs/coding-standards.md#cupid).
 8. **Code review.** A second reader, human or agent, who did not write it.
