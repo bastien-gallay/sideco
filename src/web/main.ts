@@ -122,6 +122,8 @@ type Tab = "session" | "notes" | "history" | "detail";
 const TABS: Tab[] = ["session", "notes", "history", "detail"];
 const TAB_ICON: Record<Tab, string> = { session: "≡", notes: "✎", history: "◷", detail: "ⓘ" };
 let tab: Tab = "session";
+/** The tab the reader was on before Detail opened for a card: given back when the card is left. */
+let tabBack: Tab | undefined;
 /** The card the Detail tab was last opened for: a new choice opens it again, a repaint does not. */
 let detailFor: string | null = null;
 
@@ -156,9 +158,16 @@ const tabList = h(
 function chooseTab(id: Tab, focus = false): void {
   if (tabButtons[id].getAttribute("aria-disabled") === "true") return;
   tab = id;
+  tabBack = undefined;
   if (isFolded("right")) toggleFold("right");
   paintTabs();
   if (focus) tabButtons[id].focus();
+}
+
+/** Opens the Detail tab, keeping the one it replaces to give it back. */
+function openDetailTab(): void {
+  if (tab !== "detail") tabBack = tab;
+  tab = "detail";
 }
 
 function paintTabs(): void {
@@ -168,7 +177,11 @@ function paintTabs(): void {
     history: true,
     detail: !cardPanel.dataset.empty,
   };
-  if (!can[tab]) tab = "session";
+  // The card left, the reader gets back the tab they were on before its detail.
+  if (!can[tab]) {
+    tab = tabBack ?? "session";
+    tabBack = undefined;
+  }
   for (const id of TABS) {
     const button = tabButtons[id];
     const chosen = id === tab;
@@ -362,7 +375,7 @@ const view = mountBoard(canvas, {
   showDetail: (id) => {
     // Not by chooseTab: the Detail tab is quiet until the repaint learns of the card.
     state.selected = id;
-    tab = "detail";
+    openDetailTab();
     if (isFolded("right")) toggleFold("right");
     render();
   },
@@ -1043,7 +1056,10 @@ function paintNotesTab(board: string | undefined, threads: Discussion[], live: b
   for (const id of latest) waitingSeen.notes.add(id);
   if (arrived.length === 0 || tab === "notes" || writingElsewhere()) return;
   tab = "notes";
+  tabBack = undefined;
   if (isFolded("right")) toggleFold("right");
+  // Opened without being asked: said, so a screen reader is not left on a panel that changed.
+  speak(t.notesOpened);
 }
 
 /** The reader writes outside the notes: a detail, a card's name, a message to Claude. */
@@ -1189,7 +1205,7 @@ function editDetail(id: string, from: "card" | "panel"): void {
   detailEdit = { id, from };
   detailField.setAttribute("aria-label", t.detailOf(id));
   // Written in the Detail tab: it is opened, and the panel with it if it was folded.
-  tab = "detail";
+  openDetailTab();
   if (isFolded("right")) toggleFold("right");
   render();
   fitDetailField();
@@ -1833,8 +1849,9 @@ function render(): void {
   }
   const editing = live && detailEdit !== undefined;
   const chosen = board?.elements.find((e) => e.id === (editing ? detailEdit?.id : state.selected));
-  // A card newly chosen opens its tab; while it stays chosen, the reader's tab is theirs.
-  if (chosen && chosen.id !== detailFor) tab = "detail";
+  // A card newly chosen shows its detail when the reader was only watching the session;
+  // reading the notes or the history, they stay there. While it stays chosen, the tab is theirs.
+  if (chosen && chosen.id !== detailFor && tab === "session") openDetailTab();
   detailFor = chosen?.id ?? null;
   if (chosen) delete cardPanel.dataset.empty;
   else cardPanel.dataset.empty = "true";

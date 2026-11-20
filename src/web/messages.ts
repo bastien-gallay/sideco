@@ -124,6 +124,8 @@ export interface Messages {
   tabs: Record<"session" | "notes" | "history" | "detail", string>;
   /** The Notes tab says how many discussions are open, and how many wait for the reader. */
   notesTab: (open: number, yours: number) => string;
+  /** Said when a note Claude wrote opens the Notes tab on its own. */
+  notesOpened: string;
   /** In the detail: the card's open discussions, a click away in the Notes tab. */
   cardNotes: (count: number) => string;
   liveNow: string;
@@ -278,8 +280,8 @@ const en: Messages = {
 
   boardShown: "Board shown",
   newBoardButton: "+ Board",
-  showPanel: { left: "Show the palette and the notes", right: "Show the side panel" },
-  hidePanel: { left: "Fold the palette and the notes", right: "Fold the side panel" },
+  showPanel: { left: "Show the palette", right: "Show the side panel" },
+  hidePanel: { left: "Fold the palette", right: "Fold the side panel" },
   boardMenu: "Board: new, export, remove",
   newBoardItem: "New board…",
   removeBoardItem: "Remove this board…",
@@ -360,6 +362,7 @@ const en: Messages = {
   cardPanelOf: (id) => `Card ${id}`,
   sidePanel: "Side panel",
   tabs: { session: "Session", notes: "Notes", history: "History", detail: "Detail" },
+  notesOpened: "Claude wrote a note that waits for you: the Notes tab is open.",
   notesTab: (open, yours) =>
     yours > 0
       ? `Notes: ${open} open, ${yours} awaiting your answer`
@@ -557,8 +560,8 @@ const fr: Messages = {
 
   boardShown: "Tableau affiché",
   newBoardButton: "+ Tableau",
-  showPanel: { left: "Afficher la palette et les notes", right: "Afficher le panneau latéral" },
-  hidePanel: { left: "Replier la palette et les notes", right: "Replier le panneau latéral" },
+  showPanel: { left: "Afficher la palette", right: "Afficher le panneau latéral" },
+  hidePanel: { left: "Replier la palette", right: "Replier le panneau latéral" },
   boardMenu: "Tableau : nouveau, export, suppression",
   newBoardItem: "Nouveau tableau…",
   removeBoardItem: "Supprimer ce tableau…",
@@ -641,6 +644,7 @@ const fr: Messages = {
   cardPanelOf: (id) => `Carte ${id}`,
   sidePanel: "Panneau latéral",
   tabs: { session: "Session", notes: "Notes", history: "Historique", detail: "Détail" },
+  notesOpened: "Claude a écrit une note qui t'attend : l'onglet Notes est ouvert.",
   notesTab: (open, yours) =>
     yours > 0
       ? `Notes : ${open} ouverte${open > 1 ? "s" : ""}, ${yours} attend${yours > 1 ? "ent" : ""} ta réponse`

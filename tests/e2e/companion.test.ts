@@ -900,8 +900,9 @@ describe("talking it through, note by note", () => {
       ((await locator.getAttribute("class")) ?? "").split(" ");
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await page.keyboard.press("Escape");
+    await page.locator("#tab-session").click();
     await card("E2").click();
-    // Chosen, the card shows its detail, which leads to its discussions.
+    // Chosen from the session, the card shows its detail, which leads to its discussions.
     const toNotes = page.locator(".card-panel-notes");
     await toNotes.waitFor();
     expect(await toNotes.textContent()).toBe("✎ 1 open note on this card");
@@ -942,6 +943,10 @@ describe("talking it through, note by note", () => {
     await page.locator("#tab-session").click();
     await agent('note "Et la commande annulée ?" --on E1', BOARD);
     await until("the Notes tab opened", chosen);
+    // Opened without being asked, it is said to whoever does not see the panel change.
+    await page
+      .locator(".spoken", { hasText: "Claude wrote a note that waits for you: the Notes tab is open." })
+      .waitFor({ state: "attached" });
     await thread("N5").waitFor();
     expect(await notesTab.locator(".tab-count").textContent()).toBe("3");
 
@@ -1251,9 +1256,10 @@ describe("the chosen card, read in the right panel", () => {
       }),
     });
     expect(posted.ok).toBe(true);
+    // A card chosen while the session is shown opens the Detail tab.
+    await page.locator("#tab-session").click();
     await card("E1").click();
     await panel().waitFor({ state: "visible" });
-    // A card chosen opens the Detail tab.
     expect(await page.locator("#tab-detail").getAttribute("aria-selected")).toBe("true");
     expect(await panel().locator("h2").textContent()).toBe("Card E1");
     expect(await panel().locator(".card-panel-name").textContent()).toBe(
@@ -1411,6 +1417,26 @@ describe("the chosen card, read in the right panel", () => {
       async () => (await page.locator("#tab-detail").getAttribute("aria-selected")) === "true",
     );
     await page.keyboard.press("Escape");
+  });
+
+  test("a card chosen from Notes or History leaves the reader there; from Session it opens Detail, then gives Session back", async () => {
+    const on = async (id: string) =>
+      (await page.locator(`#tab-${id}`).getAttribute("aria-selected")) === "true";
+    const selected = async () => ((await card("E1").getAttribute("class")) ?? "").includes("is-selected");
+    for (const reading of ["history", "notes"]) {
+      await page.locator(`#tab-${reading}`).click();
+      await card("E1").click();
+      await until("the card is chosen", selected);
+      expect(await on(reading)).toBe(true);
+      await page.keyboard.press("Escape");
+      await until("the card is left", async () => !(await selected()));
+      expect(await on(reading)).toBe(true);
+    }
+    await page.locator("#tab-session").click();
+    await card("E1").click();
+    await until("Detail opened from Session", () => on("detail"));
+    await page.keyboard.press("Escape");
+    await until("Session given back", () => on("session"));
   });
 });
 
@@ -2372,7 +2398,7 @@ describe("side panels folded away", () => {
     await left.click();
     await until("the left panel is a rail", async () => (await width(".left")) <= 44);
     expect(await left.getAttribute("aria-expanded")).toBe("false");
-    expect(await left.getAttribute("aria-label")).toBe("Show the palette and the notes");
+    expect(await left.getAttribute("aria-label")).toBe("Show the palette");
     // Folded, the palette is still there: a kind of card is one click off.
     await paletteType("Event").click();
     await page.locator("textarea.card-editor").waitFor({ state: "visible" });
