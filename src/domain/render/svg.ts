@@ -123,9 +123,11 @@ function laneHeading(b: Band): string {
 }
 
 export function connectorMarkup(c: Connector): string {
-  const label = c.label
-    ? `<text class="conn-label" x="${c.labelX}" y="${c.labelY}">${esc(c.label)}</text>`
-    : "";
+  const label = !c.label
+    ? ""
+    : c.unwritten
+      ? `<title>${esc(c.label)}</title>`
+      : `<text class="conn-label" x="${c.labelX}" y="${c.labelY}">${esc(c.label)}</text>`;
   return `<g class="conn" data-src="${esc(c.src)}" data-dst="${esc(c.dst)}"><path d="${c.d}" marker-end="url(#sideco-arrow)"/>${label}</g>`;
 }
 

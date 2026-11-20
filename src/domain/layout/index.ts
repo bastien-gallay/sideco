@@ -14,6 +14,7 @@ import {
   roomInColumns,
   roomOnLaneEdge,
 } from "./columns.ts";
+import { placeConnectorLabels } from "./connector-labels.ts";
 import { layoutGraph, NODE_LINES } from "./graph.ts";
 import {
   BLURB_LINES,
@@ -53,7 +54,7 @@ export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE, span?
   const format = findFormat(board.format);
   if (!format) return EMPTY;
   const card = cardMaker(board, format, locale);
-  if (format.layout === "graph") return layoutGraph(board, card, span);
+  if (format.layout === "graph") return placeConnectorLabels(layoutGraph(board, card, span));
 
   const scene =
     format.layout === "timeline"
@@ -65,7 +66,7 @@ export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE, span?
     const b = byId.get(edge.dst);
     if (a && b) scene.connectors.push(curve(a, b, edge.label));
   }
-  return scene;
+  return placeConnectorLabels(scene);
 }
 
 /** What a point of the scene means on this board: a cell, a slot in a lane, or nothing. */

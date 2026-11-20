@@ -7,6 +7,7 @@
  * same board gives the same drawing. Ported from truepath's `layout.py`.
  */
 import type { Board, Element } from "../workspace.ts";
+import { LABEL_CHAR_W } from "./connector-labels.ts";
 import {
   blurbHeight,
   CARD_W,
@@ -27,7 +28,6 @@ const LANE = 16;
 const STUB = 4;
 const LABEL_GAP = 4;
 const CLEARANCE = 6;
-const LABEL_CHAR_W = 6.2;
 /** The fewest layers a column of a folded flow holds. */
 const BAND_LAYERS = 4;
 /** Between two columns of a folded flow: room for the arrow that climbs from one to the next. */

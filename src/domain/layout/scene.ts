@@ -63,6 +63,8 @@ export interface Connector {
   label?: string;
   labelX: number;
   labelY: number;
+  /** Its name found no spot free of cards and other names: it is read on hover, not written. */
+  unwritten?: true;
 }
 
 export interface Scene {
