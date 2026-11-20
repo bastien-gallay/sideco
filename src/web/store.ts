@@ -104,7 +104,8 @@ function hear(frame: Frame): void {
     case "open":
     case "error":
       state.connected = frame.kind === "open";
-      changed();
+      // An opened stream is followed by its replay: drawing now would show it half folded.
+      if (frame.kind === "error" || caughtUp) changed();
       return;
     case "event":
       receive(JSON.parse(frame.data) as Recorded);
@@ -164,7 +165,9 @@ function receive(event: Recorded): void {
   if (event.seq <= state.live.seq) return;
   state.events.push(event);
   apply(state.live, event);
-  if (caughtUp) announce(event);
+  // A replay is drawn once, whole, when its presence frame closes it: never half folded.
+  if (!caughtUp) return;
+  announce(event);
   changed();
 }
 
