@@ -144,6 +144,21 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   const scroll = h("div", { class: "canvas-scroll" });
   scroll.append(root);
   const tools = h("div", { class: "card-tools", hidden: true });
+  /** The ⋯ of the toolbar stays open through repaints while its card stays chosen. */
+  let moreOpen = false;
+  let moreFor: string | undefined;
+  /** The keyboard is in the page's panels or header: the toolbar leaves the board to them. */
+  const keyboardAway = (): boolean => {
+    const active = document.activeElement;
+    return active !== null && active !== document.body && !host.contains(active);
+  };
+  // Repainted only as the keyboard leaves the board or comes back: rebuilt on every focus, a button would vanish under its click.
+  let away = false;
+  document.addEventListener("focusin", () => {
+    if (keyboardAway() === away) return;
+    away = !away;
+    paintTools();
+  });
   const editor = h("textarea", {
     class: "card-editor",
     name: "card-editor",
@@ -616,16 +631,65 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       return;
     }
     pickedLink = undefined;
-    if (!board || !id || !node || !isLive() || state.linking || editing) {
+    if (!board || !id || !node || !isLive() || state.linking || editing || keyboardAway()) {
       tools.hidden = true;
       return;
     }
+    if (id !== moreFor) moreOpen = false;
+    moreFor = id;
     const boardId = board.id;
     const element = board.elements.find((e) => e.id === id);
     // Each action says its key too: the shortcuts are learnt where they are used.
     const keyed = (label: string, key: string): { title: string } => ({ title: t.withKey(label, key) });
     const done = element !== undefined && isDone(board, element);
     const doneLabel = done ? t.notDone : t.done;
+    // An action chosen in the list closes it: the list does not stay over the board it changed.
+    const chosen = (act: () => void): void => {
+      moreOpen = false;
+      more.open = false;
+      act();
+    };
+    // The actions taken most stay in view; the others wait under ⋯, their keys still at hand.
+    const more = h(
+      "details",
+      {
+        class: "menu card-more",
+        open: moreOpen,
+        ontoggle: () => {
+          moreOpen = more.open;
+          if (!more.open) return;
+          // Low on the board, the list opens upwards rather than under the board's edge.
+          const list = more.querySelector<HTMLElement>(".menu-items");
+          const bottom = host.getBoundingClientRect().bottom;
+          if (list) more.classList.toggle("opens-up", list.getBoundingClientRect().bottom > bottom - 8);
+        },
+      },
+      h("summary", { title: t.moreActions, "aria-label": t.moreActions }, "⋯"),
+      h(
+        "div",
+        { class: "menu-items" },
+        h(
+          "button",
+          { type: "button", ...keyed(t.link, "L"), onclick: () => chosen(() => beginLink(id)) },
+          t.link,
+        ),
+        h(
+          "button",
+          { type: "button", ...keyed(doneLabel, "D"), onclick: () => chosen(() => markDone(id, !done)) },
+          doneLabel,
+        ),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "danger",
+            ...keyed(t.remove, "Delete"),
+            onclick: () => chosen(() => void send({ kind: "remove", board: boardId, id })),
+          },
+          t.remove,
+        ),
+      ),
+    );
     tools.replaceChildren(
       h("button", { type: "button", ...keyed(t.rename, "Enter"), onclick: () => rename(id) }, t.rename),
       // The ≡ the card wears when it has a detail: seen here too, not heard.
@@ -635,40 +699,40 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         t.detail,
         element?.detail ? h("span", { "aria-hidden": "true" }, " ≡") : undefined,
       ),
-      h("button", { type: "button", ...keyed(t.link, "L"), onclick: () => beginLink(id) }, t.link),
-      h(
-        "button",
-        {
-          type: "button",
-          ...keyed(doneLabel, "D"),
-          onclick: () => markDone(id, !done),
-        },
-        doneLabel,
-      ),
       ...leadsFrom(id, element?.type),
       h(
         "button",
         { type: "button", ...keyed(t.noteForClaude, "N"), onclick: () => noteOn(id) },
         t.noteForClaude,
       ),
-      h(
-        "button",
-        {
-          type: "button",
-          class: "danger",
-          ...keyed(t.remove, "Delete"),
-          onclick: () => void send({ kind: "remove", board: boardId, id }),
-        },
-        t.remove,
-      ),
+      more,
     );
     tools.hidden = false;
     const box = node.g.getBoundingClientRect();
     const frame = host.getBoundingClientRect();
-    // Above the card, and inside the window: a toolbar cut by the edge hides the action at its end.
+    // Inside the window: a toolbar cut by the edge hides the action at its end.
     const widest = Math.max(8, frame.width - tools.offsetWidth - 8);
-    tools.style.left = `${Math.min(widest, Math.max(8, box.left - frame.left))}px`;
-    tools.style.top = `${Math.max(8, box.top - frame.top - tools.offsetHeight - 8)}px`;
+    const left = Math.min(widest, Math.max(8, box.left - frame.left));
+    // Above the card, unless it would hide another one there and the room under the card is free.
+    const above = Math.max(8, box.top - frame.top - tools.offsetHeight - 8);
+    const under = box.bottom - frame.top + 8;
+    const hides = (top: number): boolean => {
+      const span = {
+        left: frame.left + left,
+        right: frame.left + left + tools.offsetWidth,
+        top: frame.top + top,
+        bottom: frame.top + top + tools.offsetHeight,
+      };
+      return [...nodes].some(([other, { g }]) => {
+        if (other === id) return false;
+        const r = g.getBoundingClientRect();
+        return r.left < span.right && r.right > span.left && r.top < span.bottom && r.bottom > span.top;
+      });
+    };
+    const roomUnder = under + tools.offsetHeight <= frame.height - 8;
+    const top = hides(above) && roomUnder && !hides(under) ? under : above;
+    tools.style.left = `${left}px`;
+    tools.style.top = `${top}px`;
   }
 
   function toScene(event: { clientX: number; clientY: number }): { x: number; y: number } {

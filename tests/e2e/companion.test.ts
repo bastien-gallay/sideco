@@ -516,17 +516,46 @@ describe("other workshops", () => {
 
   test("kanban: Mark done takes a task to the last lane, D to the lane before; the lane says it, not a tick", async () => {
     await card("T2").click();
-    await page.locator(".card-tools button", { hasText: "Mark done" }).click();
+    // Out of the way under ⋯: the toolbar shows the actions taken most.
+    const tools = page.locator(".card-tools");
+    expect(await tools.locator(":scope > button").allTextContents()).toEqual([
+      "Rename",
+      "Detail",
+      "Note for Claude",
+    ]);
+    expect(await tools.locator("button", { hasText: "Mark done" }).isVisible()).toBe(false);
+    await tools.locator("summary").click();
+    expect(await tools.locator(".menu-items button").allTextContents()).toEqual([
+      "Link",
+      "Mark done",
+      "Remove",
+    ]);
+    await tools.locator(".menu-items button", { hasText: "Mark done" }).click();
+    await until(
+      "the list closed",
+      async () => (await tools.locator("details.card-more").getAttribute("open")) === null,
+    );
     await until("T2 is in Done", async () => (await elementOf("sprint", "T2"))?.lane === "done");
     expect(await pending()).toContain("→ T2 moved lane todo → done");
     expect(await card("T2").locator(".card-done").count()).toBe(0);
-    await page.locator(".card-tools button", { hasText: "Not done" }).waitFor();
+    await page.locator(".card-tools button", { hasText: "Not done" }).waitFor({ state: "attached" });
     await shot("21-done");
 
     await card("T2").focus();
     await page.keyboard.press("d");
     await until("T2 is in À valider", async () => (await elementOf("sprint", "T2"))?.lane === "doing");
     await page.locator(".spoken", { hasText: "À valider" }).waitFor({ state: "attached" });
+  });
+
+  test("the card toolbar leaves the board to the panel: it hides when the keyboard goes there, and comes back with the card", async () => {
+    const tools = page.locator(".card-tools");
+    await card("T2").click();
+    await tools.waitFor();
+    await page.locator("#tab-history").click();
+    await tools.waitFor({ state: "hidden" });
+    await card("T2").click();
+    await tools.waitFor();
+    await page.keyboard.press("Escape");
   });
 
   test("flow: a step added while another is selected is linked to it", async () => {
@@ -2435,6 +2464,39 @@ describe("side panels folded away", () => {
       async () => !(await folded("left")) && !(await folded("right")),
     );
     await until("the left panel is whole again", async () => (await width(".left")) > 200);
+  });
+});
+
+describe("the card toolbar", () => {
+  test("stands above its card, or under it when the card above would be hidden", async () => {
+    const picker = page.locator(".board-picker select");
+    const before = await picker.inputValue();
+    await agent(
+      'board new "Barre" --id barre\nadd aggregate "Stock" --col 1\nadd event "Stock réservé" --col 1',
+    );
+    await page.locator('.board-picker option[value="barre"]').waitFor({ state: "attached" });
+    await picker.selectOption("barre");
+    await card("E1").waitFor();
+    const tools = page.locator(".card-tools");
+    const box = async (locator: ReturnType<typeof page.locator>) => {
+      const b = await locator.boundingBox();
+      if (!b) throw new Error("not on screen");
+      return b;
+    };
+    // The event has the aggregate right above it: the toolbar goes under.
+    await card("E1").click();
+    await tools.waitFor();
+    expect((await box(tools)).y).toBeGreaterThanOrEqual(
+      (await box(card("E1"))).y + (await box(card("E1"))).height,
+    );
+    await page.keyboard.press("Escape");
+    // Nothing above the aggregate but its row's band: the toolbar stays above.
+    await card("A1").click();
+    await tools.waitFor();
+    const over = await box(tools);
+    expect(over.y + over.height).toBeLessThanOrEqual((await box(card("A1"))).y);
+    await page.keyboard.press("Escape");
+    await picker.selectOption(before);
   });
 });
 
