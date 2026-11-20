@@ -15,7 +15,8 @@ export type LayoutKind =
   | "graph";
 
 /** `sticky` is a paper note, `sharp` a square-cornered alarm, `box` a process step. */
-export type Shape = "sticky" | "sharp" | "box" | "pill" | "diamond";
+/** `person` is C4's: a rounded box with a head and shoulders above the name. */
+export type Shape = "sticky" | "sharp" | "box" | "pill" | "diamond" | "person";
 
 export interface ElementType {
   id: string;
@@ -84,6 +85,8 @@ export interface Format {
    * draws its slices, the lines that say what ships first.
    */
   sliced?: string;
+  /** Only for `graph` layouts: a card shows the start of its detail under its name, as C4 shows a description. */
+  describes?: true;
 }
 
 const t = (en: string, fr: string): Text => ({ en, fr });
@@ -409,6 +412,7 @@ const C4_CONTEXT: Format = {
   ),
   layout: "graph",
   lanes: [],
+  describes: true,
   types: [
     {
       id: "person",
@@ -416,7 +420,7 @@ const C4_CONTEXT: Format = {
       prefix: "P",
       fill: "#08427B",
       ink: LIGHT,
-      shape: "pill",
+      shape: "person",
       hint: t("Someone who uses the system", "Quelqu'un qui utilise le système"),
     },
     {

@@ -24,6 +24,8 @@ export interface Card {
   hasDetail: boolean;
   /** The detail as written: the tooltip carries it, for a reader who does not open the editor. */
   detail?: string;
+  /** The start of the detail, under the name, on a board whose workshop shows it (see `Format.describes`). */
+  blurb?: string[];
   /** What the card stands for is done. */
   done: boolean;
   /** Open notes pinned to this card. */
@@ -106,6 +108,31 @@ export const WRAP_LINES = 4;
 export const LINE_H = 16;
 /** What a card needs besides its label: the id strip above, the breathing room below. */
 const CARD_CHROME = CARD_H - WRAP_LINES * LINE_H;
+
+/** Lines of description a card shows at most, and the height of one, at 11px. */
+export const BLURB_LINES = 3;
+export const BLURB_H = 13;
+/** Between the name and the description. */
+const BLURB_GAP = 4;
+
+/** What a description of this many lines adds to a card. */
+export function blurbHeight(lines: number): number {
+  return lines > 0 ? BLURB_GAP + lines * BLURB_H : 0;
+}
+
+/** A detail as plain words on one line: its first paragraph, without the marks of its markdown. */
+export function plainDetail(detail: string): string {
+  const first = detail.split(/\n\s*\n/)[0] ?? "";
+  return first
+    .split("\n")
+    .map((line) => line.replace(/^\s*(?:[-*+]|\d{1,9}[.)]|#{1,6})\s+/, ""))
+    .join(" ")
+    .replace(/\[([^\]\n]+)\]\([^()\s]+\)/g, "$1")
+    .replace(/(\*\*|__|`)/g, "")
+    .replace(/(^|\s)[*_]([^*_\s][^*_]*?)[*_](?=\s|[.,;:!?)]|$)/g, "$1$2")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 /** A card is as tall as its label: the height of one that shows this many lines. */
 export function cardHeight(lines: number): number {

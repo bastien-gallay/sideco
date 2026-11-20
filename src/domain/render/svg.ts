@@ -5,7 +5,16 @@
  * Colours of the chrome are CSS variables with fallbacks: standalone files get
  * the light theme, the page overrides the variables.
  */
-import { type Band, type Card, type Connector, cardName, LINE_H, type Scene } from "../layout/scene.ts";
+import {
+  type Band,
+  BLURB_H,
+  blurbHeight,
+  type Card,
+  type Connector,
+  cardName,
+  LINE_H,
+  type Scene,
+} from "../layout/scene.ts";
 
 export const SVG_STYLE = `
 .sideco-board { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -32,6 +41,7 @@ export const SVG_STYLE = `
 .card-label { font-size: 13px; text-anchor: middle; }
 .card-detail { font-size: 11px; text-anchor: end; }
 .card-done { font-size: 11px; font-weight: 700; }
+.card-blurb { font-size: 11px; text-anchor: middle; opacity: 0.85; }
 .card-label-done { text-decoration: line-through; opacity: 0.65; }
 .card-notes circle { fill: #1A6FAE; stroke: var(--sideco-bg, #FFFFFF); stroke-width: 2; }
 .card-notes text { fill: #FFFFFF; font-size: 10px; font-weight: 700; text-anchor: middle; }
@@ -112,9 +122,17 @@ export function connectorMarkup(c: Connector): string {
 
 /** A card drawn at the origin; the caller positions it. */
 export function cardMarkup(c: Card): string {
-  const first = (c.h + ID_STRIP - c.lines.length * LINE_H) / 2 + 12;
+  // The name and the description under it are centred as one block, below the strip of the id.
+  const said = c.blurb ?? [];
+  const block = c.lines.length * LINE_H + blurbHeight(said.length);
+  const first = (c.h + ID_STRIP - block) / 2 + 12;
   const lines = c.lines
     .map((line, i) => `<tspan x="${c.w / 2}" y="${first + i * LINE_H}">${esc(line)}</tspan>`)
+    .join("");
+  // Its first line sits one line of description, and the gap, under the last line of the name.
+  const under = first + (c.lines.length - 1) * LINE_H + blurbHeight(1);
+  const blurb = said
+    .map((line, i) => `<tspan x="${c.w / 2}" y="${under + i * BLURB_H}">${esc(line)}</tspan>`)
     .join("");
   return [
     `<title>${esc(tooltip(c))}</title>`,
@@ -122,6 +140,7 @@ export function cardMarkup(c: Card): string {
     `<text class="card-id" x="${8 + inset(c)}" y="14" fill="${esc(c.ink)}">${esc(c.id)}</text>`,
     authorMark(c),
     `<text class="${c.done ? "card-label card-label-done" : "card-label"}" fill="${esc(c.ink)}">${lines}</text>`,
+    said.length > 0 ? `<text class="card-blurb" fill="${esc(c.ink)}">${blurb}</text>` : "",
     c.done ? `<text class="card-done" x="${doneX(c)}" y="14" fill="${esc(c.ink)}">✓</text>` : "",
     c.hasDetail ? `<text class="card-detail" x="${detailX(c)}" y="14" fill="${esc(c.ink)}">≡</text>` : "",
     c.notes > 0
@@ -141,7 +160,7 @@ function tooltip(c: Card): string {
 
 /** How far a shape's cut corners push the id and the author mark inward. */
 function inset(c: Card): number {
-  return c.shape === "diamond" || c.shape === "pill" ? 16 : 0;
+  return c.shape === "diamond" || c.shape === "pill" ? 16 : c.shape === "person" ? 4 : 0;
 }
 
 function shapeMarkup(c: Card): string {
@@ -151,8 +170,18 @@ function shapeMarkup(c: Card): string {
     const points = `${cut},0 ${c.w - cut},0 ${c.w},${c.h / 2} ${c.w - cut},${c.h} ${cut},${c.h} 0,${c.h / 2}`;
     return `<polygon ${fill} points="${points}"/>`;
   }
+  if (c.shape === "person") return `<rect ${fill} width="${c.w}" height="${c.h}" rx="16"/>${personMark(c)}`;
   const radius = { sticky: 2, sharp: 0, box: 8, pill: c.h / 2 }[c.shape];
   return `<rect ${fill} width="${c.w}" height="${c.h}" rx="${radius}"/>`;
+}
+
+/**
+ * C4's person, small, centred in the strip of the id: a head and shoulders.
+ * Inside the card, so links still meet its edge and nothing overlaps the card above.
+ */
+function personMark(c: Card): string {
+  const x = c.w / 2;
+  return `<g class="card-person" fill="${esc(c.ink)}"><circle cx="${x}" cy="8" r="3.5"/><path d="M${x - 7.5} 19a7.5 6.5 0 0 1 15 0z"/></g>`;
 }
 
 /** Who put the card there: a diamond for the agent, a dot for the human. Shape, not colour. */

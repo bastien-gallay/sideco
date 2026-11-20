@@ -16,11 +16,14 @@ import {
 } from "./columns.ts";
 import { layoutGraph, NODE_LINES } from "./graph.ts";
 import {
+  BLURB_LINES,
+  blurbHeight,
   CARD_W,
   type Card,
   cardHeight,
   charsFor,
   curve,
+  plainDetail,
   type Room,
   type Scene,
   type Target,
@@ -132,13 +135,16 @@ function cardMaker(
   return (e, x, y, w = CARD_W) => {
     const type = findType(format, e.type);
     const lines = wrap(e.label, charsFor(w), maxLines);
+    const said = format.describes && e.detail ? plainDetail(e.detail) : "";
+    const blurb = said ? wrap(said, Math.floor((charsFor(w) * 13) / 11), BLURB_LINES) : undefined;
     return {
       id: e.id,
       x,
       y,
       w,
-      h: cardHeight(lines.length),
+      h: cardHeight(lines.length) + blurbHeight(blurb?.length ?? 0),
       lines,
+      ...(blurb ? { blurb } : {}),
       fill: type?.fill ?? "#E8EEF4",
       ink: type?.ink ?? "#1F2328",
       shape: type?.shape ?? "box",

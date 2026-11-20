@@ -7,7 +7,7 @@
  * same board gives the same drawing. Ported from truepath's `layout.py`.
  */
 import type { Board, Element } from "../workspace.ts";
-import { CARD_W, type Card, type Connector, MARGIN, r, type Scene } from "./scene.ts";
+import { blurbHeight, CARD_W, type Card, type Connector, MARGIN, r, type Scene } from "./scene.ts";
 
 export const NODE_H = 72;
 /** Lines of label a node of `NODE_H` holds. */
@@ -159,6 +159,9 @@ function draw(graph: Graph, bands: readonly Range[]): Scene {
   const folded = bands.length > 1;
   // A folded flow leaves room above for the arrow coming in at the top of a column.
   const top = MARGIN + (folded ? GAP_Y / 2 : 0);
+  // Every node is as tall as the one with the longest description, so the rows stay even.
+  const nodeH =
+    NODE_H + Math.max(0, ...board.elements.map((e) => blurbHeight(card(e, 0, 0).blurb?.length ?? 0)));
   const cards = new Map<string, Card>();
   const band = new Map<string, number>();
   const drawn = new Map<string, Connector>();
@@ -170,8 +173,8 @@ function draw(graph: Graph, bands: readonly Range[]): Scene {
     const left = Math.min(...ids.map((id) => x.get(id) ?? 0));
     const own = new Map<string, Card>();
     for (const e of board.elements.filter((e) => ids.includes(e.id))) {
-      const y = top + ((rank.get(e.id) ?? 0) - from) * (NODE_H + GAP_Y);
-      own.set(e.id, { ...card(e, r((x.get(e.id) ?? 0) - left + origin), y), h: NODE_H });
+      const y = top + ((rank.get(e.id) ?? 0) - from) * (nodeH + GAP_Y);
+      own.set(e.id, { ...card(e, r((x.get(e.id) ?? 0) - left + origin), y), h: nodeH });
       band.set(e.id, k);
     }
     const edges = board.edges.filter((e) => own.has(e.src) && own.has(e.dst));

@@ -67,7 +67,7 @@ function node(e: Element, format: Format): string {
   const label = `"${text(labelSaid({ format: format.id }, e))}"`;
   const shape = format.types.find((t) => t.id === e.type)?.shape;
   if (shape === "diamond") return `${e.id}{${label}}`;
-  if (shape === "pill") return `${e.id}([${label}])`;
+  if (shape === "pill" || shape === "person") return `${e.id}([${label}])`;
   return `${e.id}[${label}]`;
 }
 
