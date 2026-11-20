@@ -492,8 +492,8 @@ input[type="text"] {
 /* ── Work area ────────────────────────────────────────────────────────────── */
 
 .work {
-  --left: 232px;
-  --right: 300px;
+  --left: 216px;
+  --right: 340px;
   grid-row: 3;
   display: grid;
   grid-template-columns: var(--left) minmax(0, 1fr) var(--right);
@@ -585,9 +585,9 @@ input[type="text"] {
 .tab {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   margin-bottom: -1px;
-  padding: 6px 10px;
+  padding: 6px 6px;
   border: 0;
   border-bottom: 2px solid transparent;
   border-radius: 0;
@@ -618,34 +618,28 @@ input[type="text"] {
 }
 
 .tab-icon {
-  font-size: 15px;
-  line-height: 1;
+  display: flex;
+  flex: none;
 }
 
-.fold-right .right .tab-icon {
-  font-size: 18px;
+.tab-icon svg {
+  display: block;
 }
 
-/* Narrow, the panel names only the chosen tab: the others keep their icon, their name in a tooltip. */
-.right {
-  container-type: inline-size;
+.fold-right .right .tab-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
-@container (max-width: 400px) {
-  .tab:not([aria-selected="true"]) .tab-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
+/* Where the names do not fit with their icons, the icons give way; then only the chosen tab keeps its name. */
+.tabs-names .tab-icon {
+  display: none;
 }
 
 /* How many discussions are open; filled with the accent while one waits for the reader's answer. */
 .tab-count {
-  min-width: 18px;
-  padding: 0 5px;
+  min-width: 16px;
+  padding: 0 4px;
   border: 1px solid var(--rule);
   border-radius: 9px;
   color: var(--muted);
@@ -670,6 +664,9 @@ input[type="text"] {
 }
 
 .card-panel-notes {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   justify-self: start;
   margin: 4px 0 0 -6px;
 }
@@ -1086,6 +1083,16 @@ kbd {
 }
 
 .fold-right .right .tab-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Open but short of room: the chosen tab keeps its name, the others their icon. */
+.tabs-chosen .tab:not([aria-selected="true"]) .tab-label {
   position: absolute;
   width: 1px;
   height: 1px;

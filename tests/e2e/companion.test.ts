@@ -905,7 +905,7 @@ describe("talking it through, note by note", () => {
     // Chosen from the session, the card shows its detail, which leads to its discussions.
     const toNotes = page.locator(".card-panel-notes");
     await toNotes.waitFor();
-    expect(await toNotes.textContent()).toBe("✎ 1 open note on this card");
+    expect(await toNotes.textContent()).toBe("1 open note on this card");
     await toNotes.click();
     await until("the card's discussion is marked", async () =>
       (await classes(thread("N1"))).includes("is-current"),
@@ -1417,6 +1417,22 @@ describe("the chosen card, read in the right panel", () => {
       async () => (await page.locator("#tab-detail").getAttribute("aria-selected")) === "true",
     );
     await page.keyboard.press("Escape");
+  });
+
+  test("the tabs keep their names where they fit, with icons drawn alike, and only icons in the rail", async () => {
+    const shown = (locator: ReturnType<typeof page.locator>) =>
+      locator.evaluateAll((all) => all.map((e) => e.getBoundingClientRect().width > 4));
+    // The panel is 300 px: the four names fit, the icons give way first.
+    expect(await shown(page.locator(".tabs .tab-label"))).toEqual([true, true, true, true]);
+    expect(await page.locator(".tabs .tab-icon svg").count()).toBe(4);
+    // Folded, the rail keeps the icons alone.
+    await page.keyboard.press("]");
+    await until("the right panel is folded", foldedRight);
+    expect(await shown(page.locator(".tabs .tab-label"))).toEqual([false, false, false, false]);
+    expect(await shown(page.locator(".tabs .tab-icon"))).toEqual([true, true, true, true]);
+    await page.keyboard.press("]");
+    await until("the right panel is open again", async () => !(await foldedRight()));
+    expect(await shown(page.locator(".tabs .tab-label"))).toEqual([true, true, true, true]);
   });
 
   test("a card chosen from Notes or History leaves the reader there; from Session it opens Detail, then gives Session back", async () => {

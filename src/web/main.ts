@@ -120,7 +120,20 @@ const cardPanel = h("section", {
 
 type Tab = "session" | "notes" | "history" | "detail";
 const TABS: Tab[] = ["session", "notes", "history", "detail"];
-const TAB_ICON: Record<Tab, string> = { session: "≡", notes: "✎", history: "◷", detail: "ⓘ" };
+/** One drawing per tab, on one grid and one stroke: a terminal, a speech bubble, a clock, a page. */
+const TAB_ICON: Record<Tab, string> = {
+  session:
+    '<rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M4.5 6.5l2 1.75-2 1.75M8.5 10.5h3"/>',
+  notes:
+    '<path d="M3 3h10a1.5 1.5 0 0 1 1.5 1.5v6A1.5 1.5 0 0 1 13 12H7l-3 2.5V12H3a1.5 1.5 0 0 1-1.5-1.5v-6A1.5 1.5 0 0 1 3 3z"/>',
+  history: '<circle cx="8" cy="8" r="6.25"/><path d="M8 4.75V8l2.25 1.5"/>',
+  detail: '<rect x="2.5" y="1.5" width="11" height="13" rx="1.5"/><path d="M5 5.5h6M5 8h6M5 10.5h4"/>',
+};
+function tabIcon(id: Tab): HTMLSpanElement {
+  const icon = h("span", { class: "tab-icon", "aria-hidden": "true" });
+  icon.innerHTML = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${TAB_ICON[id]}</svg>`;
+  return icon;
+}
 let tab: Tab = "session";
 /** The tab the reader was on before Detail opened for a card: given back when the card is left. */
 let tabBack: Tab | undefined;
@@ -142,7 +155,7 @@ const tabButtons: Record<Tab, HTMLButtonElement> = Object.fromEntries(
         "aria-controls": `tab-${id}-panel`,
         onclick: () => chooseTab(id),
       },
-      h("span", { class: "tab-icon", "aria-hidden": "true" }, TAB_ICON[id]),
+      tabIcon(id),
       h("span", { class: "tab-label" }, t.tabs[id]),
       id === "notes" && notesCount,
     ),
@@ -191,11 +204,28 @@ function paintTabs(): void {
     else button.setAttribute("aria-disabled", "true");
     if (id !== "notes") button.title = can[id] ? t.tabs[id] : t.detailTabEmpty;
   }
+  fitTabs();
   sessionPanel.hidden = tab !== "session";
   notes.hidden = tab !== "notes";
   historyPanel.hidden = tab !== "history";
   cardPanel.hidden = tab !== "detail";
 }
+
+/**
+ * The tabs say their names where they fit: icons and names, then names alone,
+ * then the chosen tab's name beside the others' icons. Measured, so a longer
+ * language or a narrower panel finds its own step. Folded, the rail keeps icons.
+ */
+function fitTabs(): void {
+  tabList.classList.remove("tabs-names", "tabs-chosen");
+  if (isFolded("right")) return;
+  const fits = (): boolean => tabList.scrollWidth <= tabList.clientWidth;
+  if (fits()) return;
+  tabList.classList.add("tabs-names");
+  if (fits()) return;
+  tabList.classList.replace("tabs-names", "tabs-chosen");
+}
+new ResizeObserver(() => fitTabs()).observe(tabList);
 
 // The arrows go from tab to tab, past the one that has nothing to show yet.
 tabList.addEventListener("keydown", (event) => {
@@ -545,6 +575,7 @@ function paintFolds(): void {
     // The arrow points where the panel goes.
     button.textContent = (side === "left") === folded ? "›" : "‹";
   }
+  fitTabs();
 }
 
 NARROW.addEventListener("change", () => {
@@ -1167,7 +1198,8 @@ const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
     h(
       "button",
       { type: "button", class: "quiet card-panel-notes", onclick: () => showNotes(m.id) },
-      `${TAB_ICON.notes} ${t.cardNotes(m.notes)}`,
+      tabIcon("notes"),
+      t.cardNotes(m.notes),
     ),
   ...(m.editing
     ? [
