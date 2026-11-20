@@ -562,6 +562,33 @@ describe("other workshops", () => {
     await page.keyboard.press("Escape");
   });
 
+  test("with cards all around it, the card toolbar never covers the card chosen", async () => {
+    const lane = (name: string, n: number) =>
+      Array.from({ length: n }, (_, k) => `add task "${name} ${k + 1}" --lane ${name}`);
+    await agent(
+      [
+        'board new "Serré" --format kanban --id serre-tools',
+        ...lane("todo", 5),
+        ...lane("doing", 5),
+        ...lane("done", 5),
+      ].join("\n"),
+    );
+    await page.locator(".board-picker select").selectOption("serre-tools");
+    // The third of the middle lane: a card above, one under, a lane on each side.
+    await card("T8").click();
+    const tools = page.locator(".card-tools");
+    await tools.waitFor();
+    const [bar, chosen] = [await tools.boundingBox(), await card("T8").boundingBox()];
+    if (!bar || !chosen) throw new Error("drawn");
+    const covers =
+      bar.x < chosen.x + chosen.width &&
+      bar.x + bar.width > chosen.x &&
+      bar.y < chosen.y + chosen.height &&
+      bar.y + bar.height > chosen.y;
+    expect(covers).toBe(false);
+    await page.keyboard.press("Escape");
+  });
+
   test("flow: a step added while another is selected is linked to it", async () => {
     await agent(
       [

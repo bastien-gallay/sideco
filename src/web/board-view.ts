@@ -22,6 +22,7 @@ import type { Board } from "../domain/workspace.ts";
 import { h, svg } from "./dom.ts";
 import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
+import { placeTools, type Rect } from "./tools-place.ts";
 import {
   addOffers,
   cardLinks,
@@ -774,39 +775,22 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       more,
     );
     tools.hidden = false;
-    const box = node.g.getBoundingClientRect();
     const frame = host.getBoundingClientRect();
-    // Inside the window: a toolbar cut by the edge hides the action at its end.
-    const widest = Math.max(8, frame.width - tools.offsetWidth - 8);
-    const highest = Math.max(8, frame.height - tools.offsetHeight - 8);
-    const within = (x: number, y: number) => ({
-      left: Math.min(widest, Math.max(8, x)),
-      top: Math.min(highest, Math.max(8, y)),
+    const inFrame = (r: DOMRect): Rect => ({
+      left: r.left - frame.left,
+      top: r.top - frame.top,
+      right: r.right - frame.left,
+      bottom: r.bottom - frame.top,
     });
-    const hides = ({ left, top }: { left: number; top: number }): boolean => {
-      const span = {
-        left: frame.left + left,
-        right: frame.left + left + tools.offsetWidth,
-        top: frame.top + top,
-        bottom: frame.top + top + tools.offsetHeight,
-      };
-      return [...nodes].some(([other, { g }]) => {
-        if (other === id) return false;
-        const r = g.getBoundingClientRect();
-        return r.left < span.right && r.right > span.left && r.top < span.bottom && r.bottom > span.top;
-      });
-    };
-    const x = box.left - frame.left;
-    const y = box.top - frame.top;
-    // Above the card, else under it, else beside it, wherever it hides no other card. When every
-    // place would, it sits on the chosen card itself: the one card the reader already knows.
-    const places = [
-      within(x, y - tools.offsetHeight - 8),
-      within(x, box.bottom - frame.top + 8),
-      within(box.right - frame.left + 8, y),
-      within(x - tools.offsetWidth - 8, y),
-    ];
-    const { left, top } = places.find((place) => !hides(place)) ?? within(x, y + 4);
+    const others = [...nodes].flatMap(([other, { g }]) =>
+      other === id ? [] : [inFrame(g.getBoundingClientRect())],
+    );
+    const { left, top } = placeTools(
+      inFrame(node.g.getBoundingClientRect()),
+      others,
+      { w: tools.offsetWidth, h: tools.offsetHeight },
+      frame,
+    );
     tools.style.left = `${left}px`;
     tools.style.top = `${top}px`;
   }
