@@ -164,8 +164,9 @@ function laneCalled(e: Recorded, locale: Locale, ws?: Workspace): LaneCalled {
   };
 }
 
-/** A session as the page names it: its folder, and the start of its id. */
+/** A session as the page names it: its name once given, else its folder and the start of its id. */
 export function sessionName(session: Session): string {
+  if (session.name) return session.name;
   const id = session.id.slice(0, 6);
   const folder = session.cwd?.split("/").filter(Boolean).at(-1);
   return folder ? `${folder} · ${id}` : id;

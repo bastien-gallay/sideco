@@ -105,6 +105,13 @@ describe("the page names it", () => {
     expect(sessionName({ ...second, id: "0f3a9c21-77", cwd: undefined })).toBe("0f3a9c");
   });
 
+  test("a named session by its name alone, as the picker in the header says it", () => {
+    const { hub } = setup();
+    const second = hub.workspace.sessions.find((s) => s.id === "second");
+    if (!second) throw new Error("no session");
+    expect(sessionName({ ...second, name: "sideco-gq" })).toBe("sideco-gq");
+  });
+
   test("the history says whom the turn went to", () => {
     const { hub, as } = setup();
     as(undefined, 'pass "à toi" --to agent', "human");
