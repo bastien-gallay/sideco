@@ -617,6 +617,54 @@ input[type="text"] {
   font-size: 18px;
 }
 
+/* Narrow, the panel names only the chosen tab: the others keep their icon, their name in a tooltip. */
+.right {
+  container-type: inline-size;
+}
+
+@container (max-width: 400px) {
+  .tab:not([aria-selected="true"]) .tab-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* How many discussions are open; filled with the accent while one waits for the reader's answer. */
+.tab-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+.tab-count.is-yours {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+/* The discussions, a tab of their own: they scroll there, the tabs stay. */
+.notes {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.card-panel-notes {
+  justify-self: start;
+  margin: 4px 0 0 -6px;
+}
+
 .card-panel {
   flex: 1 1 auto;
   min-height: 0;
@@ -1002,7 +1050,6 @@ kbd {
 }
 
 .fold-left .left .palette > :not(.types),
-.fold-left .left .notes,
 .fold-right .right > :not(.fold, .tabs) {
   display: none;
 }
@@ -1943,6 +1990,7 @@ legend {
 }
 
 /* The ≡ of a card with a detail: pressed, it opens the detail in the side panel. */
-.card-detail {
+.card-detail,
+.card-notes {
   cursor: pointer;
 }

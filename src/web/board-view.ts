@@ -93,6 +93,8 @@ export interface BoardHooks {
   editDetail(id: string): void;
   /** The card's detail is to be read: the page shows it in its panel, unfolded if need be. */
   showDetail(id: string): void;
+  /** The card's discussions are to be read: the page opens its Notes tab on them. */
+  showNotes(id: string): void;
 }
 
 /**
@@ -898,7 +900,10 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       t.noteOnPlaceholder(id),
       { fill: "var(--surface)", ink: "var(--ink)" },
       (text) => {
-        return saved(send({ kind: "note", board: boardId, text, target: id }));
+        const sent = saved(send({ kind: "note", board: boardId, text, target: id }));
+        // Written, the note is shown where it will be answered.
+        void sent.then((ok) => ok && hooks.showNotes(id));
+        return sent;
       },
       { name: t.noteOn(id), lines: true, from: id },
     );
@@ -1258,6 +1263,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     // The ≡ a card wears with a detail leads to it; the rest of the card was handled as it was pressed.
     const marked = target?.closest(".card-detail") ? cardAt(target) : undefined;
     if (!wasDrop && marked) hooks.showDetail(marked);
+    // Its note count leads to its discussions.
+    const counted = target?.closest(".card-notes") ? cardAt(target) : undefined;
+    if (!wasDrop && counted) hooks.showNotes(counted);
     if (wasDrop || cardAt(target)) return;
     const offer = offerAt(target);
     if (offer) {

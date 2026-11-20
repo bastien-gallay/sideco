@@ -835,6 +835,14 @@ describe("talking it through, note by note", () => {
       `board new "Fil" --id ${BOARD}\nadd event "Commande passée" --col 1\nadd event "Stock réservé" --col 2\nnote "Qui réserve ?" --on E2\nnote "Et le reste ?"`,
     );
     await page.locator(".board-picker select").selectOption(BOARD);
+    await thread("N1").waitFor({ state: "attached" });
+    // Already there when the board was shown, they wait in their tab, which says so.
+    const tab = page.locator("#tab-notes");
+    expect(await tab.getAttribute("aria-selected")).toBe("false");
+    expect(await tab.locator(".tab-count").textContent()).toBe("2");
+    expect(await tab.locator(".tab-count").getAttribute("class")).toContain("is-yours");
+    expect(await tab.getAttribute("aria-label")).toBe("Notes: 2 open, 2 awaiting your answer");
+    await tab.click();
     await thread("N1").waitFor();
     expect(await page.locator(".notes h2").textContent()).toBe("Open notes (2)");
     expect(await thread("N1").locator(".thread-on").textContent()).toBe("E2 · Stock réservé");
@@ -888,10 +896,18 @@ describe("talking it through, note by note", () => {
   test("a card points to its discussions, and a discussion points back to its card", async () => {
     const classes = async (locator: ReturnType<typeof card>): Promise<string[]> =>
       ((await locator.getAttribute("class")) ?? "").split(" ");
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press("Escape");
     await card("E2").click();
+    // Chosen, the card shows its detail, which leads to its discussions.
+    const toNotes = page.locator(".card-panel-notes");
+    await toNotes.waitFor();
+    expect(await toNotes.textContent()).toBe("✎ 1 open note on this card");
+    await toNotes.click();
     await until("the card's discussion is marked", async () =>
       (await classes(thread("N1"))).includes("is-current"),
     );
+    expect(await page.locator("#tab-notes").getAttribute("aria-selected")).toBe("true");
     expect(await classes(thread("N2"))).not.toContain("is-current");
     await shot("15-threads");
 
@@ -912,8 +928,27 @@ describe("talking it through, note by note", () => {
       (await classes(card("E2"))).includes("is-selected"),
     );
     expect(await page.evaluate(() => document.activeElement?.tagName)).toBe("TEXTAREA");
+    // Chosen from its discussion, the card leaves the reader in the Notes tab.
+    expect(await page.locator("#tab-notes").getAttribute("aria-selected")).toBe("true");
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await page.keyboard.press("Escape");
+  });
+
+  test("a note Claude adds opens the Notes tab on its own, and a card's count leads there too", async () => {
+    const notesTab = page.locator("#tab-notes");
+    const chosen = async () => (await notesTab.getAttribute("aria-selected")) === "true";
+    await page.locator("#tab-session").click();
+    await agent('note "Et la commande annulée ?" --on E1', BOARD);
+    await until("the Notes tab opened", chosen);
+    await thread("N5").waitFor();
+    expect(await notesTab.locator(".tab-count").textContent()).toBe("3");
+
+    await page.locator("#tab-history").click();
+    await badge("E1").click();
+    await until("the count led to the Notes tab", chosen);
+    await page.keyboard.press("Escape");
+    await thread("N5").locator(".thread-resolve").click();
+    await thread("N5").waitFor({ state: "detached" });
   });
 
   test("resolving closes the whole thread", async () => {
@@ -963,6 +998,8 @@ describe("what Claude has not read yet", () => {
     expect(await card("E1").getAttribute("aria-label")).toEndWith(WORDS);
     expect(await cardMark("E2").count()).toBe(0);
 
+    // Already there when the board was shown, the note is read in its tab.
+    await page.locator("#tab-notes").click();
     const reply = page.locator(`.notes .thread[data-thread="N1"] .thread-reply [name^=reply-]`);
     await reply.fill("La compta");
     await reply.press("Enter");
@@ -1310,6 +1347,8 @@ describe("the chosen card, read in the right panel", () => {
     await detail.click({ force: true });
     expect(await page.locator("#tab-session").getAttribute("aria-selected")).toBe("true");
     await page.locator("#tab-session").focus();
+    await page.keyboard.press("ArrowRight");
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe("tab-notes");
     await page.keyboard.press("ArrowRight");
     expect(await page.evaluate(() => document.activeElement?.id)).toBe("tab-history");
     // From History, past the quiet Detail, back round to Session.
@@ -2244,6 +2283,8 @@ describe("tidying up", () => {
   test("the reply once sent, the tab reloads without being asked: nothing is left to lose", async () => {
     const before = problems.length;
     const reply = page.locator(".notes .thread-reply [name^=reply-]");
+    // Reloaded, the page opened on its first tab.
+    await page.locator("#tab-notes").click();
     await reply.fill("Trouvé");
     await mark();
     await restart("fr");
@@ -2254,6 +2295,7 @@ describe("tidying up", () => {
     const reloaded = page.waitForEvent("load", { timeout: 5_000 });
     await reply.press("Enter");
     await reloaded;
+    await page.locator("#tab-notes").click();
     await page.locator(".notes", { hasText: "Trouvé" }).waitFor();
     expect(await marked()).toBe(false);
     forgiveTheCut(before);

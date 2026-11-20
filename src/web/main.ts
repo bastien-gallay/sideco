@@ -87,7 +87,14 @@ const undoGroup = h("div", { class: "undo" });
 const boardMenu = h("details", { class: "menu board-menu" });
 const banner = h("div", { class: "banner", hidden: true });
 const palette = h("section", { class: "palette", "aria-label": t.palette });
-const notes = h("section", { class: "notes", "aria-label": t.notes });
+/** The discussions of the board, a tab of the right panel: open ones first, resolved ones folded under. */
+const notes = h("section", {
+  class: "notes",
+  id: "tab-notes-panel",
+  role: "tabpanel",
+  "aria-labelledby": "tab-notes",
+  hidden: true,
+});
 const focusBar = h("div", { class: "focus-bar", hidden: true });
 /** What Claude changed on the board while the reader was away: said once, over the board, until they have seen it. */
 const visitBar = h("div", { class: "visit-bar", role: "status", hidden: true });
@@ -111,13 +118,15 @@ const cardPanel = h("section", {
 
 // ── The right panel's tabs: what Claude's session does, and the chosen card ───
 
-type Tab = "session" | "history" | "detail";
-const TABS: Tab[] = ["session", "history", "detail"];
-const TAB_ICON: Record<Tab, string> = { session: "≡", history: "◷", detail: "ⓘ" };
+type Tab = "session" | "notes" | "history" | "detail";
+const TABS: Tab[] = ["session", "notes", "history", "detail"];
+const TAB_ICON: Record<Tab, string> = { session: "≡", notes: "✎", history: "◷", detail: "ⓘ" };
 let tab: Tab = "session";
 /** The card the Detail tab was last opened for: a new choice opens it again, a repaint does not. */
 let detailFor: string | null = null;
 
+/** On the Notes tab: how many discussions are open; marked when one waits for the reader's answer. */
+const notesCount = h("span", { class: "tab-count", hidden: true });
 const tabButtons: Record<Tab, HTMLButtonElement> = Object.fromEntries(
   TABS.map((id) => [
     id,
@@ -133,6 +142,7 @@ const tabButtons: Record<Tab, HTMLButtonElement> = Object.fromEntries(
       },
       h("span", { class: "tab-icon", "aria-hidden": "true" }, TAB_ICON[id]),
       h("span", { class: "tab-label" }, t.tabs[id]),
+      id === "notes" && notesCount,
     ),
   ]),
 ) as Record<Tab, HTMLButtonElement>;
@@ -152,7 +162,12 @@ function chooseTab(id: Tab, focus = false): void {
 }
 
 function paintTabs(): void {
-  const can: Record<Tab, boolean> = { session: true, history: true, detail: !cardPanel.dataset.empty };
+  const can: Record<Tab, boolean> = {
+    session: true,
+    notes: true,
+    history: true,
+    detail: !cardPanel.dataset.empty,
+  };
   if (!can[tab]) tab = "session";
   for (const id of TABS) {
     const button = tabButtons[id];
@@ -161,9 +176,10 @@ function paintTabs(): void {
     button.tabIndex = chosen ? 0 : -1;
     if (can[id]) button.removeAttribute("aria-disabled");
     else button.setAttribute("aria-disabled", "true");
-    button.title = can[id] ? t.tabs[id] : t.detailTabEmpty;
+    if (id !== "notes") button.title = can[id] ? t.tabs[id] : t.detailTabEmpty;
   }
   sessionPanel.hidden = tab !== "session";
+  notes.hidden = tab !== "notes";
   historyPanel.hidden = tab !== "history";
   cardPanel.hidden = tab !== "detail";
 }
@@ -342,6 +358,7 @@ const view = mountBoard(canvas, {
   announce: speak,
   notice: (text) => say(text),
   editDetail: (id) => editDetail(id, "card"),
+  showNotes: (id) => showNotes(id),
   showDetail: (id) => {
     // Not by chooseTab: the Detail tab is quiet until the repaint learns of the card.
     state.selected = id;
@@ -548,7 +565,7 @@ app.append(
   h(
     "main",
     { class: "work" },
-    h("aside", { class: "left", id: "panel-left" }, folds.left, palette, notes),
+    h("aside", { class: "left", id: "panel-left" }, folds.left, palette),
     h("section", { class: "stage" }, visitBar, focusBar, findBar, canvas, empty),
     h(
       "aside",
@@ -556,6 +573,7 @@ app.append(
       folds.right,
       tabList,
       sessionPanel,
+      notes,
       historyPanel,
       cardPanel,
     ),
@@ -911,7 +929,7 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel, resolved
   };
   // Answering a note shows its card, as its title does: the keyboard stays in the answer.
   field.addEventListener("focus", () => {
-    if (on?.label !== undefined && state.selected !== on.id) select(on.id);
+    if (on?.label !== undefined && state.selected !== on.id) selectFromNotes(on.id);
   });
   const reply = (event: Event): void => {
     event.preventDefault();
@@ -926,6 +944,7 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel, resolved
       class: on && on.id === m.selected ? "thread is-current" : "thread",
       // A resolved discussion is named apart: what speaks of an open one never lands on a closed one.
       [resolved ? "data-resolved" : "data-thread"]: thread.id,
+      "data-on": on?.id,
       id: `thread-${thread.id}`,
       onmouseenter: () => view.point(on?.id),
       onmouseleave: () => view.point(undefined),
@@ -939,7 +958,7 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel, resolved
         class: "thread-on",
         disabled: on?.label === undefined,
         title: on?.label === undefined ? undefined : t.showCard(on.id),
-        onclick: () => select(on?.id),
+        onclick: () => selectFromNotes(on?.id),
       },
       on ? (on.label === undefined ? t.cardGone(on.id) : `${on.id} · ${on.label}`) : t.wholeBoard,
     ),
@@ -985,6 +1004,53 @@ function paintNotes(model: NotesModel): void {
   again.value = typing.value;
   again.focus();
   again.setSelectionRange(typing.selectionStart, typing.selectionEnd);
+}
+
+/** Opens the Notes tab, the panel too when folded; given a card, its first discussion is brought into view. */
+function showNotes(card?: string): void {
+  tab = "notes";
+  // The card being chosen by the same click keeps the reader here, not in its detail.
+  if (card) detailFor = card;
+  if (isFolded("right")) toggleFold("right");
+  render();
+  if (!card) return;
+  const item = [...notes.querySelectorAll<HTMLElement>(".thread[data-thread]")].find(
+    (thread) => thread.dataset.on === card,
+  );
+  item?.scrollIntoView({ block: "nearest" });
+}
+
+/**
+ * The Notes tab, said: how many discussions are open, and a mark while one waits for the reader.
+ * A note Claude adds, that waits for them, opens the tab on its own, unless the reader is writing
+ * elsewhere. The discussions already waiting when the board is first shown do not.
+ */
+let waitingSeen: { board: string; notes: Set<string> } | undefined;
+function paintNotesTab(board: string | undefined, threads: Discussion[], live: boolean): void {
+  const yours = threads.filter((thread) => thread.waits === "you");
+  notesCount.hidden = threads.length === 0;
+  notesCount.textContent = String(threads.length);
+  notesCount.classList.toggle("is-yours", yours.length > 0);
+  tabButtons.notes.title = t.notesTab(threads.length, yours.length);
+  tabButtons.notes.setAttribute("aria-label", t.notesTab(threads.length, yours.length));
+  const latest = yours.map((thread) => thread.notes.at(-1)?.id ?? thread.id);
+  if (!board || !live || !caughtUpYet()) return;
+  if (waitingSeen?.board !== board) {
+    waitingSeen = { board, notes: new Set(latest) };
+    return;
+  }
+  const arrived = latest.filter((id) => !waitingSeen?.notes.has(id));
+  for (const id of latest) waitingSeen.notes.add(id);
+  if (arrived.length === 0 || tab === "notes" || writingElsewhere()) return;
+  tab = "notes";
+  if (isFolded("right")) toggleFold("right");
+}
+
+/** The reader writes outside the notes: a detail, a card's name, a message to Claude. */
+function writingElsewhere(): boolean {
+  const active = document.activeElement;
+  const typing = active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement;
+  return (typing && !notes.contains(active)) || detailEdit !== undefined;
 }
 
 /** Brings the selected card's first discussion into view, once per selection. */
@@ -1047,6 +1113,8 @@ interface CardPanelModel {
   live: boolean;
   editing: boolean;
   saving: boolean;
+  /** The card's open discussions: said under its detail, a click away in the Notes tab. */
+  notes: number;
 }
 
 /** The detail being written in the panel: its card, and where the keyboard was when it was asked for. */
@@ -1079,6 +1147,12 @@ const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
   h("h2", {}, t.cardPanelOf(m.id)),
   h("p", { class: "card-panel-name" }, m.label),
   m.type !== undefined && h("p", { class: "hint" }, m.type),
+  m.notes > 0 &&
+    h(
+      "button",
+      { type: "button", class: "quiet card-panel-notes", onclick: () => showNotes(m.id) },
+      `${TAB_ICON.notes} ${t.cardNotes(m.notes)}`,
+    ),
   ...(m.editing
     ? [
         detailField,
@@ -1274,6 +1348,7 @@ function goTo(id: string): void {
     resolvedOpen = true;
     notes.querySelector<HTMLDetailsElement>("details.resolved")?.setAttribute("open", "");
   }
+  showNotes();
   const item = document.getElementById(`thread-${opening}`);
   item?.scrollIntoView({ block: "nearest" });
   item?.classList.add("is-called");
@@ -1433,6 +1508,13 @@ function select(id: string | undefined): void {
   state.selected = id;
   changed();
   view.reveal(id);
+}
+
+/** A card chosen from its discussion: shown on the board, and the reader stays in the Notes tab. */
+function selectFromNotes(id: string | undefined): void {
+  if (!id) return;
+  detailFor = id;
+  select(id);
 }
 
 function exportAs(format: ExportFormat): void {
@@ -1724,6 +1806,7 @@ function render(): void {
     unread: unread.threads,
   });
   revealThreads(state.selected);
+  paintNotesTab(board?.id, board ? discussions(board) : [], live);
 
   focusBar.hidden = !board?.focus;
   if (board?.focus) paintFocus({ ids: board.focus.ids, reason: board.focus.reason, live, board: board.id });
@@ -1767,6 +1850,7 @@ function render(): void {
       live,
       editing,
       saving: detailSaving,
+      notes: discussions(board).filter((thread) => thread.on?.id === chosen.id).length,
     });
     if (typing && document.activeElement !== detailField) detailField.focus();
   }

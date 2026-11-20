@@ -121,7 +121,11 @@ export interface Messages {
   cardPanel: string;
   cardPanelOf: (id: string) => string;
   sidePanel: string;
-  tabs: Record<"session" | "history" | "detail", string>;
+  tabs: Record<"session" | "notes" | "history" | "detail", string>;
+  /** The Notes tab says how many discussions are open, and how many wait for the reader. */
+  notesTab: (open: number, yours: number) => string;
+  /** In the detail: the card's open discussions, a click away in the Notes tab. */
+  cardNotes: (count: number) => string;
   liveNow: string;
   earlier: (more: number) => string;
   detailTabEmpty: string;
@@ -355,7 +359,14 @@ const en: Messages = {
   cardPanel: "Chosen card",
   cardPanelOf: (id) => `Card ${id}`,
   sidePanel: "Side panel",
-  tabs: { session: "Session", history: "History", detail: "Detail" },
+  tabs: { session: "Session", notes: "Notes", history: "History", detail: "Detail" },
+  notesTab: (open, yours) =>
+    yours > 0
+      ? `Notes: ${open} open, ${yours} awaiting your answer`
+      : open > 0
+        ? `Notes: ${open} open`
+        : "Notes",
+  cardNotes: (count) => (count === 1 ? "1 open note on this card" : `${count} open notes on this card`),
   liveNow: "● Live",
   earlier: (more) => `Earlier… (${more} more)`,
   detailTabEmpty: "Detail: choose a card on the board",
@@ -629,7 +640,15 @@ const fr: Messages = {
   cardPanel: "Carte choisie",
   cardPanelOf: (id) => `Carte ${id}`,
   sidePanel: "Panneau latéral",
-  tabs: { session: "Session", history: "Historique", detail: "Détail" },
+  tabs: { session: "Session", notes: "Notes", history: "Historique", detail: "Détail" },
+  notesTab: (open, yours) =>
+    yours > 0
+      ? `Notes : ${open} ouverte${open > 1 ? "s" : ""}, ${yours} attend${yours > 1 ? "ent" : ""} ta réponse`
+      : open > 0
+        ? `Notes : ${open} ouverte${open > 1 ? "s" : ""}`
+        : "Notes",
+  cardNotes: (count) =>
+    count === 1 ? "1 note ouverte sur cette carte" : `${count} notes ouvertes sur cette carte`,
   liveNow: "● En direct",
   earlier: (more) => `Plus ancien… (encore ${more})`,
   detailTabEmpty: "Détail : choisis une carte sur le tableau",
