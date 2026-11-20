@@ -1464,6 +1464,22 @@ describe("the chosen card, read in the right panel", () => {
     expect(await shown(page.locator(".tabs .tab-label"))).toEqual([true, true, true, true]);
   });
 
+  test("in a narrow window, a card chosen unfolds its detail, and folds it back once left", async () => {
+    await page.locator("#tab-session").click();
+    await page.setViewportSize({ width: 1024, height: 800 });
+    try {
+      await until("the narrow window folds the panel", foldedRight);
+      await card("E1").click();
+      await until("the panel unfolds for the card", async () => !(await foldedRight()));
+      expect(await page.locator("#tab-detail").getAttribute("aria-selected")).toBe("true");
+      await page.keyboard.press("Escape");
+      await until("folded back once the card is left", foldedRight);
+    } finally {
+      await page.setViewportSize({ width: 1440, height: 900 });
+    }
+    await until("wide again, the panel is open", async () => !(await foldedRight()));
+  });
+
   test("a card chosen from Notes or History leaves the reader there; from Session it opens Detail, then gives Session back", async () => {
     const on = async (id: string) =>
       (await page.locator(`#tab-${id}`).getAttribute("aria-selected")) === "true";

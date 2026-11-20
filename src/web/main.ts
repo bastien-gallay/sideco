@@ -535,6 +535,8 @@ const chosenFolds: Record<Side, boolean> = (() => {
 })();
 /** A narrow window folds both; what the reader then unfolds holds until the window changes again. */
 let narrowFolds: Record<Side, boolean> | undefined = NARROW.matches ? { left: true, right: true } : undefined;
+/** The right panel was unfolded by a card chosen in a narrow window: it folds back when the card is left. */
+let unfoldedForCard = false;
 
 const foldButton = (side: Side): HTMLButtonElement =>
   h("button", {
@@ -550,6 +552,7 @@ function isFolded(side: Side): boolean {
 }
 
 function toggleFold(side: Side): void {
+  if (side === "right") unfoldedForCard = false;
   if (narrowFolds) narrowFolds[side] = !narrowFolds[side];
   else {
     chosenFolds[side] = !chosenFolds[side];
@@ -579,6 +582,7 @@ function paintFolds(): void {
 }
 
 NARROW.addEventListener("change", () => {
+  unfoldedForCard = false;
   narrowFolds = NARROW.matches ? { left: true, right: true } : undefined;
   paintFolds();
 });
@@ -1898,7 +1902,20 @@ function render(): void {
   const chosen = board?.elements.find((e) => e.id === (editing ? detailEdit?.id : state.selected));
   // A card newly chosen shows its detail when the reader was only watching the session;
   // reading the notes or the history, they stay there. While it stays chosen, the tab is theirs.
-  if (chosen && chosen.id !== detailFor && tab === "session") openDetailTab();
+  if (chosen && chosen.id !== detailFor && tab === "session") {
+    openDetailTab();
+    // Folded only because the window is narrow: the detail is shown, until the card is left.
+    if (narrowFolds?.right) {
+      narrowFolds.right = false;
+      unfoldedForCard = true;
+      paintFolds();
+    }
+  }
+  if (!chosen && unfoldedForCard && narrowFolds) {
+    narrowFolds.right = true;
+    unfoldedForCard = false;
+    paintFolds();
+  }
   detailFor = chosen?.id ?? null;
   if (chosen) delete cardPanel.dataset.empty;
   else cardPanel.dataset.empty = "true";
