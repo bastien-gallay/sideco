@@ -2844,6 +2844,55 @@ describe("a lane's subtitle and a plan's axes, rewritten by the mouse", () => {
   });
 });
 
+describe("a plan's axes, from the keyboard", () => {
+  const boardOf = async (id: string) => (await workspace()).boards.find((b) => b.id === id);
+  const editor = () => page.locator("textarea.card-editor");
+
+  test("each word of an axis is a key stop: Enter or F2 writes it on one line, and the keyboard comes back to it", async () => {
+    await agent(
+      'board new "Axes clavier" --format impact-effort --id axes-t157\nadd item "Un" --lane quick\naxis y "Valeur"',
+    );
+    await page.locator(".board-picker select").selectOption("axes-t157");
+    await card("I1").waitFor();
+    const label = page.locator('.band-axis .axis-label[data-axis="y"]');
+    await until("the axis named by the board", async () =>
+      ((await label.getAttribute("aria-label")) ?? "").includes("Valeur"),
+    );
+    expect(await label.getAttribute("tabindex")).toBe("0");
+    // Its ends too, said by what they are.
+    const low = page.locator('.band-axis .axis-bound[data-axis="y"][data-bound="low"]');
+    expect(await low.getAttribute("tabindex")).toBe("0");
+    expect(await low.getAttribute("aria-label")).toBe("Where the axis starts: low");
+
+    await label.focus();
+    await page.keyboard.press("Enter");
+    await editor().waitFor({ state: "visible" });
+    expect(await editor().inputValue()).toBe("Valeur");
+    // One word, one line.
+    expect((await editor().boundingBox())?.height ?? 99).toBeLessThanOrEqual(40);
+    await page.keyboard.press("Escape");
+    await until("the keyboard back on the axis", async () =>
+      page.evaluate(() => document.activeElement?.getAttribute("data-axis") === "y"),
+    );
+
+    await low.focus();
+    await page.keyboard.press("F2");
+    await editor().waitFor({ state: "visible" });
+    expect(await editor().inputValue()).toBe("low");
+    await page.keyboard.type("faible");
+    await page.keyboard.press("Enter");
+    await until("the start written", async () => (await boardOf("axes-t157"))?.axes?.y?.low === "faible");
+    await until("drawn as a word of the axis", async () => (await low.textContent()) === "faible");
+    await until("the keyboard on it", async () =>
+      page.evaluate(
+        () =>
+          document.activeElement?.getAttribute("data-axis") === "y" &&
+          document.activeElement?.getAttribute("data-bound") === "low",
+      ),
+    );
+  });
+});
+
 describe("labels on a card, from the page", () => {
   test("a card wears its labels as chips, says them, and the Detail tab adds and takes them off", async () => {
     await agent(

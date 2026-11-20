@@ -85,6 +85,8 @@ interface EditorKind {
   lines: boolean;
   from?: string;
   blank?: boolean;
+  /** One word: the editor is one line tall. */
+  short?: boolean;
 }
 
 export interface BoardHooks {
@@ -209,6 +211,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   let pointed: Target = { kind: "none" };
   let offered = "";
   let paintedBoard: string | undefined;
+  /** The axis word just written: the keyboard goes back to it once the axis is drawn again. */
+  let axisArriving: { axis: string; bound: "low" | "high" | undefined } | undefined;
   /** The link the human clicked, and where, so its toolbar opens under the pointer. */
   let pickedLink: { src: string; dst: string; x: number; y: number } | undefined;
   /** The one card Tab stops at: the board is a single stop, and the arrows go from card to card inside it. */
@@ -316,8 +320,10 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (banding !== paintedBands) {
       paintedBands = banding;
       bands.innerHTML = banding;
+      dressAxes();
       liftHeadings();
     }
+    backToAxis();
     holdHeadings();
     if (laneArriving) {
       const label = heads.querySelector<SVGTextElement>(`text.lane-label[data-lane="${laneArriving}"]`);
@@ -852,7 +858,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     editor.style.left = `${Math.min(Math.max(0, frame.width - width - 8), box.left - frame.left)}px`;
     editor.style.top = `${box.top - frame.top}px`;
     editor.style.width = `${width}px`;
-    editor.style.height = `${Math.max(box.height, EDITOR_MIN_H)}px`;
+    editor.style.height = `${kind.short ? box.height : Math.max(box.height, EDITOR_MIN_H)}px`;
     editor.style.background = colours.fill;
     editor.style.color = colours.ink;
     editor.hidden = false;
@@ -1011,8 +1017,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         : bound === "high"
           ? box.right + 6 - w
           : box.left + box.width / 2 - w / 2;
-    // The editor is never less than EDITOR_MIN_H tall: it is lifted by that much, not by the box asked for.
-    return new DOMRect(left, box.top - EDITOR_MIN_H - 4, w, h);
+    return new DOMRect(left, box.top - h - 4, w, h);
   }
 
   /**
@@ -1042,8 +1047,43 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
               : { kind: "name-axis", board: boardId, axis, label: word },
           ),
         ),
-      { name: placeholder, lines: false, blank: true },
+      { name: placeholder, lines: false, blank: true, short: true },
     );
+    axisArriving = { axis, bound };
+  }
+
+  /** The words of a plan's axes, each a key stop that Enter or F2 writes, as a double-click does. */
+  function dressAxes(): void {
+    for (const band of scene.bands) {
+      if (band.kind !== "axis") continue;
+      const group = bands.querySelector(`text.axis-label[data-axis="${CSS.escape(band.id)}"]`)?.parentElement;
+      if (!group) continue;
+      for (const word of group.querySelectorAll<SVGTextElement>("text")) {
+        const bound = word.dataset.bound as "low" | "high" | undefined;
+        word.setAttribute("tabindex", isLive() ? "0" : "-1");
+        word.setAttribute("role", "button");
+        word.setAttribute(
+          "aria-label",
+          bound ? t.axisEndKey(bound, band[bound] ?? "") : t.axisKey(band.label),
+        );
+        word.setAttribute("aria-description", t.axisKeys);
+      }
+    }
+  }
+
+  function backToAxis(): void {
+    const was = axisArriving;
+    if (!was || editing) return;
+    const at = document.activeElement;
+    if (at !== null && at !== document.body && at !== editor && at.isConnected) {
+      axisArriving = undefined;
+      return;
+    }
+    const bound = was.bound ? `[data-bound="${was.bound}"]` : ":not([data-bound])";
+    const word = bands.querySelector<SVGTextElement>(`text[data-axis="${CSS.escape(was.axis)}"]${bound}`);
+    if (!word) return;
+    word.focus({ preventScroll: true });
+    axisArriving = undefined;
   }
 
   /** Opens the editor on the edge where the "+" was: what is typed names the lane added there. */
@@ -1634,6 +1674,17 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     else if (event.key.toLowerCase() === "e") hooks.editDetail(id);
     else return;
     event.preventDefault();
+  });
+
+  // A word of an axis: Enter or F2 writes it, as a double-click does.
+  root.addEventListener("keydown", (event) => {
+    const word = (event.target as Element | null)?.closest?.<SVGTextElement>(
+      "text.axis-label, text.axis-bound",
+    );
+    if (!word || (event.key !== "Enter" && event.key !== "F2")) return;
+    if (event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return;
+    event.preventDefault();
+    nameAxis(word);
   });
 
   root.addEventListener("keydown", (event) => {

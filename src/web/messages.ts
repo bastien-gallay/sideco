@@ -198,6 +198,9 @@ export interface Messages {
   axisName: string;
   axisLow: string;
   axisHigh: string;
+  axisKey: (word: string) => string;
+  axisEndKey: (bound: "low" | "high", word: string) => string;
+  axisKeys: string;
   wordsOrphaned: (id: string, words: string) => string;
   rename: string;
   detail: string;
@@ -465,6 +468,10 @@ const en: Messages = {
   axisName: "Axis name (empty: the workshop's)",
   axisLow: "Where the axis starts (empty: the workshop's)",
   axisHigh: "Where the axis ends (empty: the workshop's)",
+  axisKey: (word) => `Axis ${word}`,
+  axisEndKey: (bound, word) =>
+    `${bound === "low" ? "Where the axis starts" : "Where the axis ends"}: ${word}`,
+  axisKeys: "Enter or F2 writes it",
   wordsOrphaned: (id, words) => `${id} was removed while you were typing. Your words: “${words}”`,
   rename: "Rename",
   detail: "Detail",
@@ -597,7 +604,7 @@ const en: Messages = {
     ...(how === "grid"
       ? ([
           [
-            "Double-click an axis, or a word at one of its ends",
+            "Double-click an axis, or a word at one of its ends; from the keyboard, Tab to it, then Enter or F2",
             "Rename it for this board; emptied, the workshop's words come back",
           ],
         ] as [string, string][])
@@ -792,6 +799,9 @@ const fr: Messages = {
   axisName: "Nom de l'axe (vide : celui de l'atelier)",
   axisLow: "Début de l'axe (vide : celui de l'atelier)",
   axisHigh: "Fin de l'axe (vide : celle de l'atelier)",
+  axisKey: (word) => `Axe ${word}`,
+  axisEndKey: (bound, word) => `${bound === "low" ? "Début de l'axe" : "Fin de l'axe"} : ${word}`,
+  axisKeys: "Entrée ou F2 l'écrit",
   wordsOrphaned: (id, words) => `${id} a été supprimée pendant ta saisie. Ton texte : « ${words} »`,
   rename: "Renommer",
   detail: "Détail",
@@ -925,7 +935,7 @@ const fr: Messages = {
     ...(how === "grid"
       ? ([
           [
-            "Double-clic sur un axe, ou un mot à l'un de ses bouts",
+            "Double-clic sur un axe, ou un mot à l'un de ses bouts ; au clavier, Tab jusqu'à lui, puis Entrée ou F2",
             "Le renommer pour ce tableau ; vidé, les mots de l'atelier reviennent",
           ],
         ] as [string, string][])
