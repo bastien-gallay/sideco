@@ -1362,7 +1362,8 @@ const paintTurnSays = region(turnSays, (m: TurnModel) => {
     m.theirs !== undefined &&
       h(
         "p",
-        { class: "theirs" },
+        // Cut at two lines on the page; the pointer reads the rest.
+        { class: "theirs", title: m.theirs || undefined },
         h("strong", {}, t.theirTurn),
         m.theirs ? `${t.colon} ` : "",
         ...linked(m.theirs, m.known),

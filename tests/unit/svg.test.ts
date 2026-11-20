@@ -112,6 +112,13 @@ describe("a card", () => {
     expect(markup("E1")).not.toContain("card-notes");
   });
 
+  test("keeps its marks in the strip of its id, where a long last line of label never runs into them", () => {
+    expect(markup("P1")).toMatch(/<text class="card-detail" x="[\d.]+" y="14"/);
+    const detailX = Number(markup("P1").match(/class="card-detail" x="([\d.]+)"/)?.[1]);
+    const authorX = Number(markup("P1").match(/class="card-author"[^>]*d="M([\d.]+)/)?.[1]);
+    expect(detailX).toBeLessThan(authorX - 4);
+  });
+
   test("is drawn at the origin, so the page can move it without repainting", () => {
     expect(markup("E2")).toContain(
       '<rect class="card-shape" fill="#FF9F1C" width="152" height="48" rx="2"/>',

@@ -46,6 +46,7 @@ describe("marking a card done", () => {
     t.script("done P1");
     expect(markup(t, "P1")).toContain('<text class="card-done"');
     expect(markup(t, "P1")).toContain("✓");
+    expect(markup(t, "P1")).toMatch(/<text class="card-done" x="[\d.]+" y="14"/);
     expect(markup(t, "P1")).toMatch(/<title>P1 · Observation · added by Claude · done<\/title>/);
     const fr = layoutBoard(t.board(), "fr").cards.find((c) => c.id === "P1");
     expect(fr?.tip).toEndWith("· fait");

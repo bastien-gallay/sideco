@@ -31,7 +31,7 @@ export const SVG_STYLE = `
 .card-id { font-size: 10px; font-weight: 700; }
 .card-label { font-size: 13px; text-anchor: middle; }
 .card-detail { font-size: 11px; text-anchor: end; }
-.card-done { font-size: 13px; font-weight: 700; }
+.card-done { font-size: 11px; font-weight: 700; }
 .card-label-done { text-decoration: line-through; opacity: 0.65; }
 .card-notes circle { fill: #1A6FAE; stroke: var(--sideco-bg, #FFFFFF); stroke-width: 2; }
 .card-notes text { fill: #FFFFFF; font-size: 10px; font-weight: 700; text-anchor: middle; }
@@ -122,10 +122,8 @@ export function cardMarkup(c: Card): string {
     `<text class="card-id" x="${8 + inset(c)}" y="14" fill="${esc(c.ink)}">${esc(c.id)}</text>`,
     authorMark(c),
     `<text class="${c.done ? "card-label card-label-done" : "card-label"}" fill="${esc(c.ink)}">${lines}</text>`,
-    c.done ? `<text class="card-done" x="${8 + inset(c)}" y="${c.h - 6}" fill="${esc(c.ink)}">✓</text>` : "",
-    c.hasDetail
-      ? `<text class="card-detail" x="${c.w - 8}" y="${c.h - 7}" fill="${esc(c.ink)}">≡</text>`
-      : "",
+    c.done ? `<text class="card-done" x="${doneX(c)}" y="14" fill="${esc(c.ink)}">✓</text>` : "",
+    c.hasDetail ? `<text class="card-detail" x="${detailX(c)}" y="14" fill="${esc(c.ink)}">≡</text>` : "",
     c.notes > 0
       ? `<g class="card-notes"><circle cx="${c.w - 3}" cy="3" r="9"/><text x="${c.w - 3}" y="6.5">${c.notes}</text></g>`
       : "",
@@ -158,8 +156,28 @@ function shapeMarkup(c: Card): string {
 }
 
 /** Who put the card there: a diamond for the agent, a dot for the human. Shape, not colour. */
+/** Where the author's mark sits, in the strip of the id: left of the notes count when there is one. */
+function authorX(c: Card): number {
+  return (c.notes > 0 ? c.w - 26 : c.w - 12) - inset(c);
+}
+
+/**
+ * The marks share the strip of the id rather than the corners under the label,
+ * where a long last line ran into them: ✓ just after the id, ≡ just before the
+ * author's mark.
+ */
+function doneX(c: Card): number {
+  return Math.round(8 + inset(c) + c.id.length * 6.5 + 4);
+}
+
+function detailX(c: Card): number {
+  return c.by === "agent" || c.by === "human"
+    ? authorX(c) - 10
+    : (c.notes > 0 ? c.w - 16 : c.w - 8) - inset(c);
+}
+
 function authorMark(c: Card): string {
-  const x = (c.notes > 0 ? c.w - 26 : c.w - 12) - inset(c);
+  const x = authorX(c);
   const ink = `fill="${esc(c.ink)}" opacity="0.7"`;
   if (c.by === "agent") return `<path class="card-author" ${ink} d="M${x} 6l4 4l-4 4l-4-4z"/>`;
   if (c.by === "human") return `<circle class="card-author" ${ink} cx="${x}" cy="10" r="3"/>`;

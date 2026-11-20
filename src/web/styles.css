@@ -22,6 +22,8 @@
   --sideco-ink: var(--ink);
   --sideco-lane: #f1f2f4;
   --sideco-conn: #6e7781;
+  /* The stickies keep their colour; on a dark board they step back a little so they do not glare. */
+  --sticky-opacity: 1;
   font:
     14px / 1.45 system-ui,
     -apple-system,
@@ -45,6 +47,7 @@
     --warn: #d4a72c;
     --sideco-lane: #1e2126;
     --sideco-conn: #8b949e;
+    --sticky-opacity: 0.84;
   }
 }
 
@@ -1318,12 +1321,15 @@ kbd {
   opacity: 0.32;
 }
 
+.card-shape {
+  fill-opacity: var(--sticky-opacity);
+}
+
 .card.is-focus .card-shape {
   stroke: var(--ink);
   stroke-width: 3;
 }
 
-/* Changed by Claude while the reader was away: a dashed edge, until seen. */
 /* Changed while the reader was away: a triangle in the accent, ringed by the board so it shows on any sticky. */
 .card-changed path {
   fill: var(--accent-text);
@@ -1908,7 +1914,12 @@ legend {
   color: var(--ink);
 }
 
+/* Claude's words when it hands over: two lines at most, a line of reading wide; the whole of them in the session. */
 .theirs {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  max-width: min(100%, 72ch);
   padding: 3px 8px;
   border-radius: 6px;
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
