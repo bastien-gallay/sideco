@@ -2937,6 +2937,53 @@ describe("search across the boards, from the page", () => {
   });
 });
 
+describe("a card chosen stays in sight", () => {
+  test("in a narrow window, the panel unfolding for a card leaves that card on screen", async () => {
+    const cols = [1, 2, 3, 4, 5, 6, 7].map((n) => `add activity "Activité ${n}" --col ${n}`);
+    await agent(
+      ['board new "Large" --format story-map --id large-t154', ...cols, 'add story "Au bout" --col 7'].join(
+        "\n",
+      ),
+    );
+    await page.locator(".board-picker select").selectOption("large-t154");
+    await page.setViewportSize({ width: 1024, height: 800 });
+    const folded = () => page.locator(".work").evaluate((w) => w.classList.contains("fold-right"));
+    try {
+      const both = () =>
+        page
+          .locator(".work")
+          .evaluate((w) => w.classList.contains("fold-right") && w.classList.contains("fold-left"));
+      await until("the narrow window folds both panels", both);
+      // The panels' width moves for 200 ms.
+      await Bun.sleep(300);
+      const last = page.locator("g.card", { hasText: "Au bout" });
+      // The card at the right edge of what is seen: the panel unfolding takes that edge away.
+      await last.evaluate((g) => {
+        const scroll = g.closest(".canvas-scroll") as HTMLElement;
+        scroll.scrollLeft += g.getBoundingClientRect().right - scroll.getBoundingClientRect().right + 8;
+      });
+      await last.click();
+      await until("the panel unfolds for the card", async () => !(await folded()));
+      const inSight = () =>
+        last.evaluate((g) => {
+          const card = g.getBoundingClientRect();
+          const seen = (g.closest(".canvas-scroll") as HTMLElement).getBoundingClientRect();
+          return (
+            card.left >= seen.left &&
+            card.right <= seen.right &&
+            card.top >= seen.top &&
+            card.bottom <= seen.bottom
+          );
+        });
+      await until("the card chosen is on screen", inSight);
+      await page.keyboard.press("Escape");
+      await until("folded back once the card is left", folded);
+    } finally {
+      await page.setViewportSize({ width: 1440, height: 900 });
+    }
+  });
+});
+
 describe("look", () => {
   test("dark scheme and a narrow window keep the board usable", async () => {
     await page.emulateMedia({ colorScheme: "dark" });

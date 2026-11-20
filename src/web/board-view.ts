@@ -172,13 +172,25 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     "aria-label": t.cardLabel,
   });
   host.append(scroll, tools, editor);
-  // A window resized shares its new width out over the lanes.
+  // A window resized, or a panel folded or unfolded, shares its new width out over the lanes.
   new ResizeObserver(() => {
     const width = Math.floor(scroll.clientWidth - 16);
     if (width <= 0 || width === span) return;
     span = width;
     if (board) changed();
+    keepChosenInSight();
   }).observe(scroll);
+  /** The card chosen stays on screen while the board's width moves under it: brought back once it has settled. */
+  let settling: ReturnType<typeof setTimeout> | undefined;
+  function keepChosenInSight(): void {
+    clearTimeout(settling);
+    settling = setTimeout(() => {
+      const id = state.selected;
+      if (!id) return;
+      nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" });
+      paintTools();
+    }, CARD_MOVE_MS);
+  }
 
   const nodes = new Map<string, { g: SVGGElement; signature: string }>();
   let board: Board | undefined;
