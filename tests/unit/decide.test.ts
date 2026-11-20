@@ -129,7 +129,7 @@ describe("changing elements", () => {
   test("a timeline element moves to a column; a lane makes no sense there", () => {
     const t = table(ORDERING).script("move E2 --col 3");
     expect(t.board().elements.find((e) => e.id === "E2")?.col).toBe(3);
-    expect(() => t.script("move E2")).toThrow("moving E2 needs a column");
+    expect(() => t.do({ kind: "move", board: "commande", id: "E2" })).toThrow("moving E2 needs a column");
     expect(() => t.script("move E2 --lane todo")).toThrow("take no `lane`");
   });
 
@@ -286,6 +286,27 @@ describe("a command that changes nothing leaves no trace", () => {
     t.do({ kind: "retitle", board: "commande", title: "Passage de commande" });
     // A card with no detail, given none.
     t.do({ kind: "annotate", board: "commande", id: "E2", detail: "" });
+    expect(t.events.length).toBe(before);
+  });
+
+  test("a card moved to where it already is: nothing is recorded", () => {
+    const t = table(KANBAN);
+    const before = t.events.length;
+    t.do({ kind: "move", board: "sprint", id: "T3", lane: "todo", before: "T4" });
+    t.do({ kind: "move", board: "sprint", id: "T4", lane: "todo" });
+    expect(t.events.length).toBe(before);
+    // Sent to the end of its own lane, it does move.
+    t.do({ kind: "move", board: "sprint", id: "T3", lane: "todo" });
+    expect(t.events.at(-1)).toMatchObject({ event: "ElementMoved", id: "T3", lane: "todo" });
+    // A lane orders its cards whatever their type: a task before a blocker is not last.
+    t.do({ kind: "move", board: "sprint", id: "T2", lane: "doing" });
+    expect(t.events.at(-1)).toMatchObject({ event: "ElementMoved", id: "T2", lane: "doing" });
+  });
+
+  test("a card of a timeline moved to where it already is: nothing is recorded", () => {
+    const t = table(ORDERING);
+    const before = t.events.length;
+    t.do({ kind: "move", board: "commande", id: "E2", col: 2 });
     expect(t.events.length).toBe(before);
   });
 

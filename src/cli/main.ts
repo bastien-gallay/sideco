@@ -61,6 +61,7 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco formats                      the workshops and their element types
   sideco board new "Title" [--format F] [--id ID]
   sideco board rm ID                  remove a board; its history stays in the journal
+  sideco retitle "Title"              give the board a new title; its id stays
   sideco boards
   sideco show [BOARD]                 a board as text; a part of it with --lane L, --col N, --brief (no details),
                                     --notes (the open notes only). The first line names the part.

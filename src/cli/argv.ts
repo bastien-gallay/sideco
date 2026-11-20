@@ -97,8 +97,14 @@ export function boardAction(tokens: readonly string[], board: string | undefined
     if (!chosen) throw new UsageError("which board? pass --board ID (see `sideco boards`)");
     return chosen;
   };
+  /** How many positional arguments the verb read: one more is an argument in excess. */
+  let used = 0;
+  const at = (index: number): string | undefined => {
+    used = Math.max(used, index + 1);
+    return p[index];
+  };
   const need = (index: number, what: string): string => {
-    const value = p[index];
+    const value = at(index);
     if (value === undefined || value === "") throw new UsageError(`\`${verb}\` needs ${what}`);
     return value;
   };
@@ -109,169 +115,187 @@ export function boardAction(tokens: readonly string[], board: string | undefined
     return Number(raw);
   };
 
-  switch (verb) {
-    case "board": {
-      if (p[0] === "rm") {
-        const id = p[1];
-        if (!id) throw new UsageError("`board rm` needs the id of the board to remove (see `sideco boards`)");
-        return { command: { kind: "remove-board", board: id } };
+  const action = ((): Action => {
+    switch (verb) {
+      case "board": {
+        if (at(0) === "rm") {
+          const id = at(1);
+          if (!id)
+            throw new UsageError("`board rm` needs the id of the board to remove (see `sideco boards`)");
+          return { command: { kind: "remove-board", board: id } };
+        }
+        if (at(0) !== "new")
+          throw new UsageError('usage: board new "Title" [--format F] [--id ID] | board rm ID');
+        const title = need(1, "a title");
+        const id = flags.get("id") ?? slugify(title);
+        return {
+          command: {
+            kind: "create-board",
+            board: id,
+            title,
+            format: flags.get("format") ?? "event-storming",
+          },
+          board: id,
+        };
       }
-      if (p[0] !== "new")
-        throw new UsageError('usage: board new "Title" [--format F] [--id ID] | board rm ID');
-      const title = need(1, "a title");
-      const id = flags.get("id") ?? slugify(title);
-      return {
-        command: { kind: "create-board", board: id, title, format: flags.get("format") ?? "event-storming" },
-        board: id,
-      };
-    }
-    case "retitle":
-      return { command: { kind: "retitle", board: target(), title: need(0, "a title") } };
-    case "lane":
-      if (p[0] === "add")
+      case "retitle":
+        return { command: { kind: "retitle", board: target(), title: need(0, "a title") } };
+      case "lane":
+        if (at(0) === "add")
+          return {
+            command: {
+              kind: "add-lane",
+              board: target(),
+              label: need(1, "a name"),
+              before: flags.get("before"),
+            },
+          };
+        if (at(0) === "rm")
+          return { command: { kind: "remove-lane", board: target(), lane: need(1, "a lane") } };
+        if (at(0) === "move")
+          return {
+            command: {
+              kind: "move-lane",
+              board: target(),
+              lane: need(1, "a lane"),
+              before: flags.get("before"),
+            },
+          };
+        return {
+          command: { kind: "name-lane", board: target(), lane: need(0, "a lane"), label: need(1, "a name") },
+        };
+      case "slice":
+        if (at(0) === "add")
+          return {
+            command: {
+              kind: "add-slice",
+              board: target(),
+              label: need(1, "a name"),
+              before: flags.get("before"),
+            },
+          };
+        if (at(0) === "rm")
+          return { command: { kind: "remove-slice", board: target(), slice: need(1, "a slice") } };
+        throw new UsageError('usage: slice add "Name" [--before SLICE] | slice rm SLICE');
+      case "add":
         return {
           command: {
-            kind: "add-lane",
+            kind: "add",
             board: target(),
-            label: need(1, "a name"),
+            type: need(0, "a type"),
+            label: need(1, "a label"),
+            id: flags.get("id"),
+            col: number("col"),
+            lane: flags.get("lane"),
+            detail: flags.get("detail"),
+            before: flags.get("before"),
+            from: flags.get("from"),
+            edgeLabel: flags.get("edge"),
+            alias: flags.get("alias"),
+          },
+        };
+      case "rename":
+        return {
+          command: { kind: "rename", board: target(), id: need(0, "an id"), label: need(1, "a label") },
+        };
+      case "detail":
+        return { command: { kind: "annotate", board: target(), id: need(0, "an id"), detail: at(1) ?? "" } };
+      case "undo":
+      case "redo":
+        return { command: { kind: verb, board: target() } };
+      case "done":
+      case "undone":
+        return { command: { kind: "mark", board: target(), id: need(0, "an id"), done: verb === "done" } };
+      case "move":
+        if (p.length < 2 && !["lane", "col", "before"].some((name) => flags.has(name)))
+          throw new UsageError("`move` needs where to: --lane L, --col N or --before ID");
+        return {
+          command: {
+            kind: "move",
+            board: target(),
+            id: need(0, "an id"),
+            col: number("col"),
+            lane: flags.get("lane"),
             before: flags.get("before"),
           },
         };
-      if (p[0] === "rm")
-        return { command: { kind: "remove-lane", board: target(), lane: need(1, "a lane") } };
-      if (p[0] === "move")
+      case "rm":
+        return { command: { kind: "remove", board: target(), id: need(0, "an id") } };
+      case "insert-col": {
+        const at = need(0, "a column number");
+        if (!/^\d+$/.test(at)) throw new UsageError(`insert-col takes a whole number, got "${at}"`);
+        return { command: { kind: "insert-column", board: target(), at: Number(at) } };
+      }
+      case "rm-col": {
+        const at = need(0, "a column number");
+        if (!/^\d+$/.test(at)) throw new UsageError(`rm-col takes a whole number, got "${at}"`);
+        return { command: { kind: "remove-column", board: target(), at: Number(at) } };
+      }
+      case "move-col": {
+        const [from, to] = [need(0, "the number of the column to move"), need(1, "the number it takes")];
+        for (const raw of [from, to])
+          if (!/^\d+$/.test(raw)) throw new UsageError(`move-col takes whole numbers, got "${raw}"`);
+        return { command: { kind: "move-column", board: target(), from: Number(from), to: Number(to) } };
+      }
+      case "link":
         return {
           command: {
-            kind: "move-lane",
+            kind: "link",
             board: target(),
-            lane: need(1, "a lane"),
-            before: flags.get("before"),
+            src: need(0, "a source id"),
+            dst: need(1, "a target id"),
+            label: at(2),
           },
         };
-      return {
-        command: { kind: "name-lane", board: target(), lane: need(0, "a lane"), label: need(1, "a name") },
-      };
-    case "slice":
-      if (p[0] === "add")
+      case "unlink":
         return {
           command: {
-            kind: "add-slice",
+            kind: "unlink",
             board: target(),
-            label: need(1, "a name"),
-            before: flags.get("before"),
+            src: need(0, "a source id"),
+            dst: need(1, "a target id"),
           },
         };
-      if (p[0] === "rm")
-        return { command: { kind: "remove-slice", board: target(), slice: need(1, "a slice") } };
-      throw new UsageError('usage: slice add "Name" [--before SLICE] | slice rm SLICE');
-    case "add":
-      return {
-        command: {
-          kind: "add",
-          board: target(),
-          type: need(0, "a type"),
-          label: need(1, "a label"),
-          id: flags.get("id"),
-          col: number("col"),
-          lane: flags.get("lane"),
-          detail: flags.get("detail"),
-          before: flags.get("before"),
-          from: flags.get("from"),
-          edgeLabel: flags.get("edge"),
-          alias: flags.get("alias"),
-        },
-      };
-    case "rename":
-      return {
-        command: { kind: "rename", board: target(), id: need(0, "an id"), label: need(1, "a label") },
-      };
-    case "detail":
-      return { command: { kind: "annotate", board: target(), id: need(0, "an id"), detail: p[1] ?? "" } };
-    case "undo":
-    case "redo":
-      return { command: { kind: verb, board: target() } };
-    case "done":
-    case "undone":
-      return { command: { kind: "mark", board: target(), id: need(0, "an id"), done: verb === "done" } };
-    case "move":
-      return {
-        command: {
-          kind: "move",
-          board: target(),
-          id: need(0, "an id"),
-          col: number("col"),
-          lane: flags.get("lane"),
-          before: flags.get("before"),
-        },
-      };
-    case "rm":
-      return { command: { kind: "remove", board: target(), id: need(0, "an id") } };
-    case "insert-col": {
-      const at = need(0, "a column number");
-      if (!/^\d+$/.test(at)) throw new UsageError(`insert-col takes a whole number, got "${at}"`);
-      return { command: { kind: "insert-column", board: target(), at: Number(at) } };
+      case "focus":
+        // Every argument is a card to focus on.
+        used = p.length;
+        return { command: { kind: "focus", board: target(), ids: p, reason: flags.get("why") } };
+      case "note":
+        return {
+          command: {
+            kind: "note",
+            board: target(),
+            text: need(0, "a text"),
+            target: flags.get("on"),
+            alias: flags.get("alias"),
+          },
+        };
+      case "reply":
+        return {
+          command: { kind: "reply", board: target(), to: need(0, "a note id"), text: need(1, "a text") },
+        };
+      case "resolve":
+        return { command: { kind: "resolve", board: target(), id: need(0, "a note id") } };
+      case "pass":
+        return {
+          command: {
+            kind: "pass",
+            board: target(),
+            to: flags.get("to") ?? "human",
+            message: at(0),
+            target: flags.get("for"),
+          },
+        };
+      default:
+        throw new UsageError(`unknown command "${verb}" (try \`sideco help\`)`);
     }
-    case "rm-col": {
-      const at = need(0, "a column number");
-      if (!/^\d+$/.test(at)) throw new UsageError(`rm-col takes a whole number, got "${at}"`);
-      return { command: { kind: "remove-column", board: target(), at: Number(at) } };
-    }
-    case "move-col": {
-      const [from, to] = [need(0, "the number of the column to move"), need(1, "the number it takes")];
-      for (const raw of [from, to])
-        if (!/^\d+$/.test(raw)) throw new UsageError(`move-col takes whole numbers, got "${raw}"`);
-      return { command: { kind: "move-column", board: target(), from: Number(from), to: Number(to) } };
-    }
-    case "link":
-      return {
-        command: {
-          kind: "link",
-          board: target(),
-          src: need(0, "a source id"),
-          dst: need(1, "a target id"),
-          label: p[2],
-        },
-      };
-    case "unlink":
-      return {
-        command: {
-          kind: "unlink",
-          board: target(),
-          src: need(0, "a source id"),
-          dst: need(1, "a target id"),
-        },
-      };
-    case "focus":
-      return { command: { kind: "focus", board: target(), ids: p, reason: flags.get("why") } };
-    case "note":
-      return {
-        command: {
-          kind: "note",
-          board: target(),
-          text: need(0, "a text"),
-          target: flags.get("on"),
-          alias: flags.get("alias"),
-        },
-      };
-    case "reply":
-      return {
-        command: { kind: "reply", board: target(), to: need(0, "a note id"), text: need(1, "a text") },
-      };
-    case "resolve":
-      return { command: { kind: "resolve", board: target(), id: need(0, "a note id") } };
-    case "pass":
-      return {
-        command: {
-          kind: "pass",
-          board: target(),
-          to: flags.get("to") ?? "human",
-          message: p[0],
-          target: flags.get("for"),
-        },
-      };
-    default:
-      throw new UsageError(`unknown command "${verb}" (try \`sideco help\`)`);
+  })();
+  const extra = p[used];
+  if (extra !== undefined) {
+    const said = `\`${verb}\` takes ${used} argument${used === 1 ? "" : "s"}, not "${extra}"`;
+    throw new UsageError(verb === "move" ? `${said}: to choose the lane, --lane ${extra}` : said);
   }
+  return action;
 }
 
 export const BOARD_VERBS: ReadonlySet<string> = new Set([

@@ -164,8 +164,10 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       if ((el.done ?? false) === cmd.done) return unchanged();
       return { events: [{ event: "ElementMarked", board: b, id: cmd.id, done: cmd.done }] };
     }
-    case "move":
-      return { events: [move(board, format, cmd)] };
+    case "move": {
+      const moved = move(board, format, cmd);
+      return stays(board, format, moved) ? unchanged() : { events: [moved] };
+    }
     case "remove":
       requireElement(board, cmd.id);
       return { events: [{ event: "ElementRemoved", board: b, id: cmd.id }] };
@@ -388,7 +390,9 @@ function placeNew(
   }
 }
 
-function move(board: Board, format: Format, cmd: Extract<Command, { kind: "move" }>): BoardEvent {
+type Moved = Extract<BoardEvent, { event: "ElementMoved" }>;
+
+function move(board: Board, format: Format, cmd: Extract<Command, { kind: "move" }>): Moved {
   const el = requireElement(board, cmd.id);
   switch (format.layout) {
     case "timeline":
@@ -409,6 +413,23 @@ function move(board: Board, format: Format, cmd: Extract<Command, { kind: "move"
         `${format.name.en} boards place elements from their links; link or unlink instead`,
       );
   }
+}
+
+/**
+ * Whether a move leaves the card where it is: same lane and column, and the same
+ * card after it in its cell (none, when it is sent to the end and already last).
+ * A cell is a lane of a kanban, whatever the types; a column and a type row of a timeline.
+ */
+function stays(board: Board, format: Format, moved: Moved): boolean {
+  const el = findElement(board, moved.id);
+  if (!el || el.lane !== moved.lane || el.col !== moved.col) return false;
+  const cell = board.elements.filter(
+    (other) =>
+      other.lane === el.lane &&
+      other.col === el.col &&
+      (format.layout !== "timeline" || other.type === el.type),
+  );
+  return cell[cell.indexOf(el) + 1]?.id === moved.before;
 }
 
 function refuse(value: unknown, field: string, format: Format, why: string): void {
@@ -530,7 +551,7 @@ function decideOnSession(ws: Workspace, cmd: SessionCommand, ctx: Context): Side
  * To a column, last in its cell; or before a card of that cell, which says the
  * column when none is named. A cell is a column and a row: the cards of one type.
  */
-function moveInTimeline(board: Board, el: Element, cmd: Extract<Command, { kind: "move" }>): BoardEvent {
+function moveInTimeline(board: Board, el: Element, cmd: Extract<Command, { kind: "move" }>): Moved {
   const anchor = cmd.before === undefined ? undefined : requireElement(board, cmd.before);
   const col = cmd.col ?? anchor?.col;
   if (col === undefined) throw new CommandError(`moving ${el.id} needs a column`);

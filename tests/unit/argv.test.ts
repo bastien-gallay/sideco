@@ -172,6 +172,10 @@ describe("boardAction", () => {
     ["move-col 2", "`move-col` needs the number it takes"],
     ["board list", "usage: board new"],
     ["dance", 'unknown command "dance"'],
+    ["move T1 done", '`move` takes 1 argument, not "done": to choose the lane, --lane done'],
+    ["move T1", "`move` needs where to: --lane L, --col N or --before ID"],
+    ['rename T1 "Un" "Deux"', '`rename` takes 2 arguments, not "Deux"'],
+    ["rm T1 T2", '`rm` takes 1 argument, not "T2"'],
   ])("%s → %s", (line, message) => {
     expect(() => boardAction(tokenize(line), "b")).toThrow(message);
   });
