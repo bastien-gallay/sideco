@@ -536,6 +536,9 @@ function decideOnSession(ws: Workspace, cmd: SessionCommand, ctx: Context): Side
   switch (cmd.kind) {
     case "session-start":
       return [{ event: "SessionStarted", cwd: cmd.cwd }];
+    case "name-session":
+      if (findSession(ws, ctx.session)?.name === cmd.name) return [];
+      return [{ event: "SessionNamed", name: cmd.name }];
     case "follow":
     case "unfollow": {
       for (const board of cmd.boards) if (!findBoard(ws, board)) throw noBoard(ws, board);

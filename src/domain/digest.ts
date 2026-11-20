@@ -62,6 +62,20 @@ function threadLines(thread: Thread, sayClosed = false): string[] {
   ];
 }
 
+/** The sessions still open, the latest to act first: who each is, what it does, what it follows. */
+export function describeSessions(ws: Workspace, me?: string): string {
+  const open = ws.sessions.filter((s) => s.status !== "ended").sort((a, b) => b.lastSeq - a.lastSeq);
+  if (open.length === 0) return "no session open";
+  return open
+    .map((s) => {
+      const who = s.name ? `${s.name} (${s.id.slice(0, 8)})` : s.id.slice(0, 8);
+      const boards = ws.follows[s.id] ?? [];
+      const follows = boards.length > 0 ? `follows ${boards.join(", ")}` : "follows no board";
+      return `${who}  ${s.status}  ${follows}${s.id === me ? "  ← you" : ""}`;
+    })
+    .join("\n");
+}
+
 export function describeBoard(board: Board, part: Part = {}): string {
   const format = findFormat(board.format);
   const name = format?.name.en ?? board.format;

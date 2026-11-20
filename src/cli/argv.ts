@@ -144,6 +144,9 @@ export function boardAction(tokens: readonly string[], board: string | undefined
           board: id,
         };
       }
+      case "session":
+        if (at(0) !== "name") throw new UsageError('usage: session name "Name"');
+        return { command: { kind: "name-session", name: need(1, "a name") } };
       case "purpose":
         return { command: { kind: "purpose", board: target(), purpose: said(0, "a question") } };
       case "retitle":
@@ -325,6 +328,7 @@ export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "board",
   "retitle",
   "purpose",
+  "session",
   "lane",
   "axis",
   "slice",

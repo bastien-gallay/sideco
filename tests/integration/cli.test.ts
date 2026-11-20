@@ -291,6 +291,16 @@ describe("Claude Code hooks, through stdin as Claude Code calls them", () => {
     expect(refused.err).toContain("no note N9");
   });
 
+  test("a session names itself, and `sessions` lists it with what it follows", async () => {
+    const env = { SIDECO_SESSION: "s9" };
+    expect((await sideco(["session", "name", "atelier"], { env })).code).toBe(0);
+    await sideco(["follow", "passage-de-commande"], { env });
+    const listed = (await sideco(["sessions"], { env })).out;
+    expect(listed).toContain("atelier (s9)");
+    expect(listed).toContain("follows passage-de-commande  ← you");
+    expect((await sideco(["status"])).out).toContain("session    atelier is");
+  });
+
   test("tool calls and the end of the turn land in the session, visible in status", async () => {
     await hook({
       hook_event_name: "PreToolUse",

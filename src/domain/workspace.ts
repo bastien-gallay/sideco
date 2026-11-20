@@ -133,6 +133,8 @@ export type AgentStatus = "idle" | "thinking" | "running" | "waiting" | "ended";
 
 export interface Session {
   id: string;
+  /** What the session goes by, once it was named; else the start of its id (see `sessionLabel`). */
+  name?: string;
   cwd?: string;
   startedAt: string;
   turns: SessionTurn[];
@@ -183,6 +185,20 @@ export function findSession(ws: Workspace, id: string): Session | undefined {
 /** The session the agent most recently acted in, if any. */
 export function latestSession(ws: Workspace): Session | undefined {
   return ws.sessions.reduce<Session | undefined>((a, s) => (a && a.lastSeq > s.lastSeq ? a : s), undefined);
+}
+
+/** What a session goes by: its name, else the start of its id. */
+export function sessionLabel(session: Session): string {
+  return session.name ?? session.id.slice(0, 8);
+}
+
+/**
+ * The session the page tells about: the one the reader chose, while it exists;
+ * else the one the board in view is for (see `addressee`); else the last to act.
+ */
+export function shownSession(ws: Workspace, board?: string, chosen?: string): Session | undefined {
+  const picked = chosen ? findSession(ws, chosen) : undefined;
+  return picked ?? (board ? addressee(ws, board) : undefined) ?? latestSession(ws);
 }
 
 /**
@@ -541,6 +557,9 @@ function applyToSession(ws: Workspace, e: Recorded & { session: string }): void 
   const turn = session.turns.at(-1);
 
   switch (e.event) {
+    case "SessionNamed":
+      session.name = e.name;
+      break;
     case "SessionStarted":
       session.cwd = e.cwd;
       if (session.status === "ended") setStatus(session, "idle");

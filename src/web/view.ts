@@ -277,6 +277,8 @@ function english(e: Recorded, to: string, lane: LaneCalled): string {
     }
     case "SessionStarted":
       return "Session started";
+    case "SessionNamed":
+      return `Claude names its session “${e.name}”`;
     case "BoardsFollowed":
       return `Claude follows ${e.boards.join(", ")}`;
     case "BoardsLeft":
@@ -392,6 +394,8 @@ function french(e: Recorded, to: string, lane: LaneCalled): string {
     }
     case "SessionStarted":
       return "Session démarrée";
+    case "SessionNamed":
+      return `Claude nomme sa session « ${e.name} »`;
     case "BoardsFollowed":
       return `Claude suit ${e.boards.join(", ")}`;
     case "BoardsLeft":

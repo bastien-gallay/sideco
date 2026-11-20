@@ -8,14 +8,21 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CommandError, isElementId, slugify } from "../domain/commands.ts";
 import { decide } from "../domain/decide.ts";
-import { describeBoard, describeCard } from "../domain/digest.ts";
+import { describeBoard, describeCard, describeSessions } from "../domain/digest.ts";
 import { ACTORS, type Actor } from "../domain/events.ts";
 import { toIndexHtml } from "../domain/export/html.ts";
 import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.ts";
 import { fromModel } from "../domain/export/model.ts";
 import { FORMATS } from "../domain/formats.ts";
 import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale, WORDS } from "../domain/i18n.ts";
-import { type Board, findBoard, latestSession, replay, type Workspace } from "../domain/workspace.ts";
+import {
+  type Board,
+  findBoard,
+  latestSession,
+  replay,
+  sessionLabel,
+  type Workspace,
+} from "../domain/workspace.ts";
 import { IDLE_GRACE_MS } from "../server/idle.ts";
 import { openJournal } from "../server/journal.ts";
 import { DEFAULT_PORT, dataDir, start } from "../server/start.ts";
@@ -75,6 +82,8 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco rm ID                        sideco insert-col N         sideco rm-col N (an empty column)
   sideco move-col FROM TO             a column takes the number TO, its cards with it
   sideco lane LANE "Name"             call a lane of this board your own way
+  sideco sessions                     the sessions open on this project, and what each follows
+  sideco session name "Name"          name this session, so the page can tell it from another
   sideco purpose "Question?"          ask this board its own question; "" gives the workshop's back
   sideco lane hint LANE "What for"     say what a lane stands for on this board; "" gives the workshop's back
   sideco axis x|y "Name" [Low] [High] name an axis of a plan and its ends (left/bottom, right/top); "" gives it back
@@ -119,6 +128,7 @@ export const CLI_VERBS: ReadonlySet<string> = new Set([
   "open",
   "url",
   "status",
+  "sessions",
   "boards",
   "show",
   "export",
@@ -224,6 +234,9 @@ async function run(verb: string, rest: string[]): Promise<number> {
       return 0;
     case "boards":
       console.log(boardsText(read()));
+      return 0;
+    case "sessions":
+      console.log(describeSessions(read(), args.flags.get("session") ?? setting("SIDECO_SESSION")));
       return 0;
     case "show": {
       // `show E1` is one card of the board; `show backlog` is a board.
@@ -530,7 +543,9 @@ async function statusText(root: string, ws: Workspace): Promise<string> {
     `server     ${typeof server === "string" ? server : server ? server.url : "not running (start it with `sideco open`)"}`,
     `page       ${page}`,
     `journal    seq ${ws.seq}, ${ws.boards.length} board${ws.boards.length === 1 ? "" : "s"}, ${ws.sessions.length} session${ws.sessions.length === 1 ? "" : "s"}`,
-    ...(session ? [`session    ${session.id} is ${session.status}`] : []),
+    ...(session
+      ? [`session    ${sessionLabel(session)} is ${session.status} (all: \`sideco sessions\`)`]
+      : []),
     ...ws.boards.map((b) => `board      ${b.id}  ${b.format}  ${b.elements.length} elements`),
   ].join("\n");
 }

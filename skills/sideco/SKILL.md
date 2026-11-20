@@ -121,7 +121,7 @@ sideco note "Text" [--on ID]        (opens a thread, on the board or on one elem
 sideco reply N1 "Text"              sideco resolve N1    (answer in a thread; close it)
 sideco apply [FILE]   (a batch of the lines above, stdin by default; add … --alias NAME, then @NAME below)
 sideco changes                      sideco pass ["question"]      sideco wait
-sideco follow BOARD…                sideco unfollow BOARD…        (the boards whose changes you are told)
+sideco follow BOARD…                sideco unfollow BOARD…        (the boards whose changes you are told) · sideco sessions · sideco session name "Name" (with another session on the project, so the page tells you apart)
 sideco export [BOARD] --format md|html|svg|mermaid|json [-o FILE]
 sideco publish     sideco status     sideco url     sideco open     sideco stop
 ```
