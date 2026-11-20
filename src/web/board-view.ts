@@ -714,11 +714,12 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const frame = host.getBoundingClientRect();
     // Inside the window: a toolbar cut by the edge hides the action at its end.
     const widest = Math.max(8, frame.width - tools.offsetWidth - 8);
-    const left = Math.min(widest, Math.max(8, box.left - frame.left));
-    // Above the card, unless it would hide another one there and the room under the card is free.
-    const above = Math.max(8, box.top - frame.top - tools.offsetHeight - 8);
-    const under = box.bottom - frame.top + 8;
-    const hides = (top: number): boolean => {
+    const highest = Math.max(8, frame.height - tools.offsetHeight - 8);
+    const within = (x: number, y: number) => ({
+      left: Math.min(widest, Math.max(8, x)),
+      top: Math.min(highest, Math.max(8, y)),
+    });
+    const hides = ({ left, top }: { left: number; top: number }): boolean => {
       const span = {
         left: frame.left + left,
         right: frame.left + left + tools.offsetWidth,
@@ -731,8 +732,17 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         return r.left < span.right && r.right > span.left && r.top < span.bottom && r.bottom > span.top;
       });
     };
-    const roomUnder = under + tools.offsetHeight <= frame.height - 8;
-    const top = hides(above) && roomUnder && !hides(under) ? under : above;
+    const x = box.left - frame.left;
+    const y = box.top - frame.top;
+    // Above the card, else under it, else beside it, wherever it hides no other card. When every
+    // place would, it sits on the chosen card itself: the one card the reader already knows.
+    const places = [
+      within(x, y - tools.offsetHeight - 8),
+      within(x, box.bottom - frame.top + 8),
+      within(box.right - frame.left + 8, y),
+      within(x - tools.offsetWidth - 8, y),
+    ];
+    const { left, top } = places.find((place) => !hides(place)) ?? within(x, y + 4);
     tools.style.left = `${left}px`;
     tools.style.top = `${top}px`;
   }

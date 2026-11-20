@@ -712,8 +712,9 @@ describe("keeping the model", () => {
     await card("E1").waitFor();
     // History replayed is not news: the page stays on its board and nothing pulses.
     expect(page.url()).toEndWith("#/b/commande");
+    // The cards are painted one board at a time: count once they are all back.
+    await until("every card is back", async () => (await page.locator("g.card").count()) === before);
     expect(await page.locator("g.card.is-fresh").count()).toBe(0);
-    expect(await page.locator("g.card").count()).toBe(before);
     expect(await card("E1").textContent()).toContain("Commande validée");
   });
 });
@@ -2526,6 +2527,27 @@ describe("the card toolbar", () => {
     await tools.waitFor();
     const over = await box(tools);
     expect(over.y + over.height).toBeLessThanOrEqual((await box(card("A1"))).y);
+    await page.keyboard.press("Escape");
+
+    // A card between two others in a lane: the toolbar goes beside it, over neither.
+    await agent(
+      'board new "Pile" --format kanban --id pile\nadd task "Un" --lane todo\nadd task "Deux" --lane todo\nadd task "Trois" --lane todo',
+    );
+    await page.locator('.board-picker option[value="pile"]').waitFor({ state: "attached" });
+    await picker.selectOption("pile");
+    await card("T3").waitFor();
+    await card("T2").click();
+    await tools.waitFor();
+    const bar = await box(tools);
+    for (const other of ["T1", "T3"]) {
+      const r = await box(card(other));
+      const meets =
+        r.x < bar.x + bar.width &&
+        r.x + r.width > bar.x &&
+        r.y < bar.y + bar.height &&
+        r.y + r.height > bar.y;
+      expect(meets).toBe(false);
+    }
     await page.keyboard.press("Escape");
     await picker.selectOption(before);
   });
