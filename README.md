@@ -61,6 +61,7 @@ Your changes reach Claude whatever it is doing: waiting on you, working, or idle
 | `story-map` | Which journey, and what do we ship first? |
 | `retro` | What do we keep, stop and try? |
 | `impact-effort` | What do we do first, for what it brings and what it costs? |
+| `c4-context` | Who uses the system, and what does it depend on? |
 
 Every board exports to Markdown, HTML, SVG, Mermaid or JSON, and `sideco publish` turns all of them into a static site.
 

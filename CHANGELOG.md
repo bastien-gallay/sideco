@@ -1,0 +1,106 @@
+# Changelog
+
+All notable changes to Sideco are listed here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
+[Semantic Versioning](https://semver.org/).
+
+## [0.1.0] - Unreleased
+
+The first installable version: a live board, open in a browser beside the
+terminal, that you and Claude Code model on together.
+
+### Install
+
+You need [Bun](https://bun.sh) (tested with 1.4.4) and Claude Code.
+
+```sh
+git clone https://github.com/bastien-gallay/sideco.git ~/sideco
+claude plugin marketplace add ~/sideco
+claude plugin install sideco@sideco
+```
+
+Then ask Claude, in any project: *"let's model the checkout flow on the board"*.
+
+### The loop
+
+- Claude writes on the board with the `sideco` command (`apply` takes a whole
+  batch, all or nothing) and reads it back with `sideco show`, whole or in part.
+- You rename, move, link, annotate and remove cards in the page, then press
+  `Send to Claude`, with an optional word.
+- Claude receives a net summary of what you changed: a card added then renamed
+  reads as one addition. It gets it whether it is waiting on you, working, or
+  idle with the page open, up to 12 hours after its last turn.
+- Notes open threads on a card, addressed to one side, answered from the page or
+  with `sideco reply`, and resolved when done.
+- Claude can put your attention on a few cards (the focus); you clear it from
+  the page. The page marks what Claude has not read yet, and what it changed
+  since your last visit.
+- Several Claude Code sessions can share a project: each follows the boards it
+  writes on or reads, and a hand-over goes to the session chosen at the top of
+  the page.
+
+### Workshops
+
+Seven formats, each with its own lanes, card types and layout:
+
+| Workshop | The question it asks |
+| --- | --- |
+| `event-storming` | What happens in the domain, in what order, and what triggers it? |
+| `flow` | Which way does it go, and where does the path split? |
+| `kanban` | Where does the work stand, and what is blocking it? |
+| `story-map` | What journey does the user follow, and what ships first? |
+| `retro` | What do we keep, what do we stop, what do we try? |
+| `impact-effort` | What do we do first, for what it brings and what it costs? |
+| `c4-context` | Who uses the system, and what does it depend on? |
+
+Kanban, retro and impact-effort boards can rename their lanes and give them
+subtitles; kanban and retro boards can also add, remove and reorder lanes. An
+impact-effort plan names its own axes, and any board can ask its own question
+in place of the workshop's.
+
+### In the page
+
+- Add where you point: a `+` appears over a cell or a lane, one per card type.
+- Cards size to their text, carry a description, labels (`type:bug`,
+  `@someone`), shared across the project's boards, and a done mark.
+- Search every board with `/` or `⌘K` / `Ctrl+K`.
+- Undo and redo your own gestures; Claude undoes its own with `sideco undo`.
+  A gesture the other side has changed since is refused, with the reason.
+- History: replay any board as it was, event by event.
+- Link names are written beside their own link, never over a card or another
+  name; with no free spot, a name reads on hover.
+- Keyboard: the cards of a board are one Tab stop and arrows move between
+  them; kanban and retro lane headings and a plan's axis words are stops of
+  their own. A sheet (`?`) lists the keys and gestures. Screen readers hear each
+  card's place (step and row, or lane) and marks; on flow and C4 boards, its
+  links.
+- English by default, French at the reader's choice (`--lang`, `SIDECO_LANG`,
+  or the page's picker). What Claude reads stays in English.
+- While the companion runs, Mermaid flowcharts in Claude's answers become
+  editable flow boards by themselves (the first 60 nodes).
+
+### Export and data
+
+- Every board exports to Markdown, HTML, SVG, Mermaid (C4 notation for
+  `c4-context`) or JSON, and imports from JSON. `sideco publish` turns them all
+  into a static site.
+- Everything is an event in an append-only log, `.sideco/boards.jsonl`, in your
+  project: commit it, and the board's history travels with the code.
+- The companion listens on `127.0.0.1` only, refuses requests from another
+  origin, and stops on its own 5 minutes after the last page and session leave
+  (`SIDECO_IDLE_MS` changes the delay).
+
+### Known limits
+
+- One person and one active agent per workspace: two people editing the same
+  `boards.jsonl` will get a merge conflict.
+- A session run without an interface (`claude -p`) is never woken by a
+  hand-over.
+- Claude idle for more than 12 hours is no longer woken: it reads your changes
+  at your next message in the terminal.
+- Some page gestures are mouse only: inserting, moving or removing a step of a
+  timeline, reaching a link, and naming an impact-effort quadrant or its
+  subtitle.
+- Workshops cannot yet be defined by the community in files.
+
+[0.1.0]: https://github.com/bastien-gallay/sideco/releases/tag/v0.1.0
