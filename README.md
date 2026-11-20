@@ -80,6 +80,8 @@ Early: version 0.1.0. One person and one active agent per workspace; two people 
 | --- | --- |
 | [Detailed guide](docs/guide.fr.md) (French) | Every gesture in the page, the CLI, the Claude Code sandbox, the test suites, known limits |
 | [PRD](docs/PRD.md) (French) | Why Sideco is built the way it is |
+| [Contributing](CONTRIBUTING.md) | The development cycle: from a card of the backlog to a commit on `main` |
+| [Coding standards](docs/coding-standards.md) | How the code is written: CUPID, a functional core, onion architecture, DDD, event sourcing |
 | `sideco help` | The full command list |
 
 ## License
