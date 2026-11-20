@@ -8,7 +8,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CommandError, isElementId, slugify } from "../domain/commands.ts";
 import { decide } from "../domain/decide.ts";
-import { describeBoard, describeCard, describeSessions } from "../domain/digest.ts";
+import { describeBoard, describeCard, describeLabels, describeSessions } from "../domain/digest.ts";
 import { ACTORS, type Actor } from "../domain/events.ts";
 import { toIndexHtml } from "../domain/export/html.ts";
 import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.ts";
@@ -82,6 +82,8 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco rm ID                        sideco insert-col N         sideco rm-col N (an empty column)
   sideco move-col FROM TO             a column takes the number TO, its cards with it
   sideco lane LANE "Name"             call a lane of this board your own way
+  sideco label ID type:bug @name ...  put labels on a card, shared by every board; unlabel ID LABEL... takes them off
+  sideco labels [LABEL|KEY]           every label of the project and its cards, across boards (labels type: every type:…)
   sideco sessions                     the sessions open on this project, and what each follows
   sideco session name "Name"          name this session, so the page can tell it from another
   sideco purpose "Question?"          ask this board its own question; "" gives the workshop's back
@@ -129,6 +131,7 @@ export const CLI_VERBS: ReadonlySet<string> = new Set([
   "url",
   "status",
   "sessions",
+  "labels",
   "boards",
   "show",
   "export",
@@ -234,6 +237,9 @@ async function run(verb: string, rest: string[]): Promise<number> {
       return 0;
     case "boards":
       console.log(boardsText(read()));
+      return 0;
+    case "labels":
+      console.log(describeLabels(read(), args.positional[0]));
       return 0;
     case "sessions":
       console.log(describeSessions(read(), args.flags.get("session") ?? setting("SIDECO_SESSION")));

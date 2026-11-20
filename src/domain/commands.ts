@@ -48,6 +48,8 @@ export type Command =
     }
   | { kind: "rename"; board: string; id: string; label: string }
   | { kind: "annotate"; board: string; id: string; detail: string }
+  | { kind: "label"; board: string; id: string; labels: string[] }
+  | { kind: "unlabel"; board: string; id: string; labels: string[] }
   /** Says that what the card stands for is done, or no longer is. */
   | { kind: "mark"; board: string; id: string; done: boolean }
   | { kind: "move"; board: string; id: string; col?: number; lane?: string; before?: string }
@@ -211,6 +213,12 @@ export function parseCommand(input: unknown): Command {
       };
     case "rename":
       return { kind, board: boardId(f), id: idOrName(f, "id"), label: text(f, "label", LIMITS.label) };
+    case "label":
+    case "unlabel": {
+      const labels = list(f, "labels").map((label) => text({ label }, "label", 60));
+      if (labels.length === 0) throw new CommandError("`labels` must name at least one label");
+      return { kind, board: boardId(f), id: idOrName(f, "id"), labels };
+    }
     case "annotate":
       return {
         kind,

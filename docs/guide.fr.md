@@ -202,6 +202,21 @@ Un nom ne vit que le temps de son lot : le journal ne garde que les identifiants
 
 <sub>Source : `src/domain/aliases.ts` ; `tests/unit/aliases.test.ts`, `tests/unit/hub.test.ts`, `tests/integration/cli.test.ts`.</sub>
 
+### Les labels
+
+Un label est un mot libre posé sur une carte. Il n'appartient à aucun tableau : `type:bug` sur le backlog et sur un flow est le même label. Ils servent là où un tableau simple ne suffit pas : à qui est la carte, quel genre de travail, quelle version, quel environnement.
+
+```sh
+sideco label T3 type:bug @bastien release:0.4   # @bastien vaut assignee:bastien
+sideco unlabel T3 release:0.4
+sideco labels                                    # chaque label et ses cartes, tous tableaux confondus
+sideco labels type                               # tous les type:…
+```
+
+La casse ne compte pas (`Type:Bug` est `type:bug`). `sideco show` met les labels en fin de ligne de chaque carte. Ils s'annulent, reviennent avec une carte restaurée et se gardent à l'export du modèle.
+
+<sub>Source : `src/domain/workspace.ts` (`normalLabel`), `src/domain/digest.ts` (`describeLabels`) ; `tests/unit/labels.test.ts`.</sub>
+
 ## Les données
 
 Tout est un événement dans un journal en ajout seul ; le tableau, l'historique et les exports en sont des projections.

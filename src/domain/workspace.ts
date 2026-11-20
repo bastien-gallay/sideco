@@ -23,6 +23,8 @@ export interface Element {
   detail?: string;
   /** What the card stands for is done; absent while it is not. */
   done?: boolean;
+  /** Free words shared by every board: `type:bug`, `assignee:bastien`, `release 0.4`. Absent while none. */
+  labels?: string[];
   col: number;
   lane: string;
   by: Actor;
@@ -198,6 +200,24 @@ export function findSession(ws: Workspace, id: string): Session | undefined {
 /** The session the agent most recently acted in, if any. */
 export function latestSession(ws: Workspace): Session | undefined {
   return ws.sessions.reduce<Session | undefined>((a, s) => (a && a.lastSeq > s.lastSeq ? a : s), undefined);
+}
+
+/**
+ * A label as it is kept: spaces at the edges dropped, runs of spaces made one;
+ * `@name` is the short way to say `assignee:name`.
+ */
+export function normalLabel(raw: string): string {
+  const said = raw.trim().replace(/\s+/g, " ");
+  return said.startsWith("@") && said.length > 1 ? `assignee:${said.slice(1)}` : said;
+}
+
+/** Two labels are one when they differ only by case. */
+export function sameLabel(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase();
+}
+
+export function hasLabel(el: { labels?: readonly string[] }, label: string): boolean {
+  return (el.labels ?? []).some((own) => sameLabel(own, label));
 }
 
 /** What a session goes by: its name, else the start of its id. */
@@ -407,6 +427,17 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
         el.done = e.done || undefined;
       });
       break;
+    case "ElementLabeled":
+      touch(board, e.id, e.seq, (el) => {
+        if (!hasLabel(el, e.label)) el.labels = [...(el.labels ?? []), e.label];
+      });
+      break;
+    case "ElementUnlabeled":
+      touch(board, e.id, e.seq, (el) => {
+        const left = (el.labels ?? []).filter((label) => !sameLabel(label, e.label));
+        el.labels = left.length > 0 ? left : undefined;
+      });
+      break;
     case "ElementMoved": {
       const el = touch(board, e.id, e.seq, (moved) => {
         moved.col = e.col;
@@ -433,6 +464,7 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
         label: e.label,
         detail: e.detail,
         done: e.done || undefined,
+        ...(e.labels?.length ? { labels: [...e.labels] } : {}),
         col: e.col,
         lane: e.lane,
         by: e.by,

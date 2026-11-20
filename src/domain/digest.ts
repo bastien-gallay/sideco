@@ -21,6 +21,7 @@ import {
   findBoard,
   findElement,
   isOpen,
+  normalLabel,
   type Thread,
   threads,
   type Workspace,
@@ -46,7 +47,8 @@ function heading(board: Board, part: string[]): string {
 
 function cardLine(board: Board, e: Element, brief = false): string {
   const detail = e.detail && !brief ? ` — ${under(e.detail)}` : "";
-  return `  ${e.id} ${e.type} ${quote(e.label)}${wearsDone(board, e) ? " ✓ done" : ""}${detail}`;
+  const labels = e.labels?.length ? ` [${e.labels.join(", ")}]` : "";
+  return `  ${e.id} ${e.type} ${quote(e.label)}${wearsDone(board, e) ? " ✓ done" : ""}${labels}${detail}`;
 }
 
 function linkLine(edge: { src: string; dst: string; label?: string }): string {
@@ -61,6 +63,34 @@ function threadLines(thread: Thread, sayClosed = false): string[] {
     `  ${first.id} by ${first.by}${first.target ? ` on ${first.target}` : ""}: ${first.text}${closed}`,
     ...replies.map((reply) => `    ${reply.id} by ${reply.by}: ${reply.text}`),
   ];
+}
+
+/**
+ * Every label of the project with the cards that wear it, across boards, in
+ * order. `only` narrows to a label (`@name` read as `assignee:name`), or to a
+ * key: `type` is every `type:…`.
+ */
+export function describeLabels(ws: Workspace, only?: string): string {
+  const wanted = only === undefined ? undefined : normalLabel(only).toLowerCase();
+  const fits = (label: string): boolean => {
+    if (wanted === undefined) return true;
+    const low = label.toLowerCase();
+    return low === wanted || low.startsWith(`${wanted}:`);
+  };
+  const found = new Map<string, { label: string; cards: string[] }>();
+  for (const board of ws.boards)
+    for (const e of board.elements)
+      for (const label of e.labels ?? []) {
+        if (!fits(label)) continue;
+        const entry = found.get(label.toLowerCase()) ?? { label, cards: [] };
+        entry.cards.push(`${board.id} ${e.id}`);
+        found.set(label.toLowerCase(), entry);
+      }
+  if (found.size === 0) return only === undefined ? "no label yet" : `no label ${only}`;
+  return [...found.values()]
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .map(({ label, cards }) => `${label}  ${cards.length}  ${cards.join(" · ")}`)
+    .join("\n");
 }
 
 /** The sessions still open, the latest to act first: who each is, what it does, what it follows. */
@@ -231,6 +261,7 @@ type Change =
   /** Judged at the end, against the final board: a later change can put the card back. */
   | { kind: "moved"; id: string; from: Origin }
   | { kind: "annotated"; id: string; detail: string }
+  | { kind: "labeled"; id: string; label: string; on: boolean }
   | { kind: "marked"; id: string; done: boolean }
   | { kind: "removed"; id: string; type: string; label: string }
   | { kind: "column-inserted"; at: number }
@@ -454,12 +485,22 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
         case "ElementAnnotated":
           put("detail", e.id, { kind: "annotated", id: e.id, detail: e.detail });
           break;
+        case "ElementLabeled":
+        case "ElementUnlabeled": {
+          // Put and taken since the reader looked, or the reverse: no news.
+          const at = `${e.id}/${e.label.toLowerCase()}`;
+          if (!entries.delete(k("label", at)))
+            put("label", at, { kind: "labeled", id: e.id, label: e.label, on: e.event === "ElementLabeled" });
+          break;
+        }
         case "ElementMarked":
           // Marked and cleared since the reader looked, or the reverse: no news.
           if (!entries.delete(k("done", e.id))) put("done", e.id, { kind: "marked", id: e.id, done: e.done });
           break;
         case "ElementRemoved":
           for (const kind of ["add", "rename", "move", "detail", "done"]) entries.delete(k(kind, e.id));
+          for (const key of [...entries.keys()])
+            if (key.startsWith(k("label", `${e.id}/`))) entries.delete(key);
           if (added.delete(k("el", e.id)) || entries.delete(k("restore", e.id))) break;
           if (el) put("remove", e.id, { kind: "removed", id: e.id, type: el.type, label: el.label });
           break;
@@ -588,6 +629,8 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
       return `~ ${change.id} renamed ${quote(change.from)} → ${quote(change.to)}`;
     case "moved":
       return movedLine(ws, boardId, change.id, change.from);
+    case "labeled":
+      return `~ ${change.id} ${change.on ? "labeled" : "unlabeled"} ${change.label}`;
     case "annotated":
       return `~ ${change.id} detail: ${under(change.detail) || "(cleared)"}`;
     case "marked":
@@ -629,6 +672,7 @@ function named(change: Change): { elements: string[]; thread?: string } {
     case "renamed":
     case "moved":
     case "annotated":
+    case "labeled":
     case "marked":
     case "removed":
       return { elements: [change.id] };

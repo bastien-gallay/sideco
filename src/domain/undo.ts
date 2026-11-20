@@ -100,6 +100,10 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
       return el && [{ event: "ElementAnnotated", board: b, id: el.id, detail: el.detail ?? "" }];
     case "ElementMarked":
       return el && [{ event: "ElementMarked", board: b, id: el.id, done: el.done ?? false }];
+    case "ElementLabeled":
+      return el && [{ event: "ElementUnlabeled", board: b, id: el.id, label: e.label }];
+    case "ElementUnlabeled":
+      return el && [{ event: "ElementLabeled", board: b, id: el.id, label: e.label }];
     case "ElementMoved":
       return (
         el && [
@@ -126,6 +130,7 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
             lane: el.lane,
             detail: el.detail,
             done: el.done,
+            ...(el.labels?.length ? { labels: [...el.labels] } : {}),
             by: el.by,
             addedSeq: el.addedSeq,
             before: after(board, el),
@@ -256,6 +261,10 @@ export function nameOf(board: Board, e: BoardEvent): string {
       return `detail ${e.id}`;
     case "ElementMarked":
       return `${e.done ? "done" : "undone"} ${e.id}`;
+    case "ElementLabeled":
+      return `label ${e.id} ${q(e.label)}`;
+    case "ElementUnlabeled":
+      return `unlabel ${e.id} ${q(e.label)}`;
     case "ElementMoved":
       return findFormat(board.format)?.layout === "columns"
         ? `move ${e.id} --lane ${e.lane}`
@@ -317,6 +326,9 @@ function writes(e: BoardEvent): string[] {
       return [`${e.id}.detail`];
     case "ElementMarked":
       return [`${e.id}.done`];
+    case "ElementLabeled":
+    case "ElementUnlabeled":
+      return [`${e.id}.label:${e.label.toLowerCase()}`];
     case "ElementMoved":
       return [`${e.id}.place`];
     case "ElementRemoved":

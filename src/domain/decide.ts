@@ -23,8 +23,11 @@ import {
   findBoard,
   findElement,
   findSession,
+  hasLabel,
   lastColumn,
   type Note,
+  normalLabel,
+  sameLabel,
   threadOf,
   type Workspace,
 } from "./workspace.ts";
@@ -178,6 +181,27 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
     case "rename":
       if (requireElement(board, cmd.id).label === cmd.label) return unchanged();
       return { events: [{ event: "ElementRenamed", board: b, id: cmd.id, label: cmd.label }] };
+    case "label": {
+      const el = requireElement(board, cmd.id);
+      const kept: string[] = [];
+      for (const raw of cmd.labels) {
+        const label = normalLabel(raw);
+        if (label && !hasLabel(el, label) && !kept.some((other) => sameLabel(other, label))) kept.push(label);
+      }
+      if (kept.length === 0) return unchanged();
+      return { events: kept.map((label) => ({ event: "ElementLabeled", board: b, id: el.id, label })) };
+    }
+    case "unlabel": {
+      const el = requireElement(board, cmd.id);
+      const gone: string[] = [];
+      for (const raw of cmd.labels) {
+        const label = normalLabel(raw);
+        const own = el.labels?.find((other) => sameLabel(other, label));
+        if (!own) throw new CommandError(`${el.id} has no label ${label}`);
+        if (!gone.includes(own)) gone.push(own);
+      }
+      return { events: gone.map((label) => ({ event: "ElementUnlabeled", board: b, id: el.id, label })) };
+    }
     case "annotate":
       if ((requireElement(board, cmd.id).detail ?? "") === cmd.detail) return unchanged();
       return { events: [{ event: "ElementAnnotated", board: b, id: cmd.id, detail: cmd.detail }] };

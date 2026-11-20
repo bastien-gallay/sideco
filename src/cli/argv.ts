@@ -229,6 +229,11 @@ export function boardAction(tokens: readonly string[], board: string | undefined
       case "undo":
       case "redo":
         return { command: { kind: verb, board: target() } };
+      case "label":
+      case "unlabel":
+        need(1, "a label");
+        used = p.length;
+        return { command: { kind: verb, board: target(), id: need(0, "an id"), labels: p.slice(1) } };
       case "done":
       case "undone":
         return { command: { kind: "mark", board: target(), id: need(0, "an id"), done: verb === "done" } };
@@ -337,6 +342,8 @@ export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "detail",
   "done",
   "undone",
+  "label",
+  "unlabel",
   "undo",
   "redo",
   "move",

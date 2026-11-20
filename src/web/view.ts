@@ -240,6 +240,10 @@ function english(e: Recorded, to: string, lane: LaneCalled): string {
       return `${does("detail")} ${e.id}`;
     case "ElementMarked":
       return `${does("mark")} ${e.id} ${e.done ? "done" : "not done"}`;
+    case "ElementLabeled":
+      return `${does("label")} ${e.id} “${e.label}”`;
+    case "ElementUnlabeled":
+      return `${does("take")} the label “${e.label}” off ${e.id}`;
     case "ElementMoved":
       return `${does("move")} ${e.id}`;
     case "ElementRemoved":
@@ -353,6 +357,10 @@ function french(e: Recorded, to: string, lane: LaneCalled): string {
       return `${verb("détailles", "détaille")} ${e.id}`;
     case "ElementMarked":
       return `${verb("marques", "marque")} ${e.id} comme ${e.done ? "fait" : "non fait"}`;
+    case "ElementLabeled":
+      return `${verb("étiquettes", "étiquette")} ${e.id} « ${e.label} »`;
+    case "ElementUnlabeled":
+      return `${verb("retires", "retire")} à ${e.id} le label « ${e.label} »`;
     case "ElementMoved":
       return `${verb("déplaces", "déplace")} ${e.id}`;
     case "ElementRemoved":

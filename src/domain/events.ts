@@ -81,6 +81,9 @@ type BoardFact =
   | { event: "ElementRenamed"; board: string; id: string; label: string }
   | { event: "ElementAnnotated"; board: string; id: string; detail: string }
   | { event: "ElementMarked"; board: string; id: string; done: boolean }
+  /** A label goes on the card; labels are shared by every board of the project. */
+  | { event: "ElementLabeled"; board: string; id: string; label: string }
+  | { event: "ElementUnlabeled"; board: string; id: string; label: string }
   | { event: "ElementMoved"; board: string; id: string; col: number; lane: string; before?: string }
   | { event: "ElementRemoved"; board: string; id: string }
   /**
@@ -98,6 +101,7 @@ type BoardFact =
       lane: string;
       detail?: string;
       done?: boolean;
+      labels?: string[];
       by: Actor;
       addedSeq: number;
       before?: string;
@@ -174,6 +178,8 @@ const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "ElementRenamed",
   "ElementAnnotated",
   "ElementMarked",
+  "ElementLabeled",
+  "ElementUnlabeled",
   "ElementMoved",
   "ElementRemoved",
   "ElementRestored",

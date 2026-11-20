@@ -15,6 +15,7 @@ export interface ModelElement {
   col?: number;
   lane?: string;
   detail?: string;
+  labels?: string[];
   done?: boolean;
 }
 
@@ -59,6 +60,7 @@ export function toModel(board: Board): Model {
       ...(layout === "columns" ? { lane: e.lane } : {}),
       ...(e.detail ? { detail: e.detail } : {}),
       ...(wearsDone(board, e) ? { done: true } : {}),
+      ...(e.labels?.length ? { labels: [...e.labels] } : {}),
     })),
     edges: board.edges.map((edge) => ({
       src: edge.src,
@@ -157,6 +159,7 @@ export function fromModel(input: unknown, board: string): Command[] {
     });
     // On a kanban, done is the lane the card is in: a mark would move it.
     if (e.done && id && !format?.doneLast) commands.push({ kind: "mark", board, id, done: true });
+    if (e.labels?.length && id) commands.push({ kind: "label", board, id, labels: e.labels });
   }
   for (const edge of Array.isArray(model.edges) ? model.edges : []) {
     const [src, dst, label] = readEdge(edge);
@@ -199,6 +202,9 @@ function readElement(input: unknown, index: number): ModelElement {
     lane: typeof e.lane === "string" ? e.lane : undefined,
     detail: typeof e.detail === "string" && e.detail ? e.detail : undefined,
     done: e.done === true ? true : undefined,
+    labels: Array.isArray(e.labels)
+      ? e.labels.filter((label): label is string => typeof label === "string" && label.trim() !== "")
+      : undefined,
   };
 }
 
