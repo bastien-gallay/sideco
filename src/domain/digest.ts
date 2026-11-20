@@ -12,7 +12,7 @@
  */
 import { CommandError } from "./commands.ts";
 import type { Actor, Recorded } from "./events.ts";
-import { findFormat, laneName, lanesOf, wearsDone } from "./formats.ts";
+import { findFormat, laneHint, laneName, lanesOf, planAxis, wearsDone } from "./formats.ts";
 import {
   apply,
   type Board,
@@ -101,11 +101,15 @@ export function describeBoard(board: Board, part: Part = {}): string {
       }
     }
   } else if (format?.layout === "columns") {
+    for (const id of ["x", "y"] as const) {
+      const axis = narrowed ? undefined : planAxis(format, board, id, "en");
+      if (axis) lines.push(`axis ${id} ${quote(axis.label)} (${axis.low} → ${axis.high})`);
+    }
     for (const id of lanesOf(board)) {
       if (part.lane !== undefined && id !== part.lane) continue;
-      const hint = format.lanes.find((lane) => lane.id === id)?.hint;
+      const hint = laneHint(format, board, id, "en");
       const laneSaid = laneName(format, board, id, "en");
-      lines.push(`lane ${id} (${hint ? `${laneSaid}: ${hint.en}` : laneSaid})`);
+      lines.push(`lane ${id} (${hint ? `${laneSaid}: ${hint}` : laneSaid})`);
       for (const e of elements) if (e.lane === id) lines.push(show(e));
     }
   } else {
@@ -196,6 +200,8 @@ type Change =
   | { kind: "board-created"; title: string; format: string }
   | { kind: "board-retitled"; title: string }
   | { kind: "lane-named"; lane: string; label: string }
+  | { kind: "lane-hinted"; lane: string; hint: string }
+  | { kind: "axis-named"; axis: "x" | "y"; label: string; low?: string; high?: string }
   | { kind: "lane-added"; lane: string; label: string; before?: string }
   | { kind: "slice-added"; slice: string; label: string; before?: string }
   | { kind: "slice-removed"; slice: string }
@@ -373,6 +379,12 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
         case "LaneNamed":
           put("lane", e.lane, { kind: "lane-named", lane: e.lane, label: e.label });
           break;
+        case "LaneHinted":
+          put("lane-hint", e.lane, { kind: "lane-hinted", lane: e.lane, hint: e.hint });
+          break;
+        case "AxisNamed":
+          put("axis", e.axis, { kind: "axis-named", axis: e.axis, label: e.label, low: e.low, high: e.high });
+          break;
         case "LaneAdded":
           put("lane-edit", e.lane, { kind: "lane-added", lane: e.lane, label: e.label, before: e.before });
           break;
@@ -381,6 +393,7 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
           if (entries.get(k("lane-edit", e.lane))?.change.kind === "lane-added") {
             entries.delete(k("lane-edit", e.lane));
             entries.delete(k("lane", e.lane));
+            entries.delete(k("lane-hint", e.lane));
             entries.delete(k("lane-place", e.lane));
           } else put("lane-edit", e.lane, { kind: "lane-removed", lane: e.lane });
           break;
@@ -518,6 +531,17 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
       return change.label
         ? `~ lane ${change.lane} named ${quote(change.label)}`
         : `~ lane ${change.lane} back to its workshop's name`;
+    case "lane-hinted":
+      return change.hint
+        ? `~ lane ${change.lane} hinted ${quote(change.hint)}`
+        : `~ lane ${change.lane} back to its workshop's hint`;
+    case "axis-named": {
+      if (!change.label) return `~ axis ${change.axis} back to its workshop's`;
+      const board = findBoard(ws, boardId);
+      const format = board && findFormat(board.format);
+      const axis = format && planAxis(format, { axes: { [change.axis]: change } }, change.axis, "en");
+      return `~ axis ${change.axis} named ${quote(change.label)}${axis ? ` (${axis.low} → ${axis.high})` : ""}`;
+    }
     case "lane-added": {
       const named = change.label ? ` ${quote(change.label)}` : "";
       return `+ lane ${change.lane}${named} added${change.before ? ` before ${change.before}` : " at the end"}`;
@@ -596,6 +620,8 @@ function named(change: Change): { elements: string[]; thread?: string } {
     case "board-created":
     case "board-retitled":
     case "lane-named":
+    case "lane-hinted":
+    case "axis-named":
     case "lane-added":
     case "lane-removed":
     case "lane-moved":

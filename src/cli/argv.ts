@@ -108,6 +108,12 @@ export function boardAction(tokens: readonly string[], board: string | undefined
     if (value === undefined || value === "") throw new UsageError(`\`${verb}\` needs ${what}`);
     return value;
   };
+  /** Like `need`, but "" is a value: it gives back what the workshop says. */
+  const said = (index: number, what: string): string => {
+    const value = at(index);
+    if (value === undefined) throw new UsageError(`\`${verb}\` needs ${what}, or "" for the workshop's`);
+    return value;
+  };
   const number = (name: string): number | undefined => {
     const raw = flags.get(name);
     if (raw === undefined) return undefined;
@@ -161,8 +167,23 @@ export function boardAction(tokens: readonly string[], board: string | undefined
               before: flags.get("before"),
             },
           };
+        if (at(0) === "hint")
+          return {
+            command: { kind: "hint-lane", board: target(), lane: need(1, "a lane"), hint: said(2, "a hint") },
+          };
         return {
           command: { kind: "name-lane", board: target(), lane: need(0, "a lane"), label: need(1, "a name") },
+        };
+      case "axis":
+        return {
+          command: {
+            kind: "name-axis",
+            board: target(),
+            axis: need(0, "an axis, x or y"),
+            label: said(1, "a name"),
+            low: at(2),
+            high: at(3),
+          },
         };
       case "slice":
         if (at(0) === "add")
@@ -302,6 +323,7 @@ export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "board",
   "retitle",
   "lane",
+  "axis",
   "slice",
   "add",
   "rename",

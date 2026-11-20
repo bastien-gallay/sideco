@@ -92,6 +92,32 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       if ((board.lanes[lane] ?? "") === cmd.label) return unchanged();
       return { events: [{ event: "LaneNamed", board: b, lane, label: cmd.label }] };
     }
+    case "hint-lane": {
+      if (format.layout !== "columns") throw new CommandError(`${format.name.en} boards have no lanes`);
+      const lane = requireLane(board, format, cmd.lane);
+      if ((board.hints?.[lane] ?? "") === cmd.hint) return unchanged();
+      return { events: [{ event: "LaneHinted", board: b, lane, hint: cmd.hint }] };
+    }
+    case "name-axis": {
+      if (!format.grid) throw new CommandError(`${format.name.en} boards have no axes`);
+      if (cmd.axis !== "x" && cmd.axis !== "y") throw new CommandError(`no axis "${cmd.axis}": x or y`);
+      const was = board.axes?.[cmd.axis];
+      const low = cmd.label ? (cmd.low ?? was?.low) : undefined;
+      const high = cmd.label ? (cmd.high ?? was?.high) : undefined;
+      if ((was?.label ?? "") === cmd.label && was?.low === low && was?.high === high) return unchanged();
+      return {
+        events: [
+          {
+            event: "AxisNamed",
+            board: b,
+            axis: cmd.axis,
+            label: cmd.label,
+            ...(low ? { low } : {}),
+            ...(high ? { high } : {}),
+          },
+        ],
+      };
+    }
     case "add-lane": {
       requireOwnLanes(format, "add");
       if (cmd.before !== undefined) requireLane(board, format, cmd.before);

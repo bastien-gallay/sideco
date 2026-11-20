@@ -48,6 +48,14 @@ type BoardFact =
   | { event: "LaneNamed"; board: string; lane: string; label: string }
   /** A lane of the board's own, before `before`, else last. An empty label leaves its workshop's name, if it has one. */
   | { event: "LaneAdded"; board: string; lane: string; label: string; before?: string }
+  /** The board says what a lane stands for its own way; an empty hint gives the workshop's back. */
+  | { event: "LaneHinted"; board: string; lane: string; hint: string }
+  /**
+   * The board names an axis of its plan, and its two ends: `low` where it starts
+   * (left, bottom), `high` where it ends. An end left out is the workshop's; an
+   * empty label gives the workshop's whole axis back.
+   */
+  | { event: "AxisNamed"; board: string; axis: "x" | "y"; label: string; low?: string; high?: string }
   | { event: "SliceAdded"; board: string; slice: string; label: string; before?: string }
   | { event: "SliceRemoved"; board: string; slice: string }
   /** An empty lane leaves the board, its name with it. */
@@ -149,6 +157,8 @@ const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "BoardRetitled",
   "LaneNamed",
   "LaneAdded",
+  "LaneHinted",
+  "AxisNamed",
   "SliceAdded",
   "SliceRemoved",
   "LaneRemoved",

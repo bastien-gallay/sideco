@@ -25,6 +25,10 @@ export interface Model {
   lanes?: Record<string, string>;
   /** The board's lanes in order, when it added, moved or removed some of its workshop's. */
   laneOrder?: string[];
+  /** What the board says its lanes stand for, by lane id, where it says it its own way. */
+  hints?: Record<string, string>;
+  /** The axes of a plan the board names its own way. */
+  axes?: Partial<Record<"x" | "y", { label: string; low?: string; high?: string }>>;
   /** A story map's slices, top to bottom. */
   slices?: { id: string; label: string }[];
   elements: ModelElement[];
@@ -41,6 +45,8 @@ export function toModel(board: Board): Model {
     format: board.format,
     ...(Object.keys(board.lanes).length > 0 ? { lanes: { ...board.lanes } } : {}),
     ...(board.laneOrder ? { laneOrder: [...board.laneOrder] } : {}),
+    ...(board.hints && Object.keys(board.hints).length > 0 ? { hints: { ...board.hints } } : {}),
+    ...(board.axes && Object.keys(board.axes).length > 0 ? { axes: structuredClone(board.axes) } : {}),
     ...(board.slices?.length ? { slices: board.slices.map((s) => ({ id: s.id, label: s.label })) } : {}),
     elements: board.elements.map((e) => ({
       id: e.id,
@@ -94,6 +100,29 @@ export function fromModel(input: unknown, board: string): Command[] {
     if (said(lane) && given.has(lane) && (!order || order.includes(lane)))
       commands.push({ kind: "name-lane", board, lane, label: said(lane) });
   }
+  const lanes = order ?? [...given];
+  const hints = (typeof model.hints === "object" && model.hints !== null ? model.hints : {}) as Record<
+    string,
+    unknown
+  >;
+  for (const [lane, hint] of Object.entries(hints))
+    if (typeof hint === "string" && hint && lanes.includes(lane))
+      commands.push({ kind: "hint-lane", board, lane, hint });
+  const axes = (typeof model.axes === "object" && model.axes !== null ? model.axes : {}) as Record<
+    string,
+    unknown
+  >;
+  if (format?.grid)
+    for (const axis of ["x", "y"]) {
+      const said = (typeof axes[axis] === "object" && axes[axis] !== null ? axes[axis] : {}) as Record<
+        string,
+        unknown
+      >;
+      const word = (key: string) =>
+        typeof said[key] === "string" && said[key] ? { [key]: said[key] as string } : {};
+      if (typeof said.label === "string" && said.label)
+        commands.push({ kind: "name-axis", board, axis, label: said.label, ...word("low"), ...word("high") });
+    }
 
   if (format?.sliced && Array.isArray(model.slices))
     for (const raw of model.slices) {

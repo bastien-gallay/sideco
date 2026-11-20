@@ -71,12 +71,23 @@ export interface Slice {
   label: string;
 }
 
+/** An axis of a plan as a board names it: an end left out is the workshop's. */
+export interface Axis {
+  label: string;
+  low?: string;
+  high?: string;
+}
+
 export interface Board {
   id: string;
   title: string;
   format: string;
   /** The lanes this board calls its own way, by lane id; the others keep the name their workshop gives. */
   lanes: Record<string, string>;
+  /** What a lane stands for, by lane id, where the board says it its own way. */
+  hints?: Record<string, string>;
+  /** The axes of a plan the board names its own way. */
+  axes?: Partial<Record<"x" | "y", Axis>>;
   /** The board's own lanes, in order, once it added, moved or removed one; until then, its workshop's (see `lanesOf`). */
   laneOrder?: string[];
   /** The lines under the stories of a story map, top to bottom: what ships first is above. */
@@ -273,6 +284,25 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
       if (e.label) board.lanes[e.lane] = e.label;
       else delete board.lanes[e.lane];
       break;
+    case "LaneHinted": {
+      const hints = { ...board.hints };
+      if (e.hint) hints[e.lane] = e.hint;
+      else delete hints[e.lane];
+      board.hints = hints;
+      break;
+    }
+    case "AxisNamed": {
+      const axes = { ...board.axes };
+      if (e.label)
+        axes[e.axis] = {
+          label: e.label,
+          ...(e.low ? { low: e.low } : {}),
+          ...(e.high ? { high: e.high } : {}),
+        };
+      else delete axes[e.axis];
+      board.axes = axes;
+      break;
+    }
     case "LaneAdded": {
       const order = lanesOf(board).filter((lane) => lane !== e.lane);
       const at = e.before === undefined ? -1 : order.indexOf(e.before);
@@ -299,6 +329,10 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
     case "LaneRemoved":
       board.laneOrder = lanesOf(board).filter((lane) => lane !== e.lane);
       delete board.lanes[e.lane];
+      if (board.hints?.[e.lane] !== undefined) {
+        const { [e.lane]: _gone, ...hints } = board.hints;
+        board.hints = hints;
+      }
       break;
     case "LaneMoved": {
       const order = lanesOf(board).filter((lane) => lane !== e.lane);

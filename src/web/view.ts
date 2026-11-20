@@ -179,6 +179,14 @@ function english(e: Recorded, to: string): string {
       return e.label
         ? `${does("name")} the lane ${e.lane} “${e.label}”`
         : `${does("give")} the lane ${e.lane} its workshop's name back`;
+    case "LaneHinted":
+      return e.hint
+        ? `${does("say")} what the lane ${e.lane} stands for: “${e.hint}”`
+        : `${does("give")} the lane ${e.lane} its workshop's hint back`;
+    case "AxisNamed":
+      return e.label
+        ? `${does("name")} the axis ${e.axis} “${e.label}”${e.low || e.high ? `, from “${e.low ?? "…"}” to “${e.high ?? "…"}”` : ""}`
+        : `${does("give")} the axis ${e.axis} its workshop's name back`;
     case "LaneAdded":
       return e.label ? `${does("add")} the lane “${e.label}”` : `${does("put")} the lane ${e.lane} back`;
     case "LaneRemoved":
@@ -276,6 +284,14 @@ function french(e: Recorded, to: string): string {
       return e.label
         ? `${verb("nommes", "nomme")} la colonne ${e.lane} « ${e.label} »`
         : `${verb("rends", "rend")} à la colonne ${e.lane} le nom de son atelier`;
+    case "LaneHinted":
+      return e.hint
+        ? `${verb("dis", "dit")} ce que la colonne ${e.lane} représente : « ${e.hint} »`
+        : `${verb("rends", "rend")} à la colonne ${e.lane} le sous-titre de son atelier`;
+    case "AxisNamed":
+      return e.label
+        ? `${verb("nommes", "nomme")} l'axe ${e.axis} « ${e.label} »${e.low || e.high ? `, de « ${e.low ?? "…"} » à « ${e.high ?? "…"} »` : ""}`
+        : `${verb("rends", "rend")} à l'axe ${e.axis} le nom de son atelier`;
     case "LaneAdded":
       return e.label
         ? `${verb("ajoutes", "ajoute")} la colonne « ${e.label} »`

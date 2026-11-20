@@ -423,6 +423,33 @@ export function lanesOf(board: { format: string; laneOrder?: readonly string[] }
   return board.laneOrder ? [...board.laneOrder] : (findFormat(board.format)?.lanes.map((l) => l.id) ?? []);
 }
 
+/** What a lane stands for: the board's words, else its workshop's, else nothing. */
+export function laneHint(
+  format: Format | undefined,
+  board: { hints?: Record<string, string> },
+  lane: string,
+  locale: Locale,
+): string | undefined {
+  return board.hints?.[lane] ?? format?.lanes.find((l) => l.id === lane)?.hint?.[locale];
+}
+
+/** An axis of a plan as the board reads: its name and its two ends, each the board's or its workshop's. */
+export function planAxis(
+  format: Format,
+  board: { axes?: Partial<Record<"x" | "y", { label: string; low?: string; high?: string }>> },
+  axis: "x" | "y",
+  locale: Locale,
+): { label: string; low: string; high: string } | undefined {
+  const grid = format.grid;
+  if (!grid) return undefined;
+  const own = board.axes?.[axis];
+  return {
+    label: own?.label ?? grid[axis][locale],
+    low: own?.low ?? grid.low[locale],
+    high: own?.high ?? grid.high[locale],
+  };
+}
+
 /** Whether what a card stands for is done: on a kanban, it sits in the last lane; elsewhere, it was marked so. */
 export function isDone(
   board: { format: string; laneOrder?: readonly string[] },

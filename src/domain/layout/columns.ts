@@ -7,7 +7,7 @@
  * named beside it. The lanes and the order of their cards stay what they are.
  */
 
-import { type Format, laneName, lanesOf } from "../formats.ts";
+import { type Format, laneHint, laneName, lanesOf, planAxis } from "../formats.ts";
 import type { Locale } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
 import {
@@ -142,12 +142,11 @@ export function layoutColumns(
   const bands: Band[] = [];
   const cards: Card[] = [];
   for (const lane of planned.lanes) {
-    const said = format.lanes.find((candidate) => candidate.id === lane.id);
     bands.push({
       kind: "lane",
       id: lane.id,
       label: laneName(format, board, lane.id, locale),
-      hint: said?.hint?.[locale],
+      hint: laneHint(format, board, lane.id, locale),
       x: lane.x,
       y: lane.y,
       w: lane.w,
@@ -158,31 +157,33 @@ export function layoutColumns(
       for (const { e, x } of line.cards) cards.push(card(e, x, line.y, planned.cardW));
   }
   let height = planned.bottom + MARGIN;
-  if (format.grid) {
-    const { x, y } = format.grid;
-    const ends = { low: format.grid.low[locale], high: format.grid.high[locale] };
+  const x = planAxis(format, board, "x", locale);
+  const y = planAxis(format, board, "y", locale);
+  if (x && y) {
     const first = planned.lanes[0];
     const leftEdge = first?.x ?? MARGIN + AXIS;
     bands.push(
       {
         kind: "axis",
         id: "y",
-        label: y[locale],
+        label: y.label,
         x: MARGIN,
         y: MARGIN,
         w: AXIS,
         h: planned.bottom - MARGIN,
-        ...ends,
+        low: y.low,
+        high: y.high,
       },
       {
         kind: "axis",
         id: "x",
-        label: x[locale],
+        label: x.label,
         x: leftEdge,
         y: planned.bottom,
         w: planned.right - leftEdge,
         h: AXIS,
-        ...ends,
+        low: x.low,
+        high: x.high,
       },
     );
     height = planned.bottom + AXIS + MARGIN / 2;

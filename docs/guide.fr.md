@@ -148,6 +148,8 @@ Une `story-map` se découpe en tranches : `sideco slice add "Lot 1" [--before sl
 
 `impact-effort` se dessine comme la matrice 2 × 2 : impact fort en haut, effort faible à gauche, les deux axes nommés à côté, avec « faible » et « fort » à leurs deux bouts. Le nom d'une case reste en vue quand le tableau défile, de haut en bas comme de côté. Chaque case dit sous son nom l'impact et l'effort qu'elle représente, et tient deux cartes de front. Pour Claude et pour les exports, les quatre cases restent quatre couloirs (`quick`, `bet`, `fill`, `avoid`).
 
+Un tableau peut dire ses propres mots à la place de ceux de l'atelier : `sideco lane hint quick "Interne · positif"` change le sous-titre d'une case, `sideco axis y "Origine" "Externe" "Interne"` nomme un axe et ses deux bouts (gauche puis droite, bas puis haut). Un bout omis reste ce qu'il était ; un texte vide (`""`) rend les mots de l'atelier. C'est ce qui permet de poser un SWOT sur ce plan.
+
 | Colonne | `--lane` | Impact | Effort |
 | --- | --- | --- | --- |
 | Gains rapides | `quick` | fort | faible |

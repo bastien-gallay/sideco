@@ -52,6 +52,10 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
       return [{ event: "BoardRetitled", board: b, title: board.title }];
     case "LaneNamed":
       return [{ event: "LaneNamed", board: b, lane: e.lane, label: board.lanes[e.lane] ?? "" }];
+    case "LaneHinted":
+      return [{ event: "LaneHinted", board: b, lane: e.lane, hint: board.hints?.[e.lane] ?? "" }];
+    case "AxisNamed":
+      return [{ event: "AxisNamed", board: b, axis: e.axis, label: "", ...board.axes?.[e.axis] }];
     case "LaneAdded":
       return [{ event: "LaneRemoved", board: b, lane: e.lane }];
     case "LaneRemoved":
@@ -63,6 +67,9 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
           label: board.lanes[e.lane] ?? "",
           before: laneAfter(board, e.lane),
         },
+        ...(board.hints?.[e.lane]
+          ? [{ event: "LaneHinted" as const, board: b, lane: e.lane, hint: board.hints[e.lane] ?? "" }]
+          : []),
       ];
     case "LaneMoved":
       return [{ event: "LaneMoved", board: b, lane: e.lane, before: laneAfter(board, e.lane) }];
@@ -217,6 +224,10 @@ export function nameOf(board: Board, e: BoardEvent): string {
       return `retitle ${q(e.title)}`;
     case "LaneNamed":
       return `lane ${e.lane} ${q(e.label)}`;
+    case "LaneHinted":
+      return `lane hint ${e.lane} ${q(e.hint)}`;
+    case "AxisNamed":
+      return `axis ${e.axis} ${q(e.label)}`;
     case "LaneAdded":
       return `lane add ${q(e.label || e.lane)}`;
     case "LaneRemoved":
@@ -278,6 +289,10 @@ function writes(e: BoardEvent): string[] {
       return ["title"];
     case "LaneNamed":
       return [`lane:${e.lane}.label`];
+    case "LaneHinted":
+      return [`lane:${e.lane}.hint`];
+    case "AxisNamed":
+      return [`axis:${e.axis}`];
     case "LaneAdded":
     case "LaneRemoved":
       return [`lane:${e.lane}.*`];

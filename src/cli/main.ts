@@ -75,6 +75,8 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco rm ID                        sideco insert-col N         sideco rm-col N (an empty column)
   sideco move-col FROM TO             a column takes the number TO, its cards with it
   sideco lane LANE "Name"             call a lane of this board your own way
+  sideco lane hint LANE "What for"     say what a lane stands for on this board; "" gives the workshop's back
+  sideco axis x|y "Name" [Low] [High] name an axis of a plan and its ends (left/bottom, right/top); "" gives it back
   sideco lane add "Name" [--before L] a kanban lane of this board's own; lane rm L (empty) · lane move L [--before L]
   sideco slice add "Name" [--before S] a story map's slice, a named line under its stories; slice rm S
   sideco link SRC DST ["label"]       sideco unlink SRC DST

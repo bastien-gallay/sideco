@@ -15,6 +15,10 @@ export type Command =
   | { kind: "create-board"; board: string; title: string; format: string }
   | { kind: "retitle"; board: string; title: string }
   | { kind: "name-lane"; board: string; lane: string; label: string }
+  /** An empty hint gives the workshop's back. */
+  | { kind: "hint-lane"; board: string; lane: string; hint: string }
+  /** An end left out stays as it is; an empty label gives the workshop's axis back. */
+  | { kind: "name-axis"; board: string; axis: string; label: string; low?: string; high?: string }
   /** A lane of the board's own; `lane` keeps an id given before, when a model is read back. */
   | { kind: "add-lane"; board: string; label: string; before?: string; lane?: string }
   | { kind: "add-slice"; board: string; label: string; before?: string; slice?: string }
@@ -140,6 +144,22 @@ export function parseCommand(input: unknown): Command {
       return { kind, board: boardId(f), title: text(f, "title", LIMITS.title) };
     case "name-lane":
       return { kind, board: boardId(f), lane: text(f, "lane", 40), label: text(f, "label", LIMITS.title) };
+    case "hint-lane":
+      return {
+        kind,
+        board: boardId(f),
+        lane: text(f, "lane", 40),
+        hint: text(f, "hint", LIMITS.title, true),
+      };
+    case "name-axis":
+      return {
+        kind,
+        board: boardId(f),
+        axis: text(f, "axis", 1),
+        label: text(f, "label", LIMITS.title, true),
+        low: optional(f, "low", (x, k) => text(x, k, LIMITS.title)),
+        high: optional(f, "high", (x, k) => text(x, k, LIMITS.title)),
+      };
     case "add-lane":
       return {
         kind,
