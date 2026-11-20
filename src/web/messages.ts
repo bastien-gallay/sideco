@@ -71,9 +71,6 @@ export interface Messages {
   laneRemoved: (name: string) => string;
   removeStep: (col: number) => string;
   stepRemoved: (col: number) => string;
-  howTimeline: string;
-  howColumns: string;
-  howGraph: string;
   howGraphFrom: (id: string) => string;
   /** The placeholder of a new card: its type, then what that type is for. */
   newCard: (type: string, hint: string) => string;
@@ -238,7 +235,6 @@ export interface Messages {
   /** What the mouse does there that no key says. */
   mouseList: (how: SheetKind) => [gesture: string, does: string][];
   withTheMouse: string;
-  howKanban: string;
   placedByLinks: (id: string) => string;
   close: string;
 }
@@ -257,20 +253,19 @@ const en: Messages = {
   thinking: "Claude is thinking",
   running: (what) => `Claude is running ${what ?? "a tool"}`,
   waitingInTerminal: (why) => `Claude is waiting for you in the terminal: ${why}`.trim(),
-  listening: "Claude is waiting for you to hand over",
+  listening: "Claude is waiting for you to send",
   disconnected: "Companion disconnected, reconnecting…",
   saving: "Saving…",
   noAnswer: "The companion did not answer: nothing was saved.",
   unreachable: "The companion is out of reach: nothing was saved.",
 
-  hintListening: "Claude resumes as soon as you hand over.",
-  hintNoSession: "No session linked: Claude will read your changes when a session starts here.",
-  hintWorking: "Claude is working: it will read your changes after its current action.",
-  hintIdle: "Claude is idle: it will read your changes at your next message in the terminal.",
-  handedOverNoSession: "Handed over. No session linked: Claude will read this when a session starts here.",
-  handedOverWorking: "Handed over. Claude is working: it will read this after its current action.",
-  handedOverIdle:
-    "Handed over. Claude is not listening: it will read this at your next message in the terminal.",
+  hintListening: "Claude reads them as soon as you send.",
+  hintNoSession: "No Claude session here yet: they will be read when one starts.",
+  hintWorking: "Claude will read them after its current action.",
+  hintIdle: "Claude will read them at your next message in the terminal.",
+  handedOverNoSession: "Sent. No Claude session here yet: it will be read when one starts.",
+  handedOverWorking: "Sent. Claude will read it after its current action.",
+  handedOverIdle: "Sent. Claude is not listening: it will read it at your next message in the terminal.",
 
   boardShown: "Board shown",
   newBoardButton: "+ Board",
@@ -311,10 +306,6 @@ const en: Messages = {
   laneRemoved: (name) => `Lane ${name} removed.`,
   removeStep: (col) => `Remove step ${col}`,
   stepRemoved: (col) => `Step ${col} removed.`,
-  howTimeline:
-    "Point at a cell and click its +, or click a type to add it at the end. Between two step numbers, a + inserts a column; an empty step offers a × to remove it; drag a number to move its step.",
-  howColumns: "Point at a column and click a +, or click a type. Drag to move.",
-  howGraph: "Select an element so that the next one is linked to it.",
   howGraphFrom: (id) => `The new element will be linked to ${id}.`,
   newCard: (type, hint) => `${type}: ${hint.toLowerCase()}`,
 
@@ -374,15 +365,15 @@ const en: Messages = {
   messageForClaude: "Message for Claude",
   messagePlaceholder: "A word for Claude (optional)",
   upToDate: "Claude is up to date",
-  pending: (count) => `${count} change${plural(count)} Claude has not read`,
+  pending: (count) => `${count} change${plural(count)} not read yet`,
   unread: "Not read by Claude yet",
-  theirTurn: "Claude hands over to you",
+  theirTurn: "Your turn",
   claudeWaits: "Claude waits for you",
   claudeWaitsOn: (title) => `Claude waits · ${title}`,
   claudeBlocked: "Claude is blocked on you",
   claudeBlockedOn: (title) => `Claude is blocked · ${title}`,
-  handOver: "Hand over to Claude",
-  handOverTo: "Goes to the session",
+  handOver: "Send to Claude",
+  handOverTo: "To the session",
 
   history: "Board history",
   previousEvent: "Previous event",
@@ -445,7 +436,7 @@ const en: Messages = {
   fit: "Fit",
   fitHint: "Fit the whole board in the window, or back to 100 %",
   resolvedNotes: (count) => `Resolved (${count})`,
-  shortcuts: "Keyboard shortcuts",
+  shortcuts: "Keys and gestures",
   shortcutList: (how, doneLast) => [
     ["Tab", "Into the board, then out of it"],
     ["← → ↑ ↓", "From a card to the next one"],
@@ -516,8 +507,6 @@ const en: Messages = {
       : ([["Double-click a lane's name", "Rename it for this board"]] as [string, string][])),
   ],
   withTheMouse: "With the mouse",
-  howKanban:
-    "Point at a lane and click a +, or click a type. Drag a card to move it, a heading to move its lane; a + between two headings adds a lane.",
   placedByLinks: (id) => `${id} is placed by its links: link or unlink it to move it.`,
   close: "Close",
 };
@@ -531,19 +520,19 @@ const fr: Messages = {
   thinking: "Claude réfléchit",
   running: (what) => `Claude exécute ${what ?? "un outil"}`,
   waitingInTerminal: (why) => `Claude t'attend dans le terminal : ${why}`.trim(),
-  listening: "Claude attend que tu lui passes la main",
+  listening: "Claude attend ton envoi",
   disconnected: "Compagnon déconnecté, reconnexion…",
   saving: "Enregistrement…",
   noAnswer: "Le compagnon n'a pas répondu : rien n'est enregistré.",
   unreachable: "Le compagnon est injoignable : rien n'est enregistré.",
 
-  hintListening: "Claude reprend dès que tu lui passes la main.",
-  hintNoSession: "Aucune session reliée : Claude lira tes changements quand une session démarrera ici.",
-  hintWorking: "Claude travaille : il lira tes changements après son action en cours.",
-  hintIdle: "Claude est au repos : il lira tes changements à ton prochain message dans le terminal.",
-  handedOverNoSession: "Main passée. Aucune session reliée : Claude la lira quand une session démarrera ici.",
-  handedOverWorking: "Main passée. Claude travaille : il la lira après son action en cours.",
-  handedOverIdle: "Main passée. Claude n'écoute pas : il la lira à ton prochain message dans le terminal.",
+  hintListening: "Claude les lit dès que tu envoies.",
+  hintNoSession: "Pas encore de session Claude ici : ils seront lus quand une session démarrera.",
+  hintWorking: "Claude les lira après son action en cours.",
+  hintIdle: "Claude les lira à ton prochain message dans le terminal.",
+  handedOverNoSession: "Envoyé. Pas encore de session Claude ici : ce sera lu quand une session démarrera.",
+  handedOverWorking: "Envoyé. Claude le lira après son action en cours.",
+  handedOverIdle: "Envoyé. Claude n'écoute pas : il le lira à ton prochain message dans le terminal.",
 
   boardShown: "Tableau affiché",
   newBoardButton: "+ Tableau",
@@ -584,10 +573,6 @@ const fr: Messages = {
   laneRemoved: (name) => `Colonne ${name} supprimée.`,
   removeStep: (col) => `Supprimer l'étape ${col}`,
   stepRemoved: (col) => `Étape ${col} supprimée.`,
-  howTimeline:
-    "Survole une case et clique son +, ou clique un type pour l'ajouter à la suite. Entre deux numéros d'étape, un + insère une colonne ; une étape vide offre un × pour la retirer ; glisse un numéro pour déplacer son étape.",
-  howColumns: "Survole une colonne et clique un +, ou clique un type. Glisse pour déplacer.",
-  howGraph: "Sélectionne un élément pour que le suivant lui soit relié.",
   howGraphFrom: (id) => `Le nouvel élément sera relié à ${id}.`,
   newCard: (type, hint) => `${type} : ${hint.toLowerCase()}`,
 
@@ -649,14 +634,14 @@ const fr: Messages = {
   messageForClaude: "Message pour Claude",
   messagePlaceholder: "Un mot pour Claude (facultatif)",
   upToDate: "Claude est à jour",
-  pending: (count) => `${count} changement${plural(count)} que Claude n'a pas lu${plural(count)}`,
+  pending: (count) => `${count} changement${plural(count)} pas encore lu${plural(count)}`,
   unread: "Pas encore lu par Claude",
-  theirTurn: "Claude te passe la main",
+  theirTurn: "À toi",
   claudeWaits: "Claude t'attend",
   claudeWaitsOn: (title) => `Claude attend · ${title}`,
   claudeBlocked: "Claude est bloqué sur toi",
   claudeBlockedOn: (title) => `Claude est bloqué · ${title}`,
-  handOver: "Passer la main à Claude",
+  handOver: "Envoyer à Claude",
   handOverTo: "Pour la session",
 
   history: "Historique du tableau",
@@ -721,7 +706,7 @@ const fr: Messages = {
   fit: "Ajuster",
   fitHint: "Faire tenir tout le tableau dans la fenêtre, ou revenir à 100 %",
   resolvedNotes: (count) => `Résolues (${count})`,
-  shortcuts: "Raccourcis clavier",
+  shortcuts: "Touches et gestes",
   shortcutList: (how, doneLast) => [
     ["Tab", "Entrer dans le tableau, puis en sortir"],
     ["← → ↑ ↓", "D'une carte à la suivante"],
@@ -792,8 +777,6 @@ const fr: Messages = {
       : ([["Double-clic sur le nom d'une colonne", "La renommer pour ce tableau"]] as [string, string][])),
   ],
   withTheMouse: "À la souris",
-  howKanban:
-    "Survole une colonne et clique un +, ou clique un type. Glisse une carte pour la déplacer, un en-tête pour déplacer sa colonne ; un + entre deux en-têtes ajoute une colonne.",
   placedByLinks: (id) => `${id} est placé d'après ses liens : relie-le ou délie-le pour le déplacer.`,
   close: "Fermer",
 };

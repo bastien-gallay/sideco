@@ -747,16 +747,8 @@ interface PaletteModel {
 const paintPalette = region(palette, (m: PaletteModel) => {
   const format = m.format ? findFormat(m.format) : undefined;
   if (!format) return [];
-  const how =
-    format.layout === "timeline"
-      ? t.howTimeline
-      : format.layout === "columns"
-        ? format.ownLanes && !format.grid
-          ? t.howKanban
-          : t.howColumns
-        : m.from
-          ? t.howGraphFrom(m.from)
-          : t.howGraph;
+  // How to add and move is in the keys sheet; only a flow says what is not on screen: the card the next one links to.
+  const how = format.layout === "graph" && m.from ? t.howGraphFrom(m.from) : undefined;
   return [
     h("h2", {}, format.name[locale]),
     h("p", { class: "purpose" }, format.purpose[locale]),
@@ -773,7 +765,7 @@ const paintPalette = region(palette, (m: PaletteModel) => {
               type: "button",
               class: "type",
               disabled: !m.live,
-              title: t.add(type.label[locale]),
+              title: `${t.add(type.label[locale])} · ${type.hint[locale]}`,
               onclick: () => view.beginAdd(type.id),
             },
             h(
@@ -781,17 +773,12 @@ const paintPalette = region(palette, (m: PaletteModel) => {
               { class: `swatch shape-${type.shape}`, style: `background:${type.fill};color:${type.ink}` },
               type.prefix,
             ),
-            h(
-              "span",
-              { class: "type-text" },
-              h("span", { class: "type-label" }, type.label[locale]),
-              h("span", { class: "type-hint" }, type.hint[locale]),
-            ),
+            h("span", { class: "type-text" }, h("span", { class: "type-label" }, type.label[locale])),
           ),
         ),
       ),
     ),
-    h("p", { class: "how" }, how),
+    how && h("p", { class: "how" }, how),
     h(
       "button",
       { type: "button", class: "quiet keys-open", onclick: () => openKeys() },
@@ -1222,6 +1209,8 @@ interface TurnModel {
   theirs: string | undefined;
   /** The session a hand-over would go to, by its name; none when no session runs. */
   to: string | undefined;
+  /** Several sessions run: the one the turn goes to is worth saying on screen, not only on the button. */
+  several: boolean;
   /** The ids on the board shown, of cards and of notes: those Claude's words can lead to. */
   known: string[];
 }
@@ -1237,8 +1226,11 @@ const paintTurnSays = region(turnSays, (m: TurnModel) => {
         m.theirs ? `${t.colon} ` : "",
         ...linked(m.theirs, m.known),
       ),
-    h("p", { class: "pending" }, h("strong", {}, count), ` · ${m.hint}`),
-    m.to !== undefined && h("p", { class: "pass-to" }, `${t.handOverTo} `, h("strong", {}, m.to)),
+    // When Claude has read everything, when it will read is beside the point.
+    h("p", { class: "pending" }, h("strong", {}, count), m.pending > 0 ? ` · ${m.hint}` : ""),
+    m.several &&
+      m.to !== undefined &&
+      h("p", { class: "pass-to" }, `${t.handOverTo} `, h("strong", {}, m.to)),
   ];
 });
 
@@ -1277,6 +1269,7 @@ function paintTurn(m: TurnModel): void {
   paintTurnSays(m);
   passOn = m.board;
   passMessage.disabled = passButton.disabled = !m.live || !m.board;
+  passButton.title = m.to !== undefined ? `${t.handOverTo} ${m.to}` : "";
 }
 
 interface HistoryModel {
@@ -1755,6 +1748,7 @@ function render(): void {
     hint: handOverHint(liveSession?.status, state.listening, locale),
     theirs: turn?.to === "human" ? (turn.message ?? "") : undefined,
     to: addressed ? sessionName(addressed) : undefined,
+    several: state.live.sessions.filter((s) => s.status !== "ended").length > 1,
     known: board ? [...board.elements.map((e) => e.id), ...board.notes.map((n) => n.id)] : [],
   });
 

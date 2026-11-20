@@ -200,8 +200,8 @@ function english(e: Recorded, to: string): string {
       return `${does("resolve")} the note ${e.id}`;
     case "TurnPassed": {
       const message = e.message ? `: ${e.message}` : "";
-      if (e.to === "agent") return `${does("hand")} over to Claude${to}${message}`;
-      return you ? `You keep the turn${message}` : `Claude hands over to you${message}`;
+      if (e.to === "agent") return `${does("send")} to Claude${to}${message}`;
+      return you ? `You keep the turn${message}` : `Claude passes you the turn${message}`;
     }
     case "SessionStarted":
       return "Session started";
@@ -295,8 +295,8 @@ function french(e: Recorded, to: string): string {
       return `${verb("résous", "résout")} la note ${e.id}`;
     case "TurnPassed": {
       const message = e.message ? ` : ${e.message}` : "";
-      if (e.to === "agent") return `${verb("passes", "passe")} la main à Claude${to}${message}`;
-      return you ? `Tu gardes la main${message}` : `Claude te passe la main${message}`;
+      if (e.to === "agent") return `${verb("envoies", "envoie")} à Claude${to}${message}`;
+      return you ? `Tu gardes la main${message}` : `Claude te rend la main${message}`;
     }
     case "SessionStarted":
       return "Session démarrée";

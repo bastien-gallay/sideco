@@ -316,8 +316,8 @@ describe("the human edits, the agent is told", () => {
 
   test("the footer counts what Claude has not read, and says when it will read it", async () => {
     const told = await page.locator(".pending").textContent();
-    expect(told).toMatch(/^\d+ changes Claude has not read · /);
-    expect(told).toContain("Claude is idle: it will read your changes at your next message in the terminal.");
+    expect(told).toMatch(/^\d+ changes not read yet · /);
+    expect(told).toContain("Claude will read them at your next message in the terminal.");
     const lines = (await pending()).split("\n").filter((line) => line.startsWith("  ")).length;
     expect(Number(/^\d+/.exec(told ?? "")?.[0])).toBe(lines);
     await shot("04-human-edited");
@@ -328,13 +328,12 @@ describe("the human edits, the agent is told", () => {
       (response) => response.json() as Promise<{ outcome: string; text: string }>,
     );
     await page.waitForFunction(
-      () => document.querySelector(".status-text")?.textContent === "Claude is waiting for you to hand over",
+      () => document.querySelector(".status-text")?.textContent === "Claude is waiting for you to send",
     );
-    expect(await page.locator(".pending").textContent()).toContain(
-      "Claude resumes as soon as you hand over.",
-    );
-    // Beside the button: the session the turn goes to, the last one to write on the board.
-    expect(await page.locator(".pass-to").textContent()).toMatch(/^Goes to the session .+ · s1$/);
+    expect(await page.locator(".pending").textContent()).toContain("Claude reads them as soon as you send.");
+    // One session runs: the one the turn goes to is said on the button only, not on a line of its own.
+    expect(await page.locator(".pass button").getAttribute("title")).toMatch(/^To the session .+ · s1$/);
+    expect(await page.locator(".pass-to").count()).toBe(0);
     await shot("05-listening");
 
     await page.locator(".pass input").fill("J'ai corrigé la règle, continue");
@@ -345,14 +344,14 @@ describe("the human edits, the agent is told", () => {
     expect(waited.text).toContain("Paiement accepté");
     expect(waited.text).toContain("L'entrepôt réserve, pas nous");
     await page.waitForFunction(
-      () => document.querySelector(".pending strong")?.textContent === "Claude is up to date",
+      () => document.querySelector(".pending")?.textContent === "Claude is up to date",
     );
   });
 
   test("handing over while Claude is not listening says what will make it read", async () => {
     await page.locator(".pass input").fill("Un mot pour plus tard");
     await page.locator(".pass input").press("Enter");
-    await page.locator(".toast", { hasText: "Handed over." }).waitFor();
+    await page.locator(".toast", { hasText: "Sent." }).waitFor();
     expect(await page.locator(".toast").textContent()).toContain("at your next message in the terminal");
     expect(await page.locator(".pass input").inputValue()).toBe("");
     // Handing over again without a word does not erase the word already said.
@@ -687,7 +686,7 @@ describe("the reader's language", () => {
     expect(await page.evaluate(() => document.documentElement.lang)).toBe("en");
     expect(await language().inputValue()).toBe("en");
     expect(await language().locator("option").allTextContents()).toEqual(["English", "Français"]);
-    expect(await page.locator(".pass button.primary").textContent()).toBe("Hand over to Claude");
+    expect(await page.locator(".pass button.primary").textContent()).toBe("Send to Claude");
     expect(await page.locator("g.card[data-id='E1'] title").textContent()).toMatch(/^E1 · Event · added by /);
   });
 
@@ -696,7 +695,7 @@ describe("the reader's language", () => {
     await page.waitForFunction(() => document.documentElement.lang === "fr");
     await card("E1").waitFor();
     expect(page.url()).toEndWith("#/b/commande");
-    expect(await page.locator(".pass button.primary").textContent()).toBe("Passer la main à Claude");
+    expect(await page.locator(".pass button.primary").textContent()).toBe("Envoyer à Claude");
     expect(await page.locator(".palette h2").textContent()).toBe("Event Storming");
     expect(await paletteType("Événement").count()).toBe(1);
     await openHistory();
@@ -725,7 +724,7 @@ describe("the reader's language", () => {
     await language().selectOption("en");
     await page.waitForFunction(() => document.documentElement.lang === "en");
     await card("E1").waitFor();
-    expect(await page.locator(".pass button.primary").textContent()).toBe("Hand over to Claude");
+    expect(await page.locator(".pass button.primary").textContent()).toBe("Send to Claude");
   });
 });
 
@@ -1020,7 +1019,11 @@ describe("adding where the pointer is", () => {
       return added?.type === "action" && added.lane === "try";
     });
     await card("A1").getByText("Écrire le test").waitFor();
-    expect(await page.locator(".palette .how").textContent()).toContain("+");
+    // How to add is in the keys sheet; the palette keeps the types, each saying what it is for on hover.
+    expect(await page.locator(".palette .how").count()).toBe(0);
+    expect(await page.locator(".palette .type", { hasText: "Action" }).getAttribute("title")).toContain(
+      " · ",
+    );
   });
 
   test("timeline: a cell offers the kind of its row, and the card lands in that step", async () => {
@@ -1529,9 +1532,7 @@ describe("Claude waits for the human", () => {
     expect(await pill().textContent()).toStartWith("Claude waits for you");
     // Pressed, the pill says why: Claude's words, on the board they are about.
     await until("the words are said", async () =>
-      ((await page.locator(".toast").textContent()) ?? "").includes(
-        "Claude hands over to you: Ton avis sur E1 ?",
-      ),
+      ((await page.locator(".toast").textContent()) ?? "").includes("Your turn: Ton avis sur E1 ?"),
     );
   });
 
@@ -1545,7 +1546,7 @@ describe("Claude waits for the human", () => {
     expect(await pill().textContent()).toStartWith("Claude is blocked on you");
     expect(await page.title()).toBe("● Claude is blocked on you · Attente · Sideco");
     await shot("24-claude-blocked");
-    await page.locator(".turn button", { hasText: "Hand over to Claude" }).click();
+    await page.locator(".turn button", { hasText: "Send to Claude" }).click();
     await listening;
     await pill().waitFor({ state: "detached" });
     expect(await page.title()).toBe("Attente · Sideco");
@@ -1554,7 +1555,7 @@ describe("Claude waits for the human", () => {
   test("handing the turn back ends the wait", async () => {
     await agent('pass "Encore une question"', BOARD);
     await pill().waitFor();
-    await page.locator(".turn button", { hasText: "Hand over to Claude" }).click();
+    await page.locator(".turn button", { hasText: "Send to Claude" }).click();
     await pill().waitFor({ state: "detached" });
   });
 });
@@ -1730,7 +1731,7 @@ describe("a kanban's own lanes, from the page", () => {
     await shot("44-keys-kanban");
     await page.keyboard.press("Escape");
     await sheet.waitFor({ state: "hidden" });
-    expect(await page.locator(".palette .how").textContent()).toContain("a heading to move its lane");
+    expect(await page.locator(".palette .keys-open").textContent()).toBe("Keys and gestures (?)");
   });
 
   test("an empty lane offers to remove it; Undo in the notice puts it back", async () => {

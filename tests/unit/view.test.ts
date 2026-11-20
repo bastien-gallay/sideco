@@ -64,7 +64,7 @@ describe("agentStatus says what Claude is doing, in words", () => {
     t.do({ kind: "tool-start", call: "c1", tool: "Bash", summary: "sideco wait" }, "agent", "s1");
     expect(agentStatus(session(t), 1)).toEqual({
       tone: "listening",
-      text: "Claude is waiting for you to hand over",
+      text: "Claude is waiting for you to send",
     });
   });
 });
@@ -72,32 +72,22 @@ describe("agentStatus says what Claude is doing, in words", () => {
 test("an agent listening with no session linked (plain `sideco wait`) is still shown as listening", () => {
   expect(agentStatus(undefined, 1)).toEqual({
     tone: "listening",
-    text: "Claude is waiting for you to hand over",
+    text: "Claude is waiting for you to send",
   });
 });
 
 describe("handOverHint says when Claude will see the changes", () => {
   test("at once when it listens", () => {
-    expect(handOverHint("running", 1)).toBe("Claude resumes as soon as you hand over.");
+    expect(handOverHint("running", 1)).toBe("Claude reads them as soon as you send.");
   });
   test("after its current action when it works", () => {
-    expect(handOverHint("running", 0)).toBe(
-      "Claude is working: it will read your changes after its current action.",
-    );
-    expect(handOverHint("thinking", 0)).toBe(
-      "Claude is working: it will read your changes after its current action.",
-    );
+    expect(handOverHint("running", 0)).toBe("Claude will read them after its current action.");
+    expect(handOverHint("thinking", 0)).toBe("Claude will read them after its current action.");
   });
   test("at the next terminal message when it rests or waits there", () => {
-    expect(handOverHint("idle", 0)).toBe(
-      "Claude is idle: it will read your changes at your next message in the terminal.",
-    );
-    expect(handOverHint("waiting", 0)).toBe(
-      "Claude is idle: it will read your changes at your next message in the terminal.",
-    );
-    expect(handOverHint(undefined, 0)).toBe(
-      "No session linked: Claude will read your changes when a session starts here.",
-    );
+    expect(handOverHint("idle", 0)).toBe("Claude will read them at your next message in the terminal.");
+    expect(handOverHint("waiting", 0)).toBe("Claude will read them at your next message in the terminal.");
+    expect(handOverHint(undefined, 0)).toBe("No Claude session here yet: they will be read when one starts.");
   });
 });
 
@@ -107,19 +97,17 @@ describe("handOverNotice says, right after a hand-over, why nothing moves in the
   });
   test("Claude at rest reads it only at the next terminal message", () => {
     expect(handOverNotice("idle", 0)).toBe(
-      "Handed over. Claude is not listening: it will read this at your next message in the terminal.",
+      "Sent. Claude is not listening: it will read it at your next message in the terminal.",
     );
     expect(handOverNotice("waiting", 0)).toBe(handOverNotice("idle", 0));
     expect(handOverNotice("idle", 0, "fr")).toBe(
-      "Main passée. Claude n'écoute pas : il la lira à ton prochain message dans le terminal.",
+      "Envoyé. Claude n'écoute pas : il le lira à ton prochain message dans le terminal.",
     );
   });
   test("Claude at work reads it after its current action; without a session, when one starts", () => {
-    expect(handOverNotice("running", 0)).toBe(
-      "Handed over. Claude is working: it will read this after its current action.",
-    );
+    expect(handOverNotice("running", 0)).toBe("Sent. Claude will read it after its current action.");
     expect(handOverNotice(undefined, 0)).toBe(
-      "Handed over. No session linked: Claude will read this when a session starts here.",
+      "Sent. No Claude session here yet: it will be read when one starts.",
     );
   });
 });
@@ -210,9 +198,9 @@ describe("describeEvent words one journal line for the history", () => {
     t.script('reply N1 "Toujours ?"', "human");
     expect(line(t)).toBe("You reply to N1 on P1: Toujours ?");
     t.do({ kind: "pass", board: "commande", to: "agent" }, "human");
-    expect(line(t)).toBe("You hand over to Claude");
+    expect(line(t)).toBe("You send to Claude");
     t.script('pass "à toi"');
-    expect(line(t)).toBe("Claude hands over to you: à toi");
+    expect(line(t)).toBe("Claude passes you the turn: à toi");
   });
 
   test("a removed board is named by its title", () => {
@@ -268,12 +256,10 @@ describe("in French, when the reader asks for it", () => {
     const t = withSession();
     expect(agentStatus(undefined, 0, "fr").text).toBe("Aucune session Claude Code reliée");
     expect(agentStatus(session(t), 0, "fr").text).toBe("Claude est au repos");
-    expect(agentStatus(session(t), 1, "fr").text).toBe("Claude attend que tu lui passes la main");
+    expect(agentStatus(session(t), 1, "fr").text).toBe("Claude attend ton envoi");
     t.do({ kind: "tool-start", call: "c1", tool: "Bash", summary: "bun test" }, "agent", "s1");
     expect(agentStatus(session(t), 0, "fr").text).toBe("Claude exécute Bash bun test");
-    expect(handOverHint("running", 0, "fr")).toBe(
-      "Claude travaille : il lira tes changements après son action en cours.",
-    );
+    expect(handOverHint("running", 0, "fr")).toBe("Claude les lira après son action en cours.");
   });
 
   test("the history lines", () => {
@@ -287,24 +273,24 @@ describe("in French, when the reader asks for it", () => {
     t.script('note "Et le reste ?"\nreply N3 "Plus tard"', "human");
     expect(line()).toBe("Tu réponds à N3 : Plus tard");
     t.do({ kind: "pass", board: "commande", to: "agent" }, "human");
-    expect(line()).toBe("Tu passes la main à Claude");
+    expect(line()).toBe("Tu envoies à Claude");
     t.script('pass "à toi"');
-    expect(line()).toBe("Claude te passe la main : à toi");
+    expect(line()).toBe("Claude te rend la main : à toi");
   });
 });
 
 describe("the page's own words", () => {
   test("count in the reader's language", () => {
-    expect(MESSAGES.en.pending(1)).toBe("1 change Claude has not read");
-    expect(MESSAGES.en.pending(3)).toBe("3 changes Claude has not read");
-    expect(MESSAGES.fr.pending(1)).toBe("1 changement que Claude n'a pas lu");
-    expect(MESSAGES.fr.pending(3)).toBe("3 changements que Claude n'a pas lus");
+    expect(MESSAGES.en.pending(1)).toBe("1 change not read yet");
+    expect(MESSAGES.en.pending(3)).toBe("3 changes not read yet");
+    expect(MESSAGES.fr.pending(1)).toBe("1 changement pas encore lu");
+    expect(MESSAGES.fr.pending(3)).toBe("3 changements pas encore lus");
     expect(MESSAGES.en.live(1)).toBe("Live · 1 event");
     expect(MESSAGES.fr.live(2)).toBe("En direct · 2 événements");
     expect([MESSAGES.en.thisBoard, MESSAGES.en.everything]).toEqual(["This board", "Everything"]);
     expect([MESSAGES.fr.thisBoard, MESSAGES.fr.everything]).toEqual(["Ce tableau", "Tout"]);
-    expect(MESSAGES.en.handOver).toBe("Hand over to Claude");
-    expect(MESSAGES.fr.handOver).toBe("Passer la main à Claude");
+    expect(MESSAGES.en.handOver).toBe("Send to Claude");
+    expect(MESSAGES.fr.handOver).toBe("Envoyer à Claude");
   });
 
   test("removing a board says what leaves and how it comes back, before it is done", () => {

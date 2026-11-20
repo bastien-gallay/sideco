@@ -109,11 +109,7 @@ describe("the page names it", () => {
     const { hub, as } = setup();
     as(undefined, 'pass "à toi" --to agent', "human");
     const passed = hub.events.at(-1) as never;
-    expect(describeEvent(passed, "en", hub.workspace)).toBe(
-      "You hand over to Claude (second · second): à toi",
-    );
-    expect(describeEvent(passed, "fr", hub.workspace)).toBe(
-      "Tu passes la main à Claude (second · second) : à toi",
-    );
+    expect(describeEvent(passed, "en", hub.workspace)).toBe("You send to Claude (second · second): à toi");
+    expect(describeEvent(passed, "fr", hub.workspace)).toBe("Tu envoies à Claude (second · second) : à toi");
   });
 });

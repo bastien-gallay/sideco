@@ -67,7 +67,7 @@ sequenceDiagram
     Claude->>Sideco: sideco pass "Qui réserve le stock ?"
     Toi->>Page: renommer, déplacer, relier, annoter
     Page->>Sideco: commandes (POST)
-    Toi->>Page: Hand over to Claude
+    Toi->>Page: Send to Claude
     Sideco-->>Claude: tes changements, en résumé
     Claude->>Sideco: sideco show, puis la suite
 ```
@@ -112,7 +112,7 @@ Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit
 | `‹` / `›` dans le coin d'un panneau latéral, ou les touches `[` et `]` | Replie le panneau en rail, ou le rouvre. Replié, le rail de gauche garde les types : un clic ajoute encore une carte. Le navigateur garde ce choix ; sous 1 100 px de large, les deux panneaux se replient d'eux-mêmes |
 | Menu `⋯`, à côté du choix du tableau | `New board…` crée un tableau ; `Export` donne le tableau courant en Markdown, HTML, SVG, Mermaid ou modèle JSON, dans la langue de la page ; `Remove this board…`, en dernier, le supprime après confirmation, et `Undo` le fait revenir entier. Échap ou un clic ailleurs referme le menu |
 | Pastille au coin d'une carte, `Not read by Claude yet` sous un fil | Rien à faire : c'est un rappel de ce que tu as changé et que Claude n'a pas encore lu. Sont marqués les cartes et les fils que nomme le résumé qu'il recevra, net des allers-retours comme lui ; la marque part dès que le résumé est remis à la session. L'historique n'en montre pas |
-| `Hand over to Claude` | Envoie tes changements, avec un mot facultatif |
+| `Send to Claude` | Envoie tes changements, avec un mot facultatif |
 | Sélecteur `English` / `Français`, en haut à droite | Change la langue de la page ; le choix est gardé par ce navigateur |
 
 ### Langue

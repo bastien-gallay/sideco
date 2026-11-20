@@ -17,8 +17,8 @@ test("the page is served in the companion's language, both languages on board", 
   const { html } = await buildPage("fr");
   expect(html).toStartWith('<!doctype html>\n<html lang="fr">');
   // The reader can still switch: both catalogues travel with the page.
-  expect(html).toContain("Hand over to Claude");
-  expect(html).toContain("Passer la main à Claude");
+  expect(html).toContain("Send to Claude");
+  expect(html).toContain("Envoyer à Claude");
 });
 
 test("the page carries its build, and the same sources give the same build", async () => {

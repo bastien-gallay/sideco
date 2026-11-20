@@ -42,7 +42,7 @@ sequenceDiagram
     Sideco-->>Page: events, shown in ~20 ms
     Claude->>Sideco: sideco pass "Who reserves the stock?"
     You->>Page: rename, move, link, annotate
-    You->>Page: Hand over to Claude
+    You->>Page: Send to Claude
     Sideco-->>Claude: your changes, summarised
     Claude->>Sideco: sideco show, then the next step
 ```

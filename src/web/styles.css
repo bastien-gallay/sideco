@@ -855,11 +855,6 @@ input[type="text"] {
   font-weight: 600;
 }
 
-.type-hint {
-  color: var(--muted);
-  font-size: 12px;
-}
-
 .note-list {
   display: grid;
   gap: 10px;
@@ -1759,23 +1754,29 @@ legend {
   font-variant-numeric: tabular-nums;
 }
 
+/* One row: what Claude has read and when it will read the rest, then the form that sends. */
 .turn {
-  display: grid;
-  justify-items: end;
-  gap: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-/* Its lines sit in the bar's own grid, beside the form that is not repainted. */
 .turn-says {
-  display: contents;
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  min-width: 0;
 }
 
 .pending,
 .pass-to,
 .theirs {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--muted);
   font-size: 12.5px;
-  text-align: right;
 }
 
 .pending strong,
@@ -1807,6 +1808,7 @@ legend {
 }
 
 .pass {
+  flex: none;
   display: flex;
   gap: 6px;
 }
@@ -1884,13 +1886,13 @@ legend {
   }
 
   .turn {
-    justify-items: stretch;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
-  .pending,
-  .pass-to,
-  .theirs {
-    text-align: left;
+  .pass {
+    flex: auto;
   }
 
   .pass input {
