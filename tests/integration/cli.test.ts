@@ -201,6 +201,15 @@ add command "Pay" --col 3 --from @placed
     for (const piece of ["X1", "C1", "E1", "P1", "C1 -> E1", "E1 -> P1"]) expect(shown).toContain(piece);
   });
 
+  test("find prints the cards holding every word; with none, it says how to ask", async () => {
+    expect((await sideco(["find", "stock", "reserver"])).out).toBe(
+      'passage-de-commande P1 policy "Réserver le stock"',
+    );
+    const bare = await sideco(["find"]);
+    expect(bare.code).toBe(1);
+    expect(bare.err).toContain("sideco find WORDS");
+  });
+
   test("a mistake is explained on stderr with exit code 1", async () => {
     const ran = await sideco(["add", "wizard", "Merlin"]);
     expect(ran.code).toBe(1);

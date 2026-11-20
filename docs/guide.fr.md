@@ -217,6 +217,20 @@ La casse ne compte pas (`Type:Bug` est `type:bug`). `sideco show` met les labels
 
 <sub>Source : `src/domain/workspace.ts` (`normalLabel`), `src/domain/digest.ts` (`describeLabels`) ; `tests/unit/labels.test.ts`.</sub>
 
+### Retrouver une carte
+
+`sideco find` cherche dans tous les tableaux les cartes qui portent chacun des mots, dans leur nom, leurs labels, leur détail ou leurs notes. Une ligne par carte, le tableau et l'id d'abord, pour enchaîner sur `sideco show ID`.
+
+```sh
+sideco find faceto                    # toutes les cartes qui en parlent
+sideco find stock reserver            # les deux mots, dans n'importe quel ordre ; ni casse ni accents
+sideco find T100 --board backlog      # la carte T100 et celles qui la citent, jamais T1000
+```
+
+Quand le mot n'est pas dans le nom, la ligne dit où il est : `[labels]`, `— detail: …les mots autour…` ou `— note N3: …`.
+
+<sub>Source : `src/domain/digest.ts` (`describeFind`) ; `tests/unit/find.test.ts`.</sub>
+
 ## Les données
 
 Tout est un événement dans un journal en ajout seul ; le tableau, l'historique et les exports en sont des projections.

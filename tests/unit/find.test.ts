@@ -1,61 +1,57 @@
+/**
+ * `sideco find`: a card found by what is written on it, across every board,
+ * without knowing where it is. One line per card, its board and id first, so
+ * that `show ID` takes over.
+ */
 import { describe, expect, test } from "bun:test";
-import { findCards, mentions, resolvedDiscussions } from "../../src/web/view.ts";
-import { ORDERING, table } from "../support.ts";
+import { describeFind } from "../../src/domain/digest.ts";
+import { FLOW, KANBAN, table } from "../support.ts";
 
-describe("finding a card by its id or its words", () => {
-  const t = table(ORDERING);
-  t.do({ kind: "annotate", board: "commande", id: "C2", detail: "Règle : réserver avant de payer" });
-  const board = t.board();
-
-  test("an id finds that card first, whatever its case", () => {
-    expect(findCards(board, "e1")[0]).toBe("E1");
+describe("`sideco find`", () => {
+  test("finds a card by its name, across boards, whatever the case and the accents", () => {
+    const t = table(KANBAN).script(FLOW);
+    expect(describeFind(t.ws, "ecrire")).toBe('sprint T1 task "Écrire le PRD"');
+    expect(describeFind(t.ws, "COMMANDE")).toBe(
+      ['livraison S1 step "Recevoir la commande"', 'livraison S3 step "Commander au fournisseur"'].join("\n"),
+    );
   });
 
-  test("words find the cards whose label holds them, accents and case aside", () => {
-    expect(findCards(board, "reserve")).toEqual(["P1", "C2", "E2"]);
-    expect(findCards(board, "STOCK MANQUE")).toEqual(["H1"]);
+  test("every word must be there, in any order", () => {
+    const t = table(KANBAN);
+    expect(describeFind(t.ws, "hooks brancher")).toBe('sprint T2 task "Brancher les hooks"');
+    expect(describeFind(t.ws, "hooks publier")).toBe('nothing matches "hooks publier"');
   });
 
-  test("a card found by its detail comes after those found by their label", () => {
-    expect(findCards(board, "payer")).toEqual(["C2"]);
-    expect(findCards(board, "réserver")).toEqual(["P1", "C2"]);
+  test("a word found in the detail, a label or a note says where, with the words around it", () => {
+    const t = table(KANBAN).script(
+      [
+        'detail T4 "Sur le registre npm, après la revue de sécurité et le tag v0.1.0."',
+        "label T3 env:staging",
+        'note "Le port 4752 est pris par le compagnon" --on B1',
+      ].join("\n"),
+    );
+    expect(describeFind(t.ws, "revue")).toBe(
+      'sprint T4 task "Publier" — detail: …registre npm, après la revue de sécurité et le tag v0.1.0.',
+    );
+    expect(describeFind(t.ws, "staging")).toBe('sprint T3 task "Tester de bout en bout" [env:staging]');
+    expect(describeFind(t.ws, "4752")).toBe(
+      'sprint B1 blocker "Port bloqué en bac à sable" — note N1: Le port 4752 est pris par le compagnon',
+    );
   });
 
-  test("nothing to look for finds nothing", () => {
-    expect(findCards(board, "  ")).toEqual([]);
-    expect(findCards(board, "licorne")).toEqual([]);
-  });
-});
-
-describe("the ids named in a message become links to what they name", () => {
-  test("a known id is cut out of the words around it", () => {
-    expect(mentions("Relis N37 puis C2, merci", new Set(["N37", "C2"]))).toEqual([
-      "Relis ",
-      { id: "N37" },
-      " puis ",
-      { id: "C2" },
-      ", merci",
-    ]);
+  test("an id finds its card and the cards that cite it, never a longer id", () => {
+    const t = table(KANBAN).script('detail T3 "Après T2, avant T4."\nadd task "Relire T22"');
+    expect(describeFind(t.ws, "t2")).toBe(
+      [
+        'sprint T2 task "Brancher les hooks"',
+        'sprint T3 task "Tester de bout en bout" — detail: Après T2, avant T4.',
+      ].join("\n"),
+    );
   });
 
-  test("an id nobody knows stays words", () => {
-    expect(mentions("Voir T99.", new Set(["T1"]))).toEqual(["Voir T99."]);
-    expect(mentions("", new Set())).toEqual([]);
-  });
-});
-
-describe("resolved discussions stay within reach", () => {
-  test("they are listed apart, the latest opened first, with what was said", () => {
-    const t = table(ORDERING);
-    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
-    t.do({ kind: "note", board: "commande", text: "Et le paiement ?" }, "human");
-    t.do({ kind: "note", board: "commande", text: "Encore ouverte" }, "human");
-    t.script('reply N1 "Le stock"');
-    t.script("resolve N1");
-    t.script("resolve N2");
-    const resolved = resolvedDiscussions(t.board());
-    expect(resolved.map((d) => d.id)).toEqual(["N2", "N1"]);
-    expect(resolved[1]?.on).toEqual({ id: "P1", label: "Quand commande passée, réserver le stock" });
-    expect(resolved[1]?.notes.map((n) => n.text)).toEqual(["Qui réserve ?", "Le stock"]);
+  test("a note on the board itself is found too; --board keeps to one board", () => {
+    const t = table(KANBAN).script(FLOW).script('note "Penser à la commande groupée"', "human", "sprint");
+    expect(describeFind(t.ws, "commande", "sprint")).toBe('sprint N1 note "Penser à la commande groupée"');
+    expect(describeFind(t.ws, "commande").split("\n")).toHaveLength(3);
   });
 });
