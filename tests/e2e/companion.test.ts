@@ -144,6 +144,7 @@ describe("first look", () => {
       "Story Mapping",
       "Retrospective",
       "Impact / Effort",
+      "C4 · System context",
     ]);
     expect(await status().textContent()).toBe("No Claude Code session linked");
     await shot("01-empty");

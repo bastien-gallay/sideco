@@ -98,9 +98,9 @@ sideco wait
 | which journey, what ships first | `story-map` | `--col N` |
 | what went well or not, what to keep, stop, try | `retro` | `--lane went-well`, `went-badly`, `keep`, `drop` or `try`; an action from a point: `add action "…" --from P1` |
 | what to do first, for what it brings and costs | `impact-effort` | `--lane quick`, `bet`, `fill` or `avoid` |
+| who uses the system, what it depends on (C4 level 1) | `c4-context` | `--from ID --edge "uses"`; the detail is the description |
 
-`sideco formats` lists every element type with its id prefix, and what each lane of
-`impact-effort` stands for (`quick`: high impact for a low effort; `avoid`: the reverse).
+`sideco formats` lists every element type with its id prefix, and what each lane of `impact-effort` stands for (`quick`: high impact for a low effort; `avoid`: the reverse).
 
 ## Commands
 

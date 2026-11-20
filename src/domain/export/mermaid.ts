@@ -11,6 +11,7 @@ export function toMermaid(board: Board, locale: Locale = DEFAULT_LOCALE): string
   const format = findFormat(board.format);
   if (!format) return "flowchart TD";
   if (format.layout === "columns") return kanban(board, format, locale);
+  if (format.id === "c4-context") return c4Context(board);
   return flowchart(board, format);
 }
 
@@ -40,6 +41,26 @@ function flowchart(board: Board, format: Format): string {
     lines.push(`  class ${ids.join(",")} ${type.id}`);
   }
   return lines.join("\n");
+}
+
+/** The C4 macro for each type of a system context. */
+const C4_MACROS: Record<string, string> = { person: "Person", system: "System", external: "System_Ext" };
+
+/** Mermaid's own C4 notation: a card's detail is its description, a link's label what it does. */
+function c4Context(board: Board): string {
+  const lines = ["C4Context", `  title ${c4(board.title)}`];
+  for (const e of board.elements) {
+    const macro = C4_MACROS[e.type] ?? "System";
+    const description = e.detail ? `, "${c4(e.detail)}"` : "";
+    lines.push(`  ${macro}(${e.id}, "${c4(labelSaid(board, e))}"${description})`);
+  }
+  for (const edge of board.edges) lines.push(`  Rel(${edge.src}, ${edge.dst}, "${c4(edge.label ?? "")}")`);
+  return lines.join("\n");
+}
+
+/** Inside a C4 string, which takes no escape: a double quote becomes a single one, a line break a space. */
+function c4(said: string): string {
+  return said.replace(/"/g, "'").replace(/\s*\n\s*/g, " ");
 }
 
 function node(e: Element, format: Format): string {

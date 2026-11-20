@@ -139,6 +139,7 @@ Un atelier est une donnée (`src/domain/formats.ts`), pas un moteur de rendu : t
 | `story-map` | Quel parcours, que livre-t-on d'abord ? | étapes | `activity` `A`, `task` `T`, `story` `S` |
 | `retro` | Que garde-t-on, qu'arrête-t-on, qu'essaie-t-on ? | colonnes | `point` `P`, `action` `A` |
 | `impact-effort` | Que fait-on d'abord, pour ce que ça rapporte et ce que ça coûte ? | colonnes, en plan 2 × 2 | `item` `I` |
+| `c4-context` | Qui utilise le système, et de quoi dépend-il ? (C4, niveau 1) | graphe | `person` `P`, `system` `S`, `external` `X` |
 
 Un `flow` trop long pour tenir en hauteur se replie, si la fenêtre est assez large, en colonnes côte à côte : on lit la première de haut en bas, puis la flèche monte par l'allée et reprend en haut de la suivante. Le repli ne coupe qu'à un endroit où une seule flèche passe, jamais sous une boucle qui remonte, et suit la largeur de la fenêtre ; les exports gardent une seule colonne.
 
