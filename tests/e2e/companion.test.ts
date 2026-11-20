@@ -1392,6 +1392,31 @@ describe("the board from the keyboard", () => {
     expect(await page.locator('g.card[tabindex="0"]').count()).toBe(1);
   });
 
+  test("a card chosen by a click goes along with the arrows: one card is marked, never two", async () => {
+    const first = (await page.locator("g.card").first().getAttribute("data-id")) ?? "";
+    await card(first).click();
+    await until(
+      "the card is chosen",
+      async () => (await card(first).getAttribute("aria-pressed")) === "true",
+    );
+    for (const key of ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"]) {
+      await page.keyboard.press(key);
+      if ((await focused()) !== first) break;
+    }
+    const now = await focused();
+    expect(now).not.toBe(first);
+    await until(
+      "the choice follows the keyboard",
+      async () =>
+        (await page.locator('g.card[aria-pressed="true"]').count()) === 1 &&
+        (await card(now ?? "").getAttribute("aria-pressed")) === "true",
+    );
+    expect(await page.locator("g.card.is-selected").count()).toBe(1);
+    // The panel reads the card the keyboard is on.
+    expect(await page.locator(".card-panel h2").textContent()).toContain(now ?? "");
+    await page.keyboard.press("Escape");
+  });
+
   test("`/` finds a card by its id, and Esc leaves the keyboard on it", async () => {
     const id = (await page.locator("g.card").first().getAttribute("data-id")) ?? "";
     await page.locator(".canvas").click({ position: { x: 4, y: 4 } });

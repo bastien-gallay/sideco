@@ -1322,7 +1322,13 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (direction && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
       event.preventDefault();
       const next = neighbour(scene.cards, id, direction);
-      if (next) focusCard(next);
+      if (!next) return;
+      focusCard(next);
+      // A card chosen goes along with the keyboard: one card is marked, never two. A link being drawn waits for its end.
+      if (state.selected && !state.linking) {
+        state.selected = next;
+        changed();
+      }
       return;
     }
     if (!isLive()) return;

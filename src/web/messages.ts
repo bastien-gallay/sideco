@@ -439,7 +439,7 @@ const en: Messages = {
   shortcuts: "Keys and gestures",
   shortcutList: (how, doneLast) => [
     ["Tab", "Into the board, then out of it"],
-    ["← → ↑ ↓", "From a card to the next one"],
+    ["← → ↑ ↓", "From a card to the next one; a card chosen goes along"],
     ...(how === "graph"
       ? []
       : ([
@@ -710,7 +710,7 @@ const fr: Messages = {
   shortcuts: "Touches et gestes",
   shortcutList: (how, doneLast) => [
     ["Tab", "Entrer dans le tableau, puis en sortir"],
-    ["← → ↑ ↓", "D'une carte à la suivante"],
+    ["← → ↑ ↓", "D'une carte à la suivante ; une carte choisie suit"],
     ...(how === "graph"
       ? []
       : ([
