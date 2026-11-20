@@ -11,9 +11,9 @@ import {
   type Board,
   emptyWorkspace,
   findBoard,
-  latestSession,
   replay,
   type Session,
+  shownSession,
   type Workspace,
 } from "../domain/workspace.ts";
 import { t } from "./locale.ts";
@@ -28,6 +28,8 @@ export interface State {
   cursor: number | null;
   past: Workspace | null;
   boardId: string | null;
+  /** The session the reader chose to watch; null lets the board in view decide (see `shownSession`). */
+  sessionId: string | null;
   selected: string | null;
   /** The element a link is being drawn from. */
   linking: string | null;
@@ -51,6 +53,7 @@ export const state: State = {
   cursor: null,
   past: null,
   boardId: null,
+  sessionId: null,
   selected: null,
   linking: null,
   listening: 0,
@@ -232,7 +235,7 @@ export function currentBoard(): Board | undefined {
 }
 
 export function currentSession(): Session | undefined {
-  return latestSession(shown());
+  return shownSession(shown(), currentBoard()?.id, state.sessionId ?? undefined);
 }
 
 export function isLive(): boolean {

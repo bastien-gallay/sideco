@@ -285,6 +285,21 @@ input[type="text"] {
   flex: 0 1 auto;
 }
 
+/* Which session the status, the Session tab and the count tell about: a name, kept short. */
+.session-picker {
+  display: flex;
+  flex: none;
+  min-width: 0;
+}
+
+.session-picker:empty {
+  display: none;
+}
+
+.session-picker select {
+  max-width: 160px;
+}
+
 .status-text {
   overflow: hidden;
   text-overflow: ellipsis;

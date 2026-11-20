@@ -36,6 +36,8 @@ export interface Messages {
 
   // The header.
   boardShown: string;
+  /** The picker of the Claude Code session the page tells about, when more than one is open. */
+  sessionShown: string;
   newBoardButton: string;
   showPanel: Record<"left" | "right", string>;
   hidePanel: Record<"left" | "right", string>;
@@ -292,6 +294,7 @@ const en: Messages = {
   handedOverIdle: "Sent. Claude is not listening: it will read it at your next message in the terminal.",
 
   boardShown: "Board shown",
+  sessionShown: "Claude session shown",
   newBoardButton: "+ Board",
   showPanel: { left: "Show the palette", right: "Show the side panel" },
   hidePanel: { left: "Fold the palette", right: "Fold the side panel" },
@@ -586,6 +589,7 @@ const fr: Messages = {
   handedOverIdle: "Envoyé. Claude n'écoute pas : il le lira à ton prochain message dans le terminal.",
 
   boardShown: "Tableau affiché",
+  sessionShown: "Session de Claude affichée",
   newBoardButton: "+ Tableau",
   showPanel: { left: "Afficher la palette", right: "Afficher le panneau latéral" },
   hidePanel: { left: "Replier la palette", right: "Replier le panneau latéral" },

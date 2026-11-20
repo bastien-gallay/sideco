@@ -2649,6 +2649,56 @@ describe("what Claude changed while the reader was away", () => {
   });
 });
 
+describe("two sessions on one project", () => {
+  const OTHER = "s2";
+  const picker = () => page.locator(".session-picker select");
+  const prompts = () => page.locator(".session .turns .prompt").count();
+
+  test("one session alone needs no choosing", async () => {
+    expect(await picker().count()).toBe(0);
+  });
+
+  test("a second session gives a choice, by name, and the one chosen is the one the page tells about", async () => {
+    await runHook(
+      { session_id: OTHER, cwd: root, hook_event_name: "SessionStart", source: "startup" },
+      {},
+      false,
+    );
+    const named = await fetch(`${running.url}/api/commands`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        actor: "agent",
+        session: OTHER,
+        commands: [{ kind: "name-session", name: "sideco-ui" }],
+      }),
+    });
+    expect(named.ok).toBe(true);
+    await until(
+      "the second session, by its name",
+      async () => (await picker().locator("option").allTextContents()).join() === `${SESSION},sideco-ui`,
+    );
+    const before = await prompts();
+    expect(before).toBeGreaterThan(0);
+
+    await picker().selectOption({ label: "sideco-ui" });
+    await until("the chosen session's turns", async () => (await prompts()) === 0);
+    // Chosen once, kept: a reload shows the same session.
+    await page.reload();
+    await picker().waitFor();
+    expect(await picker().inputValue()).toBe(OTHER);
+    expect(await prompts()).toBe(0);
+
+    await picker().selectOption(SESSION);
+    await until("the first session back", async () => (await prompts()) === before);
+  });
+
+  test("a session that ends leaves the choice when it is not the one shown", async () => {
+    await runHook({ session_id: OTHER, cwd: root, hook_event_name: "SessionEnd", reason: "exit" }, {}, false);
+    await until("the picker gone", async () => (await picker().count()) === 0);
+  });
+});
+
 describe("look", () => {
   test("dark scheme and a narrow window keep the board usable", async () => {
     await page.emulateMedia({ colorScheme: "dark" });

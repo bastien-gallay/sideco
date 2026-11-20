@@ -9,7 +9,15 @@ import { toMermaid } from "../domain/export/mermaid.ts";
 import { boardPurpose, FORMATS, findFormat, findType } from "../domain/formats.ts";
 import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
-import { addressee, findBoard, latestSession, readerOf } from "../domain/workspace.ts";
+import {
+  addressee,
+  findBoard,
+  latestSession,
+  readerOf,
+  type Session,
+  sessionLabel,
+  shownSession,
+} from "../domain/workspace.ts";
 import { mountBoard } from "./board-view.ts";
 import { clock, h, type Props, region } from "./dom.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
@@ -74,6 +82,7 @@ document.head.prepend(h("style", {}, SVG_STYLE));
 
 const boardPicker = h("div", { class: "board-picker" });
 const statusPill = h("div", { class: "status", role: "status", "aria-live": "polite" });
+const sessionPicker = h("div", { class: "session-picker" });
 /** Claude waits for the human: said just before the zoom, whatever board is on screen. */
 const waitsPill = h("div", { class: "waits", role: "status", "aria-live": "polite" });
 /** Says the zoom, and fits the whole board when pressed: on a large board, the way to see all of it. */
@@ -619,7 +628,7 @@ app.append(
     { class: "top" },
     // Three groups: the board, then what Claude is doing, then the view of it.
     h("div", { class: "top-board" }, h("strong", { class: "brand" }, "Sideco"), boardPicker, boardMenu),
-    h("div", { class: "top-claude" }, statusPill, waitsPill),
+    h("div", { class: "top-claude" }, sessionPicker, statusPill, waitsPill),
     h(
       "div",
       { class: "top-view" },
@@ -718,6 +727,57 @@ const paintBoardPicker = region(boardPicker, (m: BoardPickerModel) => {
       h("button", { type: "button", class: "quiet", onclick: () => openNewBoard() }, t.newBoardButton),
   ];
 });
+
+// ── The Claude Code session the page tells about ─────────────────────────────
+
+/** The session the reader chose, kept in this browser across reloads. */
+const CHOSEN_SESSION = "sideco.session";
+
+function readChosenSession(): string | null {
+  try {
+    return localStorage.getItem(CHOSEN_SESSION);
+  } catch {
+    return null;
+  }
+}
+
+function chooseSession(id: string): void {
+  state.sessionId = id;
+  try {
+    localStorage.setItem(CHOSEN_SESSION, id);
+  } catch {
+    // Without storage, the choice lasts as long as the page.
+  }
+  render();
+}
+
+state.sessionId = readChosenSession();
+
+interface SessionPickerModel {
+  sessions: { id: string; label: string }[];
+  current: string | undefined;
+}
+
+/** The sessions worth choosing between: the open ones, and the one shown even once it ended. */
+function sessionChoices(sessions: readonly Session[], shown: Session | undefined): SessionPickerModel {
+  const open = sessions.filter((s) => s.status !== "ended" || s.id === shown?.id);
+  return { sessions: open.map((s) => ({ id: s.id, label: sessionLabel(s) })), current: shown?.id };
+}
+
+// One session alone needs no choosing: the picker shows from two on.
+const paintSessionPicker = region(sessionPicker, (m: SessionPickerModel) => [
+  m.sessions.length > 1 &&
+    h(
+      "select",
+      {
+        name: "session",
+        "aria-label": t.sessionShown,
+        title: t.sessionShown,
+        onchange: (event: Event) => chooseSession((event.target as HTMLSelectElement).value),
+      },
+      ...m.sessions.map((s) => h("option", { value: s.id, selected: s.id === m.current }, s.label)),
+    ),
+]);
 
 /** As the reader's keyboard writes them: ⌘ on a Mac, Ctrl elsewhere. */
 const SHORTCUTS = /Mac|iPhone|iPad/.test(navigator.platform)
@@ -1861,7 +1921,8 @@ function render(): void {
   const board = currentBoard();
   const session = currentSession();
   const live = isLive();
-  const liveSession = latestSession(state.live);
+  // What Claude would be told, for the session the page tells about: the one chosen, else the board's.
+  const liveSession = shownSession(state.live, board?.id, state.sessionId ?? undefined);
   const pending = pendingChanges(state.events, liveSession);
   // The marks tell about now: a board shown as it was carries none. They are
   // measured against the session the board is for, not the last one to speak.
@@ -1875,6 +1936,7 @@ function render(): void {
     current: board?.id,
     live,
   });
+  paintSessionPicker(sessionChoices(ws.sessions, session));
   paintStatus({
     ...agentStatus(session, live ? state.listening : 0, locale),
     connected: state.connected,
