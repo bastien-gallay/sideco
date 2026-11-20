@@ -1401,9 +1401,22 @@ labelField.addEventListener("keydown", (event) => {
   const id = state.selected;
   if (!board || !id || labels.length === 0 || !isLive()) return;
   void send({ kind: "label", board: board.id, id, labels }).then((done) => {
-    if (done !== undefined) labelField.value = "";
+    if (done === undefined) return;
+    labelField.value = "";
+    speak(t.labelsAdded(labels.map(chipText).join(", ")));
   });
 });
+
+/** A label taken off by its ×: once it is gone, the keyboard goes to the next ×, else the one before, else the field. */
+let unlabelled: { id: string; label: string; at: number } | undefined;
+
+function refocusLabels(id: string, labels: readonly string[]): void {
+  const was = unlabelled;
+  if (!was || was.id !== id || labels.some((label) => sameLabel(label, was.label))) return;
+  unlabelled = undefined;
+  const buttons = [...cardPanel.querySelectorAll<HTMLButtonElement>(".label-remove")];
+  (buttons[Math.min(was.at, buttons.length - 1)] ?? labelField).focus();
+}
 
 /** Every label the project's cards wear, once each whatever its case, in the order first met. */
 function projectLabels(): string[] {
@@ -1436,7 +1449,7 @@ function labelChips(m: CardPanelModel): HTMLElement {
   return h(
     "ul",
     { class: "label-chips" },
-    ...m.labels.map((label) => {
+    ...m.labels.map((label, at) => {
       const { fill, ink } = labelColours(label);
       return h(
         "li",
@@ -1451,7 +1464,12 @@ function labelChips(m: CardPanelModel): HTMLElement {
               class: "label-remove",
               "aria-label": t.removeLabel(chipText(label)),
               title: t.removeLabel(chipText(label)),
-              onclick: () => void send({ kind: "unlabel", board: board.id, id: m.id, labels: [label] }),
+              onclick: () => {
+                unlabelled = { id: m.id, label, at };
+                void send({ kind: "unlabel", board: board.id, id: m.id, labels: [label] }).then((done) => {
+                  if (done !== undefined) speak(t.labelRemoved(chipText(label)));
+                });
+              },
             },
             "×",
           ),
@@ -2227,6 +2245,7 @@ function render(): void {
   if (board && chosen) {
     const format = findFormat(board.format);
     const typing = document.activeElement === detailField;
+    const labelling = document.activeElement === labelField;
     paintCardPanel({
       id: chosen.id,
       label: chosen.label,
@@ -2240,6 +2259,8 @@ function render(): void {
       known: projectLabels(),
     });
     if (typing && document.activeElement !== detailField) detailField.focus();
+    if (labelling && document.activeElement !== labelField && labelField.isConnected) labelField.focus();
+    refocusLabels(chosen.id, chosen.labels ?? []);
   }
 
   paintTabs();

@@ -136,6 +136,8 @@ export interface Messages {
   labelsHeading: string;
   addLabel: string;
   removeLabel: (label: string) => string;
+  labelsAdded: (labels: string) => string;
+  labelRemoved: (label: string) => string;
   liveNow: string;
   earlier: (more: number) => string;
   detailTabEmpty: string;
@@ -412,6 +414,8 @@ const en: Messages = {
   labelsHeading: "Labels",
   addLabel: "Add a label: type:bug, @name… (Enter)",
   removeLabel: (label) => `Remove the label ${label}`,
+  labelsAdded: (labels) => `Labels added: ${labels}`,
+  labelRemoved: (label) => `Label ${label} removed`,
   liveNow: "● Live",
   earlier: (more) => `Earlier… (${more} more)`,
   detailTabEmpty: "Detail: choose a card on the board",
@@ -737,6 +741,8 @@ const fr: Messages = {
   labelsHeading: "Labels",
   addLabel: "Ajouter un label : type:bug, @nom… (Entrée)",
   removeLabel: (label) => `Retirer le label ${label}`,
+  labelsAdded: (labels) => `Labels ajoutés : ${labels}`,
+  labelRemoved: (label) => `Label ${label} retiré`,
   liveNow: "● En direct",
   earlier: (more) => `Plus ancien… (encore ${more})`,
   detailTabEmpty: "Détail : choisis une carte sur le tableau",

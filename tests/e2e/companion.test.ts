@@ -2891,6 +2891,60 @@ describe("labels on a card, from the page", () => {
     await shot("60-labels");
     await page.keyboard.press("Escape");
   });
+
+  test("the keyboard stays in the labels: the field after Enter, the next × after one, and each change is said", async () => {
+    await agent(
+      ['board new "Clavier labels" --format kanban --id labels-t155', 'add task "Trier" --lane todo'].join(
+        "\n",
+      ),
+    );
+    await page.locator(".board-picker select").selectOption("labels-t155");
+    await card("T1").click();
+    await page.getByRole("tab", { name: "Detail" }).click();
+    const field = page.locator(".label-field");
+    await field.fill("alpha, beta, gamma");
+    await field.press("Enter");
+    await until(
+      "three labels",
+      async () => ((await elementOf("labels-t155", "T1"))?.labels ?? []).length === 3,
+    );
+    await until("the field emptied", async () => (await field.inputValue()) === "");
+    const active = () =>
+      page.evaluate(() => {
+        const a = document.activeElement;
+        return a?.classList.contains("label-field")
+          ? "field"
+          : (a?.getAttribute("aria-label") ?? a?.tagName ?? "");
+      });
+    await until("the field keeps the keyboard", async () => (await active()) === "field");
+    await until("the labels added are said", async () =>
+      ((await page.locator(".spoken").textContent()) ?? "").includes("alpha, beta, gamma"),
+    );
+
+    await page.getByRole("button", { name: "Remove the label beta" }).click();
+    await until(
+      "beta taken off",
+      async () => !((await elementOf("labels-t155", "T1"))?.labels ?? []).includes("beta"),
+    );
+    await until("the keyboard on the next ×", async () => (await active()) === "Remove the label gamma");
+    await until("the removal is said", async () =>
+      ((await page.locator(".spoken").textContent()) ?? "").includes("beta"),
+    );
+    await page.keyboard.press("Enter");
+    await until(
+      "gamma taken off",
+      async () => !((await elementOf("labels-t155", "T1"))?.labels ?? []).includes("gamma"),
+    );
+    // The last one gone, the keyboard goes back to the one before, then to the field.
+    await until("the keyboard on the × left", async () => (await active()) === "Remove the label alpha");
+    await page.keyboard.press("Enter");
+    await until(
+      "no label left",
+      async () => ((await elementOf("labels-t155", "T1"))?.labels ?? []).length === 0,
+    );
+    await until("the keyboard back in the field", async () => (await active()) === "field");
+    await page.keyboard.press("Escape");
+  });
 });
 
 describe("search across the boards, from the page", () => {
