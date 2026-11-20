@@ -140,7 +140,9 @@ flowchart LR
   and the in-memory one used by tests implement `Journal`.
 - **The page is an adapter with its own projection.** It imports the pure
   domain to fold the same events (`apply`), never the server.
-- **A new dependency points inward or it does not go in.**
+- **A new dependency points inward or it does not go in.** The rule is data
+  in [tests/layers.ts](../tests/layers.ts), and a unit test holds every module
+  of `src/` to it.
 
 ## Domain-driven design
 
@@ -227,4 +229,3 @@ changes nothing else.
 | The `Journal` port is declared beside its adapter | `src/server/journal.ts` | Declared beside the hub that needs it |
 | The CLI imports server modules (`journal`, `start`, `idle`) | `src/cli/main.ts` | Through the server's entry point only |
 | Modules with no header comment | `src/cli/main.ts`, `src/cli/browser.ts` | One sentence saying the module's job |
-| The dependency rule is not checked | Whole tree | A test that reads the imports |
