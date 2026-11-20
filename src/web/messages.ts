@@ -258,8 +258,12 @@ export interface Messages {
   shortcuts: string;
   /** Each shortcut of the page: the keys, then what they do. */
   /** The keys of the page, as they work on a board laid out this way. */
-  /** `doneLast`: done is the last lane, not a mark. */
-  shortcutList: (how: SheetKind, doneLast: boolean) => [keys: string, does: string][];
+  /** `doneLast`: done is the last lane, not a mark. `axes`: a plan's axes, by the names the board gives them. */
+  shortcutList: (
+    how: SheetKind,
+    doneLast: boolean,
+    axes?: { x: string; y: string },
+  ) => [keys: string, does: string][];
   /** What the mouse does there that no key says. */
   mouseList: (how: SheetKind) => [gesture: string, does: string][];
   withTheMouse: string;
@@ -493,7 +497,7 @@ const en: Messages = {
   fitHint: "Fit the whole board in the window, or back to 100 %",
   resolvedNotes: (count) => `Resolved (${count})`,
   shortcuts: "Keys and gestures",
-  shortcutList: (how, doneLast) => [
+  shortcutList: (how, doneLast, axes) => [
     ["Tab", "Into the board, then out of it"],
     ["← → ↑ ↓", "From a card to the next one; a card chosen goes along"],
     ...(how === "graph"
@@ -504,7 +508,7 @@ const en: Messages = {
             how === "timeline"
               ? "Move the card: ← → a step, ↑ ↓ its place in its cell"
               : how === "grid"
-                ? "Move the card to the cell that way: ↑ ↓ impact, ← → effort"
+                ? `Move the card to the cell that way: ↑ ↓ ${axes?.y ?? "impact"}, ← → ${axes?.x ?? "effort"}`
                 : "Move the card: ← → a lane, ↑ ↓ its place in its lane",
           ],
         ] as [string, string][])),
@@ -533,7 +537,7 @@ const en: Messages = {
       ? ([
           [
             "On a lane heading",
-            "Enter renames · Shift + ← → moves · Delete removes it if empty · + or Alt + ← → adds a lane · ↓ goes to its cards",
+            "Enter renames · Shift + Enter writes its subtitle · Shift + ← → moves · Delete removes it if empty · + or Alt + ← → adds a lane · ↓ goes to its cards",
           ],
         ] as [string, string][])
       : []),
@@ -561,7 +565,21 @@ const en: Messages = {
       : []),
     ...(how === "graph" || how === "timeline"
       ? []
-      : ([["Double-click a lane's name", "Rename it for this board"]] as [string, string][])),
+      : ([
+          ["Double-click a lane's name", "Rename it for this board"],
+          [
+            "Double-click a lane's subtitle, or Add a subtitle under its name",
+            "Write what the lane stands for; emptied, the workshop's words come back",
+          ],
+        ] as [string, string][])),
+    ...(how === "grid"
+      ? ([
+          [
+            "Double-click an axis, or a word at one of its ends",
+            "Rename it for this board; emptied, the workshop's words come back",
+          ],
+        ] as [string, string][])
+      : []),
   ],
   withTheMouse: "With the mouse",
   onACard: "On a card",
@@ -797,7 +815,7 @@ const fr: Messages = {
   fitHint: "Faire tenir tout le tableau dans la fenêtre, ou revenir à 100 %",
   resolvedNotes: (count) => `Résolues (${count})`,
   shortcuts: "Touches et gestes",
-  shortcutList: (how, doneLast) => [
+  shortcutList: (how, doneLast, axes) => [
     ["Tab", "Entrer dans le tableau, puis en sortir"],
     ["← → ↑ ↓", "D'une carte à la suivante ; une carte choisie suit"],
     ...(how === "graph"
@@ -808,7 +826,7 @@ const fr: Messages = {
             how === "timeline"
               ? "Déplacer la carte : ← → une étape, ↑ ↓ sa place dans sa case"
               : how === "grid"
-                ? "Déplacer la carte dans la case de ce côté : ↑ ↓ l'impact, ← → l'effort"
+                ? `Déplacer la carte dans la case de ce côté : ↑ ↓ ${axes?.y ?? "l'impact"}, ← → ${axes?.x ?? "l'effort"}`
                 : "Déplacer la carte : ← → une colonne, ↑ ↓ sa place dans la colonne",
           ],
         ] as [string, string][])),
@@ -837,7 +855,7 @@ const fr: Messages = {
       ? ([
           [
             "Sur un en-tête de colonne",
-            "Entrée renomme · Maj + ← → déplace · Suppr la supprime si vide · + ou Alt + ← → ajoute une colonne · ↓ va à ses cartes",
+            "Entrée renomme · Maj + Entrée écrit son sous-titre · Maj + ← → déplace · Suppr la supprime si vide · + ou Alt + ← → ajoute une colonne · ↓ va à ses cartes",
           ],
         ] as [string, string][])
       : []),
@@ -865,7 +883,21 @@ const fr: Messages = {
       : []),
     ...(how === "graph" || how === "timeline"
       ? []
-      : ([["Double-clic sur le nom d'une colonne", "La renommer pour ce tableau"]] as [string, string][])),
+      : ([
+          ["Double-clic sur le nom d'une colonne", "La renommer pour ce tableau"],
+          [
+            "Double-clic sur le sous-titre d'une colonne, ou sur Ajouter un sous-titre sous son nom",
+            "Écrire ce que la colonne représente ; vidé, les mots de l'atelier reviennent",
+          ],
+        ] as [string, string][])),
+    ...(how === "grid"
+      ? ([
+          [
+            "Double-clic sur un axe, ou un mot à l'un de ses bouts",
+            "Le renommer pour ce tableau ; vidé, les mots de l'atelier reviennent",
+          ],
+        ] as [string, string][])
+      : []),
   ],
   withTheMouse: "À la souris",
   onACard: "Sur une carte",

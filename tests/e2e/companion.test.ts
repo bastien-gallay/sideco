@@ -2805,6 +2805,13 @@ describe("a lane's subtitle and a plan's axes, rewritten by the mouse", () => {
     await typeInEditor("Valeur");
     await until("the axis renamed", async () => (await label.textContent()) === "Valeur →");
     expect((await boardOf("axes-t118"))?.axes?.y?.label).toBe("Valeur");
+    // Renamed, the plan is called by its axes in the palette, and the keys say them.
+    expect(await page.locator(".palette h2").textContent()).toBe("Valeur / Effort");
+    await page.locator("body").press("?");
+    await until("the keys say the axis", async () =>
+      ((await page.locator("dialog.keys").textContent()) ?? "").includes("↑ ↓ valeur, ← → effort"),
+    );
+    await page.keyboard.press("Escape");
 
     const low = page.locator('.band-axis .axis-bound[data-axis="y"][data-bound="low"]');
     await low.dblclick();
@@ -2820,6 +2827,7 @@ describe("a lane's subtitle and a plan's axes, rewritten by the mouse", () => {
     await typeInEditor("");
     await until("the axis given back", async () => (await label.textContent()) === "Impact →");
     expect((await boardOf("axes-t118"))?.axes?.y).toBeUndefined();
+    expect(await page.locator(".palette h2").textContent()).toBe("Impact / Effort");
   });
 });
 

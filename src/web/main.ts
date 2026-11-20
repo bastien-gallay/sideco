@@ -6,11 +6,12 @@
 import { type Command, slugify } from "../domain/commands.ts";
 import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../domain/export/index.ts";
 import { toMermaid } from "../domain/export/mermaid.ts";
-import { boardPurpose, FORMATS, findFormat, findType } from "../domain/formats.ts";
+import { boardPurpose, FORMATS, findFormat, findType, planAxis } from "../domain/formats.ts";
 import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import {
   addressee,
+  type Board,
   findBoard,
   isOpen,
   latestSession,
@@ -538,7 +539,14 @@ function openKeys(): void {
     );
   keysSheet.replaceChildren(
     h("h2", {}, t.shortcuts),
-    list(t.shortcutList(how, Boolean(findFormat(currentBoard()?.format ?? "")?.doneLast)), true),
+    list(
+      t.shortcutList(
+        how,
+        Boolean(findFormat(currentBoard()?.format ?? "")?.doneLast),
+        axesNamed(currentBoard()),
+      ),
+      true,
+    ),
     h("h3", {}, t.withTheMouse),
     list(t.mouseList(how), false),
     h("h3", {}, t.onACard),
@@ -910,8 +918,27 @@ interface PaletteModel {
   format: string | undefined;
   /** The question the board asks, where it asks its own. */
   purpose: string | undefined;
+  /** A plan's axes, where the board names its own: the palette is called by them, not by the workshop. */
+  axes: { x: string; y: string } | undefined;
   live: boolean;
   from: string | null;
+}
+
+/** A plan's axes as the board shows them, renamed or the workshop's: the keys say them by these names. */
+function axesNamed(board: Board | undefined): { x: string; y: string } | undefined {
+  const format = board ? findFormat(board.format) : undefined;
+  const x = format && board ? planAxis(format, board, "x", locale) : undefined;
+  const y = format && board ? planAxis(format, board, "y", locale) : undefined;
+  return x && y ? { x: x.label.toLowerCase(), y: y.label.toLowerCase() } : undefined;
+}
+
+/** A plan's axes as the board names them, when it names one of them itself; otherwise undefined. */
+function ownAxes(board: Board | undefined): { x: string; y: string } | undefined {
+  const format = board ? findFormat(board.format) : undefined;
+  if (!board || !format?.grid || !(board.axes?.x || board.axes?.y)) return undefined;
+  const x = planAxis(format, board, "x", locale);
+  const y = planAxis(format, board, "y", locale);
+  return x && y ? { x: x.label, y: y.label } : undefined;
 }
 
 const paintPalette = region(palette, (m: PaletteModel) => {
@@ -920,7 +947,8 @@ const paintPalette = region(palette, (m: PaletteModel) => {
   // How to add and move is in the keys sheet; only a flow says what is not on screen: the card the next one links to.
   const how = format.layout === "graph" && m.from ? t.howGraphFrom(m.from) : undefined;
   return [
-    h("h2", {}, format.name[locale]),
+    // A plan whose axes the board renamed is called by them: a SWOT is no longer an Impact / Effort.
+    h("h2", {}, m.axes ? `${m.axes.y} / ${m.axes.x}` : format.name[locale]),
     h("p", { class: "purpose" }, boardPurpose(format, { purpose: m.purpose }, locale)),
     h(
       "ul",
@@ -1954,6 +1982,7 @@ function render(): void {
   paintPalette({
     format: board?.format,
     purpose: board?.purpose,
+    axes: ownAxes(board),
     live,
     from: board && findFormat(board.format)?.layout === "graph" ? state.selected : null,
   });
