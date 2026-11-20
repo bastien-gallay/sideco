@@ -182,6 +182,14 @@ export interface Messages {
   // A card's actions.
   cardLabel: string;
   laneName: string;
+  /** The editor on what a lane stands for, under its name; emptied, the workshop's words come back. */
+  laneHintName: string;
+  /** Shown in a lane's heading under the pointer, where a subtitle would go. */
+  addLaneHint: string;
+  /** The editors on an axis of a plan: its name, and the words at either end. */
+  axisName: string;
+  axisLow: string;
+  axisHigh: string;
   wordsOrphaned: (id: string, words: string) => string;
   rename: string;
   detail: string;
@@ -327,7 +335,7 @@ const en: Messages = {
   removeLane: (name) => `Remove the lane ${name}`,
   laneHeading: (name, count) => `Lane ${name}, ${count} card${count === 1 ? "" : "s"}`,
   laneKeys:
-    "Enter: rename · Shift and an arrow: move · Delete: remove if empty · + or Alt and an arrow: add a lane",
+    "Enter: rename · Shift+Enter: subtitle · Shift and an arrow: move · Delete: remove if empty · + or Alt and an arrow: add a lane",
   laneMovedTo: (name, position, of) => `Lane ${name} moved: ${position} of ${of}.`,
   laneNotEmpty: (name) => `Lane ${name} still has cards: move or remove them first.`,
   laneRemoved: (name) => `Lane ${name} removed.`,
@@ -430,6 +438,11 @@ const en: Messages = {
 
   cardLabel: "Label",
   laneName: "Column name",
+  laneHintName: "Column subtitle (empty: the workshop's)",
+  addLaneHint: "Add a subtitle",
+  axisName: "Axis name (empty: the workshop's)",
+  axisLow: "Where the axis starts (empty: the workshop's)",
+  axisHigh: "Where the axis ends (empty: the workshop's)",
   wordsOrphaned: (id, words) => `${id} was removed while you were typing. Your words: “${words}”`,
   rename: "Rename",
   detail: "Detail",
@@ -622,7 +635,7 @@ const fr: Messages = {
   removeLane: (name) => `Supprimer la colonne ${name}`,
   laneHeading: (name, count) => `Colonne ${name}, ${count} carte${count > 1 ? "s" : ""}`,
   laneKeys:
-    "Entrée : renommer · Maj et une flèche : déplacer · Suppr : supprimer si vide · + ou Alt et une flèche : ajouter une colonne",
+    "Entrée : renommer · Maj+Entrée : sous-titre · Maj et une flèche : déplacer · Suppr : supprimer si vide · + ou Alt et une flèche : ajouter une colonne",
   laneMovedTo: (name, position, of) => `Colonne ${name} déplacée : ${position} sur ${of}.`,
   laneNotEmpty: (name) => `La colonne ${name} a encore des cartes : déplace-les ou supprime-les d'abord.`,
   laneRemoved: (name) => `Colonne ${name} supprimée.`,
@@ -728,6 +741,11 @@ const fr: Messages = {
 
   cardLabel: "Libellé",
   laneName: "Nom de la colonne",
+  laneHintName: "Sous-titre de la colonne (vide : celui de l'atelier)",
+  addLaneHint: "Ajouter un sous-titre",
+  axisName: "Nom de l'axe (vide : celui de l'atelier)",
+  axisLow: "Début de l'axe (vide : celui de l'atelier)",
+  axisHigh: "Fin de l'axe (vide : celle de l'atelier)",
   wordsOrphaned: (id, words) => `${id} a été supprimée pendant ta saisie. Ton texte : « ${words} »`,
   rename: "Renommer",
   detail: "Détail",

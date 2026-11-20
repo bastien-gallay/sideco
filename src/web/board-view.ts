@@ -540,6 +540,17 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
           }),
           ...group.querySelectorAll("text"),
         );
+        // Where a subtitle would go, offered under the pointer: a double-click writes one.
+        if (!band.hint) {
+          const blank = svg("text", {
+            class: "lane-hint-blank",
+            x: band.x + 14,
+            y: band.y + 37,
+            "data-lane": band.id,
+          });
+          blank.textContent = t.addLaneHint;
+          head.append(blank);
+        }
         heads.append(head);
         // On a kanban, a lane heading is a Tab stop: its keys rename, move, remove it, or add one beside it.
         const label = head.querySelector<SVGTextElement>("text.lane-label");
@@ -910,6 +921,62 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       (label) => {
         return saved(send({ kind: "name-lane", board: boardId, lane, label }));
       },
+    );
+  }
+
+  /**
+   * Opens the editor on what a lane stands for, under its name: over the
+   * subtitle, or where one would go. Emptied, the workshop's words come back.
+   */
+  function hintLane(lane: string): void {
+    if (!board || !isLive()) return;
+    const boardId = board.id;
+    const band = scene.bands.find((b) => b.kind === "lane" && b.id === lane);
+    const spot = heads.querySelector<SVGTextElement>(
+      `text.lane-hint[data-lane="${CSS.escape(lane)}"], text.lane-hint-blank[data-lane="${CSS.escape(lane)}"]`,
+    );
+    const box = (
+      spot ?? heads.querySelector(`text.lane-label[data-lane="${CSS.escape(lane)}"]`)
+    )?.getBoundingClientRect();
+    if (!box) return;
+    openEditor(
+      new DOMRect(box.left - 6, box.top - 8, 220, 36),
+      band?.hint ?? "",
+      t.laneHintName,
+      { fill: "var(--surface)", ink: "var(--ink)" },
+      (hint) => saved(send({ kind: "hint-lane", board: boardId, lane, hint })),
+      { name: t.laneHintName, lines: false, blank: true },
+    );
+  }
+
+  /**
+   * Opens the editor on an axis of a plan: its name, or the word at one of its
+   * ends. Emptied, the name gives back the workshop's axis, its ends with it;
+   * an end gives back the workshop's word for it.
+   */
+  function nameAxis(text: SVGTextElement): void {
+    const axis = text.dataset.axis;
+    const band = scene.bands.find((b) => b.kind === "axis" && b.id === axis);
+    if (!board || !isLive() || !axis || !band) return;
+    const boardId = board.id;
+    const bound = text.dataset.bound as "low" | "high" | undefined;
+    const box = text.getBoundingClientRect();
+    const value = bound ? (band[bound] ?? "") : band.label;
+    const placeholder = bound === "low" ? t.axisLow : bound === "high" ? t.axisHigh : t.axisName;
+    openEditor(
+      new DOMRect(box.left + box.width / 2 - 110, box.top + box.height / 2 - 18, 220, 36),
+      value,
+      placeholder,
+      { fill: "var(--surface)", ink: "var(--ink)" },
+      (word) =>
+        saved(
+          send(
+            bound
+              ? { kind: "name-axis", board: boardId, axis, label: band.label, [bound]: word }
+              : { kind: "name-axis", board: boardId, axis, label: word },
+          ),
+        ),
+      { name: placeholder, lines: false, blank: true },
     );
   }
 
@@ -1389,6 +1456,16 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       renameLane(heading);
       return;
     }
+    const hint = under(event)?.closest<SVGTextElement>("text.lane-hint, text.lane-hint-blank");
+    if (hint?.dataset.lane) {
+      hintLane(hint.dataset.lane);
+      return;
+    }
+    const axis = under(event)?.closest<SVGTextElement>("text.axis-label, text.axis-bound");
+    if (axis) {
+      nameAxis(axis);
+      return;
+    }
     const conn = under(event)?.closest<SVGGElement>("g.conn");
     if (conn?.dataset.src && conn.dataset.dst) {
       nameLink(conn.dataset.src, conn.dataset.dst);
@@ -1526,6 +1603,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     } else if (event.key === "+") {
       const box = label.getBoundingClientRect();
       nameLaneAt(new DOMRect(box.left - 6, box.bottom + 6, 180, 36), lanes[at + 1]);
+    } else if (event.key === "Enter" && event.shiftKey) {
+      laneArriving = lane;
+      hintLane(lane);
     } else if ((event.key === "Enter" && !event.metaKey && !event.ctrlKey) || event.key === "F2") {
       laneArriving = lane;
       renameLane(label);

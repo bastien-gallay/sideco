@@ -93,9 +93,12 @@ export function bandMarkup(b: Band): string {
       const turn = b.id === "y" ? ` transform="rotate(-90 ${cx} ${mid})"` : "";
       // Its two ends are named where they are: low where it starts, high where it ends.
       const half = (b.id === "y" ? b.h : b.w) / 2 - 8;
-      const end = (cls: string, x: number, word: string | undefined): string =>
-        word ? `<text class="${cls}" x="${x}" y="${mid + 4}"${turn}>${esc(word)}</text>` : "";
-      return `<g class="band band-axis"><text class="axis-label" x="${cx}" y="${mid + 4}"${turn}>${esc(b.label)} →</text>${end("axis-bound", cx - half, b.low)}${end("axis-bound is-high", cx + half, b.high)}</g>`;
+      const axis = `data-axis="${esc(b.id)}"`;
+      const end = (cls: string, bound: string, x: number, word: string | undefined): string =>
+        word
+          ? `<text class="${cls}" x="${x}" y="${mid + 4}"${turn} ${axis} data-bound="${bound}">${esc(word)}</text>`
+          : "";
+      return `<g class="band band-axis"><text class="axis-label" x="${cx}" y="${mid + 4}"${turn} ${axis}>${esc(b.label)} →</text>${end("axis-bound", "low", cx - half, b.low)}${end("axis-bound is-high", "high", cx + half, b.high)}</g>`;
     }
     case "slice":
       // A line across the board, its name just under it: the stories above it ship first.
@@ -109,7 +112,9 @@ export function bandMarkup(b: Band): string {
 function laneHeading(b: Band): string {
   // The name moves up to leave the second line to the hint.
   const y = b.y + (b.hint ? 21 : 27);
-  const hint = b.hint ? `<text class="lane-hint" x="${b.x + 14}" y="${b.y + 37}">${esc(b.hint)}</text>` : "";
+  const hint = b.hint
+    ? `<text class="lane-hint" x="${b.x + 14}" y="${b.y + 37}" data-lane="${esc(b.id)}">${esc(b.hint)}</text>`
+    : "";
   return `<text class="lane-label" x="${b.x + 14}" y="${y}" data-lane="${esc(b.id)}">${esc(b.label)}</text><text class="lane-count" x="${b.x + b.w - 14}" y="${y}">${b.count ?? 0}</text>${hint}`;
 }
 

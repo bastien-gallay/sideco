@@ -164,8 +164,9 @@ export function parseCommand(input: unknown): Command {
         board: boardId(f),
         axis: text(f, "axis", 1),
         label: text(f, "label", LIMITS.title, true),
-        low: optional(f, "low", (x, k) => text(x, k, LIMITS.title)),
-        high: optional(f, "high", (x, k) => text(x, k, LIMITS.title)),
+        // Empty, an end gives back the workshop's word for it.
+        low: optional(f, "low", (x, k) => text(x, k, LIMITS.title, true)),
+        high: optional(f, "high", (x, k) => text(x, k, LIMITS.title, true)),
       };
     case "add-lane":
       return {

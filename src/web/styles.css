@@ -1228,75 +1228,6 @@ kbd {
   cursor: text;
 }
 
-/*
- * The names of rows, steps and lanes stay on screen while the board scrolls:
- * a halo of what lies under them keeps them readable over the cards they pass.
- */
-.heads-strip {
-  fill: var(--surface);
-  stroke: var(--rule);
-}
-
-.heads-lane-strip {
-  fill: var(--sideco-lane);
-}
-
-/* Straight to the board: out of sight until the keyboard reaches it, first thing on the page. */
-.skip {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 40;
-  padding: 6px 12px;
-  border-radius: 6px;
-  background: var(--accent);
-  color: #ffffff;
-  font-weight: 600;
-  transform: translateY(-200%);
-}
-
-.skip:focus-visible {
-  transform: none;
-}
-
-/* Said to a screen reader only: what the eye already sees on the board. */
-.spoken {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.sideco-board .lane-label,
-.sideco-board .lane-count,
-.sideco-board .lane-hint {
-  paint-order: stroke;
-  stroke: var(--sideco-lane);
-  stroke-width: 5px;
-  stroke-linejoin: round;
-}
-
-.card {
-  cursor: grab;
-  outline: none;
-  transition:
-    transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 200ms;
-}
-
-.card.no-motion,
-.card.is-dragging {
-  transition: none;
-}
-
-.card.is-dragging {
-  cursor: grabbing;
-  opacity: 0.85;
-}
-
-/* A kanban lane heading takes the keyboard: it says so as a card does. */
 .layer-heads .lane-label:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
@@ -2086,4 +2017,36 @@ legend {
 .mark-list .card-done {
   font-size: 13px;
   font-weight: 700;
+}
+
+/* A lane's subtitle and a plan's axes take a double-click too: they are rewritten in place. */
+.layer-heads .lane-hint,
+.layer-heads .lane-hint-blank,
+.band-axis .axis-label,
+.band-axis .axis-bound {
+  pointer-events: auto;
+  cursor: text;
+}
+
+/* Where a subtitle would go: said only while the pointer is on the heading, never in the way. */
+.layer-heads .lane-hint-blank {
+  fill: var(--muted);
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.is-past .layer-heads .lane-hint-blank {
+  display: none;
+}
+
+.is-past .layer-heads .lane-hint,
+.is-past .band-axis .axis-label,
+.is-past .band-axis .axis-bound {
+  cursor: default;
+}
+
+.layer-heads .band-lane:hover .lane-hint-blank {
+  opacity: 1;
 }

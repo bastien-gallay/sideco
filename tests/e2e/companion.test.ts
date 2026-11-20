@@ -2699,6 +2699,69 @@ describe("two sessions on one project", () => {
   });
 });
 
+describe("a lane's subtitle and a plan's axes, rewritten by the mouse", () => {
+  const boardOf = async (id: string) => (await workspace()).boards.find((b) => b.id === id);
+  const editor = () => page.locator("textarea.card-editor");
+
+  test("a lane without a subtitle offers one under the pointer; written, then emptied, it comes and goes", async () => {
+    await agent('board new "Sous-titres" --format kanban --id colonnes-t118\nadd task "Là" --lane doing');
+    await page.locator(".board-picker select").selectOption("colonnes-t118");
+    await card("T1").waitFor();
+    const blank = page.locator('.layer-heads .lane-hint-blank[data-lane="doing"]');
+    expect(await blank.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
+    await page.locator('.layer-heads .lane-label[data-lane="doing"]').hover();
+    await until(
+      "the offer shows",
+      async () => (await blank.evaluate((el) => getComputedStyle(el).opacity)) === "1",
+    );
+    expect(await blank.textContent()).toBe("Add a subtitle");
+    await blank.dblclick();
+    await typeInEditor("Ce qui avance");
+    await until(
+      "the lane has its subtitle",
+      async () => (await boardOf("colonnes-t118"))?.hints?.doing === "Ce qui avance",
+    );
+    const hint = page.locator('.layer-heads .lane-hint[data-lane="doing"]');
+    await until("the subtitle drawn", async () => (await hint.textContent()) === "Ce qui avance");
+
+    await hint.dblclick();
+    expect(await editor().inputValue()).toBe("Ce qui avance");
+    await typeInEditor("");
+    await until(
+      "the subtitle gone",
+      async () => (await boardOf("colonnes-t118"))?.hints?.doing === undefined,
+    );
+    await until("the offer back", async () => (await blank.count()) === 1);
+  });
+
+  test("an axis takes a new name and new words at its ends; emptied, each gives the workshop's back", async () => {
+    await agent('board new "Axes" --format impact-effort --id axes-t118\nadd item "Un" --lane quick');
+    await page.locator(".board-picker select").selectOption("axes-t118");
+    await card("I1").waitFor();
+    const label = page.locator('.band-axis .axis-label[data-axis="y"]');
+    await label.dblclick();
+    expect(await editor().inputValue()).toBe("Impact");
+    await typeInEditor("Valeur");
+    await until("the axis renamed", async () => (await label.textContent()) === "Valeur →");
+    expect((await boardOf("axes-t118"))?.axes?.y?.label).toBe("Valeur");
+
+    const low = page.locator('.band-axis .axis-bound[data-axis="y"][data-bound="low"]');
+    await low.dblclick();
+    expect(await editor().inputValue()).toBe("low");
+    await typeInEditor("faible");
+    await until("the start renamed", async () => (await low.textContent()) === "faible");
+    expect((await boardOf("axes-t118"))?.axes?.y).toEqual({ label: "Valeur", low: "faible" });
+
+    await low.dblclick();
+    await typeInEditor("");
+    await until("the start given back", async () => (await low.textContent()) === "low");
+    await label.dblclick();
+    await typeInEditor("");
+    await until("the axis given back", async () => (await label.textContent()) === "Impact →");
+    expect((await boardOf("axes-t118"))?.axes?.y).toBeUndefined();
+  });
+});
+
 describe("look", () => {
   test("dark scheme and a narrow window keep the board usable", async () => {
     await page.emulateMedia({ colorScheme: "dark" });
