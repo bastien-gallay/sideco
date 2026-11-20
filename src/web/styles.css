@@ -220,10 +220,6 @@ input[type="text"] {
   min-width: 0;
 }
 
-.top-claude .status {
-  flex: 0 1 auto;
-}
-
 .brand {
   font-size: 15px;
   letter-spacing: 0.02em;
@@ -234,30 +230,6 @@ input[type="text"] {
   align-items: center;
   gap: 4px;
   min-width: 0;
-}
-
-/* The board menu: a quiet "⋯" beside the board's name; its list opens under it, to the right. */
-.board-menu summary {
-  min-width: 32px;
-  padding: 3px 8px;
-  border-color: transparent;
-  background: none;
-  color: var(--muted);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-align: center;
-}
-
-.board-menu summary:hover,
-.board-menu[open] summary {
-  border-color: var(--rule);
-  background: var(--surface);
-  color: var(--ink);
-}
-
-.board-menu .menu-items {
-  right: auto;
-  left: 0;
 }
 
 .menu-heading {
@@ -295,6 +267,10 @@ input[type="text"] {
   flex: 1;
   min-width: 0;
   color: var(--muted);
+}
+
+.top-claude .status {
+  flex: 0 1 auto;
 }
 
 .status-text {
@@ -469,6 +445,30 @@ input[type="text"] {
   border-top: 1px solid var(--rule);
 }
 
+/* The board menu: a quiet "⋯" beside the board's name; its list opens under it, to the right. */
+.board-menu summary {
+  min-width: 32px;
+  padding: 3px 8px;
+  border-color: transparent;
+  background: none;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.board-menu summary:hover,
+.board-menu[open] summary {
+  border-color: var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.board-menu .menu-items {
+  right: auto;
+  left: 0;
+}
+
 .banner {
   grid-row: 2;
   display: flex;
@@ -537,69 +537,6 @@ input[type="text"] {
   top: 8px;
   right: 8px;
   z-index: 1;
-}
-
-.fold-left .left,
-.fold-right .right {
-  padding: 8px 6px;
-  overflow: hidden;
-}
-
-.fold-left .left > .fold,
-.fold-right .right > .fold {
-  position: static;
-  justify-self: center;
-  align-self: center;
-  margin: 0 0 6px;
-}
-
-.fold-left .left .palette > :not(.types),
-.fold-left .left .notes,
-.fold-right .right > :not(.fold, .tabs) {
-  display: none;
-}
-
-/* Folded, the tabs stand in the rail, one icon each: a click opens the panel on that tab. */
-.fold-right .right .tabs {
-  flex-direction: column;
-  align-items: center;
-  margin: 0;
-  border-bottom: 0;
-}
-
-.fold-right .right .tab {
-  justify-content: center;
-  width: 28px;
-  padding: 6px 0;
-  border-bottom: 0;
-}
-
-.fold-right .right .tab[aria-selected="true"] {
-  color: var(--accent);
-}
-
-.fold-right .right .tab-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.fold-left .left .type {
-  justify-content: center;
-  padding: 4px 0;
-}
-
-/* The kind's name stays for the ear and the tooltip; the eye has the swatch. */
-.fold-left .left .type-text {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 .left,
@@ -889,6 +826,7 @@ input[type="text"] {
   margin-top: 14px;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: not the board menu's summary, which the rule compares it with */
 .resolved summary {
   padding: 4px 0;
   color: var(--muted);
@@ -1046,6 +984,70 @@ kbd {
   display: flex;
   gap: 4px;
   margin-top: 10px;
+}
+
+/* Folded, a panel keeps its rail: these come after the panels' own rules, which they override. */
+.fold-left .left,
+.fold-right .right {
+  padding: 8px 6px;
+  overflow: hidden;
+}
+
+.fold-left .left > .fold,
+.fold-right .right > .fold {
+  position: static;
+  justify-self: center;
+  align-self: center;
+  margin: 0 0 6px;
+}
+
+.fold-left .left .palette > :not(.types),
+.fold-left .left .notes,
+.fold-right .right > :not(.fold, .tabs) {
+  display: none;
+}
+
+/* Folded, the tabs stand in the rail, one icon each: a click opens the panel on that tab. */
+.fold-right .right .tabs {
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  border-bottom: 0;
+}
+
+.fold-right .right .tab {
+  justify-content: center;
+  width: 28px;
+  padding: 6px 0;
+  border-bottom: 0;
+}
+
+.fold-right .right .tab[aria-selected="true"] {
+  color: var(--accent);
+}
+
+.fold-right .right .tab-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.fold-left .left .type {
+  justify-content: center;
+  padding: 4px 0;
+}
+
+/* The kind's name stays for the ear and the tooltip; the eye has the swatch. */
+.fold-left .left .type-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* ── Stage ────────────────────────────────────────────────────────────────── */
@@ -1675,10 +1677,6 @@ legend {
   gap: 6px;
 }
 
-.history .history-label {
-  grid-column: 1 / -1;
-}
-
 .history-list {
   flex: 1 1 auto;
   min-height: 0;
@@ -1752,6 +1750,10 @@ legend {
   white-space: nowrap;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.history .history-label {
+  grid-column: 1 / -1;
 }
 
 /* One row: what Claude has read and when it will read the rest, then the form that sends. */
