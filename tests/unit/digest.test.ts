@@ -344,4 +344,68 @@ describe("moves are worded against the final board", () => {
     human(t, "move T3 --lane done\nrm T3");
     expect(changes(t, mark)).toBe('board sprint "Sprint 12"\n  − T3 task "Tester de bout en bout" removed');
   });
+
+  describe("a gesture and its undo cancel out", () => {
+    const undo = (t: Table): void => void t.do({ kind: "undo", board: "commande" }, "human");
+    const redo = (t: Table): void => void t.do({ kind: "redo", board: "commande" }, "human");
+
+    test("a column moved then undone is no change", () => {
+      const t = table(ORDERING);
+      const mark = t.seq;
+      human(t, "move-col 1 2");
+      undo(t);
+      expect(describeChanges(t.events, mark)).toMatchObject({ text: "", count: 0, about: [] });
+    });
+
+    test("a detail written then undone is no change", () => {
+      const t = table(ORDERING);
+      const mark = t.seq;
+      human(t, 'detail P1 "Règle n°4"');
+      undo(t);
+      expect(describeChanges(t.events, mark)).toMatchObject({ text: "", count: 0 });
+    });
+
+    test("only the gesture undone goes: the one before it stays", () => {
+      const t = table(ORDERING);
+      const mark = t.seq;
+      human(t, 'rename E1 "Commande validée"');
+      human(t, "move-col 1 2");
+      undo(t);
+      expect(changes(t, mark)).toBe(
+        'board commande "Passage de commande"\n  ~ E1 renamed "Commande passée" → "Commande validée"',
+      );
+    });
+
+    test("undone then redone shows once, as the gesture", () => {
+      const t = table(ORDERING);
+      const mark = t.seq;
+      human(t, "move-col 1 2");
+      undo(t);
+      redo(t);
+      expect(changes(t, mark).split("\n").slice(1)).toEqual([
+        "  ~ column 1 moved to 2 with its cards (column 2 shifted left)",
+      ]);
+    });
+
+    test("a board removed then brought back by undo is no change, and what was pending on it stays", () => {
+      const t = table(ORDERING);
+      const mark = t.seq;
+      human(t, 'rename E1 "Validée"');
+      human(t, "board rm commande");
+      undo(t);
+      expect(changes(t, mark)).toBe(
+        'board commande "Passage de commande"\n  ~ E1 renamed "Commande passée" → "Validée"',
+      );
+    });
+
+    test("an undo of a gesture the reader already saw is news", () => {
+      const t = table(ORDERING);
+      human(t, "move-col 1 2");
+      const mark = t.seq;
+      undo(t);
+      expect(changes(t, mark).split("\n").slice(1)).toEqual([
+        "  ~ column 2 moved to 1 with its cards (column 1 shifted right)",
+      ]);
+    });
+  });
 });
