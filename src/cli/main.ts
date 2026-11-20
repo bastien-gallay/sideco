@@ -312,10 +312,10 @@ async function run(verb: string, rest: string[]): Promise<number> {
   }
 
   if (!BOARD_VERBS.has(verb)) throw new UsageError(`unknown command "${verb}" (try \`sideco help\`)`);
-  // `board new` and `board rm` name their board themselves: no default applies.
+  // `board new` and `board rm` name their board themselves, and `session name` is on none: no default applies.
   const action = boardAction(
     [verb, ...rest.filter((_token, i) => !isGlobalFlag(rest, i))],
-    verb === "board" ? undefined : defaultBoard(read(), args, true),
+    verb === "board" || verb === "session" ? undefined : defaultBoard(read(), args, true),
   );
   const { kind, board } = action.command;
   if ((kind === "undo" || kind === "redo") && typeof board === "string")

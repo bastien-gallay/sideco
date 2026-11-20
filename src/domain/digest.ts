@@ -69,7 +69,7 @@ export function describeSessions(ws: Workspace, me?: string): string {
   return open
     .map((s) => {
       const who = s.name ? `${s.name} (${s.id.slice(0, 8)})` : s.id.slice(0, 8);
-      const boards = ws.follows[s.id] ?? [];
+      const boards = (ws.follows[s.id] ?? []).filter((board) => findBoard(ws, board));
       const follows = boards.length > 0 ? `follows ${boards.join(", ")}` : "follows no board";
       return `${who}  ${s.status}  ${follows}${s.id === me ? "  ← you" : ""}`;
     })

@@ -293,7 +293,12 @@ describe("Claude Code hooks, through stdin as Claude Code calls them", () => {
 
   test("a session names itself, and `sessions` lists it with what it follows", async () => {
     const env = { SIDECO_SESSION: "s9" };
-    expect((await sideco(["session", "name", "atelier"], { env })).code).toBe(0);
+    // With several boards, naming the session needs none of them.
+    await sideco(["board", "new", "Second tableau", "--format", "kanban", "--id", "second"], { env });
+    const named = await sideco(["session", "name", "atelier"], { env });
+    expect(named.err).toBe("");
+    expect(named.code).toBe(0);
+    await sideco(["board", "rm", "second"], { env });
     await sideco(["follow", "passage-de-commande"], { env });
     const listed = (await sideco(["sessions"], { env })).out;
     expect(listed).toContain("atelier (s9)");
