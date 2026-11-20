@@ -1909,3 +1909,8 @@ legend {
     animation: none;
   }
 }
+
+/* The ≡ of a card with a detail: pressed, it opens the detail in the side panel. */
+.card-detail {
+  cursor: pointer;
+}

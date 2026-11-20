@@ -91,6 +91,8 @@ export interface BoardHooks {
   notice(text: string): void;
   /** The card's detail is to be written: the page opens it in its panel. */
   editDetail(id: string): void;
+  /** The card's detail is to be read: the page shows it in its panel, unfolded if need be. */
+  showDetail(id: string): void;
 }
 
 /**
@@ -1238,6 +1240,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const wasDrop = dropped;
     dropped = false;
     const target = under(event);
+    // The ≡ a card wears with a detail leads to it; the rest of the card was handled as it was pressed.
+    const marked = target?.closest(".card-detail") ? cardAt(target) : undefined;
+    if (!wasDrop && marked) hooks.showDetail(marked);
     if (wasDrop || cardAt(target)) return;
     const offer = offerAt(target);
     if (offer) {

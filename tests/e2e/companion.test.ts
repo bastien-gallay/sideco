@@ -332,12 +332,16 @@ describe("the human edits, the agent is told", () => {
     );
     expect(await page.locator(".pending").textContent()).toContain("Claude reads them as soon as you send.");
     // One session runs: the one the turn goes to is said on the button only, not on a line of its own.
-    expect(await page.locator(".pass button").getAttribute("title")).toMatch(/^To the session .+ · s1$/);
+    expect(await page.locator(".pass button").getAttribute("title")).toMatch(
+      /^Send to Claude \((⌘↵|Ctrl\+Enter)\) · To the session .+ · s1$/,
+    );
     expect(await page.locator(".pass-to").count()).toBe(0);
     await shot("05-listening");
 
     await page.locator(".pass input").fill("J'ai corrigé la règle, continue");
-    await page.locator(".pass button").click();
+    // From the board, not only from the field: ⌘↵ or Ctrl+Enter sends, the word typed with it.
+    await page.locator(".stage").click({ position: { x: 900, y: 600 } });
+    await page.keyboard.press("ControlOrMeta+Enter");
     const waited = await waiting;
     expect(waited.outcome).toBe("passed");
     expect(waited.text).toContain("J'ai corrigé la règle, continue");
@@ -1312,6 +1316,43 @@ describe("the chosen card, read in the right panel", () => {
     await page.keyboard.press("ArrowRight");
     expect(await page.evaluate(() => document.activeElement?.id)).toBe("tab-session");
     await shot("57-tabs");
+  });
+
+  const foldedRight = () => page.locator(".work").evaluate((w) => w.classList.contains("fold-right"));
+
+  test("Detail on a card's bar opens the folded panel on its Detail tab", async () => {
+    await page.locator("#tab-history").click();
+    await page.keyboard.press("]");
+    await until("the right panel is folded", foldedRight);
+    await card("E1").click();
+    await page.locator(".card-tools button", { hasText: "Detail" }).click();
+    await until("the right panel is open again", async () => !(await foldedRight()));
+    expect(await page.locator("#tab-detail").getAttribute("aria-selected")).toBe("true");
+    await panel().waitFor({ state: "visible" });
+    await page.keyboard.press("Escape");
+  });
+
+  test("the ≡ a card wears opens its detail, the panel too when it was folded", async () => {
+    await page.locator("#tab-session").click();
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("]");
+    await until("the right panel is folded", foldedRight);
+    await card("E1").locator(".card-detail").click();
+    await until("the right panel is open again", async () => !(await foldedRight()));
+    expect(await page.locator("#tab-detail").getAttribute("aria-selected")).toBe("true");
+    expect(await panel().locator(".card-panel-name").textContent()).toBe(
+      (await elementOf("ajout-case", "E1"))?.label ?? null,
+    );
+    // Read, not written: the detail is shown, no editor opened.
+    expect(await page.locator(".card-panel.is-editing").count()).toBe(0);
+    // Chosen already, it opens the tab again from another one.
+    await page.locator("#tab-history").click();
+    await card("E1").locator(".card-detail").click();
+    await until(
+      "back on Detail",
+      async () => (await page.locator("#tab-detail").getAttribute("aria-selected")) === "true",
+    );
+    await page.keyboard.press("Escape");
   });
 });
 

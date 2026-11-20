@@ -338,6 +338,13 @@ const view = mountBoard(canvas, {
   announce: speak,
   notice: (text) => say(text),
   editDetail: (id) => editDetail(id, "card"),
+  showDetail: (id) => {
+    // Not by chooseTab: the Detail tab is quiet until the repaint learns of the card.
+    state.selected = id;
+    tab = "detail";
+    if (isFolded("right")) toggleFold("right");
+    render();
+  },
 });
 
 /** A search over the cards of the board shown: `/` opens it, Enter goes from one card found to the next. */
@@ -619,8 +626,12 @@ const paintBoardPicker = region(boardPicker, (m: BoardPickerModel) => {
 
 /** As the reader's keyboard writes them: ⌘ on a Mac, Ctrl elsewhere. */
 const SHORTCUTS = /Mac|iPhone|iPad/.test(navigator.platform)
-  ? { undo: "⌘Z", redo: "⇧⌘Z" }
-  : { undo: "Ctrl+Z", redo: locale === "fr" ? "Ctrl+Maj+Z" : "Ctrl+Shift+Z" };
+  ? { undo: "⌘Z", redo: "⇧⌘Z", send: "⌘↵" }
+  : {
+      undo: "Ctrl+Z",
+      redo: locale === "fr" ? "Ctrl+Maj+Z" : "Ctrl+Shift+Z",
+      send: locale === "fr" ? "Ctrl+Entrée" : "Ctrl+Enter",
+    };
 
 const paintUndo = region(undoGroup, (m: { undo: boolean; redo: boolean }) => [
   h(
@@ -1269,7 +1280,8 @@ function paintTurn(m: TurnModel): void {
   paintTurnSays(m);
   passOn = m.board;
   passMessage.disabled = passButton.disabled = !m.live || !m.board;
-  passButton.title = m.to !== undefined ? `${t.handOverTo} ${m.to}` : "";
+  const to = m.to !== undefined ? ` · ${t.handOverTo} ${m.to}` : "";
+  passButton.title = `${t.withKey(t.handOver, SHORTCUTS.send)}${to}`;
 }
 
 interface HistoryModel {
@@ -1418,6 +1430,9 @@ window.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
   if (key === "z") void (event.shiftKey ? redo() : undo());
   else if (key === "y" && !event.shiftKey) void redo();
+  // Sending is one chord from anywhere but a text being typed: the word in the field goes with it.
+  else if (key === "enter" && !event.shiftKey && !passButton.disabled)
+    passButton.form?.requestSubmit(passButton);
   else return;
   event.preventDefault();
 });
