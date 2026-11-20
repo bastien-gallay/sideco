@@ -2361,6 +2361,24 @@ describe("tidying up", () => {
     forgiveTheCut(before);
   });
 
+  test("a companion restarted with the same page keeps the card chosen, without a reload", async () => {
+    const before = problems.length;
+    await card("E1").click();
+    const chosen = async () => ((await card("E1").getAttribute("class")) ?? "").includes("is-selected");
+    await until("chosen", chosen);
+    await mark();
+    await restart();
+    for (let attempt = 0; attempt < 200 && running.hub.watching === 0; attempt++) await Bun.sleep(50);
+    // The tab replays the journal again: the card comes back chosen once it is done.
+    await agent('add event "Après le redémarrage" --col 3', "flux-sideco");
+    await card("E3").waitFor();
+    await until("chosen again after the restart", chosen);
+    expect(await marked()).toBe(true);
+    await page.keyboard.press("Escape");
+    await until("left", async () => !(await chosen()));
+    forgiveTheCut(before);
+  });
+
   test("a companion restarted with another page: the open tab reloads itself, once", async () => {
     const before = problems.length;
     await mark();

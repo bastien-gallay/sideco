@@ -2143,17 +2143,25 @@ function freeId(slug: string): string {
 
 /** The card chosen, kept by the tab across a reload: the page comes back on it, the keyboard with it. */
 const CHOSEN_CARD = "sideco.chosen-card";
-let toRestore: { board: string; id: string } | undefined = (() => {
+function keptCard(): { board: string; id: string } | undefined {
   try {
     return JSON.parse(sessionStorage.getItem(CHOSEN_CARD) ?? "null") ?? undefined;
   } catch {
     return undefined;
   }
-})();
+}
+let toRestore = keptCard();
 
-/** Once the journal is replayed: the card kept is chosen again, then the choice is kept as it changes. */
+/**
+ * Once the journal is replayed: the card kept is chosen again, then the choice is kept as it changes.
+ * A replay starts over when the companion restarts, without a reload: the card is taken back then too.
+ */
 function keepChosen(board: string | undefined): void {
-  if (!caughtUpYet() || !board) return;
+  if (!caughtUpYet()) {
+    toRestore ??= keptCard();
+    return;
+  }
+  if (!board) return;
   const kept = toRestore;
   if (kept) {
     toRestore = undefined;
