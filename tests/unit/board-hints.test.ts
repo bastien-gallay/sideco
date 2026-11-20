@@ -70,9 +70,21 @@ describe("what a lane stands for, on one board", () => {
     expect(describeEvent(t.events.at(-1) as never, "fr")).toBe(
       "Tu dis ce que la colonne quick représente : « Interne · positif »",
     );
+    // Told with the board at hand, the lane goes by its name, not by its id.
+    expect(describeEvent(t.events.at(-1) as never, "en", t.ws)).toBe(
+      "You say what the lane “Quick wins” stands for: “Interne · positif”",
+    );
+    t.script('lane quick "Strength"', "human");
+    expect(describeEvent(t.events.at(-1) as never, "en", t.ws)).toBe(
+      "You name the lane “Quick wins” “Strength”",
+    );
+    t.script('lane hint quick "Interne · utile"', "human");
+    expect(describeEvent(t.events.at(-1) as never, "fr", t.ws)).toBe(
+      "Tu dis ce que la colonne « Strength » représente : « Interne · utile »",
+    );
     const back = table();
     for (const command of fromModel(JSON.parse(JSON.stringify(toModel(t.board()))), "copy")) back.do(command);
-    expect(lane(back, "quick")?.hint).toBe("Interne · positif");
+    expect(lane(back, "quick")?.hint).toBe("Interne · utile");
   });
 });
 

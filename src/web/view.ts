@@ -140,7 +140,28 @@ const MAX_LINE = 90;
  */
 export function describeEvent(e: Recorded, locale: Locale = DEFAULT_LOCALE, ws?: Workspace): string {
   const session = e.event === "TurnPassed" && e.target && ws ? findSession(ws, e.target) : undefined;
-  return clip(WORDING[locale](e, session ? ` (${sessionName(session)})` : "") + answered(e, locale));
+  return clip(
+    WORDING[locale](e, session ? ` (${sessionName(session)})` : "", laneCalled(e, locale, ws)) +
+      answered(e, locale),
+  );
+}
+
+/**
+ * How a line names a lane: by the name the reader sees, quoted, when the board
+ * is at hand, else by its id. `workshop` asks for the name its workshop gives,
+ * the one a renaming starts from.
+ */
+type LaneCalled = (lane: string, workshop?: boolean) => string;
+
+function laneCalled(e: Recorded, locale: Locale, ws?: Workspace): LaneCalled {
+  const board = ws && "board" in e ? ws.boards.find((b) => b.id === e.board) : undefined;
+  if (!board) return (lane) => lane;
+  const format = findFormat(board.format);
+  const [open, close] = locale === "fr" ? ["« ", " »"] : ["“", "”"];
+  return (lane, workshop = false) => {
+    const name = laneName(format, workshop ? { lanes: {} } : board, lane, locale);
+    return name === lane ? lane : `${open}${name}${close}`;
+  };
 }
 
 /** A session as the page names it: its folder, and the start of its id. */
@@ -151,7 +172,10 @@ export function sessionName(session: Session): string {
 }
 
 /** `to` is said after Claude in a hand-over: the session it went to, or nothing. */
-const WORDING: Record<Locale, (e: Recorded, to: string) => string> = { en: english, fr: french };
+const WORDING: Record<Locale, (e: Recorded, to: string, lane: LaneCalled) => string> = {
+  en: english,
+  fr: french,
+};
 
 const ANSWERS: Record<Locale, { undo: string; redo: string }> = {
   en: { undo: " (undo)", redo: " (redo)" },
@@ -165,7 +189,7 @@ function answered(e: Recorded, locale: Locale): string {
   return e.redoes !== undefined ? ANSWERS[locale].redo : "";
 }
 
-function english(e: Recorded, to: string): string {
+function english(e: Recorded, to: string, lane: LaneCalled): string {
   const you = e.actor === "human";
   const who = { human: "You", agent: "Claude", system: "Sideco" }[e.actor];
   /** `You add`, `Claude adds`. */
@@ -177,22 +201,24 @@ function english(e: Recorded, to: string): string {
       return `${does("rename")} the board to “${e.title}”`;
     case "LaneNamed":
       return e.label
-        ? `${does("name")} the lane ${e.lane} “${e.label}”`
-        : `${does("give")} the lane ${e.lane} its workshop's name back`;
+        ? `${does("name")} the lane ${lane(e.lane, true)} “${e.label}”`
+        : `${does("give")} the lane ${lane(e.lane)} its workshop's name back`;
     case "LaneHinted":
       return e.hint
-        ? `${does("say")} what the lane ${e.lane} stands for: “${e.hint}”`
-        : `${does("give")} the lane ${e.lane} its workshop's hint back`;
+        ? `${does("say")} what the lane ${lane(e.lane)} stands for: “${e.hint}”`
+        : `${does("give")} the lane ${lane(e.lane)} its workshop's hint back`;
     case "AxisNamed":
       return e.label
         ? `${does("name")} the axis ${e.axis} “${e.label}”${e.low || e.high ? `, from “${e.low ?? "…"}” to “${e.high ?? "…"}”` : ""}`
         : `${does("give")} the axis ${e.axis} its workshop's name back`;
     case "LaneAdded":
-      return e.label ? `${does("add")} the lane “${e.label}”` : `${does("put")} the lane ${e.lane} back`;
+      return e.label
+        ? `${does("add")} the lane “${e.label}”`
+        : `${does("put")} the lane ${lane(e.lane)} back`;
     case "LaneRemoved":
-      return `${does("remove")} the lane ${e.lane}`;
+      return `${does("remove")} the lane ${lane(e.lane)}`;
     case "LaneMoved":
-      return `${does("move")} the lane ${e.lane}`;
+      return `${does("move")} the lane ${lane(e.lane)}`;
     case "SliceAdded":
       return `${does("add")} the slice “${e.label}”`;
     case "SliceRemoved":
@@ -270,7 +296,7 @@ function english(e: Recorded, to: string): string {
   }
 }
 
-function french(e: Recorded, to: string): string {
+function french(e: Recorded, to: string, lane: LaneCalled): string {
   const you = e.actor === "human";
   const who = { human: "Tu", agent: "Claude", system: "Sideco" }[e.actor];
   /** `Tu ajoutes`, `Claude ajoute`. */
@@ -282,12 +308,12 @@ function french(e: Recorded, to: string): string {
       return `${verb("renommes", "renomme")} le tableau en « ${e.title} »`;
     case "LaneNamed":
       return e.label
-        ? `${verb("nommes", "nomme")} la colonne ${e.lane} « ${e.label} »`
-        : `${verb("rends", "rend")} à la colonne ${e.lane} le nom de son atelier`;
+        ? `${verb("nommes", "nomme")} la colonne ${lane(e.lane, true)} « ${e.label} »`
+        : `${verb("rends", "rend")} à la colonne ${lane(e.lane)} le nom de son atelier`;
     case "LaneHinted":
       return e.hint
-        ? `${verb("dis", "dit")} ce que la colonne ${e.lane} représente : « ${e.hint} »`
-        : `${verb("rends", "rend")} à la colonne ${e.lane} le sous-titre de son atelier`;
+        ? `${verb("dis", "dit")} ce que la colonne ${lane(e.lane)} représente : « ${e.hint} »`
+        : `${verb("rends", "rend")} à la colonne ${lane(e.lane)} le sous-titre de son atelier`;
     case "AxisNamed":
       return e.label
         ? `${verb("nommes", "nomme")} l'axe ${e.axis} « ${e.label} »${e.low || e.high ? `, de « ${e.low ?? "…"} » à « ${e.high ?? "…"} »` : ""}`
@@ -295,11 +321,11 @@ function french(e: Recorded, to: string): string {
     case "LaneAdded":
       return e.label
         ? `${verb("ajoutes", "ajoute")} la colonne « ${e.label} »`
-        : `${verb("remets", "remet")} la colonne ${e.lane}`;
+        : `${verb("remets", "remet")} la colonne ${lane(e.lane)}`;
     case "LaneRemoved":
-      return `${verb("supprimes", "supprime")} la colonne ${e.lane}`;
+      return `${verb("supprimes", "supprime")} la colonne ${lane(e.lane)}`;
     case "LaneMoved":
-      return `${verb("déplaces", "déplace")} la colonne ${e.lane}`;
+      return `${verb("déplaces", "déplace")} la colonne ${lane(e.lane)}`;
     case "SliceAdded":
       return `${verb("ajoutes", "ajoute")} la tranche « ${e.label} »`;
     case "SliceRemoved":
