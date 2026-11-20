@@ -343,6 +343,7 @@ Le pourquoi des choix est dans [PRD.md](PRD.md).
 ## Limites connues
 
 - ⚠️ Le contenu de `TodoWrite` n'est pas documenté côté hooks : les tâches sont lues prudemment, et peuvent manquer dans le panneau de session.
+- La page ne reçoit les outils lancés par Claude que pour les quatre derniers tours de chaque session, ceux que montre l'onglet `Session` : c'est les quatre cinquièmes du journal en moins à l'ouverture. En remontant l'historique, un tour plus ancien montre sa demande, sans ses outils. Le journal, lui, les garde tous.
 - ⚠️ Deux personnes qui modifient `.sideco/boards.jsonl` chacune de leur côté auront un conflit de fusion : le multi-utilisateur n'est pas traité.
 - Le compagnon s'arrête seul 5 minutes après que la dernière page et la dernière session l'ont quitté. Une session tuée sans se terminer le garde en marche jusqu'à 12 h. `SIDECO_IDLE_MS` règle le délai ; `SIDECO_IDLE_MS=off` le garde en marche jusqu'à `sideco stop`.
 - Une session sans interface (`claude -p`) n'est jamais réveillée par un passage de main : elle doit pouvoir se terminer.

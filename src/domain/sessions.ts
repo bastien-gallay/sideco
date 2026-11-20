@@ -108,3 +108,18 @@ function setStatus(session: Session, status: AgentStatus, detail?: string): void
   session.status = status;
   session.statusDetail = detail;
 }
+
+/** The turns of a session its panel shows: the last ones. */
+export const TURNS_SHOWN = 4;
+
+const isTool = (e: Recorded): boolean => e.event === "ToolStarted" || e.event === "ToolFinished";
+
+/**
+ * Whether a page is sent `e`. Every fact is, but of the tools each session ran
+ * only those of the turns its panel shows: four fifths of a journal are tools.
+ * Travelling back in time, an older turn shows its prompt and not its tools.
+ */
+export function forThePage(ws: Workspace): (e: Recorded) => boolean {
+  const since = new Map(ws.sessions.map((s) => [s.id, s.turns.at(-TURNS_SHOWN)?.startedSeq ?? 0]));
+  return (e) => !isTool(e) || e.seq >= (since.get(e.session ?? "") ?? 0);
+}

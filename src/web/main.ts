@@ -11,6 +11,7 @@ import { boardPurpose, FORMATS, findFormat, findType, planAxis } from "../domain
 import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { chipText, labelColours } from "../domain/render/labels.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
+import { TURNS_SHOWN } from "../domain/sessions.ts";
 import {
   type Board,
   findBoard,
@@ -68,7 +69,6 @@ import {
   waitsNotice,
 } from "./view.ts";
 
-const TURNS_SHOWN = 4;
 const TOOLS_SHOWN = 8;
 const MIME: Record<ExportFormat, string> = {
   md: "text/markdown",

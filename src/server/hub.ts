@@ -8,6 +8,7 @@ import { type Command, CommandError } from "../domain/commands.ts";
 import { type Context, decide } from "../domain/decide.ts";
 import { type Changes, describeChanges } from "../domain/digest.ts";
 import type { Recorded, SidecoEvent } from "../domain/events.ts";
+import { forThePage } from "../domain/sessions.ts";
 import { apply, concerns, findSession, replay, type Workspace } from "../domain/workspace.ts";
 import type { Journal } from "./journal.ts";
 
@@ -120,6 +121,11 @@ export class Hub {
   eventsAfter(seq: number): Recorded[] {
     const first = this.events.findIndex((e) => e.seq > seq);
     return first === -1 ? [] : this.events.slice(first);
+  }
+
+  /** What a page that has folded up to `seq` is sent to catch up: the old tools left out. */
+  pageEventsAfter(seq: number): Recorded[] {
+    return this.eventsAfter(seq).filter(forThePage(this.workspace));
   }
 
   /** What the human changed that `session` has not been told yet; `ack` records that it now has. */

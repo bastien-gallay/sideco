@@ -160,7 +160,7 @@ function stream(hub: Hub, build: string, request: Request, url: URL): Response {
         const said: Presence = { listening, run: hub.run, build };
         send(`event: presence\ndata: ${JSON.stringify(said)}\n\n`);
       };
-      for (const event of hub.eventsAfter(after)) send(frame(event.seq, event));
+      for (const event of hub.pageEventsAfter(after)) send(frame(event.seq, event));
       presence(hub.listening);
       const stopEvents = hub.subscribe((event) => send(frame(event.seq, event)));
       const stopPresence = hub.onPresence(presence);
