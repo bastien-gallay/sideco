@@ -86,3 +86,31 @@ export function findInWorkspace(ws: Workspace, query: string, only?: string): Fo
   }
   return found;
 }
+
+/** A piece of shown text: `found` when it is one of the words asked. */
+export interface Marked {
+  text: string;
+  found?: true;
+}
+
+/** The text cut where the words asked appear, case and accents aside; overlapping words make one piece. */
+export function markWords(text: string, words: readonly string[]): Marked[] {
+  const folded = fold(text);
+  const hit = new Array<boolean>(text.length).fill(false);
+  for (const word of words) {
+    const id = /^[a-z]+\d+$/.test(word);
+    const pattern = new RegExp(
+      id ? `(?<![a-z0-9])${word}(?![a-z0-9])` : word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+      "g",
+    );
+    for (const m of folded.matchAll(pattern)) hit.fill(true, m.index, m.index + m[0].length);
+  }
+  const parts: Marked[] = [];
+  for (let at = 0; at < text.length; ) {
+    let end = at;
+    while (end < text.length && hit[end] === hit[at]) end++;
+    parts.push(hit[at] ? { text: text.slice(at, end), found: true } : { text: text.slice(at, end) });
+    at = end;
+  }
+  return parts;
+}

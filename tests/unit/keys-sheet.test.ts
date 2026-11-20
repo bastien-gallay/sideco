@@ -17,6 +17,15 @@ describe("the sheet of keys", () => {
     );
   });
 
+  test("tells Redo beside Undo, with every key that does it", () => {
+    expect(says(MESSAGES.en.shortcutList("kanban", true))).toContain(
+      "⇧⌘Z / Ctrl+Shift+Z or Ctrl+Y = Redo the change undone",
+    );
+    expect(says(MESSAGES.fr.shortcutList("kanban", true))).toContain(
+      "⇧⌘Z / Ctrl+Maj+Z ou Ctrl+Y = Rétablir le changement annulé",
+    );
+  });
+
   test("tells Shift+Enter on a lane heading", () => {
     expect(says(MESSAGES.en.shortcutList("kanban", true))).toContain("Shift + Enter writes its subtitle");
     expect(says(MESSAGES.fr.shortcutList("kanban", true))).toContain("Maj + Entrée écrit son sous-titre");

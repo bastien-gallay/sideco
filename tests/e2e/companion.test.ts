@@ -3071,9 +3071,13 @@ describe("search across the boards, from the page", () => {
     await page.locator(".board-picker select").selectOption("cherche-ici");
     await card("T1").waitFor();
     await page.locator(".canvas").click({ position: { x: 4, y: 4 } });
+    const boardTop = async () => (await card("T1").boundingBox())?.y;
+    const before = await boardTop();
     await page.keyboard.press("Control+k");
     const field = page.getByRole("combobox", { name: "Find a card" });
     await field.waitFor({ state: "visible" });
+    // The bar lies over the board: the cards stay where they were.
+    expect(await boardTop()).toBe(before);
     await field.fill("QUETZAL");
     const options = page.getByRole("listbox", { name: "Find a card" }).getByRole("option");
     await until("three cards, on two boards", async () => (await options.count()) === 3);
@@ -3082,6 +3086,8 @@ describe("search across the boards, from the page", () => {
     expect(texts[0]).toContain("Relire la note quetzal");
     expect(texts[1]).toBe("T1 Payer la note quetzal du traiteur Recherche ailleurs");
     expect(texts[2]).toContain("Après la note quetzal.");
+    // The words asked are marked where they were found, as written there.
+    expect(await options.first().locator("mark").allTextContents()).toEqual(["quetzal"]);
     expect(await card("T1").getAttribute("class")).toContain("is-pointed");
     expect(await options.first().getAttribute("aria-selected")).toBe("true");
 

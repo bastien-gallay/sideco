@@ -6,6 +6,7 @@
 import { type Command, slugify } from "../domain/commands.ts";
 import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../domain/export/index.ts";
 import { toMermaid } from "../domain/export/mermaid.ts";
+import { markWords, queryWords } from "../domain/find.ts";
 import { boardPurpose, FORMATS, findFormat, findType, planAxis } from "../domain/formats.ts";
 import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { chipText, labelColours } from "../domain/render/labels.ts";
@@ -523,7 +524,13 @@ function foundWhere(hit: FindHit): string {
 }
 
 /** The list of the cards found, under the field. */
+/** Shown text with the words asked marked: the eye finds why a line is there. */
+function marked(text: string, words: readonly string[]): (string | HTMLElement)[] {
+  return markWords(text, words).map((part) => (part.found ? h("mark", {}, part.text) : part.text));
+}
+
 function paintFound(): void {
+  const words = queryWords(findField.value);
   const items = found.slice(0, FIND_SHOWN).map((hit, at) => {
     const where = foundWhere(hit);
     return h(
@@ -540,11 +547,11 @@ function paintFound(): void {
       // Spaces between the parts, for who hears the line: the grid lays them out without them.
       h("span", { class: "find-hit-id" }, hit.id),
       " ",
-      h("span", { class: "find-hit-name" }, hit.label.replace(/\s+/g, " ").trim()),
+      h("span", { class: "find-hit-name" }, ...marked(hit.label.replace(/\s+/g, " ").trim(), words)),
       !hit.here && " ",
       !hit.here && h("span", { class: "find-hit-board" }, hit.title),
       where && " ",
-      where && h("span", { class: "find-hit-where" }, where),
+      where && h("span", { class: "find-hit-where" }, ...marked(where, words)),
     );
   });
   const more = found.length - FIND_SHOWN;

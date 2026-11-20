@@ -205,6 +205,8 @@ describe("the page offers to add and remove lanes", () => {
     const band = lanesDrawn(t).find((b) => b.id === "lane-1");
     if (!band || !offer) throw new Error("drawn");
     expect(offer.x + offer.w).toBeLessThanOrEqual(band.x + band.w);
+    // Clear of the count, right-aligned 14px in and two digits wide: the × reads as its own control.
+    expect(offer.x + offer.w).toBeLessThanOrEqual(band.x + band.w - 14 - 2 * 7 - 12);
     expect(offer.y).toBeGreaterThanOrEqual(band.y);
     expect(remove("doing")).toBeUndefined();
     const lone = table('board new "Seul" --format kanban --id seul\nlane rm doing\nlane rm done');

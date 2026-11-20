@@ -1147,19 +1147,28 @@ kbd {
   min-height: 0;
 }
 
-/* Finding a card: a bar over the board, as quiet as the focus bar above it. */
+/* Finding a card: a bar laid over the top of the board, which stays where it is under it. */
 .find-bar {
   position: relative;
+  z-index: 20;
+  grid-row: 4;
+  grid-column: 1;
+  align-self: start;
+  justify-self: start;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
-  background: var(--sideco-lane);
-  border-bottom: 1px solid var(--rule);
+  width: min(36rem, calc(100% - 28px));
+  margin: 8px 14px 0;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .find-bar input {
-  flex: 0 1 320px;
+  flex: 0 0 14rem;
   min-width: 0;
   background: var(--surface);
   border: 1px solid var(--rule);
@@ -1168,6 +1177,9 @@ kbd {
 }
 
 .find-count {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -1176,9 +1188,9 @@ kbd {
 .find-results {
   position: absolute;
   top: calc(100% + 4px);
-  left: 14px;
+  left: 0;
   z-index: 20;
-  width: min(36rem, calc(100% - 28px));
+  width: 100%;
   max-height: min(60vh, 28rem);
   overflow-y: auto;
   margin: 0;
@@ -1205,7 +1217,17 @@ kbd {
 }
 
 .find-hit[aria-selected="true"] {
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  /* The tint alone is faint on a dark surface: an outline says the line chosen in both themes. */
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* The words asked, where they were found. */
+.find-hit mark {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: inherit;
+  border-radius: 2px;
+  font-weight: 600;
 }
 
 .find-hit-id {

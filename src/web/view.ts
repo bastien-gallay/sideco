@@ -1004,7 +1004,7 @@ function laneRemoval(board: Board, lane: string, locale: Locale, span?: number):
       fill: "#FFFFFF",
       ink: "#1F2328",
       // Left of the count of cards, at the right of the heading.
-      x: heading.x + heading.w - w - 32,
+      x: heading.x + heading.w - w - 44,
       y: heading.y + (heading.h - OFFER_H) / 2,
       w,
       h: OFFER_H,
