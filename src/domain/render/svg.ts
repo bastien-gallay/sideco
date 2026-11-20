@@ -13,8 +13,10 @@ import {
   type Connector,
   cardName,
   LINE_H,
+  labelsHeight,
   type Scene,
 } from "../layout/scene.ts";
+import { chipText, labelColours } from "./labels.ts";
 
 export const SVG_STYLE = `
 .sideco-board { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -42,6 +44,8 @@ export const SVG_STYLE = `
 .card-detail { font-size: 11px; text-anchor: end; }
 .card-done { font-size: 11px; font-weight: 700; }
 .card-blurb { font-size: 11px; text-anchor: middle; }
+.card-label-chip { stroke: rgba(0, 0, 0, 0.15); stroke-width: 1; }
+.card-label-text { font-size: 10px; font-weight: 600; text-anchor: middle; }
 .card-label-done { text-decoration: line-through; opacity: 0.65; }
 .card-notes circle { fill: #1A6FAE; stroke: var(--sideco-bg, #FFFFFF); stroke-width: 2; }
 .card-notes text { fill: #FFFFFF; font-size: 10px; font-weight: 700; text-anchor: middle; }
@@ -130,7 +134,9 @@ export function cardMarkup(c: Card): string {
   // The name and the description under it are centred as one block, below the strip of the id.
   const said = c.blurb ?? [];
   const block = c.lines.length * LINE_H + blurbHeight(said.length);
-  const first = (c.h + ID_STRIP - block) / 2 + 12;
+  // A row of labels takes the foot of the card: the words are centred in what is left above it.
+  const body = c.h - labelsHeight(c.labels);
+  const first = (body + ID_STRIP - block) / 2 + 12;
   const lines = c.lines
     .map((line, i) => `<tspan x="${c.w / 2}" y="${first + i * LINE_H}">${esc(line)}</tspan>`)
     .join("");
@@ -146,6 +152,7 @@ export function cardMarkup(c: Card): string {
     authorMark(c),
     `<text class="${c.done ? "card-label card-label-done" : "card-label"}" fill="${esc(c.ink)}">${lines}</text>`,
     said.length > 0 ? `<text class="card-blurb" fill="${esc(c.ink)}">${blurb}</text>` : "",
+    labelsMarkup(c),
     c.done ? `<text class="card-done" x="${doneX(c)}" y="14" fill="${esc(c.ink)}">✓</text>` : "",
     // The glyph is small; the target around it is not: 22 by 24, under it, so a finger takes it too.
     c.hasDetail
@@ -163,7 +170,53 @@ export function cardMarkup(c: Card): string {
  */
 function tooltip(c: Card): string {
   const cut = c.lines.at(-1)?.endsWith("…") ?? false;
-  return [cut ? cardName(c) : c.tip, c.detail].filter(Boolean).join("\n");
+  const labels = c.labels?.map(chipText).join(" · ");
+  return [cut ? cardName(c) : c.tip, labels, c.detail].filter(Boolean).join("\n");
+}
+
+/** About how wide a run of 10px text is: enough to size a chip without measuring it. */
+const CHIP_CHAR_W = 5.9;
+const CHIP_PAD = 5;
+const CHIP_GAP = 4;
+const CHIP_H = 14;
+
+/**
+ * The labels a card wears, as chips along its foot: as many as fit, the last
+ * cut with … when it alone is too long, then "+N" for the ones left out. The
+ * tooltip and the Detail tab name them all.
+ */
+function labelsMarkup(c: Card): string {
+  const labels = c.labels ?? [];
+  if (labels.length === 0) return "";
+  const left = 8 + inset(c) / 2;
+  const right = c.w - 6 - inset(c) / 2;
+  const top = c.h - labelsHeight(labels) + 2;
+  const width = (text: string): number => Math.round(text.length * CHIP_CHAR_W + 2 * CHIP_PAD);
+  const chips: string[] = [];
+  let x = left;
+  for (const [i, label] of labels.entries()) {
+    const rest = labels.length - i - 1;
+    const more = rest > 0 ? width(`+${rest}`) + CHIP_GAP : 0;
+    let text = chipText(label);
+    const room = right - x - more;
+    if (width(text) > room) {
+      // The first chip is cut to fit; a later one gives way to the count of those left out.
+      if (i > 0) {
+        chips.push(chip(x, top, `+${labels.length - i}`, { fill: "#FFFFFF", ink: "#3A424B" }));
+        break;
+      }
+      const keep = Math.max(1, Math.floor((room - 2 * CHIP_PAD) / CHIP_CHAR_W) - 1);
+      text = `${text.slice(0, keep)}…`;
+    }
+    chips.push(chip(x, top, text, labelColours(label)));
+    x += width(text) + CHIP_GAP;
+  }
+  return `<g class="card-labels">${chips.join("")}</g>`;
+
+  function chip(at: number, y: number, text: string, colours: { fill: string; ink: string }): string {
+    const w = width(text);
+    return `<rect class="card-label-chip" x="${at}" y="${y}" width="${w}" height="${CHIP_H}" rx="${CHIP_H / 2}" fill="${colours.fill}"/><text class="card-label-text" x="${at + w / 2}" y="${y + 10.5}" fill="${colours.ink}">${esc(text)}</text>`;
+  }
 }
 
 /** How far a shape's cut corners push the id and the author mark inward. */

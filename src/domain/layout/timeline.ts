@@ -12,7 +12,7 @@ import {
   type Band,
   CARD_W,
   type Card,
-  labelHeight,
+  elementHeight,
   MARGIN,
   type Room,
   type Scene,
@@ -65,7 +65,7 @@ function cellHeights(elements: Element[]): number[] {
   const heights = new Map<number, number>();
   for (const e of elements) {
     const above = heights.get(e.col);
-    heights.set(e.col, (above === undefined ? 0 : above + STACK_GAP) + labelHeight(e.label));
+    heights.set(e.col, (above === undefined ? 0 : above + STACK_GAP) + elementHeight(e));
   }
   return [...heights.values()];
 }
@@ -200,7 +200,7 @@ export function locateInTimeline(
   const before = board.elements
     .filter((e) => e.col === col && e.type === row.type && e.id !== moving)
     .find((e) => {
-      const h = labelHeight(e.label);
+      const h = elementHeight(e);
       const under = y < top + h / 2;
       top += h + STACK_GAP;
       return under;

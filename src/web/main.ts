@@ -8,6 +8,7 @@ import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../do
 import { toMermaid } from "../domain/export/mermaid.ts";
 import { boardPurpose, FORMATS, findFormat, findType, planAxis } from "../domain/formats.ts";
 import { asLocale, LOCALES } from "../domain/i18n.ts";
+import { chipText, labelColours } from "../domain/render/labels.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import {
   addressee,
@@ -17,6 +18,7 @@ import {
   latestSession,
   readerOf,
   type Session,
+  sameLabel,
   sessionLabel,
   shownSession,
 } from "../domain/workspace.ts";
@@ -1283,6 +1285,95 @@ interface CardPanelModel {
   saving: boolean;
   /** The card's open discussions: said under its detail, a click away in the Notes tab. */
   notes: number;
+  /** Its labels, as kept, and those the project already uses, offered as it is typed. */
+  labels: string[];
+  known: string[];
+}
+
+/** Made once, like the detail's field: what is being typed keeps its place and the keyboard through every repaint. */
+const labelField = h("input", {
+  type: "text",
+  name: "label",
+  class: "label-field",
+  list: "known-labels",
+  autocomplete: "off",
+  placeholder: t.addLabel,
+  "aria-label": t.addLabel,
+});
+const knownLabels = h("datalist", { id: "known-labels" });
+labelField.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    labelField.value = "";
+    return;
+  }
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  // Several at once, by commas: "type:bug, @bastien".
+  const labels = labelField.value
+    .split(",")
+    .map((label) => label.trim())
+    .filter(Boolean);
+  const board = currentBoard();
+  const id = state.selected;
+  if (!board || !id || labels.length === 0 || !isLive()) return;
+  void send({ kind: "label", board: board.id, id, labels }).then((done) => {
+    if (done !== undefined) labelField.value = "";
+  });
+});
+
+/** Every label the project's cards wear, once each whatever its case, in the order first met. */
+function projectLabels(): string[] {
+  const seen = new Map<string, string>();
+  for (const board of state.live.boards)
+    for (const e of board.elements) for (const label of e.labels ?? []) seen.set(label.toLowerCase(), label);
+  return [...seen.values()];
+}
+
+/** The labels of the chosen card: its chips, then, live, the field that adds one, offering the project's others. */
+function labelSection(m: CardPanelModel): HTMLElement | false {
+  if (m.labels.length === 0 && !m.live) return false;
+  knownLabels.replaceChildren(
+    ...m.known
+      .filter((k) => !m.labels.some((own) => sameLabel(own, k)))
+      .map((k) => h("option", { value: k })),
+  );
+  return h(
+    "section",
+    { class: "card-panel-labels", "aria-label": t.labelsHeading },
+    m.labels.length > 0 && labelChips(m),
+    m.live && labelField,
+    m.live && knownLabels,
+  );
+}
+
+/** The chosen card's labels: a chip each, its colour as on the card, and × to take it off. */
+function labelChips(m: CardPanelModel): HTMLElement {
+  const board = currentBoard();
+  return h(
+    "ul",
+    { class: "label-chips" },
+    ...m.labels.map((label) => {
+      const { fill, ink } = labelColours(label);
+      return h(
+        "li",
+        { class: "label-chip", style: `background:${fill};color:${ink}` },
+        chipText(label),
+        m.live &&
+          board &&
+          h(
+            "button",
+            {
+              type: "button",
+              class: "label-remove",
+              "aria-label": t.removeLabel(chipText(label)),
+              title: t.removeLabel(chipText(label)),
+              onclick: () => void send({ kind: "unlabel", board: board.id, id: m.id, labels: [label] }),
+            },
+            "×",
+          ),
+      );
+    }),
+  );
 }
 
 /** The detail being written in the panel: its card, and where the keyboard was when it was asked for. */
@@ -1322,6 +1413,7 @@ const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
       tabIcon("notes"),
       t.cardNotes(m.notes),
     ),
+  labelSection(m),
   ...(m.editing
     ? [
         detailField,
@@ -2054,6 +2146,8 @@ function render(): void {
       editing,
       saving: detailSaving,
       notes: discussions(board).filter((thread) => thread.on?.id === chosen.id).length,
+      labels: chosen.labels ?? [],
+      known: projectLabels(),
     });
     if (typing && document.activeElement !== detailField) detailField.focus();
   }

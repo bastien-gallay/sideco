@@ -16,7 +16,7 @@ import {
   CARD_W,
   type Card,
   charsFor,
-  labelHeight,
+  elementHeight,
   MARGIN,
   type Room,
   type Scene,
@@ -108,7 +108,7 @@ function plan(board: Board, format: Format, without?: string, span?: number): Pl
         const cards = stack
           .slice(at, at + abreast)
           .map((e, k) => ({ e, x: x + LANE_SIDE + k * (cardW + ABREAST_GAP) }));
-        const h = Math.max(...cards.map((c) => labelHeight(c.e.label, chars)));
+        const h = Math.max(...cards.map((c) => elementHeight(c.e, chars)));
         lines.push({ y, h, cards });
         y += h + STACK_GAP;
       }
@@ -236,7 +236,7 @@ export function locateInColumns(
   const before =
     planned.abreast === 1
       ? // The drop lands before the first card whose upper half is at or below the pointer.
-        stack.find((c) => y < c.y + labelHeight(c.e.label, charsFor(planned.cardW)) / 2)
+        stack.find((c) => y < c.y + elementHeight(c.e, charsFor(planned.cardW)) / 2)
       : // In a plan: on the row the pointer is in, before the first card whose left half is at or right of it.
         stack.find(
           (c) =>

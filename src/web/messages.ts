@@ -130,6 +130,12 @@ export interface Messages {
   notesOpened: string;
   /** In the detail: the card's open discussions, a click away in the Notes tab. */
   cardNotes: (count: number) => string;
+  /** A card's labels, in its name for a screen reader. */
+  labelledWith: (labels: string) => string;
+  /** The labels of the chosen card, in the Detail tab: their heading, the field that adds one, the button that takes one off. */
+  labelsHeading: string;
+  addLabel: string;
+  removeLabel: (label: string) => string;
   liveNow: string;
   earlier: (more: number) => string;
   detailTabEmpty: string;
@@ -398,6 +404,10 @@ const en: Messages = {
         ? `Notes: ${open} open`
         : "Notes",
   cardNotes: (count) => (count === 1 ? "1 open note on this card" : `${count} open notes on this card`),
+  labelledWith: (labels) => `labels ${labels}`,
+  labelsHeading: "Labels",
+  addLabel: "Add a label: type:bug, @name… (Enter)",
+  removeLabel: (label) => `Remove the label ${label}`,
   liveNow: "● Live",
   earlier: (more) => `Earlier… (${more} more)`,
   detailTabEmpty: "Detail: choose a card on the board",
@@ -715,6 +725,10 @@ const fr: Messages = {
         : "Notes",
   cardNotes: (count) =>
     count === 1 ? "1 note ouverte sur cette carte" : `${count} notes ouvertes sur cette carte`,
+  labelledWith: (labels) => `labels ${labels}`,
+  labelsHeading: "Labels",
+  addLabel: "Ajouter un label : type:bug, @nom… (Entrée)",
+  removeLabel: (label) => `Retirer le label ${label}`,
   liveNow: "● En direct",
   earlier: (more) => `Plus ancien… (encore ${more})`,
   detailTabEmpty: "Détail : choisis une carte sur le tableau",

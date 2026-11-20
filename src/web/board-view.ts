@@ -16,6 +16,7 @@ import {
   vacancy,
 } from "../domain/layout/index.ts";
 import { cardName } from "../domain/layout/scene.ts";
+import { chipText } from "../domain/render/labels.ts";
 import { arrowDefs, bandMarkup, cardMarkup, connectorMarkup, esc } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h, svg } from "./dom.ts";
@@ -353,6 +354,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         place,
         card.hasDetail ? t.hasDetail : undefined,
         card.notes > 0 ? t.openNotesOn(card.notes) : undefined,
+        card.labels?.length ? t.labelledWith(card.labels.map(chipText).join(", ")) : undefined,
         isUnread ? t.unread : undefined,
         isNew ? t.changedSinceVisit : undefined,
       ]

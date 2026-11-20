@@ -215,6 +215,8 @@ sideco labels type                               # tous les type:…
 
 La casse ne compte pas (`Type:Bug` est `type:bug`). `sideco show` met les labels en fin de ligne de chaque carte. Ils s'annulent, reviennent avec une carte restaurée et se gardent à l'export du modèle.
 
+Dans la page, une carte porte ses labels en puces à son pied, autant qu'il en tient, puis « +N » ; tous les labels d'une même clé ont la même couleur. L'onglet `Detail` de la carte choisie les montre tous : × en retire un, le champ « Add a label » en ajoute (plusieurs à la fois, séparés par des virgules ; Entrée valide) et propose ceux que le projet utilise déjà.
+
 <sub>Source : `src/domain/workspace.ts` (`normalLabel`), `src/domain/digest.ts` (`describeLabels`) ; `tests/unit/labels.test.ts`.</sub>
 
 ### Retrouver une carte

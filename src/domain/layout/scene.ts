@@ -24,6 +24,8 @@ export interface Card {
   hasDetail: boolean;
   /** The detail as written: the tooltip carries it, for a reader who does not open the editor. */
   detail?: string;
+  /** The labels it wears, as kept: drawn as chips at its foot. */
+  labels?: string[];
   /** The start of the detail, under the name, on a board whose workshop shows it (see `Format.describes`). */
   blurb?: string[];
   /** What the card stands for is done. */
@@ -132,6 +134,19 @@ export function plainDetail(detail: string): string {
     .replace(/(^|\s)[*_]([^*_\s][^*_]*?)[*_](?=\s|[.,;:!?)]|$)/g, "$1$2")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** The row of chips at the foot of a card that wears labels. */
+export const LABELS_H = 20;
+
+/** What a card's labels add to it: one row of chips, or nothing. */
+export function labelsHeight(labels: readonly string[] | undefined): number {
+  return labels && labels.length > 0 ? LABELS_H : 0;
+}
+
+/** The height of the card an element is drawn as, in a layout of stacked stickies: its label, then its labels. */
+export function elementHeight(e: { label: string; labels?: readonly string[] }, chars = WRAP_CHARS): number {
+  return labelHeight(e.label, chars) + labelsHeight(e.labels);
 }
 
 /** A card is as tall as its label: the height of one that shows this many lines. */

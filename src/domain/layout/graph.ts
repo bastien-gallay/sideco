@@ -7,7 +7,16 @@
  * same board gives the same drawing. Ported from truepath's `layout.py`.
  */
 import type { Board, Element } from "../workspace.ts";
-import { blurbHeight, CARD_W, type Card, type Connector, MARGIN, r, type Scene } from "./scene.ts";
+import {
+  blurbHeight,
+  CARD_W,
+  type Card,
+  type Connector,
+  labelsHeight,
+  MARGIN,
+  r,
+  type Scene,
+} from "./scene.ts";
 
 export const NODE_H = 72;
 /** Lines of label a node of `NODE_H` holds. */
@@ -161,7 +170,9 @@ function draw(graph: Graph, bands: readonly Range[]): Scene {
   const top = MARGIN + (folded ? GAP_Y / 2 : 0);
   // Every node is as tall as the one with the longest description, so the rows stay even.
   const nodeH =
-    NODE_H + Math.max(0, ...board.elements.map((e) => blurbHeight(card(e, 0, 0).blurb?.length ?? 0)));
+    NODE_H +
+    Math.max(0, ...board.elements.map((e) => blurbHeight(card(e, 0, 0).blurb?.length ?? 0))) +
+    Math.max(0, ...board.elements.map((e) => labelsHeight(e.labels)));
   const cards = new Map<string, Card>();
   const band = new Map<string, number>();
   const drawn = new Map<string, Connector>();

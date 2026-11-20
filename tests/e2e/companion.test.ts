@@ -2844,6 +2844,55 @@ describe("a lane's subtitle and a plan's axes, rewritten by the mouse", () => {
   });
 });
 
+describe("labels on a card, from the page", () => {
+  test("a card wears its labels as chips, says them, and the Detail tab adds and takes them off", async () => {
+    await agent(
+      [
+        'board new "Étiquettes" --format kanban --id etiquettes',
+        'add task "Corriger la connexion" --lane todo',
+        "label T1 type:bug @bastien",
+        'add task "Livrer" --lane todo',
+        "label T2 env:prod",
+      ].join("\n"),
+    );
+    await page.locator(".board-picker select").selectOption("etiquettes");
+    await card("T2").waitFor();
+    // On the card: a chip each, and its name says them.
+    expect(await card("T1").locator(".card-labels text").allTextContents()).toEqual(["type:bug", "@bastien"]);
+    expect(await card("T1").getAttribute("aria-label")).toContain("labels type:bug, @bastien");
+
+    await card("T1").click();
+    await page.getByRole("tab", { name: "Detail" }).click();
+    const chips = page.locator(".card-panel-labels .label-chip");
+    await until("the chips in the Detail tab", async () => (await chips.count()) === 2);
+    // The project's other labels are offered as it is typed; those it wears are not.
+    expect(
+      await page
+        .locator("#known-labels option")
+        .evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value)),
+    ).toEqual(["env:prod"]);
+
+    const field = page.locator(".label-field");
+    await field.fill("urgent, release:2026.12");
+    await field.press("Enter");
+    await until(
+      "two labels more",
+      async () => ((await elementOf("etiquettes", "T1"))?.labels ?? []).length === 4,
+    );
+    await until("the field emptied", async () => (await field.inputValue()) === "");
+
+    await page.getByRole("button", { name: "Remove the label @bastien" }).click();
+    await until(
+      "the assignee taken off",
+      async () => !((await elementOf("etiquettes", "T1"))?.labels ?? []).includes("assignee:bastien"),
+    );
+    expect((await elementOf("etiquettes", "T1"))?.labels).toEqual(["type:bug", "urgent", "release:2026.12"]);
+    await until("the page took it off too", async () => (await chips.count()) === 3);
+    await shot("60-labels");
+    await page.keyboard.press("Escape");
+  });
+});
+
 describe("look", () => {
   test("dark scheme and a narrow window keep the board usable", async () => {
     await page.emulateMedia({ colorScheme: "dark" });

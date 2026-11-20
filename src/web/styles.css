@@ -2120,3 +2120,67 @@ legend {
 .layer-heads .band-lane:hover .lane-hint-blank {
   opacity: 1;
 }
+
+/* The chosen card's labels: chips as on the card, × to take one off, then a field that adds one. */
+.card-panel-labels {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+
+.label-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.label-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 22px;
+  padding: 0 4px 0 8px;
+  border: 1px solid rgb(0 0 0 / 0.15);
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.label-remove {
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.label-remove:hover,
+.label-remove:focus-visible {
+  background: rgb(0 0 0 / 0.1);
+}
+
+.label-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+.label-field::placeholder {
+  color: var(--muted);
+}
