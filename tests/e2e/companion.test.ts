@@ -2893,6 +2893,50 @@ describe("labels on a card, from the page", () => {
   });
 });
 
+describe("search across the boards, from the page", () => {
+  const focused = () => page.evaluate(() => document.activeElement?.getAttribute("data-id") ?? null);
+
+  test("Ctrl+K lists the cards found on every board as words are typed, and Enter goes to one elsewhere", async () => {
+    await agent(
+      [
+        'board new "Recherche ici" --format kanban --id cherche-ici',
+        'add task "Relire la note quetzal" --lane todo',
+        'board new "Recherche ailleurs" --format kanban --id cherche-ailleurs',
+        'add task "Payer la note quetzal du traiteur" --lane todo',
+        'add task "Réserver la salle" --lane todo',
+        'detail T2 "Après la note quetzal."',
+      ].join("\n"),
+    );
+    await page.locator(".board-picker select").selectOption("cherche-ici");
+    await card("T1").waitFor();
+    await page.locator(".canvas").click({ position: { x: 4, y: 4 } });
+    await page.keyboard.press("Control+k");
+    const field = page.getByRole("combobox", { name: "Find a card" });
+    await field.waitFor({ state: "visible" });
+    await field.fill("QUETZAL");
+    const options = page.getByRole("listbox", { name: "Find a card" }).getByRole("option");
+    await until("three cards, on two boards", async () => (await options.count()) === 3);
+    // The board shown first, its own card pointed; the others say their board, and where the words were.
+    const texts = await options.allTextContents();
+    expect(texts[0]).toContain("Relire la note quetzal");
+    expect(texts[1]).toBe("T1 Payer la note quetzal du traiteur Recherche ailleurs");
+    expect(texts[2]).toContain("Après la note quetzal.");
+    expect(await card("T1").getAttribute("class")).toContain("is-pointed");
+    expect(await options.first().getAttribute("aria-selected")).toBe("true");
+
+    await field.press("ArrowDown");
+    expect(await field.getAttribute("aria-activedescendant")).toBe(await options.nth(1).getAttribute("id"));
+    expect(await page.locator(".find-count").textContent()).toMatch(/^2 \/ 3 · T1 Payer/);
+    await shot("61-find");
+    await field.press("Enter");
+    // Another board: the page goes there, and the keyboard lands on the card.
+    await until("on the other board", async () => page.url().endsWith("#/b/cherche-ailleurs"));
+    await page.locator(".find-bar").waitFor({ state: "hidden" });
+    await until("the card has the keyboard", async () => (await focused()) === "T1");
+    expect(await card("T1").textContent()).toContain("Payer");
+  });
+});
+
 describe("look", () => {
   test("dark scheme and a narrow window keep the board usable", async () => {
     await page.emulateMedia({ colorScheme: "dark" });

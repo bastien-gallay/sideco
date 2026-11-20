@@ -231,7 +231,9 @@ sideco find T100 --board backlog      # la carte T100 et celles qui la citent, j
 
 Quand le mot n'est pas dans le nom, la ligne dit où il est : `[labels]`, `— detail: …les mots autour…` ou `— note N3: …`.
 
-<sub>Source : `src/domain/digest.ts` (`describeFind`) ; `tests/unit/find.test.ts`.</sub>
+Dans la page, `/` ou `⌘K` (`Ctrl+K` hors Mac) ouvre la même recherche au-dessus du tableau. Les cartes trouvées se listent au fil de la frappe : celles du tableau affiché d'abord, la carte de cet id en tête, puis celles des autres tableaux, chacune avec le nom de son tableau et, si le mot n'est pas dans son nom, l'endroit où il est. Les flèches choisissent ; une carte du tableau affiché est pointée sur le tableau. Entrée, ou un clic, va à la carte : la page ouvre son tableau s'il le faut, et le clavier se pose sur elle. Échap referme.
+
+<sub>Source : `src/domain/find.ts` (`findInWorkspace`), `src/domain/digest.ts` (`describeFind`), `src/web/view.ts` (`findHits`) ; `tests/unit/find.test.ts`, `tests/unit/find-hits.test.ts`.</sub>
 
 ## Les données
 

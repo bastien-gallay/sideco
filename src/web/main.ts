@@ -46,7 +46,8 @@ import {
   type Discussion,
   describeEvent,
   discussions,
-  findCards,
+  type FindHit,
+  findHits,
   handOverHint,
   handOverNotice,
   historyBoard,
@@ -424,24 +425,43 @@ const view = mountBoard(canvas, {
   },
 });
 
-/** A search over the cards of the board shown: `/` opens it, Enter goes from one card found to the next. */
+/**
+ * A search over the cards of every board: `/` or Ctrl+K opens it. The cards found are listed as the
+ * words are typed, the board shown's first; the arrows choose one, Enter goes to it, wherever it is.
+ */
 const findField = h("input", {
   type: "search",
   name: "find",
   placeholder: t.findPlaceholder,
   "aria-label": t.find,
   autocomplete: "off",
+  role: "combobox",
+  "aria-autocomplete": "list",
+  "aria-expanded": "false",
+  "aria-controls": "find-results",
 });
 const findCount = h("output", { class: "find-count", "aria-live": "polite" });
+const findList = h("ul", {
+  id: "find-results",
+  class: "find-results",
+  role: "listbox",
+  "aria-label": t.find,
+});
+findList.hidden = true;
 const findBar = h(
   "form",
   { class: "find-bar", role: "search", hidden: true },
   findField,
   findCount,
   h("button", { type: "button", class: "quiet", onclick: () => closeFind() }, t.close),
+  findList,
 );
-let found: string[] = [];
+/** As many as a glance reads: the count says the rest. */
+const FIND_SHOWN = 40;
+let found: FindHit[] = [];
 let foundAt = -1;
+/** A card found on another board: the keyboard lands on it once that board is painted. */
+let arriving: { board: string; id: string } | undefined;
 
 function openFind(): void {
   findBar.hidden = false;
@@ -449,50 +469,114 @@ function openFind(): void {
   findField.select();
 }
 
+/** Closed, the keyboard stays on the card found when it is on the board shown. */
 function closeFind(): void {
   findBar.hidden = true;
   findField.value = "";
   findCount.textContent = "";
   view.point(undefined);
-  const id = found[foundAt];
+  const hit = found[foundAt];
   found = [];
   foundAt = -1;
-  if (id) view.focus(id);
+  paintFound();
+  if (hit?.here) view.focus(hit.id);
+}
+
+/** To the card found: on its board, which the page opens when it is not the one shown. */
+function goToFound(at: number): void {
+  const hit = found[at];
+  if (!hit) return;
+  foundAt = at;
+  if (!hit.here) arriving = { board: hit.board, id: hit.id };
+  closeFind();
+  if (!hit.here) openBoard(hit.board);
 }
 
 findField.addEventListener("input", () => {
-  const board = currentBoard();
-  found = board ? findCards(board, findField.value) : [];
+  found = findHits(shown(), findField.value, currentBoard()?.id);
   foundAt = found.length > 0 ? 0 : -1;
+  paintFound();
   showFound();
 });
 
 findBar.addEventListener("submit", (event) => {
   event.preventDefault();
-  if (found.length === 0) return;
-  foundAt = (foundAt + 1) % found.length;
-  showFound();
+  goToFound(foundAt);
 });
 
 findField.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape") return;
+  const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
+  if (event.key === "Escape") closeFind();
+  else if (step !== 0 && found.length > 0) {
+    const shownCount = Math.min(found.length, FIND_SHOWN);
+    foundAt = (foundAt + step + shownCount) % shownCount;
+    showFound();
+  } else return;
   event.preventDefault();
   event.stopPropagation();
-  closeFind();
 });
 
+/** Where the words were, when not in the card's name. */
+function foundWhere(hit: FindHit): string {
+  const where = hit.where;
+  if (!where) return "";
+  if (where.in === "labels") return `${t.findInLabels}${t.colon} ${where.text}`;
+  if (where.in === "detail") return `${t.findInDetail}${t.colon} ${where.text}`;
+  return `${t.findInNote(where.note)}${t.colon} ${where.text}`;
+}
+
+/** The list of the cards found, under the field. */
+function paintFound(): void {
+  const items = found.slice(0, FIND_SHOWN).map((hit, at) => {
+    const where = foundWhere(hit);
+    return h(
+      "li",
+      {
+        id: `find-hit-${at}`,
+        role: "option",
+        class: "find-hit",
+        "aria-selected": "false",
+        // The field keeps the keyboard: a press on a line goes to its card.
+        onmousedown: (event: Event) => event.preventDefault(),
+        onclick: () => goToFound(at),
+      },
+      // Spaces between the parts, for who hears the line: the grid lays them out without them.
+      h("span", { class: "find-hit-id" }, hit.id),
+      " ",
+      h("span", { class: "find-hit-name" }, hit.label.replace(/\s+/g, " ").trim()),
+      !hit.here && " ",
+      !hit.here && h("span", { class: "find-hit-board" }, hit.title),
+      where && " ",
+      where && h("span", { class: "find-hit-where" }, where),
+    );
+  });
+  const more = found.length - FIND_SHOWN;
+  findList.replaceChildren(
+    ...items,
+    ...(more > 0 ? [h("li", { class: "find-more", role: "presentation" }, t.findMore(more))] : []),
+  );
+  const open = items.length > 0 && !findBar.hidden;
+  findList.hidden = !open;
+  findField.setAttribute("aria-expanded", String(open));
+}
+
 function showFound(): void {
-  const id = found[foundAt];
-  // The count alone says nothing to who cannot see the board: the card found is named with it.
-  const named = id ? currentBoard()?.elements.find((e) => e.id === id) : undefined;
+  const hit = found[foundAt];
+  for (const [at, item] of [...findList.querySelectorAll<HTMLElement>("[role=option]")].entries())
+    item.setAttribute("aria-selected", String(at === foundAt));
+  if (hit) findField.setAttribute("aria-activedescendant", `find-hit-${foundAt}`);
+  else findField.removeAttribute("aria-activedescendant");
+  findList.querySelector(`#find-hit-${foundAt}`)?.scrollIntoView({ block: "nearest" });
+  // The count alone says nothing to who cannot see the board: the card found is named with it, and its board.
+  const name = hit ? ` ${hit.label.replace(/\s+/g, " ").trim()}${hit.here ? "" : ` — ${hit.title}`}` : "";
   findCount.textContent =
     findField.value.trim() === ""
       ? ""
-      : id
-        ? `${t.findCount(foundAt + 1, found.length)} · ${id}${named ? ` ${named.label.replace(/\s+/g, " ").trim()}` : ""}`
+      : hit
+        ? `${t.findCount(foundAt + 1, found.length)} · ${hit.id}${name}`
         : t.findNone;
-  view.point(id);
-  if (id) view.reveal(id);
+  view.point(hit?.here ? hit.id : undefined);
+  if (hit?.here) view.reveal(hit.id);
 }
 
 /** The keys of the page, in one place: asked for with `?`, or from the palette. */
@@ -1850,10 +1934,10 @@ function typing(target: EventTarget | null): boolean {
   );
 }
 
-// `/` finds a card, `?` lists the keys: wherever the keyboard is, except in a text being typed.
+// `/` finds a card on any board, `?` lists the keys: wherever the keyboard is, except in a text being typed.
 window.addEventListener("keydown", (event) => {
   if (event.ctrlKey || event.metaKey || event.altKey || typing(event.target)) return;
-  if (event.key === "/" && currentBoard()) openFind();
+  if (event.key === "/" && shown().boards.length > 0) openFind();
   else if (event.key === "?") openKeys();
   else if (event.key === "[") toggleFold("left");
   else if (event.key === "]") toggleFold("right");
@@ -1865,6 +1949,7 @@ window.addEventListener("keydown", (event) => {
   if (!(event.ctrlKey || event.metaKey) || event.altKey || typing(event.target)) return;
   const key = event.key.toLowerCase();
   if (key === "z") void (event.shiftKey ? redo() : undo());
+  else if (key === "k" && !event.shiftKey && shown().boards.length > 0) openFind();
   else if (key === "y" && !event.shiftKey) void redo();
   // Sending is one chord from anywhere but a text being typed: the word in the field goes with it.
   else if (key === "enter" && !event.shiftKey && !passButton.disabled)
@@ -2105,6 +2190,11 @@ function render(): void {
   paintVisit({ count: away?.count ?? 0, cards: away?.cards.length ?? 0 });
   visitBar.hidden = !away?.count;
   view.paint(board, unread.cards, away?.cards ?? []);
+  if (arriving && board?.id === arriving.board) {
+    const { id } = arriving;
+    arriving = undefined;
+    requestAnimationFrame(() => view.focus(id));
+  }
 
   // The card whose detail is being written stays in the panel until it is saved or left.
   if (detailEdit && !board?.elements.some((e) => e.id === detailEdit?.id)) {

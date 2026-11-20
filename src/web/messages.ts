@@ -258,6 +258,10 @@ export interface Messages {
   findPlaceholder: string;
   findCount: (at: number, of: number) => string;
   findNone: string;
+  findInLabels: string;
+  findInDetail: string;
+  findInNote: (id: string) => string;
+  findMore: (n: number) => string;
   fit: string;
   fitHint: string;
   resolvedNotes: (count: number) => string;
@@ -500,9 +504,13 @@ const en: Messages = {
   skipToBoard: "Skip to the board",
 
   find: "Find a card",
-  findPlaceholder: "An id or words…",
+  findPlaceholder: "An id or words, on every board…",
   findCount: (at, of) => `${at} / ${of}`,
   findNone: "No card",
+  findInLabels: "labels",
+  findInDetail: "detail",
+  findInNote: (id) => `note ${id}`,
+  findMore: (n) => `${n} more: add a word`,
   fit: "Fit",
   fitHint: "Fit the whole board in the window, or back to 100 %",
   resolvedNotes: (count) => `Resolved (${count})`,
@@ -537,7 +545,7 @@ const en: Messages = {
     ["E", "Write the card's detail, in the panel on the right"],
     ["N", "Note for Claude on the card"],
     ["Delete", "Remove the card (Undo brings it back)"],
-    ["/", "Find a card by its id or its words"],
+    ["/ or ⌘K / Ctrl+K", "Find a card on any board, by its id or its words"],
     ["⌘Z / Ctrl+Z", "Undo your last change"],
     ["⌘↵ / Ctrl+Enter", "Send to Claude, with the word typed for it"],
     ["Esc", "Close, cancel, deselect"],
@@ -822,9 +830,13 @@ const fr: Messages = {
   skipToBoard: "Aller au tableau",
 
   find: "Trouver une carte",
-  findPlaceholder: "Un id ou des mots…",
+  findPlaceholder: "Un id ou des mots, sur tous les tableaux…",
   findCount: (at, of) => `${at} / ${of}`,
   findNone: "Aucune carte",
+  findInLabels: "labels",
+  findInDetail: "détail",
+  findInNote: (id) => `note ${id}`,
+  findMore: (n) => `${n} de plus : ajoutez un mot`,
   fit: "Ajuster",
   fitHint: "Faire tenir tout le tableau dans la fenêtre, ou revenir à 100 %",
   resolvedNotes: (count) => `Résolues (${count})`,
@@ -859,7 +871,7 @@ const fr: Messages = {
     ["E", "Écrire le détail de la carte, dans le panneau de droite"],
     ["N", "Note pour Claude sur la carte"],
     ["Suppr", "Supprimer la carte (Annuler la ramène)"],
-    ["/", "Trouver une carte par son id ou ses mots"],
+    ["/ ou ⌘K / Ctrl+K", "Trouver une carte sur tous les tableaux, par son id ou ses mots"],
     ["⌘Z / Ctrl+Z", "Annuler ton dernier changement"],
     ["⌘↵ / Ctrl+Entrée", "Envoyer à Claude, avec le mot écrit pour lui"],
     ["Échap", "Fermer, annuler, désélectionner"],

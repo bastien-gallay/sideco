@@ -7,6 +7,7 @@
 import type { Command } from "../domain/commands.ts";
 import { type Changes, describeChanges } from "../domain/digest.ts";
 import type { Actor, Recorded } from "../domain/events.ts";
+import { type Found, findInWorkspace, queryWords } from "../domain/find.ts";
 import { findFormat, findType, laneName, lanesOf } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
 import { type Band, headingOf, stepOf, type Target, vacancy } from "../domain/layout/index.ts";
@@ -573,28 +574,30 @@ const asDiscussion =
     notes: thread.notes.map(({ id, by, text }) => ({ id, by, text })),
   });
 
-/** Words as a search compares them: without case, without accents. */
-const folded = (text: string): string =>
-  text
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
+/** A card found by the page's search, with the board it is on. */
+export interface FindHit extends Found {
+  /** The title of its board. */
+  title: string;
+  /** On the board shown. */
+  here: boolean;
+}
 
 /**
- * The cards a search finds, best first: the card of that id, then those whose
- * label holds every word asked, then those whose detail does. Board order within each.
+ * The cards a search finds, across the boards, as `sideco find` finds them: those of the board shown
+ * first, then the others' in their order. On each board, the card of that id leads, then those named
+ * by the words, then those holding them elsewhere (labels, detail, notes).
  */
-export function findCards(board: Board, query: string): string[] {
-  const words = folded(query).split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [];
-  const holds = (text: string | undefined): boolean => {
-    const where = folded(text ?? "");
-    return words.every((word) => where.includes(word));
-  };
-  const byId = board.elements.filter((e) => folded(e.id) === words.join(" "));
-  const byLabel = board.elements.filter((e) => holds(e.label));
-  const byDetail = board.elements.filter((e) => holds(e.detail));
-  return [...new Set([...byId, ...byLabel, ...byDetail].map((e) => e.id))];
+export function findHits(ws: Workspace, query: string, current?: string): FindHit[] {
+  const asked = queryWords(query).join(" ");
+  const rank = (hit: Found): number => (hit.id.toLowerCase() === asked ? 0 : hit.where ? 2 : 1);
+  const hits = findInWorkspace(ws, query).filter((hit) => hit.kind === "card");
+  const boards = [...ws.boards].sort((a, b) => Number(b.id === current) - Number(a.id === current));
+  return boards.flatMap((board) =>
+    hits
+      .filter((hit) => hit.board === board.id)
+      .sort((a, b) => rank(a) - rank(b))
+      .map((hit) => ({ ...hit, title: board.title, here: board.id === current })),
+  );
 }
 
 /** A piece of a message: its own words, or an id it names that the reader can go to. */

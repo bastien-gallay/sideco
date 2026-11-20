@@ -12,6 +12,7 @@
  */
 import { CommandError } from "./commands.ts";
 import type { Actor, Recorded } from "./events.ts";
+import { type Found, findInWorkspace } from "./find.ts";
 import { findFormat, laneHint, laneName, lanesOf, planAxis, wearsDone } from "./formats.ts";
 import {
   apply,
@@ -93,26 +94,15 @@ export function describeLabels(ws: Workspace, only?: string): string {
     .join("\n");
 }
 
-/** Lower case, without accents: `Écrire` is found by `ecrire`. NFC text keeps its length, so indexes carry over. */
-const fold = (text: string): string => text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
-
-/** A word that looks like an id (`T2`) matches that id only, never `T22`; any other word matches inside words. */
-function wordAt(text: string, word: string): number {
-  if (!/^[a-z]+\d+$/.test(word)) return text.indexOf(word);
-  return text.search(new RegExp(`(?<![a-z0-9])${word}(?![a-z0-9])`));
-}
-
-/** The words around the first of `words` found in `text`: a few before, the rest of a short line after. */
-function excerpt(text: string, words: readonly string[]): string {
-  const folded = fold(text);
-  const at = Math.min(...words.map((w) => wordAt(folded, w)).filter((i) => i >= 0));
-  let start = Math.max(0, at - 24);
-  const space = start > 0 ? text.indexOf(" ", start - 1) : -1;
-  if (space >= 0 && space < at) start = space + 1;
-  let end = Math.min(text.length, at + 60);
-  if (end < text.length) end = text.lastIndexOf(" ", end) > at ? text.lastIndexOf(" ", end) : end;
-  const line = text.slice(start, end).replace(/\s+/g, " ").trim();
-  return `${start > 0 ? "…" : ""}${line}${end < text.length ? "…" : ""}`;
+/** One line per card found, its board and id first, then where the words were when not in its name. */
+function foundLine(hit: Found): string {
+  if (hit.kind === "note") return `${hit.board} ${hit.id} note "${hit.label}"`;
+  const head = `${hit.board} ${hit.id} ${hit.type} "${hit.label}"`;
+  const where = hit.where;
+  if (!where) return head;
+  if (where.in === "labels") return `${head} [${where.text}]`;
+  if (where.in === "detail") return `${head} — detail: ${where.text}`;
+  return `${head} — note ${where.note}: ${where.text}`;
 }
 
 /**
@@ -120,39 +110,8 @@ function excerpt(text: string, words: readonly string[]): string {
  * `only`): one line each, its board and id first, then where the words were when not in its name.
  */
 export function describeFind(ws: Workspace, query: string, only?: string): string {
-  const words = fold(query).split(/\s+/).filter(Boolean);
-  if (words.length === 0) return `nothing matches "${query}"`;
-  const holds = (texts: readonly string[]): boolean => {
-    const all = fold(texts.join("\n"));
-    return words.every((w) => wordAt(all, w) >= 0);
-  };
-  const has = (text: string): boolean => words.some((w) => wordAt(fold(text), w) >= 0);
-  const lines: string[] = [];
-  for (const board of ws.boards) {
-    if (only !== undefined && board.id !== only) continue;
-    for (const note of board.notes)
-      if (note.target === undefined && holds([note.id, note.text]))
-        lines.push(`${board.id} ${note.id} note "${excerpt(note.text, words)}"`);
-    for (const e of board.elements) {
-      const notes = board.notes.filter((n) => n.target === e.id);
-      const labels = (e.labels ?? []).join(", ");
-      if (!holds([e.id, e.label, labels, e.detail ?? "", ...notes.map((n) => n.text)])) continue;
-      const head = `${board.id} ${e.id} ${e.type} "${e.label}"`;
-      const named = holds([e.id, e.label]);
-      const note = notes.find((n) => has(n.text));
-      const where = named
-        ? ""
-        : labels && has(labels)
-          ? ` [${labels}]`
-          : e.detail && has(e.detail)
-            ? ` — detail: ${excerpt(e.detail, words)}`
-            : note
-              ? ` — note ${note.id}: ${excerpt(note.text, words)}`
-              : "";
-      lines.push(head + where);
-    }
-  }
-  return lines.length === 0 ? `nothing matches "${query}"` : lines.join("\n");
+  const found = findInWorkspace(ws, query, only);
+  return found.length === 0 ? `nothing matches "${query}"` : found.map(foundLine).join("\n");
 }
 
 /** The sessions still open, the latest to act first: who each is, what it does, what it follows. */
