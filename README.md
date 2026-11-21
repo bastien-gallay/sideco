@@ -91,6 +91,7 @@ Early: version 0.1.0. One person and one active agent per workspace; two people 
 | [PRD](docs/PRD.md) (French) | Why Sideco is built the way it is |
 | [Contributing](CONTRIBUTING.md) | The development cycle: from a card of the backlog to a commit on `main` |
 | [Coding standards](docs/coding-standards.md) | How the code is written: CUPID, a functional core, onion architecture, DDD, event sourcing |
+| [To investigate](docs/to-investigate.md) | Oddities seen once and not yet understood, with what was already ruled out |
 | `sideco help` | The full command list |
 
 ## License
