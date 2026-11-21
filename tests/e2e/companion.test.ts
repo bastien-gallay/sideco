@@ -1562,7 +1562,10 @@ describe("the chosen card, read in the right panel", () => {
     expect(await shown(page.locator(".tabs .tab-icon"))).toEqual([true, true, true, true]);
     await page.keyboard.press("]");
     await until("the right panel is open again", async () => !(await foldedRight()));
-    expect(await shown(page.locator(".tabs .tab-label"))).toEqual([true, true, true, true]);
+    // The names come back once the panel has its width again, measured after the unfolding.
+    await until("the four names back", async () =>
+      (await shown(page.locator(".tabs .tab-label"))).every(Boolean),
+    );
   });
 
   test("in a narrow window, a card chosen unfolds its detail, and folds it back once left", async () => {
