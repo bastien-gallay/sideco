@@ -1,7 +1,7 @@
 {
   "name": "sideco",
   "version": "0.1.0",
-  "description": "Visual companion for Claude Code: a live, event-sourced modelling board shared by a developer and their agent.",
+  "description": "Turn your coding agent's walls of text into a conversation you can see and reshape: a live, structured board beside the terminal. Claude Code today.",
   "license": "MIT",
   "type": "module",
   "bin": {

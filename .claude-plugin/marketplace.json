@@ -11,7 +11,7 @@
     {
       "name": "sideco",
       "source": "./",
-      "description": "Visual companion for Claude Code: a live modelling board, in a browser window beside the terminal, that the developer and the agent edit together.",
+      "description": "Turn your coding agent's walls of text into a conversation you can see and reshape: a live, structured board beside the terminal. Claude Code today.",
       "version": "0.1.0",
       "license": "MIT",
       "category": "productivity",

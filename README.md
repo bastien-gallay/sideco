@@ -2,13 +2,13 @@
 
 [![CI](https://github.com/bastien-gallay/sideco/actions/workflows/ci.yml/badge.svg)](https://github.com/bastien-gallay/sideco/actions/workflows/ci.yml)
 
-**A visual companion for Claude Code: a live board, open beside your terminal, that you and your agent model on together.**
+**Turn your coding agent's walls of text into a conversation you can see and reshape.**
+
+A live, structured board beside the terminal: the agent lays out a flow, a backlog or an event storming; you answer right on the card in question; one click hands the turn back, and the agent reads what you changed. Local and MIT. Claude Code today; MCP for other agents on the roadmap.
 
 ![An event storming in Sideco: the palette on the left, the board in the middle, Claude's session on the right, the hand-over bar at the bottom](docs/img/sideco-event-storming.png)
 
 <sub>Captured by the end-to-end test `tests/e2e/companion.test.ts`. A diamond marks a card Claude placed, a dot one you placed; the blue outline shows what just changed.</sub>
-
-You ask Claude to model something (an ordering flow, a backlog, a retrospective). Claude lays out the cards; you rename, move, link and annotate them in the page; you hand over, and Claude reads exactly what you changed. The conversation stays in the terminal.
 
 ## Install
 
