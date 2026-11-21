@@ -363,6 +363,27 @@ describe("the human edits, the agent is told", () => {
     );
   });
 
+  test("Send to Claude wakes the waiting agent in well under half a second", async () => {
+    // The Stop hook the plugin runs with --rewake, parked until the human hands over; exit 2 wakes Claude.
+    const parked = runHook({ session_id: SESSION, cwd: root, hook_event_name: "Stop" }, {}, true);
+    await page.waitForFunction(
+      () => document.querySelector(".status-text")?.textContent === "Claude is waiting for you to send",
+    );
+    await page.locator(".pass textarea").fill("Mesure du réveil");
+    const before = performance.now();
+    await page.locator(".pass button").click();
+    const result = await parked;
+    const elapsed = performance.now() - before;
+    console.log(`Send to Claude → agent woken: ${elapsed.toFixed(0)} ms`);
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("Mesure du réveil");
+    expect(elapsed).toBeLessThan(500);
+    // "Up to date" held before the wake too: what says the wake reached the page is Claude no longer waiting.
+    await page.waitForFunction(
+      () => document.querySelector(".status-text")?.textContent !== "Claude is waiting for you to send",
+    );
+  });
+
   test("handing over while Claude is not listening says what will make it read", async () => {
     await page.locator(".pass textarea").fill("Un mot pour plus tard");
     await page.locator(".pass textarea").press("Enter");
