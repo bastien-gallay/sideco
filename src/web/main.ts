@@ -28,6 +28,8 @@ import { chooseLocale, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
 import { messageField } from "./message-field.ts";
 import { type CardMark, MESSAGES, type SheetKind } from "./messages.ts";
+import { mountNotices } from "./notices.ts";
+import { meetUpdates } from "./reload.ts";
 import {
   caughtUpYet,
   changed,
@@ -363,9 +365,9 @@ const turnBar = h(
     passButton,
   ),
 );
-const toast = h("div", { class: "toast", role: "alert", hidden: true });
-/** What only a screen reader is told: a card moved by a key, which the eye sees on the board. */
-const spoken = h("div", { class: "spoken", role: "status", "aria-live": "polite" });
+const { toast, spoken, say, speak, withdrawOffer } = mountNotices(() => {
+  state.error = null;
+});
 /** The first stop of the keyboard: straight to the board, past the header and the palette. */
 const skip = h(
   "a",
@@ -401,14 +403,6 @@ const languagePicker = h(
   },
   ...LOCALES.map((l) => h("option", { value: l, lang: l, selected: l === locale }, MESSAGES[l].languageName)),
 );
-
-/** Tells a screen reader, and only it. Emptied first, so the same words twice in a row are said twice. */
-function speak(text: string): void {
-  spoken.textContent = "";
-  requestAnimationFrame(() => {
-    spoken.textContent = text;
-  });
-}
 
 const view = mountBoard(canvas, {
   removed: (said) => say(said, { label: t.undoAction, run: () => void undo() }),
@@ -1944,7 +1938,7 @@ async function undo(ifChanged?: "overwrite"): Promise<void> {
   const board = isLive() ? undoTarget(state.live, state.boardId ?? undefined) : undefined;
   if (!board) return;
   // An offer to take a gesture back is moot once one was taken back: it leaves.
-  if (toast.querySelector("button")) toast.hidden = true;
+  withdrawOffer();
   // Said once taken back: who does not see the board change hears what came back.
   const gesture = lastGesture(board);
   if (gesture?.blocked && !ifChanged) return askBeforeUndo(board, gesture, () => void undo("overwrite"));
@@ -1991,84 +1985,8 @@ window.addEventListener("keydown", (event) => {
   event.preventDefault();
 });
 
-let toastTimer: ReturnType<typeof setTimeout> | undefined;
-
-/** Says one thing, briefly. With an `offer`, it stays longer: there is something to press. */
-function say(text: string, offer?: { label: string; run: () => void }): void {
-  const hide = (): void => {
-    toast.hidden = true;
-    state.error = null;
-  };
-  toast.replaceChildren(text);
-  if (offer) {
-    const take = (): void => {
-      hide();
-      offer.run();
-    };
-    toast.append(h("button", { type: "button", onclick: take }, offer.label));
-  }
-  toast.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(hide, offer ? 10000 : 5000);
-}
-
-/** The build this page is, as the companion signed it into the document. */
-const BUILD = document.querySelector<HTMLMetaElement>('meta[name="sideco-build"]')?.content;
-const RELOADED_FOR = "sideco.reloadedFor";
-/** The served build this page has offered to reload for: it says so once. */
-let offered: string | null = null;
-
-/**
- * True while a reload would lose words: a reply kept as a draft, a field with
- * text in it, a question being asked.
- */
-function holdsWords(): boolean {
-  if (document.querySelector("dialog[open]")) return true;
-  if ([...drafts.values()].some((text) => text !== "")) return true;
-  const fields = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
-    'input[type="text"], textarea',
-  );
-  return [...fields].some((field) => field.value !== "" && field.checkVisibility());
-}
-
-/**
- * Notes, across the reload, that this tab reloads by itself for `served`. False when
- * it already did, or cannot keep the note: one reload per build served, never a loop.
- */
-function firstReloadFor(served: string): boolean {
-  try {
-    if (sessionStorage.getItem(RELOADED_FOR) === served) return false;
-    sessionStorage.setItem(RELOADED_FOR, served);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** The page is the one served: the next update gets a reload of its own. */
-function forgetReload(): void {
-  try {
-    sessionStorage.removeItem(RELOADED_FOR);
-  } catch {
-    // Nothing could be kept, so nothing is left behind.
-  }
-}
-
-/**
- * The companion came back serving another page than this one: Sideco was updated.
- * The tab reloads to become that page as soon as no words would be lost. Until
- * then, or when a reload already failed to bring it, it says so once, and
- * reloading is the reader's to choose.
- */
-function meet(served: string | null): void {
-  if (served === null) return;
-  if (served === BUILD) forgetReload();
-  else if (!holdsWords() && firstReloadFor(served)) location.reload();
-  else if (offered !== served) {
-    offered = served;
-    say(t.updated, { label: t.reload, run: () => location.reload() });
-  }
-}
+/** Meets each build the companion serves: a reload when no words would be lost, else an offer. */
+const meet = meetUpdates(say, () => [...drafts.values()].some((text) => text !== ""));
 
 function openNewBoard(formatId = "event-storming"): void {
   const title = h("input", {
