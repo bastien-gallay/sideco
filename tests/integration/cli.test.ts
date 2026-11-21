@@ -639,6 +639,23 @@ describe("the address of a board or a card in the page", () => {
   });
 });
 
+describe("the status line of Claude Code", () => {
+  test("`sideco statusline` reads the session on stdin and prints the companion's address, clickable", async () => {
+    const line = await sideco(["statusline"], {
+      stdin: JSON.stringify({ workspace: { current_dir: root } }),
+    });
+    expect(line.code).toBe(0);
+    expect(line.out).toBe(
+      `\x1b]8;;${note().url}\x07sideco · ${note().url.replace("http://", "")}\x1b]8;;\x07`,
+    );
+  });
+
+  test("outside a workspace it prints nothing and still succeeds", async () => {
+    const line = await sideco(["statusline"], { stdin: JSON.stringify({ cwd: tmpdir() }), cwd: tmpdir() });
+    expect(line).toEqual({ code: 0, out: "", err: "" });
+  });
+});
+
 describe("Claude takes back its own gestures", () => {
   const B = ["--board", "annuler-cli"];
 

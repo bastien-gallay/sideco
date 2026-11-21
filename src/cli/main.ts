@@ -59,13 +59,15 @@ import {
   showPage,
   stopServer,
 } from "./client.ts";
-import { runHook } from "./hook.ts";
+import { hookFromStdin } from "./hook.ts";
 import { readSetting } from "./setting.ts";
+import { statusline } from "./statusline.ts";
 
 const HELP = `sideco — a visual companion for Claude Code
 
   sideco open                         start the companion if needed and show the page (a page already open is left alone)
   sideco url [BOARD | ID]             print its address, or a board's or a card's in the page
+  sideco statusline                   its address for Claude Code's status line (the session's JSON on stdin)
   sideco serve [--port N] [--lang L]  run it in the foreground
   sideco stop                         stop the companion; the journal stays. It also stops by itself
                                       5 min after the last page and session leave ($SIDECO_IDLE_MS, or off)
@@ -132,6 +134,7 @@ or in French with --lang fr or SIDECO_LANG=fr; in the page, each reader picks th
 export const CLI_VERBS: ReadonlySet<string> = new Set([
   "help",
   "hook",
+  "statusline",
   "init",
   "serve",
   "stop",
@@ -188,7 +191,8 @@ function isSystemError(error: unknown): error is Error {
 }
 
 async function run(verb: string, rest: string[]): Promise<number> {
-  if (verb === "hook") return hook(rest.includes("--rewake"));
+  if (verb === "hook") return hookFromStdin(rest.includes("--rewake"));
+  if (verb === "statusline") return statusline();
   const args = parseArgs(rest);
   const cwd = process.cwd();
 
@@ -439,21 +443,6 @@ function shown(board: Board, card: string | undefined, args: Args): string {
 
 function isGlobalFlag(tokens: string[], index: number): boolean {
   return GLOBAL_FLAGS.has(tokens[index] ?? "") || GLOBAL_FLAGS.has(tokens[index - 1] ?? "");
-}
-
-/** Whatever arrives on stdin, a hook exits 0 unless it means to wake the agent. */
-async function hook(rewake: boolean): Promise<number> {
-  let input: unknown;
-  try {
-    input = JSON.parse(await Bun.stdin.text());
-  } catch {
-    return 0;
-  }
-  if (typeof input !== "object" || input === null) return 0;
-  const result = await runHook(input as Record<string, unknown>, process.env, rewake);
-  if (result.stdout) console.log(result.stdout);
-  if (result.stderr) console.error(result.stderr);
-  return result.exitCode;
 }
 
 async function serveForeground(given: string, args: Args): Promise<number> {

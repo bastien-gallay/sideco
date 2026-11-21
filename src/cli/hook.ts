@@ -289,3 +289,18 @@ function clip(text: string, max: number): string {
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
+
+/** Whatever arrives on stdin, a hook exits 0 unless it means to wake the agent. */
+export async function hookFromStdin(rewake: boolean): Promise<number> {
+  let input: unknown;
+  try {
+    input = JSON.parse(await Bun.stdin.text());
+  } catch {
+    return 0;
+  }
+  if (typeof input !== "object" || input === null) return 0;
+  const result = await runHook(input as Record<string, unknown>, process.env, rewake);
+  if (result.stdout) console.log(result.stdout);
+  if (result.stderr) console.error(result.stderr);
+  return result.exitCode;
+}
