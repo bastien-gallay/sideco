@@ -1937,12 +1937,17 @@ describe("a kanban's own lanes, from the page", () => {
       "doing",
       "done",
     ];
+  /** Where a heading is once it stays put: a lane restored, a panel folding or a scroll can still be moving it. */
   const heading = async (name: string) => {
-    const box = await page
-      .locator(".layer-heads .lane-label", { hasText: new RegExp(`^${name}$`) })
-      .boundingBox();
-    if (!box) throw new Error(`no heading ${name}`);
-    return box;
+    const label = page.locator(".layer-heads .lane-label", { hasText: new RegExp(`^${name}$`) });
+    let box = await label.boundingBox();
+    for (let attempt = 0; attempt < 40; attempt++) {
+      await Bun.sleep(60);
+      const next = await label.boundingBox();
+      if (box && next && next.x === box.x && next.y === box.y) return next;
+      box = next;
+    }
+    throw new Error(`no steady heading ${name}`);
   };
 
   test("the edge between two headings offers a lane; named, it is added there", async () => {
