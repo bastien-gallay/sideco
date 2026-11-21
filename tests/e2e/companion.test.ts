@@ -570,6 +570,38 @@ describe("other workshops", () => {
     await page.keyboard.press("Escape");
   });
 
+  test("a click beside the drawing lets the card go; the panels and the controls keep it", async () => {
+    const chosen = async () => ((await card("T2").getAttribute("class")) ?? "").includes("is-selected");
+    const choose = async () => {
+      await card("T2").click();
+      await until("the card is chosen", chosen);
+    };
+    const letGo = async (what: string) => until(`${what} lets the card go`, async () => !(await chosen()));
+    // The stage under the drawing.
+    const board = await page.locator(".sideco-board").boundingBox();
+    const stage = await page.locator(".canvas").boundingBox();
+    if (!board || !stage) throw new Error("no board on screen");
+    expect(stage.y + stage.height).toBeGreaterThan(board.y + board.height + 20);
+    await choose();
+    await page.mouse.click(stage.x + stage.width / 2, stage.y + stage.height - 10);
+    await letGo("the stage");
+    // The bare header and footer.
+    await choose();
+    await page.locator("header.top .brand").click();
+    await letGo("the header");
+    await choose();
+    await page.locator("footer.bottom").click({ position: { x: 4, y: 4 } });
+    await letGo("the footer");
+    // The panels, the bare one included, and the controls work on the card: they keep it.
+    await choose();
+    await page.locator("#tab-history").click();
+    await page.locator("aside.left").click({ position: { x: 8, y: 300 } });
+    await page.locator(".zoom button").last().click();
+    await page.locator(".zoom button").first().click();
+    expect(await chosen()).toBe(true);
+    await page.keyboard.press("Escape");
+  });
+
   test("with cards all around it, the card toolbar never covers the card chosen", async () => {
     const lane = (name: string, n: number) =>
       Array.from({ length: n }, (_, k) => `add task "${name} ${k + 1}" --lane ${name}`);

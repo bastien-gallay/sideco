@@ -132,6 +132,8 @@ export interface BoardView {
   reveal(id: string): void;
   /** Gives the card the keyboard: it is where Tab enters the board from now on; `centred` brings it to the middle. */
   focus(id: string, centred?: boolean): void;
+  /** Lets the card chosen go, as a click on the board beside it does; a drop that ended there is no such click. */
+  letGo(): void;
 }
 
 export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
@@ -1769,6 +1771,16 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" });
     },
     focus: focusCard,
+    letGo() {
+      if (dropped) dropped = false;
+      else if (state.selected || state.linking) {
+        pickedLink = undefined;
+        state.selected = null;
+        state.linking = null;
+        changed();
+        paintTools();
+      }
+    },
     zoomBy(step) {
       // From a fitted zoom, the next step that way.
       const next = step > 0 ? ZOOMS.find((z) => z > zoom + 0.001) : ZOOMS.findLast((z) => z < zoom - 0.001);

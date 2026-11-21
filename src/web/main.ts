@@ -786,8 +786,14 @@ function step(by: -1 | 1): void {
 }
 
 // A menu open closes as a menu does: on a click elsewhere, or on Escape, which gives its button the keyboard back.
+// The card chosen is let go on the stage beside the drawing and on the bare header or footer; panels and controls work on it.
+const BARE = ".canvas, header.top, footer.bottom";
+const KEEPS =
+  ".sideco-board, .card-tools, .card-editor, button, a, input, textarea, select, summary, label, [tabindex]";
 document.addEventListener("click", (event) => {
   if (boardMenu.open && !boardMenu.contains(event.target as Node)) boardMenu.open = false;
+  const target = event.target as Element;
+  if (target.closest(BARE) && !target.closest(KEEPS)) view.letGo();
 });
 boardMenu.addEventListener("keydown", (event) => {
   if (event.key !== "Escape" || !boardMenu.open) return;
