@@ -2057,6 +2057,8 @@ describe("what the page said, kept in its tab (T89)", () => {
     // Taken, the offer leaves the list: the line stays, its button goes.
     await items().nth(1).getByRole("button").waitFor({ state: "detached" });
     await agent("board rm ailleurs");
+    // Said once it lands: waited for here, so it does not speak over the next test's toast.
+    await page.locator(".toast", { hasText: "Claude removed the board “Ailleurs”" }).waitFor();
   });
 
   test("an offer holds until the reader's next gesture, in the toast as in the tab", async () => {
