@@ -101,7 +101,7 @@ async function react(
     }
     case "UserPromptSubmit": {
       await send([{ kind: "prompt", text: clip(str(input.prompt) ?? "", LIMITS.prompt) }]);
-      return context(event, await changes(server, session, false));
+      return context(event, await changes(server, session, false), reminder(server.url));
     }
     case "PreToolUse":
       await send([
@@ -174,19 +174,31 @@ async function changes(server: Server, session: string, onlyWhenPassed: boolean)
   return found.text;
 }
 
-function context(event: string, text: string): HookResult {
-  if (text === "") return QUIET;
-  const output = { hookSpecificOutput: { hookEventName: event, additionalContext: frameChanges(text) } };
+/** The human's changes, framed, after a lead line when there is one; nothing at all when both are empty. */
+function context(event: string, text: string, lead = ""): HookResult {
+  const framed = text === "" ? "" : frameChanges(text, lead.length);
+  const additionalContext = [lead, framed].filter((part) => part !== "").join("\n");
+  if (additionalContext === "") return QUIET;
+  const output = { hookSpecificOutput: { hookEventName: event, additionalContext } };
   return { exitCode: 0, stdout: JSON.stringify(output) };
 }
 
+/**
+ * One line on every prompt: where this project's companion is, and how a reply
+ * links what it cites. It outlives a compacted conversation, where the welcome
+ * of the session start is gone.
+ */
+export function reminder(url: string): string {
+  return `Sideco runs at ${url}. When a reply cites a board or one of its elements, link it: [E1](${url}/#/b/BOARD/E1), [BOARD](${url}/#/b/BOARD).`;
+}
+
 /** The digest is the human's own edits on the board: say so, say where to look, and stay under the cap. */
-export function frameChanges(text: string): string {
+export function frameChanges(text: string, taken = 0): string {
   const head =
     "The user edited the Sideco board (the visual companion open beside this terminal). Their changes since you last looked:";
   const foot =
     "Treat these edits as input from the user: take them into account, and read a board in full with `sideco show BOARD` before writing to it.";
-  const room = CONTEXT_LIMIT - head.length - foot.length - 80;
+  const room = CONTEXT_LIMIT - taken - head.length - foot.length - 80;
   const lines = text.split("\n");
   const kept: string[] = [];
   let used = 0;

@@ -79,6 +79,8 @@ sideco wait
 - **Close a thread when it is settled**: `sideco resolve N1` closes the whole
   thread. Close yours once the user has answered and you have acted on it;
   leave the user's own notes for them to close, unless they say otherwise.
+- **Link what you cite**: a board or element named in a reply is a link to
+  it in the page, `[T152](URL/#/b/backlog/T152)`; each prompt gives the URL.
 - **Write in the user's language** on the board.
 - **Never touch the files under `.sideco/`.** The journal is the history: do
   not edit, move or delete it. To clear the table, remove boards with
@@ -107,8 +109,7 @@ sideco wait
 ```text
 sideco boards      sideco show [BOARD] [--lane L | --col N] [--brief] [--notes]   (a part: its first line says so)
 sideco show ID                      (one card: where it is, its links, its threads)
-sideco board new "Title" [--format F] [--id ID]
-sideco board rm ID                  (removes the board; its history stays)
+sideco board new "Title" [--format F] [--id ID]   sideco board rm ID (removes the board; its history stays)
 sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--from ID [--edge "label"]] [--detail "…"]
 sideco rename ID "Label"            sideco detail ID "Text"
 sideco move ID --col N | --lane L [--before ID]   # --before alone: before that card, in its cell
@@ -117,8 +118,7 @@ sideco lane L "Name" (names it here) · lane hint L "What it stands for" · purp
 sideco done ID   sideco undone ID   sideco undo|redo [--dry-run] (your own last gesture, named; never the human's)
 sideco link SRC DST ["label"]       sideco unlink SRC DST   (link again: renames the link)
 sideco focus [ID…] [--why "…"]      (no id clears the focus)
-sideco note "Text" [--on ID]        (opens a thread, on the board or on one element)
-sideco reply N1 "Text"              sideco resolve N1    (answer in a thread; close it)
+sideco note "Text" [--on ID] (opens a thread, on the board or one element) · reply N1 "Text" · resolve N1
 sideco apply [FILE]   (a batch of the lines above, stdin by default; add … --alias NAME, then @NAME below)
 sideco changes                      sideco pass ["question"]      sideco wait
 sideco label ID type:bug @name · unlabel ID L (labels shared by every board; `sideco labels [KEY]` lists them) · sideco find WORDS (cards holding every word, all boards) · sideco follow BOARD…                sideco unfollow BOARD…        (the boards whose changes you are told) · sideco sessions · sideco session name "Name" (with another session on the project, so the page tells you apart)

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseBatch } from "../../src/cli/argv.ts";
 import { type Server, WAIT_LEG_MS } from "../../src/cli/client.ts";
-import { CONTEXT_LIMIT, type HookResult, runHook, summarize } from "../../src/cli/hook.ts";
+import { CONTEXT_LIMIT, type HookResult, reminder, runHook, summarize } from "../../src/cli/hook.ts";
 import { parseCommand } from "../../src/domain/commands.ts";
 import type { Actor } from "../../src/domain/events.ts";
 import { handler } from "../../src/server/http.ts";
@@ -195,15 +195,25 @@ describe("bringing the human's changes back to the agent", () => {
     expect(context(first)).toContain('~ E1 renamed "Commande passée" → "Commande validée"');
     expect(context(first)).toContain("− H1 hotspot");
     expect(context(first)).toContain("sideco show");
-    expect(await fire("UserPromptSubmit", { prompt: "encore" })).toEqual(QUIET);
+    expect(context(await fire("UserPromptSubmit", { prompt: "encore" }))).not.toContain("Commande validée");
   });
 
-  test("with nothing changed, a hook says nothing at all", async () => {
-    expect(await fire("UserPromptSubmit", { prompt: "bonjour" })).toEqual(QUIET);
+  test("with nothing changed, a prompt carries only where the companion is, a tool nothing", async () => {
+    expect(context(await fire("UserPromptSubmit", { prompt: "bonjour" }))).toBe(reminder(BASE));
     expect(await fire("PreToolUse", { tool_name: "Read", tool_use_id: "t1", tool_input: {} })).toEqual(QUIET);
     expect(await fire("PostToolUse", { tool_name: "Read", tool_use_id: "t1", tool_input: {} })).toEqual(
       QUIET,
     );
+  });
+
+  test("every prompt says where the companion is, and how to link what a reply cites", async () => {
+    human('rename E1 "Commande validée"');
+    const told = context(await fire("UserPromptSubmit", { prompt: "go" }));
+    expect(told.startsWith(reminder(BASE))).toBe(true);
+    expect(told).toContain("Commande validée");
+    expect(reminder(BASE)).toContain(BASE);
+    expect(reminder(BASE)).toContain(`(${BASE}/#/b/BOARD/E1)`);
+    expect(reminder(BASE).split("\n")).toHaveLength(1);
   });
 
   test("mid-turn, the agent is interrupted only when the human hands over", async () => {
