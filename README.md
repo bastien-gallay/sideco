@@ -22,6 +22,14 @@ claude plugin install sideco@sideco
 
 Then, in any project, start Claude Code and ask: *"let's model the checkout flow on the board"*. Claude creates the workspace, starts the companion and opens the page. There is nothing else to launch.
 
+To keep the companion's address in sight, put it in Claude Code's status line: `sideco statusline` prints `sideco · 127.0.0.1:4747`, a link where the terminal supports one, and nothing outside a Sideco project. A plugin cannot set the status line, so add it to `~/.claude/settings.json` yourself:
+
+```json
+{ "statusLine": { "type": "command", "command": "~/sideco/bin/sideco statusline" } }
+```
+
+With a status line script of your own, the [guide](docs/guide.fr.md) gives the two lines to append to it.
+
 To try it without installing, pass the plugin for one session:
 
 ```sh

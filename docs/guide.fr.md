@@ -89,11 +89,33 @@ Chacun de tes messages rappelle aussi à Claude l'adresse du compagnon de ce pro
 
 Pour voir toi aussi l'adresse du compagnon, ajoute-la à la ligne d'état de Claude Code. `sideco statusline` lit la session que Claude Code lui passe et affiche `sideco · 127.0.0.1:4747`, cliquable (Cmd+clic) dans les terminaux qui le permettent (iTerm2, Kitty, WezTerm ; pas Terminal.app). Elle n'affiche rien hors d'un projet Sideco et ne démarre jamais le compagnon. Un plugin ne peut pas poser la ligne d'état : elle se règle dans `~/.claude/settings.json`.
 
+Sans ligne d'état à toi, pose celle de Sideco :
+
 ```json
 { "statusLine": { "type": "command", "command": "sideco statusline" } }
 ```
 
-<sub>Source : `src/cli/statusline.ts` ; liens OSC 8 : code.claude.com/docs/en/statusline, lue le 2026-11-21. `sideco` doit être dans le `PATH`, sinon le chemin complet de `bin/sideco`.</sub>
+Avec un script à toi, ajoute-lui ces deux lignes à la fin : l'adresse vient en dernière ligne de la barre, seulement dans un projet Sideco. Le script reçoit la session sur stdin, et la garde dans `$input` :
+
+```bash
+sideco_line=$(printf '%s' "$input" | ~/sideco/bin/sideco statusline 2>/dev/null)
+[ -n "$sideco_line" ] && printf "%s\n" "$sideco_line"
+```
+
+Si l'adresse s'affiche sans réagir au Cmd+clic, Claude Code n'a pas reconnu un terminal à liens : force-le dans ton shell, une fois pour toutes.
+
+```bash
+echo 'export FORCE_HYPERLINK=1' >> ~/.zshrc
+```
+
+| Où | État |
+| --- | --- |
+| iTerm2 3.5, `FORCE_HYPERLINK=1`, ajoutée à un script existant | ✅ essayé le 2026-11-21 : cliquable |
+| Kitty, WezTerm | ❓ cités par la documentation de Claude Code, pas essayés |
+| Terminal.app | ❌ pas de lien, l'adresse reste lisible |
+| tmux, SSH | ⚠️ peuvent retirer le lien |
+
+<sub>Source : `src/cli/statusline.ts` ; liens OSC 8 et `FORCE_HYPERLINK` : code.claude.com/docs/en/statusline, lue le 2026-11-21. `~/sideco` est le clone de l'installation ; `sideco` seul suffit s'il est dans le `PATH`.</sub>
 
 Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit comme un seul ajout. Signes : `+` ajouté, `−` supprimé, `~` modifié, `→` déplacé.
 
