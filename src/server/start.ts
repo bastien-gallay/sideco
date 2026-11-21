@@ -11,7 +11,7 @@ import { replay, type Workspace } from "../domain/workspace.ts";
 import { serve } from "./http.ts";
 import { Hub } from "./hub.ts";
 import { IDLE_CHECK_MS, IdleWatch, STALE_SESSION_MS } from "./idle.ts";
-import { openJournal } from "./journal.ts";
+import { journalBytes, openJournal } from "./journal.ts";
 import { buildPage } from "./page.ts";
 
 export { IDLE_GRACE_MS } from "./idle.ts";
@@ -39,6 +39,23 @@ export function dataDir(root: string): string {
 /** The workspace as the journal of `root` holds it, read without a server. */
 export function readWorkspace(root: string): Workspace {
   return replay(openJournal(dataDir(root)).load());
+}
+
+/** A journal read the way the server reads it when it starts: loaded, then replayed. */
+export interface JournalRead {
+  workspace: Workspace;
+  events: number;
+  bytes: number;
+  /** How long loading and replaying took: what a start of the companion costs. */
+  ms: number;
+}
+
+export function readJournal(root: string, clock: () => number = () => performance.now()): JournalRead {
+  const dir = dataDir(root);
+  const began = clock();
+  const events = openJournal(dir).load();
+  const workspace = replay(events);
+  return { workspace, events: events.length, bytes: journalBytes(dir), ms: clock() - began };
 }
 
 export function serverNote(root: string): string {

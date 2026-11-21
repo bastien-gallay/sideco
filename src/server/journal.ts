@@ -2,7 +2,7 @@
  * The journal on disk: one JSON object per line, appended and never rewritten.
  * It is the only durable state; everything else is rebuilt from it at start-up.
  */
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { isBoardEvent, isKnownEvent, type Recorded } from "../domain/events.ts";
 import type { Journal } from "./hub.ts";
@@ -29,6 +29,13 @@ export function openJournal(dir: string): Journal {
       );
     },
   };
+}
+
+/** What the journal of `dir` weighs on disk, in bytes: the more it weighs, the longer a start takes. */
+export function journalBytes(dir: string): number {
+  return [join(dir, "boards.jsonl"), join(dir, "sessions.jsonl")]
+    .filter((path) => existsSync(path))
+    .reduce((sum, path) => sum + statSync(path).size, 0);
 }
 
 function read(path: string): Recorded[] {

@@ -22,7 +22,15 @@ import { fromModel } from "../domain/export/model.ts";
 import { FORMATS } from "../domain/formats.ts";
 import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale, WORDS } from "../domain/i18n.ts";
 import { type Board, findBoard, latestSession, sessionLabel, type Workspace } from "../domain/workspace.ts";
-import { DEFAULT_PORT, dataDir, IDLE_GRACE_MS, readWorkspace, start } from "../server/start.ts";
+import {
+  DEFAULT_PORT,
+  dataDir,
+  IDLE_GRACE_MS,
+  type JournalRead,
+  readJournal,
+  readWorkspace,
+  start,
+} from "../server/start.ts";
 import { addressOf } from "./address.ts";
 import {
   type Action,
@@ -241,7 +249,7 @@ async function run(verb: string, rest: string[]): Promise<number> {
       return 0;
     }
     case "status":
-      console.log(await statusText(root, read()));
+      console.log(await statusText(root, readJournal(root)));
       return 0;
     case "boards":
       console.log(boardsText(read()));
@@ -515,7 +523,8 @@ function boardsText(ws: Workspace): string {
   return ws.boards.map((b) => `${b.id}  ${b.format}  ${b.elements.length} elements  "${b.title}"`).join("\n");
 }
 
-async function statusText(root: string, ws: Workspace): Promise<string> {
+async function statusText(root: string, journal: JournalRead): Promise<string> {
+  const ws = journal.workspace;
   const server = await findServer(root).catch((error: unknown) => {
     if (error instanceof Blocked) return "out of reach from this shell (a sandbox blocks local connections)";
     throw error;
@@ -530,7 +539,7 @@ async function statusText(root: string, ws: Workspace): Promise<string> {
     `workspace  ${root}`,
     `server     ${typeof server === "string" ? server : server ? server.url : "not running (start it with `sideco open`)"}`,
     `page       ${page}`,
-    `journal    seq ${ws.seq}, ${ws.boards.length} board${ws.boards.length === 1 ? "" : "s"}, ${ws.sessions.length} session${ws.sessions.length === 1 ? "" : "s"}`,
+    `journal    seq ${ws.seq}, ${journal.events} events, ${Math.round(journal.bytes / 1024)} kB, read in ${Math.round(journal.ms)} ms, ${ws.boards.length} board${ws.boards.length === 1 ? "" : "s"}, ${ws.sessions.length} session${ws.sessions.length === 1 ? "" : "s"}`,
     ...(session
       ? [`session    ${sessionLabel(session)} is ${session.status} (all: \`sideco sessions\`)`]
       : []),

@@ -108,6 +108,13 @@ describe("a workspace", () => {
     expect(readFileSync(join(root, ".sideco", ".gitignore"), "utf8")).toContain("sessions.jsonl");
     expect((await sideco(["status"])).out).toContain("server     not running");
   });
+
+  test("status says what the journal weighs and how long reading it took, which is what a start costs", async () => {
+    await sideco(["init"]);
+    expect((await sideco(["status"])).out).toMatch(
+      /journal {4}seq 0, 0 events, 0 kB, read in \d+ ms, 0 boards/,
+    );
+  });
 });
 
 describe("the agent models from the terminal", () => {
