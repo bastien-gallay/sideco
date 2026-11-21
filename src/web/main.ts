@@ -26,6 +26,7 @@ import { mountBoard } from "./board-view.ts";
 import { clock, h, type Props, region } from "./dom.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
+import { messageField } from "./message-field.ts";
 import { type CardMark, MESSAGES, type SheetKind } from "./messages.ts";
 import {
   caughtUpYet,
@@ -324,13 +325,7 @@ let keepHistoryFocus = false;
 /** What the bar says of the turn. Repainted apart from the message beside it. */
 const turnSays = h("div", { class: "turn-says" });
 /** Made once: a message being typed for Claude keeps its words and the keyboard through every repaint. */
-const passMessage = h("input", {
-  type: "text",
-  name: "message",
-  placeholder: t.messagePlaceholder,
-  "aria-label": t.messageForClaude,
-  maxlength: 1000,
-});
+const passMessage = messageField(t.messagePlaceholder, t.messageForClaude);
 const passButton = h("button", { type: "submit", class: "primary" }, t.handOver);
 /** The board the turn is handed over on: the one on screen. */
 let passOn: string | undefined;

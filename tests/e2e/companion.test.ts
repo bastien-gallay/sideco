@@ -347,7 +347,7 @@ describe("the human edits, the agent is told", () => {
     expect(await page.locator(".pass-to").count()).toBe(0);
     await shot("05-listening");
 
-    await page.locator(".pass input").fill("J'ai corrigé la règle, continue");
+    await page.locator(".pass textarea").fill("J'ai corrigé la règle, continue");
     // From the board, not only from the field: ⌘↵ or Ctrl+Enter sends, the word typed with it.
     // A card holding the keyboard does not take the chord for its own Enter, which renames it.
     await card("P1").focus();
@@ -364,11 +364,11 @@ describe("the human edits, the agent is told", () => {
   });
 
   test("handing over while Claude is not listening says what will make it read", async () => {
-    await page.locator(".pass input").fill("Un mot pour plus tard");
-    await page.locator(".pass input").press("Enter");
+    await page.locator(".pass textarea").fill("Un mot pour plus tard");
+    await page.locator(".pass textarea").press("Enter");
     await page.locator(".toast", { hasText: "Sent." }).waitFor();
     expect(await page.locator(".toast").textContent()).toContain("at your next message in the terminal");
-    expect(await page.locator(".pass input").inputValue()).toBe("");
+    expect(await page.locator(".pass textarea").inputValue()).toBe("");
     // Handing over again without a word does not erase the word already said.
     await page.locator(".pass button").click();
     await until("Claude would be told the word", async () =>
@@ -377,7 +377,7 @@ describe("the human edits, the agent is told", () => {
   });
 
   test("a message being typed for Claude survives Claude handing the turn over, keyboard included", async () => {
-    const field = page.locator(".pass input");
+    const field = page.locator(".pass textarea");
     await field.click();
     await page.keyboard.type("Bonne idée, le focus");
     await agent('pass "Qui réserve le stock ?"', "commande");
@@ -386,6 +386,28 @@ describe("the human edits, the agent is told", () => {
     await page.keyboard.type(" !");
     expect(await field.inputValue()).toBe("Bonne idée, le focus !");
     await field.fill("");
+  });
+
+  test("the message for Claude takes several lines: it grows on focus, Shift+Enter breaks the line", async () => {
+    const field = page.locator(".pass textarea");
+    const height = async () => (await field.boundingBox())?.height ?? 0;
+    await card("P1").focus();
+    const resting = await height();
+    await field.click();
+    // Room to write as soon as the field has the keyboard, and back to one line once it is left.
+    await until("the field grows on focus", async () => (await height()) > resting * 2);
+    await page.keyboard.type("Deux choses :");
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("le stock, puis le paiement");
+    expect(await field.inputValue()).toBe("Deux choses :\nle stock, puis le paiement");
+    await page.keyboard.press("Enter");
+    await page.locator(".toast", { hasText: "Sent." }).waitFor();
+    expect(await field.inputValue()).toBe("");
+    await until("Claude would be told both lines", async () =>
+      (await pending()).includes("Deux choses :\nle stock, puis le paiement"),
+    );
+    await card("P1").focus();
+    await until("the field is back to one line", async () => (await height()) <= resting + 1);
   });
 });
 
@@ -2831,8 +2853,8 @@ describe("two sessions on one project", () => {
     await until("the chosen session's turns", async () => (await prompts()) === 0);
     // Handed over from the page, the turn goes to the session chosen, not to the board's last writer.
     expect(await page.locator(".pass button").getAttribute("title")).toContain("To the session sideco-ui");
-    await page.locator(".pass input").fill("Pour la session choisie");
-    await page.locator(".pass input").press("Enter");
+    await page.locator(".pass textarea").fill("Pour la session choisie");
+    await page.locator(".pass textarea").press("Enter");
     await until("the turn handed over", async () =>
       (await workspace()).boards.some((b) => b.turn?.message === "Pour la session choisie"),
     );

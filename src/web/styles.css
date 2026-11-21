@@ -2061,8 +2061,20 @@ legend {
   gap: 6px;
 }
 
-.pass input {
+/* One line at rest; once it has the keyboard, room for a few lines, and more as they come. */
+.pass textarea {
   width: 240px;
+  max-height: 40vh;
+  resize: none;
+  field-sizing: content;
+}
+
+.pass textarea:focus {
+  min-height: calc(4lh + 12px);
+}
+
+.pass:has(textarea:focus) {
+  align-items: flex-end;
 }
 
 .toast {
@@ -2143,7 +2155,7 @@ legend {
     flex: auto;
   }
 
-  .pass input {
+  .pass textarea {
     flex: 1;
     width: auto;
   }
