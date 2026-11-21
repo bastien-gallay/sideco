@@ -751,6 +751,8 @@ describe("other workshops", () => {
     await shot("09-new-board");
     await page.locator("dialog.new-board button[type=submit]").click();
     await page.waitForFunction(() => location.hash === "#/b/retro-sprint-12");
+    // The address changes before the palette is drawn again: wait for it rather than read the board before.
+    await page.locator(".palette h2", { hasText: "Retrospective" }).waitFor();
     expect(await page.locator(".palette h2").textContent()).toBe("Retrospective");
 
     await paletteType("Observation").click();
