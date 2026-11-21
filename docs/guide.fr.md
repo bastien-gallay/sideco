@@ -83,7 +83,7 @@ Tes changements reviennent à Claude par quatre canaux, selon ce qu'il fait à c
 | est en train de travailler | le résumé arrive après son outil en cours (hook `PostToolUse`), si tu as passé la main | ✅ testé |
 | est au repos, page ouverte | il est réveillé (hook `Stop` avec `asyncRewake`), jusqu'à 12 h après son dernier tour, ou jusqu'à la fermeture de la session | ✅ essayé en session réelle, Claude Code 2.1.326, après quelques minutes de repos ; ⚠️ au-delà de 6 min : corrigé le 2026-11-18, pas encore réessayé en session réelle |
 
-Plusieurs sessions dans le même projet : le passage de main va à une seule, par défaut la dernière à avoir écrit sur le tableau, nommée sous le bouton (`Goes to the session dossier · id`). Seule celle-là est réveillée. Une autre se vise par `sideco pass --to agent --for SESSION`. `sideco sessions` liste les sessions ouvertes, ce que chacune suit, et marque la tienne ; `sideco session name "atelier"` donne un nom à la session qui le dit, à la place du début de son id.
+Plusieurs sessions dans le même projet : le passage de main va à une seule : depuis la page, celle choisie en haut, sinon celle à qui est le tableau (la dernière à y avoir écrit, si elle tourne encore) ; le survol du bouton la nomme (`Pour la session dossier · id` en français). Seule celle-là est réveillée. Une autre se vise par `sideco pass --to agent --for SESSION`. `sideco sessions` liste les sessions ouvertes, ce que chacune suit, et marque la tienne ; `sideco session name "atelier"` donne un nom à la session qui le dit, à la place du début de son id.
 
 Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit comme un seul ajout. Signes : `+` ajouté, `−` supprimé, `~` modifié, `→` déplacé.
 
