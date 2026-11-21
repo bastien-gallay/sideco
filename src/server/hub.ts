@@ -8,6 +8,7 @@ import { type Command, CommandError } from "../domain/commands.ts";
 import { type Context, decide } from "../domain/decide.ts";
 import { type Changes, describeChanges } from "../domain/digest.ts";
 import type { Recorded, SidecoEvent } from "../domain/events.ts";
+import { forPage, type Opening, RECENT_EVENTS, recentFrom } from "../domain/opening.ts";
 import { forThePage } from "../domain/sessions.ts";
 import { apply, concerns, findSession, replay, type Workspace } from "../domain/workspace.ts";
 import type { Journal } from "./journal.ts";
@@ -126,6 +127,18 @@ export class Hub {
   /** What a page that has folded up to `seq` is sent to catch up: the old tools left out. */
   pageEventsAfter(seq: number): Recorded[] {
     return this.eventsAfter(seq).filter(forThePage(this.workspace));
+  }
+
+  /** What a page opens on: the workspace as it stands, and only the recent events (see opening.ts). */
+  opening(keep = RECENT_EVENTS): Opening {
+    const from = recentFrom(this.workspace, this.now().getTime(), keep);
+    return { workspace: forPage(this.workspace), from, events: this.pageEventsAfter(from) };
+  }
+
+  /** The events a page opened without, up to `seq`: its history, when it asks for it. */
+  pageEventsUpTo(seq: number): Recorded[] {
+    const end = this.events.findIndex((e) => e.seq > seq);
+    return (end === -1 ? this.events : this.events.slice(0, end)).filter(forThePage(this.workspace));
   }
 
   /** What the human changed that `session` has not been told yet; `ack` records that it now has. */

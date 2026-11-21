@@ -1,7 +1,9 @@
 /**
- * The HTTP face of the hub. Three channels, as few as the loop needs:
+ * The HTTP face of the hub. Three channels, as few as the loop needs, and the past on demand:
  *
- *   GET  /api/events    server → page, Server-Sent Events, resumable by sequence
+ *   GET  /api/events    server → page, Server-Sent Events, resumable by sequence;
+ *                       with ?snapshot=1, opens on the workspace as it stands
+ *   GET  /api/history   page → server, the older events, when the page needs its past
  *   POST /api/commands  page or CLI → server, an atomic batch
  *   GET  /api/wait      agent → server, a long poll that returns when the human hands over
  *
@@ -73,6 +75,8 @@ export function handler(site: Site): Handler {
         case "/api/events":
           keepOpen();
           return stream(hub, page.build, request, url);
+        case "/api/history":
+          return history(hub, url);
         case "/api/changes":
           return changes(hub, url);
         case "/api/wait":
@@ -160,7 +164,10 @@ function stream(hub: Hub, build: string, request: Request, url: URL): Response {
         const said: Presence = { listening, run: hub.run, build };
         send(`event: presence\ndata: ${JSON.stringify(said)}\n\n`);
       };
-      for (const event of hub.pageEventsAfter(after)) send(frame(event.seq, event));
+      if (after === 0 && url.searchParams.has("snapshot")) {
+        const opening = hub.opening();
+        send(`event: snapshot\n${frame(opening.workspace.seq, opening)}`);
+      } else for (const event of hub.pageEventsAfter(after)) send(frame(event.seq, event));
       presence(hub.listening);
       const stopEvents = hub.subscribe((event) => send(frame(event.seq, event)));
       const stopPresence = hub.onPresence(presence);
@@ -179,6 +186,13 @@ function stream(hub: Hub, build: string, request: Request, url: URL): Response {
   return new Response(body, {
     headers: { "content-type": "text/event-stream", "cache-control": "no-store", "x-accel-buffering": "no" },
   });
+}
+
+/** The events a page opened without (see `Hub.opening`), up to `upTo`. */
+function history(hub: Hub, url: URL): Response {
+  const upTo = url.searchParams.get("upTo") ?? "";
+  if (!/^\d+$/.test(upTo)) return json({ error: "upTo must be a sequence number" }, 400);
+  return json({ events: hub.pageEventsUpTo(Number(upTo)) });
 }
 
 function frame(seq: number, data: unknown): string {

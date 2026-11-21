@@ -332,3 +332,24 @@ describe("a refused undo", () => {
     expect(() => hub.dispatch([undo], { actor: "human" })).toThrow("refused");
   });
 });
+
+describe("what a page opens on", () => {
+  test("the workspace as it stands, and the events after where the recent ones start", () => {
+    const { hub } = setup();
+    const opening = hub.opening(3);
+    expect(opening.workspace).toEqual(hub.workspace);
+    expect(opening.from).toBe(hub.workspace.seq - 3);
+    expect(opening.events.map((e) => e.seq)).toEqual([
+      hub.workspace.seq - 2,
+      hub.workspace.seq - 1,
+      hub.workspace.seq,
+    ]);
+  });
+
+  test("the older events come later, on demand, up to where the recent ones start", () => {
+    const { hub } = setup();
+    const { from, events } = hub.opening(3);
+    const older = hub.pageEventsUpTo(from);
+    expect([...older, ...events].map((e) => e.seq)).toEqual(hub.events.map((e) => e.seq));
+  });
+});

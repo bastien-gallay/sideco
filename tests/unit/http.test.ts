@@ -215,6 +215,36 @@ describe("the event stream", () => {
     await stream.close();
   });
 
+  test("opens on the workspace as it stands when the page asks, then pushes each new event", async () => {
+    await say(ORDERING);
+    const seq = hub.workspace.seq;
+    const stream = frames(await get("/api/events?snapshot=1"));
+    const first = await stream.next();
+    // Its id is the last event it holds: a stream the browser reopens resumes after it.
+    expect(first).toMatchObject({ id: String(seq), event: "snapshot" });
+    const opening = first.data as {
+      workspace: { seq: number; boards: { id: string }[] };
+      from: number;
+      events: { seq: number }[];
+    };
+    expect(opening.workspace.seq).toBe(seq);
+    expect(opening.workspace.boards.map((b) => b.id)).toEqual(["commande"]);
+    expect(opening.events.at(-1)?.seq).toBe(seq);
+    expect(opening.events.length).toBe(seq - opening.from);
+    expect((await stream.next()).event).toBe("presence");
+    await say('add event "Payé"');
+    expect(await stream.next()).toMatchObject({ id: String(seq + 1), data: { event: "ElementAdded" } });
+    await stream.close();
+  });
+
+  test("a page that resumes is sent the events it missed, not a snapshot", async () => {
+    await say(ORDERING);
+    const last = hub.workspace.seq;
+    const stream = frames(await get("/api/events?snapshot=1", { "last-event-id": String(last - 1) }));
+    expect(await stream.next()).toMatchObject({ id: String(last), event: undefined });
+    await stream.close();
+  });
+
   test("tells the page when an agent starts listening", async () => {
     const stream = frames(await get("/api/events"));
     expect(await stream.next()).toMatchObject({ event: "presence", data: { listening: 0 } });
@@ -231,6 +261,24 @@ describe("the event stream", () => {
     await stream.close();
     await say('board new "B" --id b');
     expect(hub.workspace.seq).toBe(1);
+  });
+});
+
+describe("the history a page asks for", () => {
+  test("the events up to a sequence, in order", async () => {
+    await say(ORDERING);
+    const response = await get("/api/history?upTo=3");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    const { events } = (await response.json()) as { events: { seq: number }[] };
+    expect(events.map((e) => e.seq)).toEqual([1, 2, 3]);
+  });
+
+  test("a sequence that is not one is refused", async () => {
+    for (const query of ["", "?upTo=", "?upTo=abc", "?upTo=-1", "?upTo=1.5"]) {
+      const response = await get(`/api/history${query}`);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "upTo must be a sequence number" });
+    }
   });
 });
 
