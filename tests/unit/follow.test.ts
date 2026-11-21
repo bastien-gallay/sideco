@@ -132,4 +132,34 @@ describe("which session is told what", () => {
     say(hub, "other", "unfollow", "sprint");
     expect(readerOf(hub.workspace, "sprint")?.id).toBe("mine");
   });
+
+  test("a session that starts is not told again what another session was already told (T175)", () => {
+    const { hub } = setup();
+    hub.dispatch(batch(KANBAN), { actor: "human" });
+    hub.dispatch(batch('pass "relis le sprint" --to agent', "sprint"), { actor: "human" });
+    expect(hub.changesFor("other", true).passed).toBe(true);
+    hub.dispatch([parseCommand({ kind: "session-start" })], { actor: "agent", session: "late" });
+    expect(hub.hasPendingTurn("late")).toBe(false);
+    expect(hub.changesFor("late", false)).toMatchObject({ text: "", passed: false });
+  });
+
+  test("what no session was told yet waits for the next one, even one that starts after it", () => {
+    const hub = new Hub(memoryJournal(), () => new Date(T0));
+    hub.dispatch(batch(KANBAN), { actor: "human" });
+    hub.dispatch(batch('pass "à toi" --to agent', "sprint"), { actor: "human" });
+    hub.dispatch([parseCommand({ kind: "session-start" })], { actor: "agent", session: "first" });
+    expect(hub.hasPendingTurn("first")).toBe(true);
+    expect(hub.changesFor("first", false)).toMatchObject({ passed: true });
+    expect(hub.changesFor("first", false).text).toContain("Sprint 12");
+  });
+
+  test("a hand-over on a board removed since is no hand-over", () => {
+    const hub = new Hub(memoryJournal(), () => new Date(T0));
+    hub.dispatch(batch(KANBAN), { actor: "human" });
+    hub.dispatch(batch('pass "à toi" --to agent', "sprint"), { actor: "human" });
+    hub.dispatch([parseCommand({ kind: "remove-board", board: "sprint" })], { actor: "human" });
+    hub.dispatch([parseCommand({ kind: "session-start" })], { actor: "agent", session: "first" });
+    expect(hub.hasPendingTurn("first")).toBe(false);
+    expect(hub.changesFor("first", false).passed).toBe(false);
+  });
 });

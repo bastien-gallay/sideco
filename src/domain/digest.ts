@@ -292,7 +292,8 @@ type Change =
   | { kind: "unlinked"; src: string; dst: string }
   | { kind: "focused"; ids: string[]; reason?: string }
   | { kind: "noted"; id: string; text: string; target?: string; thread?: string }
-  | { kind: "resolved"; id: string };
+  | { kind: "resolved"; id: string }
+  | { kind: "passed"; message?: string }; // a hand-over, shelved with its board like any change
 
 interface Entry {
   board: string;
@@ -379,8 +380,6 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
   const absent = new Set<string>();
   /** What was pending about a removed board, kept for the case it comes back. */
   const shelved = new Map<string, Shelf>();
-  let passed = false;
-  const words: string[] = [];
 
   /** A removed board takes every pending change about it along, whoever removed it. */
   const shelve = (board: string): void => {
@@ -564,17 +563,16 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
           } else put("resolve", e.id, { kind: "resolved", id: e.id });
           break;
         case "TurnPassed":
-          if (e.to === "agent") {
-            passed = true;
-            if (e.message && !words.includes(e.message)) words.push(e.message);
-          }
+          if (e.to === "agent") put("turn", String(e.seq), { kind: "passed", message: e.message });
           break;
       }
     }
     apply(ws, e);
   }
 
-  return { ws, entries: [...entries.values()], gone, passed, words };
+  const turns = [...entries.values()].flatMap(({ change }) => (change.kind === "passed" ? [change] : []));
+  const words = [...new Set(turns.flatMap((turn) => (turn.message ? [turn.message] : [])))];
+  return { ws, entries: [...entries.values()], gone, passed: turns.length > 0, words };
 }
 
 type Added = Extract<Change, { kind: "added" }>;
@@ -605,6 +603,8 @@ function nextInLane(board: Board, el: Element): string | undefined {
 /** One change as a line for the reader; undefined for a move that ended where it started. */
 function word(ws: Workspace, boardId: string, change: Change): string | undefined {
   switch (change.kind) {
+    case "passed":
+      return undefined; // said at the foot
     case "board-created":
       return `+ board created: ${quote(change.title)} (${change.format})`;
     case "board-retitled":
@@ -719,6 +719,7 @@ function named(change: Change): { elements: string[]; thread?: string } {
     case "slice-removed":
     case "board-removed":
     case "board-restored":
+    case "passed":
     case "column-inserted":
     case "column-removed":
     case "column-moved":
@@ -755,9 +756,8 @@ function movedLine(ws: Workspace, boardId: string, id: string, from: Origin): st
   const board = findBoard(ws, boardId);
   const el = board ? findElement(board, id) : undefined;
   if (!board || !el) return undefined;
-  if (findFormat(board.format)?.layout !== "columns") {
+  if (findFormat(board.format)?.layout !== "columns")
     return from.col === el.col ? undefined : `→ ${id} moved col ${from.col} → ${el.col}`;
-  }
   const next = nextInLane(board, el);
   if (from.lane !== el.lane)
     return `→ ${id} moved lane ${from.lane} → ${el.lane}${next ? `, before ${next}` : ""}`;

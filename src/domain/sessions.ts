@@ -28,7 +28,8 @@ export function applyToSession(ws: Workspace, e: SessionRecorded): void {
       turns: [],
       todos: [],
       status: "idle",
-      deliveredUpTo: 0,
+      // What another session was told is no news to one that starts now (T175).
+      deliveredUpTo: Math.max(0, ...ws.sessions.map((other) => other.deliveredUpTo)),
       lastSeq: e.seq,
       lastAt: e.ts,
     };
