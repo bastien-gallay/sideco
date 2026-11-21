@@ -70,7 +70,8 @@ export type Command =
   | { kind: "resolve"; board: string; id: string }
   | { kind: "pass"; board: string; to: "agent" | "human"; message?: string; target?: string }
   /** Takes back the caller's last gesture on the board; the board may be one they just removed. */
-  | { kind: "undo"; board: string }
+  /** `ifChanged`: what the human chose, asked about a gesture Claude changed since (B8). */
+  | { kind: "undo"; board: string; ifChanged?: "overwrite" | "keep" }
   /** Puts back what the caller's last undo took. */
   | { kind: "redo"; board: string }
   | { kind: "session-start"; cwd?: string }
@@ -280,6 +281,11 @@ export function parseCommand(input: unknown): Command {
         target: optional(f, "target", (x, k) => text(x, k, 200)),
       };
     case "undo":
+      return {
+        kind,
+        board: boardId(f),
+        ifChanged: optional(f, "ifChanged", (x, k) => oneOf(x, k, ["overwrite", "keep"] as const)),
+      };
     case "redo":
       return { kind, board: boardId(f) };
     case "name-session":

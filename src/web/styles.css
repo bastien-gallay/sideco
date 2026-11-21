@@ -1729,17 +1729,27 @@ dialog.sheet::backdrop {
 }
 
 dialog.sheet form,
-dialog.remove-board[open] {
+dialog.remove-board[open],
+dialog.undo-ask[open] {
   display: grid;
   gap: 16px;
 }
 
-dialog.remove-board {
+dialog.remove-board,
+dialog.undo-ask {
   width: min(440px, calc(100vw - 32px));
 }
 
-dialog.remove-board p {
+dialog.remove-board p,
+dialog.undo-ask p {
   color: var(--muted);
+}
+
+dialog.undo-ask ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
 }
 
 dialog.sheet h2 {

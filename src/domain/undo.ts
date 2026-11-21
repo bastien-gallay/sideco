@@ -210,6 +210,21 @@ export function supersede(board: Board, e: Happened): void {
   }
 }
 
+/**
+ * The card a gesture's way back would write to, that is no longer on the board:
+ * taken back anyway, it would write to nothing. Undefined when all are there.
+ */
+export function goneFrom(board: Board, gesture: Gesture): string | undefined {
+  const there = (id: string): boolean => board.elements.some((el) => el.id === id);
+  for (const back of gesture.inverse) {
+    if (back.event === "ElementRestored" || back.event === "ElementAdded") continue;
+    const ids = "id" in back ? [back.id] : "src" in back ? [back.src, back.dst] : [];
+    const gone = ids.find((id) => !there(id));
+    if (gone) return gone;
+  }
+  return undefined;
+}
+
 /** The refused gestures leave their author's trail: the next undo takes the one under them. */
 export function leaveBehind(
   board: Board,

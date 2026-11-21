@@ -1751,6 +1751,74 @@ describe("the board for who cannot see it", () => {
   });
 });
 
+describe("undoing a gesture Claude changed since (B8)", () => {
+  const BOARD = "ecrase";
+  const undo = () => page.locator(".undo button").first();
+  const ask = () => page.locator("dialog.undo-ask");
+  const labelOf = async (id: string): Promise<string | undefined> => (await elementOf(BOARD, id))?.label;
+  const offered = (): Promise<void> => until("Undo is offered", async () => !(await undo().isDisabled()));
+  const renameOnPage = async (id: string, text: string): Promise<void> => {
+    await card(id).dblclick();
+    await typeInEditor(text);
+    await until(`${id} renamed on the page`, async () => (await labelOf(id)) === text);
+  };
+
+  test("the page asks first; Escape leaves everything as it was", async () => {
+    await agent(`board new "Écrase" --id ${BOARD}\nadd event "Avant" --col 1\nadd event "Deux" --col 2`);
+    await page.locator(".board-picker select").selectOption(BOARD);
+    await card("E1").getByText("Avant").waitFor();
+    await renameOnPage("E1", "À moi");
+    await agent('rename E1 "À Claude"', BOARD);
+    await card("E1").getByText("À Claude").waitFor();
+    await offered();
+    await undo().click();
+    await ask().waitFor({ state: "visible" });
+    expect(await ask().locator("h2").textContent()).toBe("Claude changed it since. Undo anyway?");
+    expect(await ask().textContent()).toContain("Claude renames E1 to “À Claude”");
+    expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Keep Claude's change");
+    const before = (await workspace()).seq;
+    await page.keyboard.press("Escape");
+    await ask().waitFor({ state: "hidden" });
+    expect((await workspace()).seq).toBe(before);
+    expect(await undo().isDisabled()).toBe(false);
+  });
+
+  test("Undo anyway brings the old label back over Claude's", async () => {
+    await undo().click();
+    await ask().getByRole("button", { name: "Undo anyway" }).click();
+    await until("the old label is back", async () => (await labelOf("E1")) === "Avant");
+    await ask().waitFor({ state: "hidden" });
+  });
+
+  test("keeping Claude's change takes the gesture off the Undo list, with no error shown", async () => {
+    await renameOnPage("E2", "Moi");
+    await agent('rename E2 "Le sien"', BOARD);
+    await card("E2").getByText("Le sien").waitFor();
+    await undo().click();
+    await ask().getByRole("button", { name: "Keep Claude's change" }).click();
+    await ask().waitFor({ state: "hidden" });
+    // The rename of E1 was already taken back: with E2's gone too, nothing is left to undo.
+    await until("the gesture left the Undo list", async () => await undo().isDisabled());
+    expect(await labelOf("E2")).toBe("Le sien");
+    expect(await page.locator(".toast", { hasText: "refused" }).count()).toBe(0);
+  });
+
+  test("a card Claude removed since offers only to keep its change", async () => {
+    await agent('add event "Trois" --col 3', BOARD);
+    await card("E3").waitFor();
+    await renameOnPage("E3", "Mien");
+    await agent("rm E3", BOARD);
+    await card("E3").waitFor({ state: "detached" });
+    await offered();
+    await undo().click();
+    await ask().waitFor({ state: "visible" });
+    expect(await ask().getByRole("button", { name: "Undo anyway" }).count()).toBe(0);
+    await ask().getByRole("button", { name: "Keep Claude's change" }).click();
+    await ask().waitFor({ state: "hidden" });
+    await agent(`board rm ${BOARD}`);
+  });
+});
+
 describe("adding from the keyboard", () => {
   const BOARD = "ajout-clavier";
   const active = () =>

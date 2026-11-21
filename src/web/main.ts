@@ -47,6 +47,7 @@ import {
   state,
   travelTo,
 } from "./store.ts";
+import { askBeforeUndo, lastGesture } from "./undo-ask.ts";
 import {
   agentStatus,
   claudeWaits,
@@ -1934,19 +1935,19 @@ async function copyMermaid(): Promise<void> {
 
 /**
  * Takes back the human's latest gesture: on the board shown, or the removal of a
- * board if that came after. Claude's gestures are never theirs to undo.
+ * board if that came after; one Claude changed since, once asked (B8). Never Claude's own.
  */
-async function undo(): Promise<void> {
+async function undo(ifChanged?: "overwrite"): Promise<void> {
   const board = isLive() ? undoTarget(state.live, state.boardId ?? undefined) : undefined;
   if (!board) return;
   // An offer to take a gesture back is moot once one was taken back: it leaves.
   if (toast.querySelector("button")) toast.hidden = true;
   // Said once taken back: who does not see the board change hears what came back.
-  const gesture = [...state.live.boards, ...state.live.removed]
-    .find((b) => b.id === board)
-    ?.trails.human?.undo.at(-1);
+  const gesture = lastGesture(board);
+  if (gesture?.blocked && !ifChanged) return askBeforeUndo(board, gesture, () => void undo("overwrite"));
   const event = gesture && state.events.find((e) => e.seq === gesture.seq);
-  if (await send({ kind: "undo", board })) speak(t.undone(event ? describeEvent(event, locale) : board));
+  if (await send({ kind: "undo", board, ifChanged }))
+    speak(t.undone(event ? describeEvent(event, locale) : board));
 }
 
 async function redo(): Promise<void> {

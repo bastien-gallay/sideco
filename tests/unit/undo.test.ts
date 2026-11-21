@@ -391,3 +391,56 @@ describe("what Claude is told", () => {
     expect(told(t, read)).toContain("+ board restored");
   });
 });
+
+describe("the human may undo anyway, once told what it overwrites (B8)", () => {
+  const anyway = (t: Table, board: string, actor: Actor = "human"): void => {
+    t.do({ kind: "undo", board, ifChanged: "overwrite" }, actor);
+  };
+
+  test("their old label comes back over Claude's, and Redo puts Claude's back", () => {
+    const t = table(ORDERING).script('rename E1 "À moi"', "human");
+    const mine = t.seq;
+    t.script('rename E1 "À Claude"', "agent");
+    anyway(t, "commande");
+    expect(label(t, "E1")).toBe("Commande passée");
+    expect(t.events.at(-1)).toMatchObject({ event: "ElementRenamed", actor: "human", undoes: mine });
+    redo(t, "commande");
+    expect(label(t, "E1")).toBe("À Claude");
+  });
+
+  test("Claude's gesture is then the one blocked: Claude never takes the human's change back", () => {
+    const t = table(ORDERING).script('rename E1 "À moi"', "human");
+    t.script('rename E1 "À Claude"', "agent");
+    anyway(t, "commande");
+    expect(() => undo(t, "commande", "agent")).toThrow("refused: your gesture seq");
+  });
+
+  test("a gesture nobody changed is taken back as usual", () => {
+    const t = table(ORDERING).script('rename E1 "À moi"', "human");
+    anyway(t, "commande");
+    expect(label(t, "E1")).toBe("Commande passée");
+  });
+
+  test("Claude cannot undo anyway", () => {
+    const t = table(ORDERING).script('rename E1 "À Claude"', "agent");
+    t.script('rename E1 "À moi"', "human");
+    expect(() => anyway(t, "commande", "agent")).toThrow("only the human undoes anyway");
+  });
+
+  test("a card Claude removed since cannot be written to: the undo says so and writes nothing", () => {
+    const t = table(ORDERING).script('rename E1 "À moi"', "human");
+    t.script("rm E1", "agent");
+    const before = t.events.length;
+    expect(() => anyway(t, "commande")).toThrow('cannot undo anyway on "commande": E1 is gone');
+    expect(t.events).toHaveLength(before);
+  });
+
+  test("keeping Claude's change writes the refusal without answering an error", () => {
+    const t = table(ORDERING).script('rename E1 "À moi"', "human");
+    t.script('rename E1 "À Claude"', "agent");
+    t.do({ kind: "undo", board: "commande", ifChanged: "keep" }, "human");
+    expect(t.events.at(-1)).toMatchObject({ event: "UndoRefused", actor: "human" });
+    expect(label(t, "E1")).toBe("À Claude");
+    expect(() => undo(t, "commande")).toThrow("nothing to undo");
+  });
+});
