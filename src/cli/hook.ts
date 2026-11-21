@@ -12,6 +12,7 @@ import { captureCommands, captureDiagrams } from "../domain/capture.ts";
 import { LIMITS } from "../domain/commands.ts";
 import type { WireCommand } from "./argv.ts";
 import { ensureServer, findRoot, findServer, get, listen, post, type Server } from "./client.ts";
+import { sessionTitle } from "./session-title.ts";
 
 type Input = Record<string, unknown>;
 
@@ -91,7 +92,7 @@ async function react(
 
   switch (event) {
     case "SessionStart": {
-      await send([{ kind: "session-start", cwd }]);
+      await send([{ kind: "session-start", cwd }, ...named(input)]);
       if (env.CLAUDE_ENV_FILE)
         appendFileSync(
           env.CLAUDE_ENV_FILE,
@@ -100,7 +101,7 @@ async function react(
       return { exitCode: 0, stdout: await welcome(server) };
     }
     case "UserPromptSubmit": {
-      await send([{ kind: "prompt", text: clip(str(input.prompt) ?? "", LIMITS.prompt) }]);
+      await send([...named(input), { kind: "prompt", text: clip(str(input.prompt) ?? "", LIMITS.prompt) }]);
       return context(event, await changes(server, session, false), reminder(server.url));
     }
     case "PreToolUse":
@@ -275,6 +276,12 @@ function toolName(input: Input): string {
 
 function callId(input: Input): string {
   return clip(str(input.tool_use_id) ?? "call", 200);
+}
+
+/** The session takes the name Claude Code gives it; unchanged, the hub records nothing. */
+function named(input: Input): WireCommand[] {
+  const title = sessionTitle(str(input.transcript_path));
+  return title ? [{ kind: "name-session", name: clip(title, LIMITS.sessionName) }] : [];
 }
 
 function str(value: unknown): string | undefined {

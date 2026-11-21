@@ -183,6 +183,53 @@ describe("the session trace", () => {
   });
 });
 
+describe("the session goes by the name Claude Code gives it (T195)", () => {
+  const title = (name: string): string =>
+    `${JSON.stringify({ type: "custom-title", customTitle: name, sessionId: "s1" })}\n`;
+  const said = (text: string): string =>
+    `${JSON.stringify({ type: "user", message: { role: "user", content: text }, sessionId: "s1" })}\n`;
+
+  test("at start and at each prompt, the last title of the transcript names the session", async () => {
+    const transcript = join(dir, "s1.jsonl");
+    writeFileSync(
+      transcript,
+      title("sideco-e3") + said("bonjour") + title("sideco-strat") + said("on avance"),
+    );
+    await fire("SessionStart", { source: "resume", transcript_path: transcript });
+    expect(session().name).toBe("sideco-strat");
+
+    writeFileSync(transcript, title("sideco-plan") + said("renommée"), { flag: "a" });
+    await fire("UserPromptSubmit", { prompt: "suite", transcript_path: transcript });
+    expect(session().name).toBe("sideco-plan");
+    expect(session().turns.at(-1)?.prompt).toBe("suite");
+    const named = hub.events.filter((e) => e.event === "SessionNamed").length;
+    await fire("UserPromptSubmit", { prompt: "encore", transcript_path: transcript });
+    expect(hub.events.filter((e) => e.event === "SessionNamed")).toHaveLength(named);
+  });
+
+  test("the title is found at the end of a transcript of tens of megabytes", async () => {
+    const transcript = join(dir, "s1.jsonl");
+    writeFileSync(
+      transcript,
+      title("ancien") + said("x".repeat(20_000_000)) + title("sideco-ui") + said("ok"),
+    );
+    await fire("UserPromptSubmit", { prompt: "go", transcript_path: transcript });
+    expect(session().name).toBe("sideco-ui");
+  });
+
+  test("no transcript, no title, a broken line or an overlong title: the prompt is still told", async () => {
+    await fire("UserPromptSubmit", { prompt: "un", transcript_path: join(dir, "absent.jsonl") });
+    const transcript = join(dir, "s1.jsonl");
+    writeFileSync(transcript, `${said("bonjour")}{"type":"custom-title","customTi\n`);
+    await fire("UserPromptSubmit", { prompt: "deux", transcript_path: transcript });
+    expect(session().name).toBeUndefined();
+    writeFileSync(transcript, title("n".repeat(200)), { flag: "a" });
+    await fire("UserPromptSubmit", { prompt: "trois", transcript_path: transcript });
+    expect(session().name).toHaveLength(60);
+    expect(session().turns.map((t) => t.prompt)).toEqual(["un", "deux", "trois"]);
+  });
+});
+
 describe("bringing the human's changes back to the agent", () => {
   beforeEach(() => agent(ORDERING));
 

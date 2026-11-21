@@ -6,6 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import { boardAction } from "../../src/cli/argv.ts";
 import { describeSessions } from "../../src/domain/digest.ts";
+import { hasSpoken } from "../../src/domain/sessions.ts";
 import { isOpen, STALE_SESSION_MS, sessionLabel, shownSession } from "../../src/domain/workspace.ts";
 import { describeEvent } from "../../src/web/view.ts";
 import { KANBAN, T0, table } from "../support.ts";
@@ -81,6 +82,29 @@ describe("a session silent for half a day", () => {
     expect(describeSessions(t.ws, UI, now + STALE_SESSION_MS)).toBe("no session open");
     t.do({ kind: "session-end" }, "system", GQ);
     expect(isOpen(gq, now)).toBe(false);
+  });
+});
+
+describe("a session nobody spoke to (T195)", () => {
+  const SILENT = "08d6b510-0000-4000-8000-000000000000";
+
+  test("is not offered, nor shown for want of a better one, until a prompt or a tool", () => {
+    const t = two();
+    t.do({ kind: "session-start" }, "system", SILENT);
+    const silent = t.ws.sessions.find((s) => s.id === SILENT);
+    if (!silent) throw new Error("no session");
+    expect(hasSpoken(silent)).toBe(false);
+    expect(shownSession(t.ws)?.id).toBe(UI);
+    expect(shownSession(t.ws, undefined, SILENT)?.id).toBe(SILENT);
+    t.do({ kind: "tool-start", call: "c1", tool: "Bash", summary: "ls" }, "agent", SILENT);
+    expect(hasSpoken(silent)).toBe(true);
+    expect(shownSession(t.ws)?.id).toBe(SILENT);
+  });
+
+  test("alone on the project, it is still the one shown", () => {
+    const t = table(KANBAN);
+    t.do({ kind: "session-start" }, "system", SILENT);
+    expect(shownSession(t.ws)?.id).toBe(SILENT);
   });
 });
 

@@ -2896,9 +2896,19 @@ describe("two sessions on one project", () => {
     expect(await picker().count()).toBe(0);
   });
 
-  test("a second session gives a choice, by name, and the one chosen is the one the page tells about", async () => {
+  test("a second session started and never spoken to is not offered (T195)", async () => {
     await runHook(
       { session_id: OTHER, cwd: root, hook_event_name: "SessionStart", source: "startup" },
+      {},
+      false,
+    );
+    await until("the session recorded", async () => (await workspace()).sessions.some((s) => s.id === OTHER));
+    expect(await picker().count()).toBe(0);
+  });
+
+  test("a second session gives a choice, by name, and the one chosen is the one the page tells about", async () => {
+    await runHook(
+      { session_id: OTHER, cwd: root, hook_event_name: "UserPromptSubmit", prompt: "Une question" },
       {},
       false,
     );
@@ -2920,7 +2930,8 @@ describe("two sessions on one project", () => {
     expect(before).toBeGreaterThan(0);
 
     await picker().selectOption({ label: "sideco-ui" });
-    await until("the chosen session's turns", async () => (await prompts()) === 0);
+    const asked = () => page.locator(".session .turns .prompt").allTextContents();
+    await until("the chosen session's turns", async () => (await asked()).join().endsWith(" Une question"));
     // Handed over from the page, the turn goes to the session chosen, not to the board's last writer.
     expect(await page.locator(".pass button").getAttribute("title")).toContain("To the session sideco-ui");
     await page.locator(".pass textarea").fill("Pour la session choisie");
@@ -2934,7 +2945,9 @@ describe("two sessions on one project", () => {
     await page.reload();
     await picker().waitFor();
     expect(await picker().inputValue()).toBe(OTHER);
-    expect(await prompts()).toBe(0);
+    await until("the chosen session's turns again", async () =>
+      (await asked()).join().endsWith(" Une question"),
+    );
 
     await picker().selectOption(SESSION);
     await until("the first session back", async () => (await prompts()) === before);

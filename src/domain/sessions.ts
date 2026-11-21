@@ -123,3 +123,11 @@ export function forThePage(ws: Workspace): (e: Recorded) => boolean {
   const since = new Map(ws.sessions.map((s) => [s.id, s.turns.at(-TURNS_SHOWN)?.startedSeq ?? 0]));
   return (e) => !isTool(e) || e.seq >= (since.get(e.session ?? "") ?? 0);
 }
+
+/**
+ * Whether the human or the agent did anything in the session: a prompt, or a
+ * tool. A claude started and left untouched did not; the page does not offer it.
+ */
+export function hasSpoken(session: Session): boolean {
+  return session.turns.length > 0;
+}

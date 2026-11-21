@@ -8,7 +8,7 @@
 import type { Actor, Recorded, Todo } from "./events.ts";
 import { LANE_PREFIX, lanesOf, SLICE_PREFIX } from "./formats.ts";
 import { handledAll } from "./handled-all.ts";
-import { applyToSession, follow, type SessionRecorded } from "./sessions.ts";
+import { applyToSession, follow, hasSpoken, type SessionRecorded } from "./sessions.ts";
 import {
   invert,
   leaveBehind,
@@ -199,9 +199,10 @@ export function findSession(ws: Workspace, id: string): Session | undefined {
   return ws.sessions.find((s) => s.id === id);
 }
 
-/** The session the agent most recently acted in, if any. */
-export function latestSession(ws: Workspace): Session | undefined {
-  return ws.sessions.reduce<Session | undefined>((a, s) => (a && a.lastSeq > s.lastSeq ? a : s), undefined);
+/** The session the agent most recently acted in, if any, among those `keep` keeps. */
+export function latestSession(ws: Workspace, keep = (_: Session) => true): Session | undefined {
+  const kept = ws.sessions.filter(keep);
+  return kept.reduce<Session | undefined>((a, s) => (a && a.lastSeq > s.lastSeq ? a : s), undefined);
 }
 
 /**
@@ -228,12 +229,13 @@ export function sessionLabel(session: Session): string {
 }
 
 /**
- * The session the page tells about: the one the reader chose, while it exists;
- * else the one the board in view is for (see `addressee`); else the last to act.
+ * The session the page tells about: the one the reader chose, while it exists; else
+ * the one the board in view is for (`addressee`); else the last spoken to (`hasSpoken`).
  */
 export function shownSession(ws: Workspace, board?: string, chosen?: string): Session | undefined {
   const picked = chosen ? findSession(ws, chosen) : undefined;
-  return picked ?? (board ? addressee(ws, board) : undefined) ?? latestSession(ws);
+  const latest = latestSession(ws, hasSpoken) ?? latestSession(ws);
+  return picked ?? (board ? addressee(ws, board) : undefined) ?? latest;
 }
 
 /**
@@ -244,10 +246,7 @@ export function addressee(ws: Workspace, board: string): Session | undefined {
   const writer = findBoard(ws, board)?.writer;
   const session = writer ? findSession(ws, writer) : undefined;
   if (session && session.status !== "ended") return session;
-  return latestSession({
-    ...ws,
-    sessions: ws.sessions.filter((s) => s.status !== "ended" && concerns(ws, s.id, board)),
-  });
+  return latestSession(ws, (s) => s.status !== "ended" && concerns(ws, s.id, board));
 }
 
 /** The number a column carries once the column `from` has moved to `to`: the ones it passes close the gap. */
@@ -576,7 +575,7 @@ export function concerns(ws: Workspace, session: string, board: string): boolean
  * cursor moves past changes it was never told about.
  */
 export function readerOf(ws: Workspace, board: string): Session | undefined {
-  return latestSession({ ...ws, sessions: ws.sessions.filter((s) => concerns(ws, s.id, board)) });
+  return latestSession(ws, (s) => concerns(ws, s.id, board));
 }
 
 /** The id of the discussion a note belongs to. */

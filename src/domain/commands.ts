@@ -99,6 +99,7 @@ export const LIMITS = {
   note: 1000,
   prompt: 2000,
   summary: 200,
+  sessionName: 60,
 } as const;
 
 export class CommandError extends Error {
@@ -289,7 +290,7 @@ export function parseCommand(input: unknown): Command {
     case "redo":
       return { kind, board: boardId(f) };
     case "name-session":
-      return { kind, name: text(f, "name", 60) };
+      return { kind, name: text(f, "name", LIMITS.sessionName) };
     case "session-start":
       return { kind, cwd: optional(f, "cwd", (x, k) => text(x, k, 1000)) };
     case "follow":

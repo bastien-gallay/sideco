@@ -11,7 +11,7 @@ import { boardPurpose, FORMATS, findFormat, findType, planAxis } from "../domain
 import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { chipText, labelColours } from "../domain/render/labels.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
-import { TURNS_SHOWN } from "../domain/sessions.ts";
+import { hasSpoken, TURNS_SHOWN } from "../domain/sessions.ts";
 import {
   type Board,
   findBoard,
@@ -865,10 +865,13 @@ interface SessionPickerModel {
   current: string | undefined;
 }
 
-/** The sessions worth choosing between: the open ones, and the one shown even once it ended. */
+/** A session worth choosing: open, and spoken to; a claude started and left untouched is not (T195). */
+const choosable = (s: Session, now: number): boolean => isOpen(s, now) && hasSpoken(s);
+
+/** The sessions worth choosing between, and the one shown even once it ended. */
 function sessionChoices(sessions: readonly Session[], shown: Session | undefined): SessionPickerModel {
   const now = Date.now();
-  const open = sessions.filter((s) => isOpen(s, now) || s.id === shown?.id);
+  const open = sessions.filter((s) => choosable(s, now) || s.id === shown?.id);
   return { sessions: open.map((s) => ({ id: s.id, label: sessionLabel(s) })), current: shown?.id };
 }
 
@@ -2391,7 +2394,7 @@ function render(): void {
     hint: handOverHint(liveSession?.status, state.listening, locale),
     theirs: turn?.to === "human" ? (turn.message ?? "") : undefined,
     to: addressed ? sessionName(addressed) : undefined,
-    several: state.live.sessions.filter((s) => isOpen(s, Date.now())).length > 1,
+    several: state.live.sessions.filter((s) => choosable(s, Date.now())).length > 1,
     known: board ? [...board.elements.map((e) => e.id), ...board.notes.map((n) => n.id)] : [],
   });
 
