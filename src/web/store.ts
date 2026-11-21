@@ -51,6 +51,8 @@ export interface State {
   /** Elements that changed moments ago, to draw the eye. */
   fresh: Set<string>;
   error: string | null;
+  /** How many commands of the reader's went through: an offer to take one back holds until the next. */
+  gestures: number;
   /** Something worth a line to the human, said once. */
   notice: string | null;
 }
@@ -72,6 +74,7 @@ export const state: State = {
   served: null,
   fresh: new Set(),
   error: null,
+  gestures: 0,
   notice: null,
 };
 
@@ -376,6 +379,7 @@ export async function send(...commands: Command[]): Promise<(string | null)[] | 
   if (inFlight === 0) state.saving = false;
   if (posted.ok) {
     state.error = null;
+    state.gestures++;
     changed();
     return posted.minted;
   }

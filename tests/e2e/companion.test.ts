@@ -1504,7 +1504,9 @@ describe("the chosen card, read in the right panel", () => {
     expect(await page.evaluate(() => document.activeElement?.id)).toBe("tab-notes");
     await page.keyboard.press("ArrowRight");
     expect(await page.evaluate(() => document.activeElement?.id)).toBe("tab-history");
-    // From History, past the quiet Detail, back round to Session.
+    await page.keyboard.press("ArrowRight");
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe("tab-notices");
+    // From Notifications, past the quiet Detail, back round to Session.
     await page.keyboard.press("ArrowRight");
     expect(await page.evaluate(() => document.activeElement?.id)).toBe("tab-session");
     await shot("57-tabs");
@@ -1552,20 +1554,21 @@ describe("the chosen card, read in the right panel", () => {
   test("the tabs keep their names where they fit, with icons drawn alike, and only icons in the rail", async () => {
     const shown = (locator: ReturnType<typeof page.locator>) =>
       locator.evaluateAll((all) => all.map((e) => e.getBoundingClientRect().width > 4));
-    // The panel is 300 px: the four names fit, the icons give way first.
-    expect(await shown(page.locator(".tabs .tab-label"))).toEqual([true, true, true, true]);
-    expect(await page.locator(".tabs .tab-icon svg").count()).toBe(4);
+    // The panel is 300 px: the four names fit, the icons give way first; Notifications stays a bell (T89).
+    const names = page.locator(".tabs .tab:not(#tab-notices) .tab-label");
+    expect(await shown(names)).toEqual([true, true, true, true]);
+    expect(await shown(page.locator("#tab-notices .tab-icon"))).toEqual([true]);
+    expect(await page.locator("#tab-notices").getAttribute("aria-label")).toBe("Notifications");
+    expect(await page.locator(".tabs .tab-icon svg").count()).toBe(5);
     // Folded, the rail keeps the icons alone.
     await page.keyboard.press("]");
     await until("the right panel is folded", foldedRight);
-    expect(await shown(page.locator(".tabs .tab-label"))).toEqual([false, false, false, false]);
-    expect(await shown(page.locator(".tabs .tab-icon"))).toEqual([true, true, true, true]);
+    expect(await shown(page.locator(".tabs .tab-label"))).toEqual([false, false, false, false, false]);
+    expect(await shown(page.locator(".tabs .tab-icon"))).toEqual([true, true, true, true, true]);
     await page.keyboard.press("]");
     await until("the right panel is open again", async () => !(await foldedRight()));
     // The names come back once the panel has its width again, measured after the unfolding.
-    await until("the four names back", async () =>
-      (await shown(page.locator(".tabs .tab-label"))).every(Boolean),
-    );
+    await until("the four names back", async () => (await shown(names)).every(Boolean));
   });
 
   test("in a narrow window, a card chosen unfolds its detail, and folds it back once left", async () => {
@@ -2004,8 +2007,8 @@ describe("a save the companion does not answer", () => {
     expect(await editor().inputValue()).toBe("Après");
     await until("the post left", async () => held.length === 1);
     await held[0]?.abort("connectionrefused");
-    // Failed: the words come back to the editor, editable, and the page says why.
-    await page.locator(".toast", { hasText: "nothing was saved" }).waitFor();
+    // Failed: the words come back to the editor, editable, and the page says why, until a save goes through (T89).
+    await page.locator(".error-bar", { hasText: "nothing was saved" }).waitFor();
     // The browser logs the refusal this test staged; that one line is not a fault of the page.
     const staged = problems.indexOf("console: Failed to load resource: net::ERR_CONNECTION_REFUSED");
     if (staged >= 0) problems.splice(staged, 1);
@@ -2020,7 +2023,83 @@ describe("a save the companion does not answer", () => {
       async () => (await elementOf(BOARD, "E1"))?.label === "Après",
     );
     await editor().waitFor({ state: "hidden" });
+    await page.locator(".error-bar").waitFor({ state: "hidden" });
     await agent(`board rm ${BOARD}`);
+  });
+});
+
+describe("what the page said, kept in its tab (T89)", () => {
+  const BOARD = "avis";
+  const tab = () => page.locator("#tab-notices");
+  const items = () => page.locator(".notices-list li");
+
+  test("a notice said over an offer leaves the offer in the Notifications tab, still pressable", async () => {
+    await agent(`board new "Avis" --id ${BOARD}\nadd event "Un" --col 1\nadd event "Deux" --col 2`);
+    await page.locator(".board-picker select").selectOption(BOARD);
+    // What earlier tests had said, seen: from here the tab counts afresh.
+    await tab().click();
+    await page.locator("#tab-session").click();
+    await card("E1").focus();
+    await page.keyboard.press("Delete");
+    await page.locator(".toast", { hasText: "E1 removed." }).waitFor();
+    // Claude speaks over it: the toast says Claude's words, the tab keeps both.
+    await agent(`board new "Ailleurs" --id ailleurs`);
+    await page.locator(".toast", { hasText: "Claude created the board" }).waitFor();
+    await tab().locator(".tab-count", { hasText: "2" }).waitFor();
+    await tab().click();
+    expect(await items().nth(0).textContent()).toContain("Claude created the board “Ailleurs”");
+    expect(await items().nth(1).textContent()).toContain("E1 removed.");
+    await shot("62-notices-tab");
+    // Seen: the count leaves the tab.
+    await tab().locator(".tab-count").waitFor({ state: "hidden" });
+    await items().nth(1).getByRole("button", { name: "Undo" }).click();
+    await until("E1 is back", async () => (await elementOf(BOARD, "E1")) !== undefined);
+    // Taken, the offer leaves the list: the line stays, its button goes.
+    await items().nth(1).getByRole("button").waitFor({ state: "detached" });
+    await agent("board rm ailleurs");
+  });
+
+  test("an offer holds until the reader's next gesture, in the toast as in the tab", async () => {
+    await card("E2").focus();
+    await page.keyboard.press("Delete");
+    await page.locator(".toast button", { hasText: "Undo" }).waitFor();
+    // Another gesture: Undo would now take that one back, so the offer leaves everywhere.
+    await card("E1").dblclick();
+    await page.locator(".card-editor").fill("Un bis");
+    await page.locator(".card-editor").press("Enter");
+    await until("the rename is saved", async () => (await elementOf(BOARD, "E1"))?.label === "Un bis");
+    await page.locator(".toast button").waitFor({ state: "detached" });
+    await tab().click();
+    expect(await items().filter({ hasText: "E2 removed." }).getByRole("button").count()).toBe(0);
+    await agent(`board rm ${BOARD}`);
+  });
+
+  test("an error stays until dismissed, and the tab keeps it once", async () => {
+    await agent(`board new "Panne" --id panne\nadd event "Avant" --col 1`);
+    await page.locator(".board-picker select").selectOption("panne");
+    await card("E1").getByText("Avant").waitFor();
+    const errors = page.locator(".notices-list li.is-error");
+    const before = await errors.count();
+    await page.route("**/api/commands", (route) => void route.abort("connectionrefused"));
+    await card("E1").dblclick();
+    await page.locator(".card-editor").fill("Après");
+    await page.locator(".card-editor").press("Enter");
+    const bar = page.locator(".error-bar", { hasText: "nothing was saved" });
+    await bar.waitFor();
+    const staged = problems.indexOf("console: Failed to load resource: net::ERR_CONNECTION_REFUSED");
+    if (staged >= 0) problems.splice(staged, 1);
+    await page.unroute("**/api/commands");
+    await page.locator(".card-editor").press("Escape");
+    // Claude's change repaints the page: the error is neither gone nor said again.
+    await agent(`add event "Pendant" --col 2`, "panne");
+    await card("E2").waitFor();
+    expect(await bar.isVisible()).toBe(true);
+    await tab().click();
+    expect(await errors.count()).toBe(before + 1);
+    await shot("63-error-bar");
+    await bar.getByRole("button", { name: "Dismiss" }).click();
+    await bar.waitFor({ state: "hidden" });
+    await agent("board rm panne");
   });
 });
 

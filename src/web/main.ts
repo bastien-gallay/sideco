@@ -28,7 +28,7 @@ import { chooseLocale, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
 import { messageField } from "./message-field.ts";
 import { type CardMark, MESSAGES, type SheetKind } from "./messages.ts";
-import { mountNotices } from "./notices.ts";
+import { mountNotices, type Offer } from "./notices.ts";
 import { meetUpdates } from "./reload.ts";
 import {
   caughtUpYet,
@@ -49,6 +49,7 @@ import {
   state,
   travelTo,
 } from "./store.ts";
+import { TABS, type Tab, tabIcon, tabName } from "./tabs.ts";
 import { askBeforeUndo, lastGesture } from "./undo-ask.ts";
 import {
   agentStatus,
@@ -141,22 +142,11 @@ const cardPanel = h("section", {
 
 // ── The right panel's tabs: what Claude's session does, and the chosen card ───
 
-type Tab = "session" | "notes" | "history" | "detail";
-const TABS: Tab[] = ["session", "notes", "history", "detail"];
-/** One drawing per tab, on one grid and one stroke: a terminal, a speech bubble, a clock, a page. */
-const TAB_ICON: Record<Tab, string> = {
-  session:
-    '<rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M4.5 6.5l2 1.75-2 1.75M8.5 10.5h3"/>',
-  notes:
-    '<path d="M3 3h10a1.5 1.5 0 0 1 1.5 1.5v6A1.5 1.5 0 0 1 13 12H7l-3 2.5V12H3a1.5 1.5 0 0 1-1.5-1.5v-6A1.5 1.5 0 0 1 3 3z"/>',
-  history: '<circle cx="8" cy="8" r="6.25"/><path d="M8 4.75V8l2.25 1.5"/>',
-  detail: '<rect x="2.5" y="1.5" width="11" height="13" rx="1.5"/><path d="M5 5.5h6M5 8h6M5 10.5h4"/>',
-};
-function tabIcon(id: Tab): HTMLSpanElement {
-  const icon = h("span", { class: "tab-icon", "aria-hidden": "true" });
-  icon.innerHTML = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${TAB_ICON[id]}</svg>`;
-  return icon;
-}
+/** What the page said on its own; an error is said until resolved, or dismissed. */
+const notices = mountNotices(() => {
+  state.error = null;
+});
+const { spoken, say, speak } = notices;
 let tab: Tab = "session";
 /** The tab the reader was on before Detail opened for a card: given back when the card is left. */
 let tabBack: Tab | undefined;
@@ -175,12 +165,14 @@ const tabButtons: Record<Tab, HTMLButtonElement> = Object.fromEntries(
         role: "tab",
         class: "tab",
         id: `tab-${id}`,
+        "aria-label": id === "notices" ? tabName(id) : undefined,
         "aria-controls": `tab-${id}-panel`,
         onclick: () => chooseTab(id),
       },
       tabIcon(id),
-      h("span", { class: "tab-label" }, t.tabs[id]),
+      h("span", { class: "tab-label" }, tabName(id)),
       id === "notes" && notesCount,
+      id === "notices" && notices.count,
     ),
   ]),
 ) as Record<Tab, HTMLButtonElement>;
@@ -211,6 +203,7 @@ function paintTabs(): void {
     session: true,
     notes: true,
     history: true,
+    notices: true,
     detail: !cardPanel.dataset.empty,
   };
   // The card left, the reader gets back the tab they were on before its detail.
@@ -225,13 +218,15 @@ function paintTabs(): void {
     button.tabIndex = chosen ? 0 : -1;
     if (can[id]) button.removeAttribute("aria-disabled");
     else button.setAttribute("aria-disabled", "true");
-    if (id !== "notes") button.title = can[id] ? t.tabs[id] : t.detailTabEmpty;
+    if (id !== "notes") button.title = can[id] ? tabName(id) : t.detailTabEmpty;
   }
   fitTabs();
   sessionPanel.hidden = tab !== "session";
   notes.hidden = tab !== "notes";
   historyPanel.hidden = tab !== "history";
+  notices.panel.hidden = tab !== "notices";
   cardPanel.hidden = tab !== "detail";
+  notices.paint();
 }
 
 /**
@@ -365,9 +360,6 @@ const turnBar = h(
     passButton,
   ),
 );
-const { toast, spoken, say, speak, withdrawOffer } = mountNotices(() => {
-  state.error = null;
-});
 /** The first stop of the keyboard: straight to the board, past the header and the palette. */
 const skip = h(
   "a",
@@ -405,7 +397,7 @@ const languagePicker = h(
 );
 
 const view = mountBoard(canvas, {
-  removed: (said) => say(said, { label: t.undoAction, run: () => void undo() }),
+  removed: (said) => say(said, undoOffer()),
   announce: speak,
   notice: (text) => say(text),
   editDetail: (id) => editDetail(id, "card"),
@@ -752,11 +744,12 @@ app.append(
       sessionPanel,
       notes,
       historyPanel,
+      notices.panel,
       cardPanel,
     ),
   ),
   h("footer", { class: "bottom" }, turnBar),
-  toast,
+  notices.bottom,
   dialog,
   removal,
   keysSheet,
@@ -1937,14 +1930,18 @@ async function copyMermaid(): Promise<void> {
 async function undo(ifChanged?: "overwrite"): Promise<void> {
   const board = isLive() ? undoTarget(state.live, state.boardId ?? undefined) : undefined;
   if (!board) return;
-  // An offer to take a gesture back is moot once one was taken back: it leaves.
-  withdrawOffer();
   // Said once taken back: who does not see the board change hears what came back.
   const gesture = lastGesture(board);
   if (gesture?.blocked && !ifChanged) return askBeforeUndo(board, gesture, () => void undo("overwrite"));
   const event = gesture && state.events.find((e) => e.seq === gesture.seq);
   if (await send({ kind: "undo", board, ifChanged }))
     speak(t.undone(event ? describeEvent(event, locale) : board));
+}
+
+/** Undo, offered beside what was just done: it holds until the reader's next gesture, which Undo would take back instead. */
+function undoOffer(): Offer {
+  const at = state.gestures;
+  return { label: t.undoAction, run: () => void undo(), holds: () => state.gestures === at };
 }
 
 async function redo(): Promise<void> {
@@ -2047,7 +2044,7 @@ function askToRemove(id: string): void {
   const remove = async (): Promise<void> => {
     const done = await send({ kind: "remove-board", board: id });
     removal.close();
-    if (done) say(t.boardRemoved(board.title), { label: t.undoAction, run: () => void undo() });
+    if (done) say(t.boardRemoved(board.title), undoOffer());
   };
   removal.replaceChildren(
     h("h2", {}, t.removeBoardQuestion(board.title)),
@@ -2316,7 +2313,8 @@ function render(): void {
     known: board ? [...board.elements.map((e) => e.id), ...board.notes.map((n) => n.id)] : [],
   });
 
-  if (state.error) say(state.error);
+  notices.showError(state.error);
+  notices.paint();
   if (state.notice) {
     say(state.notice);
     state.notice = null;
