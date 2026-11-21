@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { parseBatch } from "../../src/cli/argv.ts";
 import { type Command, parseCommand } from "../../src/domain/commands.ts";
 import type { Actor, Recorded } from "../../src/domain/events.ts";
-import { BatchError, Hub } from "../../src/server/hub.ts";
-import { type Journal, memoryJournal } from "../../src/server/journal.ts";
+import { BatchError, Hub, type Journal } from "../../src/server/hub.ts";
+import { memoryJournal } from "../../src/server/journal.ts";
 import { ORDERING, T0 } from "../support.ts";
 
 const batch = (script: string, board?: string): Command[] => parseBatch(script, board).map(parseCommand);

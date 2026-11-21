@@ -5,11 +5,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isBoardEvent, isKnownEvent, type Recorded } from "../domain/events.ts";
-
-export interface Journal {
-  load(): Recorded[];
-  append(events: readonly Recorded[]): void;
-}
+import type { Journal } from "./hub.ts";
 
 /**
  * Two files, one order. Board events go to `boards.jsonl`, which is meant to be

@@ -41,6 +41,12 @@ describe("the checker", () => {
     ]);
   });
 
+  test("the command line reaching the server past its entry point breaks the rule", () => {
+    expect(breaches("src/cli/x.ts", 'import { openJournal } from "../server/journal.ts";')).toEqual([
+      "src/cli/x.ts imports ../server/journal.ts: the command line may reach the server only through src/server/start.ts",
+    ]);
+  });
+
   test("an import inward, or within its layer, keeps it", () => {
     const source = [
       'import type { Board } from "../workspace.ts";',

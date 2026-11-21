@@ -21,17 +21,8 @@ import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.t
 import { fromModel } from "../domain/export/model.ts";
 import { FORMATS } from "../domain/formats.ts";
 import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale, WORDS } from "../domain/i18n.ts";
-import {
-  type Board,
-  findBoard,
-  latestSession,
-  replay,
-  sessionLabel,
-  type Workspace,
-} from "../domain/workspace.ts";
-import { IDLE_GRACE_MS } from "../server/idle.ts";
-import { openJournal } from "../server/journal.ts";
-import { DEFAULT_PORT, dataDir, start } from "../server/start.ts";
+import { type Board, findBoard, latestSession, sessionLabel, type Workspace } from "../domain/workspace.ts";
+import { DEFAULT_PORT, dataDir, IDLE_GRACE_MS, readWorkspace, start } from "../server/start.ts";
 import { addressOf } from "./address.ts";
 import {
   type Action,
@@ -216,7 +207,7 @@ async function run(verb: string, rest: string[]): Promise<number> {
 
   const root = verb === "open" ? initRoot(findRoot(cwd) ?? cwd) : findRoot(cwd);
   if (!root) throw new UsageError("no Sideco workspace here or above; run `sideco init` or `sideco open`");
-  const read = (): Workspace => replay(openJournal(dataDir(root)).load());
+  const read = (): Workspace => readWorkspace(root);
 
   switch (verb) {
     case "url": {

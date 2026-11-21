@@ -1,16 +1,20 @@
 /**
- * Starts the companion for one workspace: opens the journal, builds the page,
- * finds a free port and leaves a note (`.sideco/server.json`) so the CLI and the
- * hooks can find it.
+ * The server's entry point. Starts the companion for one workspace: opens the
+ * journal, builds the page, finds a free port and leaves a note
+ * (`.sideco/server.json`) so the CLI and the hooks can find it. The command line
+ * reaches the server through this module only.
  */
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locale } from "../domain/i18n.ts";
+import { replay, type Workspace } from "../domain/workspace.ts";
 import { serve } from "./http.ts";
 import { Hub } from "./hub.ts";
 import { IDLE_CHECK_MS, IdleWatch, STALE_SESSION_MS } from "./idle.ts";
 import { openJournal } from "./journal.ts";
 import { buildPage } from "./page.ts";
+
+export { IDLE_GRACE_MS } from "./idle.ts";
 
 export const DEFAULT_PORT = 4747;
 const PORT_TRIES = 20;
@@ -30,6 +34,11 @@ export function dataDir(root: string): string {
   const current = join(root, ".sideco");
   const legacy = join(root, ".vico");
   return !existsSync(current) && existsSync(legacy) ? legacy : current;
+}
+
+/** The workspace as the journal of `root` holds it, read without a server. */
+export function readWorkspace(root: string): Workspace {
+  return replay(openJournal(dataDir(root)).load());
 }
 
 export function serverNote(root: string): string {

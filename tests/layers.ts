@@ -11,14 +11,17 @@ interface Reach {
   layers: readonly Layer[];
   /** Whether it may import the platform: `node:`, `bun:` or a package. */
   platform: boolean;
+  /** The one module through which it may enter another layer, where it may not go further in. */
+  through?: Partial<Record<Layer, string>>;
 }
 
 const REACH: Record<Layer, Reach> = {
   domain: { layers: ["domain"], platform: false },
   web: { layers: ["domain", "web"], platform: false },
   server: { layers: ["domain", "server"], platform: true },
-  // The command line starts the server: it is where the parts are put together.
-  cli: { layers: ["domain", "server", "cli"], platform: true },
+  // The command line starts the server: it is where the parts are put together,
+  // through the server's entry point only.
+  cli: { layers: ["domain", "server", "cli"], platform: true, through: { server: "src/server/start.ts" } },
 };
 
 const NAMES: Record<Layer | "platform", string> = {
@@ -50,7 +53,16 @@ function specifiers(source: string): string[] {
 /** Where an import from `path` lands: a layer of src/, or the platform. */
 function target(path: string, specifier: string): Layer | "platform" | undefined {
   if (!specifier.startsWith(".")) return "platform";
-  return layerOf(normalize(`${dirname(path)}/${specifier}`));
+  return layerOf(resolved(path, specifier));
+}
+
+const resolved = (path: string, specifier: string): string => normalize(`${dirname(path)}/${specifier}`);
+
+/** Why an import into a layer it may reach still breaks the rule: it goes past that layer's entry point. */
+function pastEntry(layer: Layer, path: string, specifier: string, lands: Layer): string[] {
+  const entry = REACH[layer].through?.[lands];
+  if (entry === undefined || resolved(path, specifier) === entry) return [];
+  return [`${path} imports ${specifier}: ${NAMES[layer]} may reach ${NAMES[lands]} only through ${entry}`];
 }
 
 /** The imports of the module at `path`, relative to the root, that break the rule: one sentence each. */
@@ -62,6 +74,7 @@ export function breaches(path: string, source: string): string[] {
     if (!lands) return [];
     const { layers, platform } = REACH[layer];
     const allowed = lands === "platform" ? platform : layers.includes(lands);
-    return allowed ? [] : [`${path} imports ${specifier}: ${NAMES[layer]} may not reach ${NAMES[lands]}`];
+    if (!allowed) return [`${path} imports ${specifier}: ${NAMES[layer]} may not reach ${NAMES[lands]}`];
+    return lands === "platform" ? [] : pastEntry(layer, path, specifier, lands);
   });
 }

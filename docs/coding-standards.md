@@ -229,6 +229,3 @@ changes nothing else.
 | Nine modules over 400 lines, each capped at its size by an override in `biome.json` | The largest: `src/web/main.ts`, `src/web/board-view.ts`, `src/web/view.ts` | Split by job; a commit that shrinks one lowers its cap, and drops it under 400 |
 | Nested `else` chains | `src/web/board-view.ts`, `src/domain/digest.ts`, `src/web/main.ts` | Early returns |
 | One default clock in the domain | `describeSessions` in `src/domain/digest.ts` (`now = Date.now()`) | `now` passed by the caller |
-| The `Journal` port is declared beside its adapter | `src/server/journal.ts` | Declared beside the hub that needs it |
-| The CLI imports server modules (`journal`, `start`, `idle`) | `src/cli/main.ts` | Through the server's entry point only |
-| Modules with no header comment | `src/cli/main.ts`, `src/cli/browser.ts` | One sentence saying the module's job |

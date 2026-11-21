@@ -11,7 +11,16 @@ import type { Recorded, SidecoEvent } from "../domain/events.ts";
 import { forPage, type Opening, RECENT_EVENTS, recentFrom } from "../domain/opening.ts";
 import { forThePage } from "../domain/sessions.ts";
 import { apply, concerns, findSession, replay, type Workspace } from "../domain/workspace.ts";
-import type { Journal } from "./journal.ts";
+
+/**
+ * The port the hub keeps its events through: everything recorded so far, in
+ * order, and a way to add more. The file on disk and the memory of the tests
+ * implement it.
+ */
+export interface Journal {
+  load(): Recorded[];
+  append(events: readonly Recorded[]): void;
+}
 
 export interface Dispatched {
   events: Recorded[];

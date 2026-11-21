@@ -1,3 +1,4 @@
+/** Shows an address in the user's browser, through the system's opener or `$BROWSER`. */
 const OPENER_WAIT_MS = 1500;
 
 /**
