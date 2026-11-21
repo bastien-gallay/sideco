@@ -80,7 +80,7 @@ sideco wait
   thread. Close yours once the user has answered and you have acted on it;
   leave the user's own notes for them to close, unless they say otherwise.
 - **Link what you cite**: a board or element named in a reply is a link to
-  it in the page, `[T152](URL/#/b/backlog/T152)`; each prompt gives the URL.
+  it in the page, `[T152](URL/#/b/backlog/T152)`, as `sideco url T152` prints it.
 - **Write in the user's language** on the board.
 - **Never touch the files under `.sideco/`.** The journal is the history: do
   not edit, move or delete it. To clear the table, remove boards with
@@ -123,7 +123,7 @@ sideco apply [FILE]   (a batch of the lines above, stdin by default; add … --a
 sideco changes                      sideco pass ["question"]      sideco wait
 sideco label ID type:bug @name · unlabel ID L (labels shared by every board; `sideco labels [KEY]` lists them) · sideco find WORDS (cards holding every word, all boards) · sideco follow BOARD…                sideco unfollow BOARD…        (the boards whose changes you are told) · sideco sessions · sideco session name "Name" (with another session on the project, so the page tells you apart)
 sideco export [BOARD] --format md|html|svg|mermaid|json [-o FILE]
-sideco publish     sideco status     sideco url     sideco open     sideco stop
+sideco publish     sideco status     sideco url [BOARD | ID]   sideco open     sideco stop
 ```
 
 With several boards, add `--board ID` to a command, or start a batch with

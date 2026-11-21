@@ -85,7 +85,7 @@ Tes changements reviennent à Claude par quatre canaux, selon ce qu'il fait à c
 
 Plusieurs sessions dans le même projet : le passage de main va à une seule : depuis la page, celle choisie en haut, sinon celle à qui est le tableau (la dernière à y avoir écrit, si elle tourne encore) ; le survol du bouton la nomme (`Pour la session dossier · id` en français). Seule celle-là est réveillée. Une autre se vise par `sideco pass --to agent --for SESSION`. `sideco sessions` liste les sessions ouvertes, ce que chacune suit, et marque la tienne ; `sideco session name "atelier"` donne un nom à la session qui le dit, à la place du début de son id.
 
-Chacun de tes messages rappelle aussi à Claude l'adresse du compagnon de ce projet, en une ligne que tu ne vois pas, même après un compactage de la conversation. Quand il cite un tableau ou une carte dans sa réponse, il en fait un lien : `[T152](http://127.0.0.1:4747/#/b/backlog/T152)`. Un clic ouvre la page sur cette carte.
+Chacun de tes messages rappelle aussi à Claude l'adresse du compagnon de ce projet, en une ligne que tu ne vois pas, même après un compactage de la conversation. Quand il cite un tableau ou une carte dans sa réponse, il en fait un lien : `[T152](http://127.0.0.1:4747/#/b/backlog/T152)`. Un clic ouvre la page sur cette carte. `sideco url T152 --board backlog` imprime cette adresse, et `sideco show T152` la donne sous sa première ligne quand le compagnon tourne.
 
 Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit comme un seul ajout. Signes : `+` ajouté, `−` supprimé, `~` modifié, `→` déplacé.
 

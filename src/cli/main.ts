@@ -21,7 +21,6 @@ import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.t
 import { fromModel } from "../domain/export/model.ts";
 import { FORMATS } from "../domain/formats.ts";
 import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale, WORDS } from "../domain/i18n.ts";
-import { asElementId } from "../domain/ids.ts";
 import {
   type Board,
   findBoard,
@@ -33,6 +32,7 @@ import {
 import { IDLE_GRACE_MS } from "../server/idle.ts";
 import { openJournal } from "../server/journal.ts";
 import { DEFAULT_PORT, dataDir, start } from "../server/start.ts";
+import { addressOf } from "./address.ts";
 import {
   type Action,
   type Args,
@@ -43,6 +43,7 @@ import {
   UsageError,
 } from "./argv.ts";
 import { openBrowser } from "./browser.ts";
+import { chooseBoard, defaultBoard, named } from "./choose.ts";
 import {
   Blocked,
   ClientError,
@@ -64,7 +65,7 @@ import { readSetting } from "./setting.ts";
 const HELP = `sideco — a visual companion for Claude Code
 
   sideco open                         start the companion if needed and show the page (a page already open is left alone)
-  sideco url                          print its address
+  sideco url [BOARD | ID]             print its address, or a board's or a card's in the page
   sideco serve [--port N] [--lang L]  run it in the foreground
   sideco stop                         stop the companion; the journal stays. It also stops by itself
                                       5 min after the last page and session leave ($SIDECO_IDLE_MS, or off)
@@ -214,9 +215,12 @@ async function run(verb: string, rest: string[]): Promise<number> {
   const read = (): Workspace => replay(openJournal(dataDir(root)).load());
 
   switch (verb) {
-    case "url":
-      console.log((await ensureServer(root)).url);
+    case "url": {
+      const origin = (await ensureServer(root)).url;
+      const { board, card } = args.positional[0] === undefined ? {} : named(read(), args);
+      console.log(board ? addressOf(origin, board, card) : origin);
       return 0;
+    }
     case "open": {
       const restarted = !(await findServer(root)) && read().seq > 0;
       const server = await ensureServer(root);
@@ -268,11 +272,10 @@ async function run(verb: string, rest: string[]): Promise<number> {
       console.log(describeSessions(read(), args.flags.get("session") ?? setting("SIDECO_SESSION")));
       return 0;
     case "show": {
-      // `show E1` is one card of the board; `show backlog` is a board.
-      const named = args.positional[0];
-      const card = asElementId(named ?? "");
-      const board = chooseBoard(read(), card ? args.flags.get("board") : (named ?? args.flags.get("board")));
-      console.log(shown(board, card, args));
+      const { board, card } = named(read(), args);
+      const server = card ? await findServer(root) : undefined;
+      const [head, ...rest] = shown(board, card, args).split("\n");
+      console.log([head, ...(server ? [`  ${addressOf(server.url, board, card)}`] : []), ...rest].join("\n"));
       await followQuietly(root, args.flags.get("session") ?? setting("SIDECO_SESSION"), board.id);
       return 0;
     }
@@ -436,27 +439,6 @@ function shown(board: Board, card: string | undefined, args: Args): string {
 
 function isGlobalFlag(tokens: string[], index: number): boolean {
   return GLOBAL_FLAGS.has(tokens[index] ?? "") || GLOBAL_FLAGS.has(tokens[index - 1] ?? "");
-}
-
-function defaultBoard(ws: Workspace, args: Args, required: boolean): string | undefined {
-  const chosen = args.flags.get("board") ?? setting("SIDECO_BOARD");
-  if (chosen) return chosen;
-  if (ws.boards.length === 1) return ws.boards[0]?.id;
-  if (!required) return undefined;
-  throw new UsageError(
-    ws.boards.length === 0
-      ? 'no board yet; create one with `sideco board new "Title"`'
-      : `which board? pass --board ID (boards: ${ws.boards.map((b) => b.id).join(", ")})`,
-  );
-}
-
-function chooseBoard(ws: Workspace, id: string | undefined): Board {
-  const chosen = id ?? setting("SIDECO_BOARD") ?? (ws.boards.length === 1 ? ws.boards[0]?.id : undefined);
-  const known = `(boards: ${ws.boards.map((b) => b.id).join(", ") || "none yet"})`;
-  if (!chosen) throw new UsageError(`which board? ${known}`);
-  const board = findBoard(ws, chosen);
-  if (!board) throw new UsageError(`no board "${chosen}" ${known}`);
-  return board;
 }
 
 /** Whatever arrives on stdin, a hook exits 0 unless it means to wake the agent. */

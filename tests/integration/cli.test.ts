@@ -613,6 +613,32 @@ describe("reading a part of a board", () => {
   });
 });
 
+describe("the address of a board or a card in the page", () => {
+  const BOARD = "passage-de-commande";
+
+  test("`sideco url ID` is the card's, `sideco url BOARD` the board's, `sideco url` the companion's", async () => {
+    const origin = (await sideco(["url"])).out;
+    expect(origin).toBe(note().url);
+    expect((await sideco(["url", "E1", "--board", BOARD])).out).toBe(`${origin}/#/b/${BOARD}/E1`);
+    expect((await sideco(["url", BOARD])).out).toBe(`${origin}/#/b/${BOARD}`);
+  });
+
+  test("an address is given only for what exists", async () => {
+    const card = await sideco(["url", "E999", "--board", BOARD]);
+    expect(card.code).toBe(1);
+    expect(card.err).toContain(`no E999 on ${BOARD}`);
+    const board = await sideco(["url", "nulle-part"]);
+    expect(board.code).toBe(1);
+    expect(board.err).toContain('no board "nulle-part"');
+  });
+
+  test("`sideco show ID` gives the card's address under its first line", async () => {
+    const lines = (await sideco(["show", "E1", "--board", BOARD])).out.split("\n");
+    expect(lines[0]).toEndWith("· part: card E1");
+    expect(lines[1]).toBe(`  ${note().url}/#/b/${BOARD}/E1`);
+  });
+});
+
 describe("Claude takes back its own gestures", () => {
   const B = ["--board", "annuler-cli"];
 
