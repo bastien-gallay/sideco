@@ -3081,6 +3081,39 @@ describe("the card chosen, through a reload", () => {
   });
 });
 
+describe("a link to a card", () => {
+  test("the address says the card chosen, and a link to a card opens its board on it, centred and lit up", async () => {
+    await agent(
+      [
+        'board new "Lien direct" --format kanban --id lien-t182',
+        ...Array.from({ length: 40 }, (_, k) => `add task "Carte ${k + 1}" --lane todo`),
+      ].join("\n"),
+    );
+    await page.locator(".board-picker select").selectOption("lien-t182");
+    await card("T1").click();
+    await until("the address names the card", async () => page.url().endsWith("#/b/lien-t182/T1"));
+    await page.keyboard.press("Escape");
+    await until("and the board alone once it is left", async () => page.url().endsWith("#/b/lien-t182"));
+
+    // Pasted in the address bar: from another board, to a card halfway down a long lane.
+    await page.locator(".board-picker select").selectOption({ index: 0 });
+    await page.evaluate(() => {
+      location.hash = "#/b/lien-t182/T20";
+    });
+    const chosen = async () => ((await card("T20").getAttribute("class")) ?? "").includes("is-selected");
+    await until("chosen", chosen);
+    expect(await card("T20").getAttribute("class")).toContain("is-fresh");
+    await until("the keyboard on it", async () =>
+      page.evaluate(() => document.activeElement?.getAttribute("data-id") === "T20"),
+    );
+    // Centred: its middle near the middle of the board's frame.
+    const [frame, box] = [await page.locator(".canvas").boundingBox(), await card("T20").boundingBox()];
+    if (!frame || !box) throw new Error("drawn");
+    expect(Math.abs(box.y + box.height / 2 - (frame.y + frame.height / 2))).toBeLessThan(frame.height / 4);
+    await page.keyboard.press("Escape");
+  });
+});
+
 describe("search across the boards, from the page", () => {
   const focused = () => page.evaluate(() => document.activeElement?.getAttribute("data-id") ?? null);
 
@@ -3124,7 +3157,8 @@ describe("search across the boards, from the page", () => {
     await shot("61-find");
     await field.press("Enter");
     // Another board: the page goes there, and the keyboard lands on the card.
-    await until("on the other board", async () => page.url().endsWith("#/b/cherche-ailleurs"));
+    // The card's own address: the board, then the card.
+    await until("on the other board", async () => page.url().endsWith("#/b/cherche-ailleurs/T1"));
     await page.locator(".find-bar").waitFor({ state: "hidden" });
     await until("the card has the keyboard", async () => (await focused()) === "T1");
     expect(await card("T1").textContent()).toContain("Payer");

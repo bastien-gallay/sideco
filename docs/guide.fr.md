@@ -233,6 +233,8 @@ Quand le mot n'est pas dans le nom, la ligne dit où il est : `[labels]`, `— d
 
 Dans la page, `/` ou `⌘K` (`Ctrl+K` hors Mac) ouvre la même recherche au-dessus du tableau. Les cartes trouvées se listent au fil de la frappe : celles du tableau affiché d'abord, la carte de cet id en tête, puis celles des autres tableaux, chacune avec le nom de son tableau et, si le mot n'est pas dans son nom, l'endroit où il est. Les flèches choisissent ; une carte du tableau affiché est pointée sur le tableau. Entrée, ou un clic, va à la carte : la page ouvre son tableau s'il le faut, et le clavier se pose sur elle. Échap referme.
 
+Chaque carte a son adresse, `#/b/TABLEAU/ID` (par exemple `http://127.0.0.1:4747/#/b/backlog/T182`) : l'adresse de la page suit la carte choisie, et l'ouvrir, collée ailleurs ou après un rechargement, ouvre son tableau, centre la carte, la choisit et la surligne un instant. `#/b/TABLEAU` seul ouvre le tableau. Un id n'est unique que dans son tableau : le lien porte toujours les deux.
+
 <sub>Source : `src/domain/find.ts` (`findInWorkspace`), `src/domain/digest.ts` (`describeFind`), `src/web/view.ts` (`findHits`) ; `tests/unit/find.test.ts`, `tests/unit/find-hits.test.ts`.</sub>
 
 ## Les données

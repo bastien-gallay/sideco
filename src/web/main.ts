@@ -33,8 +33,11 @@ import {
   currentBoard,
   currentSession,
   isLive,
+  linkedCard,
+  markFresh,
   openBoard,
   send,
+  showChosen,
   shown,
   start,
   state,
@@ -485,9 +488,9 @@ function goToFound(at: number): void {
   const hit = found[at];
   if (!hit) return;
   foundAt = at;
-  if (!hit.here) arriving = { board: hit.board, id: hit.id };
   closeFind();
-  if (!hit.here) openBoard(hit.board);
+  // The card's own address: its board opens, and the card is chosen, centred and lit up.
+  openBoard(hit.board, hit.id);
 }
 
 findField.addEventListener("input", () => {
@@ -2145,41 +2148,30 @@ function freeId(slug: string): string {
 
 // ── The paint ────────────────────────────────────────────────────────────────
 
-/** The card chosen, kept by the tab across a reload: the page comes back on it, the keyboard with it. */
-const CHOSEN_CARD = "sideco.chosen-card";
-function keptCard(): { board: string; id: string } | undefined {
-  try {
-    return JSON.parse(sessionStorage.getItem(CHOSEN_CARD) ?? "null") ?? undefined;
-  } catch {
-    return undefined;
-  }
-}
-let toRestore = keptCard();
-
 /**
- * Once the journal is replayed: the card kept is chosen again, then the choice is kept as it changes.
- * A replay starts over when the companion restarts, without a reload: the card is taken back then too.
+ * The card chosen lives in the address, `#/b/BOARD/ID`: a reload, a restart of the companion or a
+ * link pasted elsewhere comes back on it, centred and lit up, the keyboard on it.
  */
+let toRestore = linkedCard();
+window.addEventListener("hashchange", () => {
+  toRestore = linkedCard();
+});
+
+/** Once the journal is replayed (again, after a restart): the card linked is chosen, then the address follows the choice. */
 function keepChosen(board: string | undefined): void {
   if (!caughtUpYet()) {
-    toRestore ??= keptCard();
+    toRestore ??= linkedCard();
     return;
   }
   if (!board) return;
   const kept = toRestore;
-  if (kept) {
-    toRestore = undefined;
-    if (kept.board === board && currentBoard()?.elements.some((e) => e.id === kept.id)) {
-      state.selected = kept.id;
-      arriving = kept;
-    }
+  toRestore = undefined;
+  if (kept?.board === board && currentBoard()?.elements.some((e) => e.id === kept.id)) {
+    state.selected = kept.id;
+    arriving = kept;
+    markFresh(`${board}/${kept.id}`);
   }
-  try {
-    if (state.selected) sessionStorage.setItem(CHOSEN_CARD, JSON.stringify({ board, id: state.selected }));
-    else sessionStorage.removeItem(CHOSEN_CARD);
-  } catch {
-    // Not kept: a reload comes back on the board alone.
-  }
+  showChosen(board, state.selected);
 }
 
 function render(): void {
@@ -2253,7 +2245,7 @@ function render(): void {
   if (arriving && board?.id === arriving.board) {
     const { id } = arriving;
     arriving = undefined;
-    requestAnimationFrame(() => view.focus(id));
+    requestAnimationFrame(() => view.focus(id, true));
   }
 
   // The card whose detail is being written stays in the panel until it is saved or left.

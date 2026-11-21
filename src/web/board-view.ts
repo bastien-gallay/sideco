@@ -130,8 +130,8 @@ export interface BoardView {
   point(id: string | undefined): void;
   /** Scrolls the board so that the card is in view. */
   reveal(id: string): void;
-  /** Gives the card the keyboard: it is where Tab enters the board from now on. */
-  focus(id: string): void;
+  /** Gives the card the keyboard: it is where Tab enters the board from now on; `centred` brings it to the middle. */
+  focus(id: string, centred?: boolean): void;
 }
 
 export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
@@ -1582,7 +1582,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     current = id;
   });
 
-  function focusCard(id: string): void {
+  function focusCard(id: string, centred = false): void {
     const node = nodes.get(id);
     if (!node) return;
     nodes.get(current ?? "")?.g.setAttribute("tabindex", "-1");
@@ -1590,7 +1590,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     current = id;
     chosen = true;
     node.g.focus({ preventScroll: true });
-    node.g.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const at = centred ? "center" : "nearest";
+    node.g.scrollIntoView({ block: at, inline: at });
   }
 
   root.addEventListener("keydown", (event) => {

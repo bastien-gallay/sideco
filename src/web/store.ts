@@ -6,6 +6,8 @@
 import type { Command } from "../domain/commands.ts";
 import type { Recorded } from "../domain/events.ts";
 import { handledAll } from "../domain/handled-all.ts";
+import { asBoardId, asElementId } from "../domain/ids.ts";
+import { boardLink, cardLink, readLink } from "../domain/links.ts";
 import type { Presence } from "../domain/presence.ts";
 import {
   apply,
@@ -196,7 +198,7 @@ function announce(event: Recorded): void {
     state.notice = t.agentCreatedBoard(event.title);
 }
 
-function markFresh(key: string): void {
+export function markFresh(key: string): void {
   state.fresh.add(key);
   setTimeout(() => {
     state.fresh.delete(key);
@@ -215,12 +217,30 @@ export function changed(): void {
 }
 
 function boardFromHash(): string | null {
-  const match = /^#\/b\/([a-z0-9-]+)$/.exec(location.hash);
-  return match?.[1] ?? null;
+  return readLink(location.hash)?.board ?? null;
 }
 
-export function openBoard(id: string): void {
-  location.hash = `#/b/${id}`;
+/** The card the address names, with its board: a link to a card opens on it. */
+export function linkedCard(): { board: string; id: string } | undefined {
+  const link = readLink(location.hash);
+  return link?.card ? { board: link.board, id: link.card } : undefined;
+}
+
+/** The address says the card chosen, or the board alone: a copied address leads back to it. */
+export function showChosen(board: string, id: string | null): void {
+  // An address naming another board is a way out not yet taken: it is left to the page to follow.
+  const shown = readLink(location.hash)?.board;
+  if (shown !== board || !shown) return;
+  const card = id ? asElementId(id) : undefined;
+  const hash = card ? cardLink(shown, card) : boardLink(shown);
+  if (location.hash !== hash) history.replaceState(null, "", hash);
+}
+
+/** The board, or the card on it, in the address: the page opens there. */
+export function openBoard(id: string, card?: string): void {
+  const board = asBoardId(id);
+  const element = card ? asElementId(card) : undefined;
+  if (board) location.hash = element ? cardLink(board, element) : boardLink(board);
 }
 
 /** Back to the first screen: no board in the address. */
