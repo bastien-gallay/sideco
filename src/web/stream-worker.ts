@@ -2,14 +2,14 @@
  * The shared worker every tab of the page connects to: it holds the only event
  * stream (see `relay.ts`) and hands each tab its frames through a message port.
  */
-import { eventSource, Relay, type Request } from "./relay.ts";
+import { eventSource, Relay, type Request, STREAM } from "./relay.ts";
 
 /** The part of a shared worker's global scope used here; the DOM types do not describe it. */
 interface SharedScope {
   onconnect: ((event: MessageEvent) => void) | null;
 }
 
-const relay = new Relay(eventSource("/api/events"));
+const relay = new Relay(eventSource(STREAM));
 
 (self as unknown as SharedScope).onconnect = (connection) => {
   const port = connection.ports[0];

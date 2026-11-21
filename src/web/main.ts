@@ -33,7 +33,10 @@ import {
   changed,
   currentBoard,
   currentSession,
+  heldSince,
   isLive,
+  journal,
+  journalFor,
   linkedCard,
   markFresh,
   openBoard,
@@ -773,7 +776,7 @@ function historyFollows(): string | undefined {
 }
 
 function historyStopsShown(): number[] {
-  return historyStops(state.events, historyFollows());
+  return historyStops(journal(historyPanel.hidden ? state.live.seq : 0), historyFollows());
 }
 
 function step(by: -1 | 1): void {
@@ -2183,12 +2186,15 @@ function render(): void {
   const live = isLive();
   // What Claude would be told, for the session the page tells about: the one chosen, else the board's.
   const liveSession = shownSession(state.live, board?.id, state.sessionId ?? undefined);
-  const pending = pendingChanges(state.events, liveSession);
+  const pending = pendingChanges(journalFor(liveSession), liveSession);
   // The marks tell about now: a board shown as it was carries none. They are
   // measured against the session the board is for, not the last one to speak.
   const unread =
     live && board
-      ? unreadOn(pendingChanges(state.events, readerOf(state.live, board.id)), board.id)
+      ? unreadOn(
+          pendingChanges(journalFor(readerOf(state.live, board.id)), readerOf(state.live, board.id)),
+          board.id,
+        )
       : { cards: [], threads: [] };
 
   paintBoardPicker({
@@ -2234,8 +2240,8 @@ function render(): void {
   empty.hidden = Boolean(board);
   if (!board) paintEmpty({ live });
   // The board's visit: measured on arrival; the last look moves on while the board is on screen.
-  const newest = state.events.at(-1)?.seq ?? 0;
-  if (live && board && newest > 0 && caughtUpYet()) {
+  const newest = state.live.seq;
+  if (live && board && newest > 0 && caughtUpYet() && heldSince(readSeen()[board.id] ?? newest)) {
     if (visit?.board !== board.id) arrive(board.id, newest);
     if (document.visibilityState === "visible") writeSeen(board.id, newest);
   }

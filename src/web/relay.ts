@@ -3,7 +3,8 @@
  * per host, and each open stream holds one: with a stream per tab, a sixth tab
  * left the human's writes queued and the text they typed was lost. The relay
  * holds the only stream, in a worker the tabs share, and hands each tab what it
- * would have read on its own: the journal replayed, then each event as it comes.
+ * would have read on its own: the opening (the workspace as it stands, see
+ * `domain/opening.ts`), then each event as it comes.
  */
 import type { Presence } from "../domain/presence.ts";
 
@@ -11,6 +12,8 @@ import type { Presence } from "../domain/presence.ts";
 export type Frame =
   | { kind: "open" }
   | { kind: "error" }
+  /** The workspace as it stands and the recent events: what a tab opens on. */
+  | { kind: "snapshot"; data: string }
   | { kind: "event"; data: string }
   | { kind: "presence"; data: string }
   /** Another run of the companion answered: drop what was folded, the replay starts over. */
@@ -27,6 +30,7 @@ export interface SourceHandlers {
   /** `closed`: the browser gave the stream up and will not reconnect it on its own. */
   error(closed?: boolean): void;
   event(data: string): void;
+  snapshot(data: string): void;
   presence(data: string): void;
 }
 
@@ -47,6 +51,7 @@ export class Relay {
   /** Each stream gets a generation; frames from a closed one are dropped. */
   private generation = 0;
   private connected: boolean | null = null;
+  private opening: string | null = null;
   private events: string[] = [];
   private presence: string | null = null;
   private run: string | null = null;
@@ -61,6 +66,7 @@ export class Relay {
 
   join(listener: Listener): void {
     if (this.connected !== null) listener.post({ kind: this.connected ? "open" : "error" });
+    if (this.opening !== null) listener.post({ kind: "snapshot", data: this.opening });
     for (const data of this.events) listener.post({ kind: "event", data });
     if (this.presence !== null) listener.post({ kind: "presence", data: this.presence });
     this.listeners.add(listener);
@@ -78,6 +84,7 @@ export class Relay {
       open: () => live() && this.said({ kind: "open" }),
       error: (closed) => live() && this.lost(closed === true),
       event: (data) => live() && this.said({ kind: "event", data }),
+      snapshot: (data) => live() && this.said({ kind: "snapshot", data }),
       presence: (data) => live() && this.heard(data),
     });
   }
@@ -107,10 +114,11 @@ export class Relay {
     });
   }
 
-  /** A new stream replays the journal from its start: every tab drops what it folded. */
+  /** A new stream opens on the workspace afresh: every tab drops what it folded. */
   private startOver(): void {
     this.source?.close();
     this.connected = null;
+    this.opening = null;
     this.events = [];
     this.presence = null;
     this.run = null;
@@ -120,6 +128,7 @@ export class Relay {
 
   private said(frame: Frame): void {
     if (frame.kind === "open" || frame.kind === "error") this.connected = frame.kind === "open";
+    else if (frame.kind === "snapshot") this.opening = frame.data;
     else if (frame.kind === "event") this.events.push(frame.data);
     else if (frame.kind === "presence") this.presence = frame.data;
     this.broadcast(frame);
@@ -130,6 +139,9 @@ export class Relay {
   }
 }
 
+/** The stream a page follows: it opens on the workspace as it stands, not on the whole journal. */
+export const STREAM = "/api/events?snapshot=1";
+
 /** The stream itself, as the browser reads it. */
 export const eventSource =
   (url: string): OpenSource =>
@@ -138,6 +150,9 @@ export const eventSource =
     source.onopen = () => handlers.open();
     source.onerror = () => handlers.error(source.readyState === CLOSED);
     source.onmessage = (message) => handlers.event(message.data);
+    source.addEventListener("snapshot", (message) =>
+      handlers.snapshot((message as MessageEvent<string>).data),
+    );
     source.addEventListener("presence", (message) =>
       handlers.presence((message as MessageEvent<string>).data),
     );

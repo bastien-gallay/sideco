@@ -3,11 +3,11 @@
  * any number of tabs hold one connection; alone, where the browser has no
  * shared worker. The frames are the same either way.
  */
-import { eventSource, type Frame, Relay, type Request } from "./relay.ts";
+import { eventSource, type Frame, Relay, type Request, STREAM } from "./relay.ts";
 
 export function connect(build: string | undefined, hear: (frame: Frame) => void): void {
   if (typeof SharedWorker === "undefined") {
-    new Relay(eventSource("/api/events")).join({ post: hear });
+    new Relay(eventSource(STREAM)).join({ post: hear });
     return;
   }
   // One worker per build: a tab of another build must not share this one's stream.

@@ -8,6 +8,7 @@ import type { Recorded } from "../domain/events.ts";
 import { handledAll } from "../domain/handled-all.ts";
 import { asBoardId, asElementId } from "../domain/ids.ts";
 import { boardLink, cardLink, readLink } from "../domain/links.ts";
+import type { Opening } from "../domain/opening.ts";
 import type { Presence } from "../domain/presence.ts";
 import {
   apply,
@@ -20,12 +21,16 @@ import {
   type Workspace,
 } from "../domain/workspace.ts";
 import { t } from "./locale.ts";
+import { needsPast, withPast } from "./past.ts";
 import { postCommands } from "./post.ts";
 import type { Frame } from "./relay.ts";
 import { connect } from "./stream.ts";
 
 export interface State {
+  /** The events held: the recent ones the page opened with, and the past once fetched. */
   events: Recorded[];
+  /** The events held start after this one: the past up to it is fetched when needed. */
+  from: number;
   live: Workspace;
   /** A journal position when looking at the past; null when live. */
   cursor: number | null;
@@ -52,6 +57,7 @@ export interface State {
 
 export const state: State = {
   events: [],
+  from: 0,
   live: emptyWorkspace(),
   cursor: null,
   past: null,
@@ -110,6 +116,14 @@ function hear(frame: Frame): void {
       // An opened stream is followed by its replay: drawing now would show it half folded.
       if (frame.kind === "error" || caughtUp) changed();
       return;
+    case "snapshot": {
+      // Folded by the companion: the recent events come to be read, not folded again.
+      const opening = JSON.parse(frame.data) as Opening;
+      state.live = opening.workspace;
+      state.events = opening.events;
+      state.from = opening.from;
+      return;
+    }
     case "event":
       receive(JSON.parse(frame.data) as Recorded);
       return;
@@ -139,6 +153,8 @@ function hear(frame: Frame): void {
 function forget(): void {
   caughtUp = false;
   state.events = [];
+  state.from = 0;
+  pastAsked = null;
   state.live = emptyWorkspace();
   state.cursor = null;
   state.past = null;
@@ -269,7 +285,61 @@ export function isLive(): boolean {
   return state.cursor === null;
 }
 
+/**
+ * The events held, the past fetched first when what happened after `since`
+ * reaches back before them: drawn again once it is here.
+ */
+export function journal(since = 0): Recorded[] {
+  if (needsPast(state.from, since)) void fetchPast();
+  return state.events;
+}
+
+/**
+ * The events a session's digest reads: those after what it was told. One told
+ * nothing yet follows no board's past (see `recentFrom`): the events held do.
+ */
+export function journalFor(session: Session | undefined): Recorded[] {
+  return journal(session?.deliveredUpTo || state.from);
+}
+
+/** Whether every event after `since` is held; if not, the past is fetched and the page drawn again. */
+export function heldSince(since: number): boolean {
+  journal(since);
+  return !needsPast(state.from, since);
+}
+
+let pastAsked: Promise<void> | null = null;
+
+/** The events the page opened without, asked once; a stream that starts over asks again. */
+function fetchPast(): Promise<void> {
+  if (pastAsked) return pastAsked;
+  const upTo = state.from;
+  const asked = fetch(`/api/history?upTo=${upTo}`)
+    .then((response) => (response.ok ? (response.json() as Promise<{ events: Recorded[] }>) : null))
+    .then((answer) => {
+      // Another stream started over meanwhile: this answer is for a journal no longer held.
+      if (pastAsked !== asked) return;
+      if (!answer) {
+        pastAsked = null;
+        return;
+      }
+      state.events = withPast(state.events, answer.events);
+      state.from = 0;
+      changed();
+    })
+    .catch(() => {
+      if (pastAsked === asked) pastAsked = null;
+    });
+  pastAsked = asked;
+  return asked;
+}
+
 export function travelTo(seq: number | null): void {
+  // The past is folded from the first event: fetched first, then the trip is made.
+  if (seq !== null && needsPast(state.from, 0)) {
+    void fetchPast().then(() => state.from === 0 && travelTo(seq));
+    return;
+  }
   const last = state.live.seq;
   state.cursor = seq === null || seq >= last ? null : seq;
   state.past =

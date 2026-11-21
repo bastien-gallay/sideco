@@ -3383,4 +3383,40 @@ describe("a long journal", () => {
     expect(counts.filter((n) => n > 0)).toEqual([1500]);
     await agent("board rm long");
   });
+
+  test("a page opens on the board as it stands, and fetches the journal's past only to travel back", async () => {
+    await agent(`board new "Ancien" --format kanban --id ancien`);
+    await agent(`add task "Premier nom" --lane todo --id T1`, "ancien");
+    await agent(`rename T1 "Nom d'aujourd'hui"`, "ancien");
+    // Pushes the board's start out of the events a page opens with.
+    await agent(`board new "Remplissage" --format kanban --id remplissage`);
+    for (let batch = 0; batch < 2; batch++)
+      await agent(
+        Array.from({ length: 400 }, (_, i) => `add task "R${batch}-${i}" --lane todo`).join("\n"),
+        "remplissage",
+      );
+    await agent("board rm remplissage");
+
+    const asked: string[] = [];
+    const watch = (request: { url(): string }): void => {
+      if (request.url().includes("/api/history")) asked.push(request.url());
+    };
+    page.on("request", watch);
+    await page.goto(`${running.url}/#/b/ancien`);
+    await page.locator("g.card", { hasText: "Nom d'aujourd'hui" }).waitFor();
+    // Live on, as before: what happens next is drawn.
+    await agent(`rename T1 "Nom de ce soir"`, "ancien");
+    await page.locator("g.card", { hasText: "Nom de ce soir" }).waitFor();
+    expect(asked).toEqual([]);
+
+    await openHistory();
+    await page.locator(".history-list .moment", { hasText: /Claude adds T1 / }).click();
+    await page.locator(".banner").waitFor({ state: "visible" });
+    await page.locator("g.card", { hasText: "Premier nom" }).waitFor();
+    expect(asked).toHaveLength(1);
+    page.off("request", watch);
+    await page.locator(".banner button").click();
+    await page.locator(".banner").waitFor({ state: "hidden" });
+    await agent("board rm ancien");
+  });
 });

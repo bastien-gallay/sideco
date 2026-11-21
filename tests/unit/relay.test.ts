@@ -84,6 +84,24 @@ describe("one stream, shared", () => {
     ]);
   });
 
+  test("a tab that joins late is told the opening, then the events after it, then the last presence", () => {
+    const sources = fakeSources();
+    const relay = new Relay(sources.open);
+    relay.join(tab());
+    sources.current().open();
+    sources.current().snapshot('{"from":0,"events":[],"workspace":{"seq":4}}');
+    sources.current().presence(presence("r1"));
+    sources.current().event('{"seq":5}');
+    const late = tab();
+    relay.join(late);
+    expect(late.frames).toEqual([
+      { kind: "open" },
+      { kind: "snapshot", data: '{"from":0,"events":[],"workspace":{"seq":4}}' },
+      { kind: "event", data: '{"seq":5}' },
+      { kind: "presence", data: presence("r1") },
+    ]);
+  });
+
   test("a tab that joins mid-replay gets no presence yet: the replay is not over", () => {
     const sources = fakeSources();
     const relay = new Relay(sources.open);
@@ -142,6 +160,23 @@ describe("another run of the companion", () => {
     relay.join(late);
     expect(late.frames).toEqual([
       { kind: "event", data: '{"seq":1}' },
+      { kind: "presence", data: presence("r2") },
+    ]);
+  });
+
+  test("forgets the old run's opening: a tab that joins is told the new one only", () => {
+    const sources = fakeSources();
+    const relay = new Relay(sources.open);
+    relay.join(tab());
+    sources.current().snapshot('{"workspace":{"seq":9}}');
+    sources.current().presence(presence("r1"));
+    sources.current().presence(presence("r2"));
+    sources.current().snapshot('{"workspace":{"seq":2}}');
+    sources.current().presence(presence("r2"));
+    const late = tab();
+    relay.join(late);
+    expect(late.frames).toEqual([
+      { kind: "snapshot", data: '{"workspace":{"seq":2}}' },
       { kind: "presence", data: presence("r2") },
     ]);
   });
