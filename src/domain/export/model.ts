@@ -4,8 +4,9 @@
  * conventions: `col` counts from 0, edges are `{src, dst, label}` or `[src, dst]`
  * pairs, and unknown fields are ignored on the way in.
  */
-import { type Command, CommandError, isElementId } from "../commands.ts";
+import { type Command, CommandError } from "../commands.ts";
 import { type Format, findFormat, findType, wearsDone } from "../formats.ts";
+import { isElementId } from "../ids.ts";
 import { type Board, idNumber } from "../workspace.ts";
 
 export interface ModelElement {

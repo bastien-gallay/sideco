@@ -223,7 +223,7 @@ changes nothing else.
 
 | Gap | Where | Target |
 | --- | --- | --- |
-| Ids are plain `string` (the first to close) | Domain types | Branded `BoardId`, `ElementId` |
+| Ids are branded where they are parsed, still plain `string` in the commands, events and boards | `BoardId`, `ElementId` in `src/domain/ids.ts`, made by `parseCommand` and `slugify`; `Command`, `Recorded`, `Board` take `string` | The same types on those fields, a card at a time; the page builds commands too |
 | Switches that do things, not all checked yet | `src/domain/undo.ts`, `src/domain/digest.ts`, `src/web/view.ts`; `apply` and the page's stream are | `handledAll`, or a comment saying the switch is partial on purpose |
 | No `Result` type yet | Domain | The small module above, with the first code that needs it |
 | Nine modules over 400 lines, each capped at its size by an override in `biome.json` | The largest: `src/web/main.ts`, `src/web/board-view.ts`, `src/web/view.ts` | Split by job; a commit that shrinks one lowers its cap, and drops it under 400 |

@@ -6,7 +6,7 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { CommandError, isElementId, slugify } from "../domain/commands.ts";
+import { CommandError, slugify } from "../domain/commands.ts";
 import { decide } from "../domain/decide.ts";
 import {
   describeBoard,
@@ -21,6 +21,7 @@ import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.t
 import { fromModel } from "../domain/export/model.ts";
 import { FORMATS } from "../domain/formats.ts";
 import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale, WORDS } from "../domain/i18n.ts";
+import { asElementId } from "../domain/ids.ts";
 import {
   type Board,
   findBoard,
@@ -269,7 +270,7 @@ async function run(verb: string, rest: string[]): Promise<number> {
     case "show": {
       // `show E1` is one card of the board; `show backlog` is a board.
       const named = args.positional[0];
-      const card = named !== undefined && isElementId(named) ? named : undefined;
+      const card = asElementId(named ?? "");
       const board = chooseBoard(read(), card ? args.flags.get("board") : (named ?? args.flags.get("board")));
       console.log(shown(board, card, args));
       await followQuietly(root, args.flags.get("session") ?? setting("SIDECO_SESSION"), board.id);
@@ -451,13 +452,10 @@ function defaultBoard(ws: Workspace, args: Args, required: boolean): string | un
 
 function chooseBoard(ws: Workspace, id: string | undefined): Board {
   const chosen = id ?? setting("SIDECO_BOARD") ?? (ws.boards.length === 1 ? ws.boards[0]?.id : undefined);
-  if (!chosen)
-    throw new UsageError(`which board? (boards: ${ws.boards.map((b) => b.id).join(", ") || "none yet"})`);
+  const known = `(boards: ${ws.boards.map((b) => b.id).join(", ") || "none yet"})`;
+  if (!chosen) throw new UsageError(`which board? ${known}`);
   const board = findBoard(ws, chosen);
-  if (!board)
-    throw new UsageError(
-      `no board "${chosen}" (boards: ${ws.boards.map((b) => b.id).join(", ") || "none yet"})`,
-    );
+  if (!board) throw new UsageError(`no board "${chosen}" ${known}`);
   return board;
 }
 

@@ -10,6 +10,7 @@
  * hub puts the id back (see `aliases.ts`) before anything is decided.
  */
 import type { Todo } from "./events.ts";
+import { type BoardId, type ElementId, isBoardId, isElementId } from "./ids.ts";
 
 export type Command =
   | { kind: "create-board"; board: string; title: string; format: string }
@@ -103,12 +104,10 @@ export class CommandError extends Error {
   override name = "CommandError";
 }
 
-const BOARD_ID = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
-const ELEMENT_ID = /^[A-Z][1-9][0-9]{0,5}$/;
 const ALIAS = /^[a-z][a-z0-9-]{0,39}$/;
 
 /** A board id from a title: lowercase ASCII words joined by dashes. */
-export function slugify(title: string): string {
+export function slugify(title: string): BoardId {
   const slug = title
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -117,11 +116,9 @@ export function slugify(title: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 40)
     .replace(/-+$/, "");
-  return slug || "board";
-}
-
-export function isElementId(value: string): boolean {
-  return ELEMENT_ID.test(value);
+  const id = slug || "board";
+  if (!isBoardId(id)) throw new Error(`slugify made ${id}, not a board id`);
+  return id;
 }
 
 /** The name `@name` refers to; undefined for anything else, an id included. */
@@ -330,17 +327,17 @@ function text(f: Fields, key: string, max: number, allowEmpty = false): string {
   return trimmed;
 }
 
-function boardId(f: Fields): string {
+function boardId(f: Fields): BoardId {
   const value = f.board;
-  if (typeof value !== "string" || !BOARD_ID.test(value)) {
+  if (typeof value !== "string" || !isBoardId(value)) {
     throw new CommandError("`board` must be a board id: lowercase letters, digits and dashes");
   }
   return value;
 }
 
-function elementId(f: Fields, key: string): string {
+function elementId(f: Fields, key: string): ElementId {
   const value = f[key];
-  if (typeof value !== "string" || !ELEMENT_ID.test(value)) {
+  if (typeof value !== "string" || !isElementId(value)) {
     throw new CommandError(`\`${key}\` must be an id like E1 or C12`);
   }
   return value;
@@ -349,7 +346,7 @@ function elementId(f: Fields, key: string): string {
 /** The id of something that exists, or `@name` for what an earlier command of the batch named. */
 function idOrName(f: Fields, key: string, shown = key): string {
   const value = f[key];
-  if (typeof value !== "string" || !(ELEMENT_ID.test(value) || referredName(value) !== undefined)) {
+  if (typeof value !== "string" || !(isElementId(value) || referredName(value) !== undefined)) {
     throw new CommandError(
       `\`${shown}\` must be an id like E1 or C12, or the @name an earlier command of the batch gave`,
     );

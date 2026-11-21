@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CommandError, isElementId, parseCommand, slugify } from "../../src/domain/commands.ts";
+import { CommandError, parseCommand, slugify } from "../../src/domain/commands.ts";
 
 describe("parseCommand", () => {
   test("accepts a well-formed command and drops unknown fields", () => {
@@ -145,7 +145,7 @@ describe("slugify", () => {
     ["a".repeat(60), "a".repeat(40)],
     [`${"a".repeat(39)} b`, "a".repeat(39)],
   ])("%j → %j", (title, slug) => {
-    expect(slugify(title)).toBe(slug);
+    expect<string>(slugify(title)).toBe(slug);
   });
 
   test("a slug is always a valid board id", () => {
@@ -161,9 +161,4 @@ test("removing a board is a command of the closed set", () => {
     board: "commande",
   });
   expect(() => parseCommand({ kind: "remove-board" })).toThrow();
-});
-
-test("element ids are one capital letter and a number without leading zero", () => {
-  expect(["E1", "C12", "N999999"].every(isElementId)).toBe(true);
-  expect(["e1", "E0", "E01", "EE1", "E", "1", "E1234567"].some(isElementId)).toBe(false);
 });
