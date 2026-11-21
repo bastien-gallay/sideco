@@ -351,6 +351,7 @@ Sur un ❌ ou un ⚠️, l'agent relance la commande hors du bac à sable (le sk
 bun test tests/unit          # domaine, serveur, CLI, hooks, vues : sans réseau
 bun test tests/integration   # le vrai binaire, un vrai port
 bun test tests/e2e           # la page dans Chrome (playwright-core, Chrome installé)
+SIDECO_SLOW=6 bun test tests/e2e  # la même, la page six fois plus lente : une course qui casse la CI se montre ici
 bun run typecheck && bun run lint
 ```
 
