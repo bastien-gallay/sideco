@@ -24,7 +24,8 @@ export type Request = { kind: "leave" } | { kind: "join" };
 
 export interface SourceHandlers {
   open(): void;
-  error(): void;
+  /** `closed`: the browser gave the stream up and will not reconnect it on its own. */
+  error(closed?: boolean): void;
   event(data: string): void;
   presence(data: string): void;
 }
@@ -35,6 +36,11 @@ export interface Listener {
   post(frame: Frame): void;
 }
 
+/** How long a lost stream waits before it is opened again. */
+const RETRY_MS = 2000;
+/** `EventSource.CLOSED`, spelled out: the tests run where EventSource does not exist. */
+const CLOSED = 2;
+
 export class Relay {
   private readonly listeners = new Set<Listener>();
   private source: { close(): void } | null = null;
@@ -44,8 +50,14 @@ export class Relay {
   private events: string[] = [];
   private presence: string | null = null;
   private run: string | null = null;
+  /** A new stream is already asked for: one at a time. */
+  private retrying = false;
 
-  constructor(private readonly openSource: OpenSource) {}
+  constructor(
+    private readonly openSource: OpenSource,
+    /** Runs `again` a moment later: the time a companion takes to come back. */
+    private readonly later: (again: () => void) => void = (again) => void setTimeout(again, RETRY_MS),
+  ) {}
 
   join(listener: Listener): void {
     if (this.connected !== null) listener.post({ kind: this.connected ? "open" : "error" });
@@ -64,7 +76,7 @@ export class Relay {
     const live = (): boolean => generation === this.generation;
     this.source = this.openSource({
       open: () => live() && this.said({ kind: "open" }),
-      error: () => live() && this.said({ kind: "error" }),
+      error: (closed) => live() && this.lost(closed === true),
       event: (data) => live() && this.said({ kind: "event", data }),
       presence: (data) => live() && this.heard(data),
     });
@@ -74,17 +86,36 @@ export class Relay {
     const { run } = JSON.parse(data) as Presence;
     if (this.run !== null && run !== this.run) {
       // The stream reconnected to another run: its journal may not be the one replayed so far.
-      this.source?.close();
-      this.connected = null;
-      this.events = [];
-      this.presence = null;
-      this.run = null;
-      this.broadcast({ kind: "reset" });
-      this.follow();
+      this.startOver();
       return;
     }
     this.run = run;
     this.said({ kind: "presence", data });
+  }
+
+  /**
+   * A stream the browser gave up on is never opened again by the browser: left so,
+   * every tab, and every tab opened later, would show the journal as it stood.
+   */
+  private lost(closed: boolean): void {
+    this.said({ kind: "error" });
+    if (!closed || this.retrying) return;
+    this.retrying = true;
+    this.later(() => {
+      this.retrying = false;
+      this.startOver();
+    });
+  }
+
+  /** A new stream replays the journal from its start: every tab drops what it folded. */
+  private startOver(): void {
+    this.source?.close();
+    this.connected = null;
+    this.events = [];
+    this.presence = null;
+    this.run = null;
+    this.broadcast({ kind: "reset" });
+    this.follow();
   }
 
   private said(frame: Frame): void {
@@ -105,7 +136,7 @@ export const eventSource =
   (handlers) => {
     const source = new EventSource(url);
     source.onopen = () => handlers.open();
-    source.onerror = () => handlers.error();
+    source.onerror = () => handlers.error(source.readyState === CLOSED);
     source.onmessage = (message) => handlers.event(message.data);
     source.addEventListener("presence", (message) =>
       handlers.presence((message as MessageEvent<string>).data),

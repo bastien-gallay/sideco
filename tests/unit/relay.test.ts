@@ -159,3 +159,75 @@ describe("another run of the companion", () => {
     expect(a.frames).toEqual([]);
   });
 });
+
+describe("a stream the browser gave up on", () => {
+  /** A clock the test turns by hand: what the relay asked to do later, done when told. */
+  function laterByHand(): { later: (again: () => void) => void; run: () => void; waiting: () => number } {
+    const queued: (() => void)[] = [];
+    return {
+      later: (again) => void queued.push(again),
+      run: () => {
+        for (const again of queued.splice(0)) again();
+      },
+      waiting: () => queued.length,
+    };
+  }
+
+  test("is opened again a moment later, and every tab starts over from it", () => {
+    const sources = fakeSources();
+    const clock = laterByHand();
+    const relay = new Relay(sources.open, clock.later);
+    const a = tab();
+    relay.join(a);
+    sources.current().open();
+    sources.current().event('{"seq":1}');
+    sources.current().presence(presence("r1"));
+    a.frames.length = 0;
+
+    // Firefox closed the stream for good: it will not reconnect on its own.
+    sources.current().error(true);
+    expect(a.frames).toEqual([{ kind: "error" }]);
+    expect(sources.opened()).toBe(1);
+
+    clock.run();
+    expect(sources.closed()).toBe(1);
+    expect(sources.opened()).toBe(2);
+    expect(a.frames).toEqual([{ kind: "error" }, { kind: "reset" }]);
+
+    sources.current().open();
+    sources.current().event('{"seq":1}');
+    sources.current().event('{"seq":2}');
+    const late = tab();
+    relay.join(late);
+    expect(late.frames).toEqual([
+      { kind: "open" },
+      { kind: "event", data: '{"seq":1}' },
+      { kind: "event", data: '{"seq":2}' },
+    ]);
+  });
+
+  test("a stream that only stumbled is left to reconnect on its own", () => {
+    const sources = fakeSources();
+    const clock = laterByHand();
+    const relay = new Relay(sources.open, clock.later);
+    relay.join(tab());
+    sources.current().error(false);
+    expect(clock.waiting()).toBe(0);
+    expect(sources.opened()).toBe(1);
+  });
+
+  test("tries again while the companion stays away, one stream at a time", () => {
+    const sources = fakeSources();
+    const clock = laterByHand();
+    const relay = new Relay(sources.open, clock.later);
+    relay.join(tab());
+    sources.current().error(true);
+    sources.current().error(true);
+    expect(clock.waiting()).toBe(1);
+    clock.run();
+    sources.current().error(true);
+    clock.run();
+    expect(sources.opened()).toBe(3);
+    expect(sources.closed()).toBe(2);
+  });
+});
