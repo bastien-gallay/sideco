@@ -54,7 +54,8 @@ export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE, span?
   const format = findFormat(board.format);
   if (!format) return EMPTY;
   const card = cardMaker(board, format, locale);
-  if (format.layout === "graph") return placeConnectorLabels(layoutGraph(board, card, span));
+  if (format.layout === "graph")
+    return placeConnectorLabels(layoutGraph(board, card, span, format.relations === true));
 
   const scene =
     format.layout === "timeline"

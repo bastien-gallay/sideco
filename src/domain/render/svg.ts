@@ -5,6 +5,8 @@
  * Colours of the chrome are CSS variables with fallbacks: standalone files get
  * the light theme, the page overrides the variables.
  */
+
+import { NAME_LINE_H, nameLines } from "../layout/connector-labels.ts";
 import {
   type Band,
   BLURB_H,
@@ -127,8 +129,18 @@ export function connectorMarkup(c: Connector): string {
     ? ""
     : c.unwritten
       ? `<title>${esc(c.label)}</title>`
-      : `<text class="conn-label" x="${c.labelX}" y="${c.labelY}">${esc(c.label)}</text>`;
+      : connectorName(c.label, c.labelX, c.labelY);
   return `<g class="conn" data-src="${esc(c.src)}" data-dst="${esc(c.dst)}"><path d="${c.d}" marker-end="url(#sideco-arrow)"/>${label}</g>`;
+}
+
+/** A link's name on its lines; cut short, the link says it whole on hover. */
+function connectorName(label: string, x: number, y: number): string {
+  const lines = nameLines(label);
+  if (lines.length === 1 && lines[0] === label)
+    return `<text class="conn-label" x="${x}" y="${y}">${esc(label)}</text>`;
+  const spans = lines.map((l, k) => `<tspan x="${x}" dy="${k === 0 ? 0 : NAME_LINE_H}">${esc(l)}</tspan>`);
+  const whole = lines.join(" ") === label ? "" : `<title>${esc(label)}</title>`;
+  return `<text class="conn-label" x="${x}" y="${y}">${whole}${spans.join("")}</text>`;
 }
 
 /** A card drawn at the origin; the caller positions it. */

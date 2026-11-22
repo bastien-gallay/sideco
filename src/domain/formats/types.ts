@@ -86,6 +86,11 @@ export interface Format {
   sliced?: string;
   /** Only for `graph` layouts: a card shows the start of its detail under its name, as C4 shows a description. */
   describes?: true;
+  /**
+   * Only for `graph` layouts: a link is a relation, not a step. One that goes back
+   * along another is its answer, drawn beside it, not a loop round the board.
+   */
+  relations?: true;
 }
 
 export const t = (en: string, fr: string): Text => ({ en, fr });

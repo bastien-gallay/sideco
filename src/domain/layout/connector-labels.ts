@@ -5,10 +5,16 @@
  * with nowhere free is not written: it would hide a card, so the link says it
  * on hover instead.
  */
-import { type Connector, r, type Scene } from "./scene.ts";
+import { type Connector, r, type Scene, wrap } from "./scene.ts";
 
 /** The width of one character of a link's name, at its 11px. */
 export const LABEL_CHAR_W = 6.2;
+/** A name is cut into lines of about this many characters... */
+export const NAME_CHARS = 28;
+/** ...and this many lines at most: the rest is read on hover. */
+export const NAME_LINES = 2;
+/** From one line of a name to the next. */
+export const NAME_LINE_H = 13;
 /** Above the baseline, and below it, of a line of 11px text. */
 const ASCENT = 9;
 const DESCENT = 3;
@@ -31,13 +37,23 @@ export interface Box {
 
 type Point = readonly [number, number];
 
-/** What a name covers, its halo included, written from `x` on the baseline `y`. */
+/** The lines a link's name is written on. */
+export function nameLines(label: string): string[] {
+  return wrap(label, NAME_CHARS, NAME_LINES);
+}
+
+/** How wide a name is written, its longest line. */
+export function nameWidth(label: string): number {
+  return Math.max(...nameLines(label).map((l) => l.length)) * LABEL_CHAR_W;
+}
+
+/** What a name covers, its halo included, written from `x` on the baseline `y` of its first line. */
 export function labelBox(label: string, x: number, y: number): Box {
   return {
     x: x - HALO,
     y: y - ASCENT - HALO,
-    w: label.length * LABEL_CHAR_W + 2 * HALO,
-    h: ASCENT + DESCENT + 2 * HALO,
+    w: nameWidth(label) + 2 * HALO,
+    h: ASCENT + DESCENT + (nameLines(label).length - 1) * NAME_LINE_H + 2 * HALO,
   };
 }
 
@@ -50,9 +66,11 @@ export function overlap(a: Box, b: Box): number {
 /** The scene with every link's name on a spot of its own, the layout's spot first. */
 export function placeConnectorLabels(scene: Scene): Scene {
   const placed: Box[] = [];
-  const connectors = scene.connectors.map((c): Connector => {
+  const lines = scene.connectors.map((c) => along(c.d));
+  const connectors = scene.connectors.map((c, k): Connector => {
     if (!c.label) return c;
-    const spot = spotFor(c, c.label, scene, placed);
+    const others = lines.filter((_, j) => j !== k).flat();
+    const spot = spotFor(c, c.label, scene, placed, others) ?? spotFor(c, c.label, scene, placed, []);
     if (!spot) return { ...c, unwritten: true };
     const [x, y] = spot;
     placed.push(labelBox(c.label, x, y));
@@ -61,12 +79,24 @@ export function placeConnectorLabels(scene: Scene): Scene {
   return { ...scene, connectors };
 }
 
-function spotFor(c: Connector, label: string, scene: Scene, placed: readonly Box[]): Point | undefined {
+/** A spot for the name that covers no card and no other name, nor any of `lines`: the other links. */
+function spotFor(
+  c: Connector,
+  label: string,
+  scene: Scene,
+  placed: readonly Box[],
+  lines: readonly Point[],
+): Point | undefined {
   const wanted: Point = [c.labelX, c.labelY];
-  const width = label.length * LABEL_CHAR_W;
+  const width = nameWidth(label);
+  const tall = (nameLines(label).length - 1) * NAME_LINE_H;
   const free = (at: Point): boolean => {
     const box = labelBox(label, at[0], at[1]);
-    return !scene.cards.some((k) => overlap(box, k) > 0) && !placed.some((b) => overlap(box, b) > 0);
+    return (
+      !scene.cards.some((k) => overlap(box, k) > 0) &&
+      !placed.some((b) => overlap(box, b) > 0) &&
+      !lines.some(([x, y]) => x > box.x && x < box.x + box.w && y > box.y && y < box.y + box.h)
+    );
   };
   if (free(wanted)) return wanted;
 
@@ -74,7 +104,7 @@ function spotFor(c: Connector, label: string, scene: Scene, placed: readonly Box
     x - HALO >= 0 &&
     y - ASCENT - HALO >= 0 &&
     x + width + HALO <= scene.width &&
-    y + DESCENT + HALO <= scene.height;
+    y + tall + DESCENT + HALO <= scene.height;
   const near = (p: Point): number => Math.hypot(p[0] - wanted[0], p[1] - wanted[1]);
   const spots = along(c.d)
     .flatMap(([x, y]): Point[] => [
@@ -82,7 +112,7 @@ function spotFor(c: Connector, label: string, scene: Scene, placed: readonly Box
       [x - OFFSET - width, y + OFFSET],
       // Above or under the line, a few lines off at most: room between cards is often a cell away.
       ...RUNGS.flatMap((k): Point[] => [
-        [x - width / 2, y - OFFSET - k * LINE],
+        [x - width / 2, y - OFFSET - tall - k * LINE],
         [x - width / 2, y + OFFSET + ASCENT + k * LINE],
       ]),
     ])

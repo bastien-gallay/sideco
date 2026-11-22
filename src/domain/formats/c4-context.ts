@@ -16,6 +16,7 @@ export const C4_CONTEXT: Format = {
   layout: "graph",
   lanes: [],
   describes: true,
+  relations: true,
   types: [
     {
       id: "person",

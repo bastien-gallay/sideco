@@ -7,7 +7,7 @@
  * same board gives the same drawing. Ported from truepath's `layout.py`.
  */
 import type { Board, Element } from "../workspace.ts";
-import { LABEL_CHAR_W } from "./connector-labels.ts";
+import { nameWidth } from "./connector-labels.ts";
 import {
   blurbHeight,
   CARD_W,
@@ -24,10 +24,15 @@ export const NODE_H = 72;
 export const NODE_LINES = 3;
 const GAP_X = 32;
 const GAP_Y = 64;
+/** Between the layers of relations: room for their names, two lines each, beside one another. */
+const RELATION_GAP_Y = 112;
+const gapOf = (relations: boolean): number => (relations ? RELATION_GAP_Y : GAP_Y);
 const LANE = 16;
 const STUB = 4;
 const LABEL_GAP = 4;
 const CLEARANCE = 6;
+/** Between a link and the one that answers it, drawn side by side. */
+const PAIR = 12;
 /** The fewest layers a column of a folded flow holds. */
 const BAND_LAYERS = 4;
 /** Between two columns of a folded flow: room for the arrow that climbs from one to the next. */
@@ -83,6 +88,7 @@ export function layoutGraph(
   board: Board,
   card: (e: Element, x: number, y: number) => Card,
   span?: number,
+  relations = false,
 ): Scene {
   if (board.elements.length === 0)
     return { width: 2 * MARGIN, height: 2 * MARGIN, bands: [], cards: [], connectors: [] };
@@ -97,16 +103,19 @@ export function layoutGraph(
   const depth = Math.max(...rank.values());
   const layers: string[][] = [];
   for (let level = 0; level <= depth; level++) layers.push(ids.filter((id) => rank.get(id) === level));
-  orderLayers(layers, parents);
 
   const x = new Map<string, number>();
   placeLayer(layers[0] ?? [], x, () => 0);
   const centre = (id: string): number => (x.get(id) ?? 0) + CARD_W / 2;
+  // Each node under the mean of all its parents, those a few layers up included: a link from
+  // far above then comes down on the side its parent stands, not across the other links.
+  const wanted = (id: string): number => mean((parents.get(id) ?? []).map(centre));
   for (const layer of layers.slice(1)) {
-    placeLayer(layer, x, (id) => mean((parents.get(id) ?? []).map(centre)));
+    layer.sort((a, b) => wanted(a) - wanted(b));
+    placeLayer(layer, x, wanted);
   }
 
-  const graph: Graph = { board, card, rank, back, layers, x };
+  const graph: Graph = { board, card, rank, back, layers, x, relations };
   const whole = draw(graph, [[0, depth]]);
   if (span === undefined) return whole;
   // As many columns as the flow allows, each at least BAND_LAYERS deep; fewer while they overflow the window.
@@ -127,6 +136,8 @@ interface Graph {
   layers: string[][];
   /** Where each node sits in its layer, before the layers are put down. */
   x: Map<string, number>;
+  /** Links are relations: one back along another is its answer. */
+  relations: boolean;
 }
 
 /** A run of layers drawn as one column: the first and last ranks it holds. */
@@ -164,15 +175,12 @@ function fold(graph: Graph, columns: number, pairs: readonly Pair[]): Range[] {
 
 /** Puts the columns down left to right, each routed on its own, then the arrows from one to the next. */
 function draw(graph: Graph, bands: readonly Range[]): Scene {
-  const { board, card, rank, back, layers, x } = graph;
+  const { board, card, rank, back, layers, x, relations } = graph;
   const folded = bands.length > 1;
   // A folded flow leaves room above for the arrow coming in at the top of a column.
-  const top = MARGIN + (folded ? GAP_Y / 2 : 0);
-  // Every node is as tall as the one with the longest description, so the rows stay even.
-  const nodeH =
-    NODE_H +
-    Math.max(0, ...board.elements.map((e) => blurbHeight(card(e, 0, 0).blurb?.length ?? 0))) +
-    Math.max(0, ...board.elements.map((e) => labelsHeight(e.labels)));
+  const gap = gapOf(relations);
+  const top = MARGIN + (folded ? gap / 2 : 0);
+  const nodeH = nodeHeight(board, card);
   const cards = new Map<string, Card>();
   const band = new Map<string, number>();
   const drawn = new Map<string, Connector>();
@@ -184,12 +192,12 @@ function draw(graph: Graph, bands: readonly Range[]): Scene {
     const left = Math.min(...ids.map((id) => x.get(id) ?? 0));
     const own = new Map<string, Card>();
     for (const e of board.elements.filter((e) => ids.includes(e.id))) {
-      const y = top + ((rank.get(e.id) ?? 0) - from) * (nodeH + GAP_Y);
+      const y = top + ((rank.get(e.id) ?? 0) - from) * (nodeH + gap);
       own.set(e.id, { ...card(e, r((x.get(e.id) ?? 0) - left + origin), y), h: nodeH });
       band.set(e.id, k);
     }
     const edges = board.edges.filter((e) => own.has(e.src) && own.has(e.dst));
-    const routed = route(edges, own, rank, back);
+    const routed = route(edges, own, rank, back, relations);
     for (const c of routed.connectors) drawn.set(key(c.src, c.dst), c);
     for (const [id, c] of own) cards.set(id, c);
     reach = routed.reach;
@@ -201,7 +209,7 @@ function draw(graph: Graph, bands: readonly Range[]): Scene {
     const [s, t] = [cards.get(edge.src), cards.get(edge.dst)];
     const k = band.get(edge.src);
     if (!s || !t || k === undefined || band.get(edge.dst) === k) continue;
-    drawn.set(key(edge.src, edge.dst), across(edge, s, t, gutters[k] ?? 0));
+    drawn.set(key(edge.src, edge.dst), across(edge, s, t, gutters[k] ?? 0, gap));
   }
 
   const bottom = Math.max(...[...cards.values()].map((c) => c.y + c.h));
@@ -214,15 +222,24 @@ function draw(graph: Graph, bands: readonly Range[]): Scene {
   };
 }
 
+/** Every node is as tall as the one with the longest description, so the rows stay even. */
+function nodeHeight(board: Board, card: Graph["card"]): number {
+  return (
+    NODE_H +
+    Math.max(0, ...board.elements.map((e) => blurbHeight(card(e, 0, 0).blurb?.length ?? 0))) +
+    Math.max(0, ...board.elements.map((e) => labelsHeight(e.labels)))
+  );
+}
+
 /**
  * The arrow from a column to the next: down under its card, right into the
  * gutter, up it to the top, and down onto the first card of the next column.
  */
-function across(edge: Board["edges"][number], s: Card, t: Card, gutter: number): Connector {
+function across(edge: Board["edges"][number], s: Card, t: Card, gutter: number, gap: number): Connector {
   const sx = Math.round(s.x + s.w / 2);
   const tx = Math.round(t.x + t.w / 2);
-  const rail = Math.round(s.y + s.h + GAP_Y / 2);
-  const high = Math.round(t.y - GAP_Y / 2);
+  const rail = Math.round(s.y + s.h + gap / 2);
+  const high = Math.round(t.y - gap / 2);
   return {
     src: edge.src,
     dst: edge.dst,
@@ -231,15 +248,6 @@ function across(edge: Board["edges"][number], s: Card, t: Card, gutter: number):
     labelX: r(tx + CLEARANCE),
     labelY: r(high + LABEL_BELOW_RAIL),
   };
-}
-
-/** One top-down pass: each node sits under the mean position of its parents in the layer above. */
-function orderLayers(layers: string[][], parents: Map<string, string[]>): void {
-  for (let level = 1; level < layers.length; level++) {
-    const above = new Map((layers[level - 1] ?? []).map((id, k) => [id, k]));
-    const wanted = (id: string): number => mean((parents.get(id) ?? []).flatMap((p) => above.get(p) ?? []));
-    layers[level]?.sort((a, b) => wanted(a) - wanted(b));
-  }
 }
 
 /** Left to right at the wanted centres, pushed apart, then shifted back to the wanted mean. */
@@ -264,9 +272,11 @@ function route(
   cards: Map<string, Card>,
   rank: Map<string, number>,
   back: Set<string>,
+  relations: boolean,
 ): { connectors: Connector[]; reach: number } {
   const all = [...cards.values()];
   const right = Math.max(...all.map((c) => c.x + c.w));
+  const gap = gapOf(relations);
   const connectors: Connector[] = [];
   let lanes = 0;
   let reach = right;
@@ -275,42 +285,22 @@ function route(
     const s = cards.get(edge.src);
     const t = cards.get(edge.dst);
     if (!s || !t) continue;
-    const sx = Math.round(s.x + s.w / 2);
-    const tx = Math.round(t.x + t.w / 2);
-    const y1 = Math.round(s.y + s.h);
-    const y2 = Math.round(t.y - STUB);
-    const rail = Math.round(y1 + GAP_Y / 2);
     const label = edge.label ?? "";
     const from = rank.get(edge.src) ?? 0;
     const to = rank.get(edge.dst) ?? 0;
-    const passed = all.filter((c) => {
-      const level = rank.get(c.id) ?? 0;
-      return level > from && level < to;
-    });
-
+    const loop = back.has(key(edge.src, edge.dst));
     let d: string;
-    let labelAt: [number, number];
-    if (back.has(key(edge.src, edge.dst))) {
+    let labelAt: Spot;
+    if (loop && relations && from - to === 1 && answers(edge, edges)) {
+      [d, labelAt] = answer(s, t, gap, label);
+    } else if (loop || blocks(all, rank, [from, to], t)) {
       lanes += 1;
-      const lane = right + LANE * lanes;
-      const sy = Math.round(s.y + s.h / 2);
-      const ty = Math.round(t.y + t.h / 2);
-      d = `M${r(s.x + s.w)} ${sy} H${lane} V${ty} H${r(t.x + t.w + STUB)}`;
-      labelAt = [lane + LABEL_GAP, (sy + ty) / 2];
-    } else if (passed.some((c) => tx >= c.x - CLEARANCE && tx <= c.x + c.w + CLEARANCE)) {
-      lanes += 1;
-      const lane = right + LANE * lanes;
-      const low = Math.round(t.y - GAP_Y / 2);
-      d = `M${sx} ${y1} V${rail} H${lane} V${low} H${tx} V${y2}`;
-      labelAt = [lane + LABEL_GAP, (rail + low) / 2];
+      [d, labelAt] = aside(loop, s, t, right + LANE * lanes, gap);
     } else {
-      d = sx === tx ? `M${sx} ${y1} V${y2}` : `M${sx} ${y1} V${rail} H${tx} V${y2}`;
-      // Beside the last leg, the one only this link draws: the rail at the top is shared by the
-      // branches of a decision, and a name written there reads as another branch's.
-      labelAt = [tx + CLEARANCE, rail + LABEL_BELOW_RAIL];
+      [d, labelAt] = straight(edge, edges, back, s, t, gap);
     }
     // A long name runs past the boxes: the scene widens to keep it whole.
-    if (label) reach = Math.max(reach, labelAt[0] + label.length * LABEL_CHAR_W);
+    if (label) reach = Math.max(reach, labelAt[0] + nameWidth(label));
     connectors.push({
       src: edge.src,
       dst: edge.dst,
@@ -321,6 +311,94 @@ function route(
     });
   }
   return { connectors, reach };
+}
+
+type Spot = [number, number];
+
+/**
+ * A link in a lane right of every box: a loop, from the side of its card to the side of the
+ * one it climbs back to; or a link down that would cross a box, from the foot of its card to
+ * the top of the other.
+ */
+function aside(loop: boolean, s: Card, t: Card, lane: number, gap: number): [string, Spot] {
+  if (loop) {
+    const sy = Math.round(s.y + s.h / 2);
+    const ty = Math.round(t.y + t.h / 2);
+    return [
+      `M${r(s.x + s.w)} ${sy} H${lane} V${ty} H${r(t.x + t.w + STUB)}`,
+      [lane + LABEL_GAP, (sy + ty) / 2],
+    ];
+  }
+  const sx = Math.round(s.x + s.w / 2);
+  const tx = Math.round(t.x + t.w / 2);
+  const y1 = Math.round(s.y + s.h);
+  const rail = Math.round(y1 + gap / 2);
+  const low = Math.round(t.y - gap / 2);
+  return [
+    `M${sx} ${y1} V${rail} H${lane} V${low} H${tx} V${Math.round(t.y - STUB)}`,
+    [lane + LABEL_GAP, (rail + low) / 2],
+  ];
+}
+
+/**
+ * The answer to a link one layer down, beside it: shifted away from where that link turns,
+ * its rail just under the other one's, the pair never crosses.
+ */
+function answer(s: Card, t: Card, gap: number, label: string): [string, Spot] {
+  const sx = Math.round(s.x + s.w / 2);
+  const tx = Math.round(t.x + t.w / 2);
+  const turn = Math.sign(sx - tx) || 1;
+  const up = sx - turn * PAIR;
+  const into = tx - turn * PAIR;
+  const mid = Math.round(t.y + t.h + gap / 2 + PAIR);
+  const d = `M${up} ${Math.round(s.y)} V${mid} H${into} V${Math.round(t.y + t.h + STUB)}`;
+  return [d, [turn > 0 ? up - CLEARANCE - nameWidth(label) : up + CLEARANCE, Math.round(s.y - LABEL_GAP)]];
+}
+
+/**
+ * A link straight down, named beside the leg only it draws. The last one, as the
+ * first is shared by the branches of a decision; the first one when other links come into
+ * the same card, since they all draw its last leg; under the rail when both legs are shared.
+ */
+function straight(
+  edge: Board["edges"][number],
+  edges: Board["edges"],
+  back: Set<string>,
+  s: Card,
+  t: Card,
+  gap: number,
+): [string, Spot] {
+  const sx = Math.round(s.x + s.w / 2);
+  const tx = Math.round(t.x + t.w / 2);
+  const y1 = Math.round(s.y + s.h);
+  const y2 = Math.round(t.y - STUB);
+  const rail = Math.round(y1 + gap / 2);
+  const d = sx === tx ? `M${sx} ${y1} V${y2}` : `M${sx} ${y1} V${rail} H${tx} V${y2}`;
+  const sharing = (o: Board["edges"][number]): boolean => o !== edge && !back.has(key(o.src, o.dst));
+  const merges = sx !== tx && edges.some((o) => sharing(o) && o.dst === edge.dst && o.src !== edge.src);
+  const branches = edges.some((o) => sharing(o) && o.src === edge.src && o.dst !== edge.dst);
+  if (merges && branches) return [d, [Math.min(sx, tx) + CLEARANCE, rail + LABEL_BELOW_RAIL]];
+  if (merges) return [d, [sx + CLEARANCE, y1 + LABEL_BELOW_RAIL]];
+  return [d, [tx + CLEARANCE, rail + LABEL_BELOW_RAIL]];
+}
+
+/** Whether a link down from layer `from` to `to` would cross a box of the layers between, at the top of `t`. */
+function blocks(
+  all: readonly Card[],
+  rank: Map<string, number>,
+  [from, to]: readonly [number, number],
+  t: Card,
+): boolean {
+  const tx = Math.round(t.x + t.w / 2);
+  return all.some((c) => {
+    const level = rank.get(c.id) ?? 0;
+    return level > from && level < to && tx >= c.x - CLEARANCE && tx <= c.x + c.w + CLEARANCE;
+  });
+}
+
+/** A link that goes back along one coming down: the other half of a call. */
+function answers(edge: Board["edges"][number], edges: Board["edges"]): boolean {
+  return edges.some((e) => e.src === edge.dst && e.dst === edge.src);
 }
 
 function mean(values: readonly number[]): number {
