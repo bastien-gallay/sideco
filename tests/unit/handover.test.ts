@@ -6,7 +6,8 @@
 import { describe, expect, test } from "bun:test";
 import { parseBatch } from "../../src/cli/argv.ts";
 import { type Command, parseCommand } from "../../src/domain/commands.ts";
-import { addressee, findBoard } from "../../src/domain/workspace.ts";
+import { addressee } from "../../src/domain/sessions.ts";
+import { findBoard } from "../../src/domain/workspace.ts";
 import { Hub } from "../../src/server/hub.ts";
 import { memoryJournal } from "../../src/server/journal.ts";
 import { describeEvent, sessionName } from "../../src/web/event-words.ts";

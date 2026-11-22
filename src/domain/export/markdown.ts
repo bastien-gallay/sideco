@@ -5,7 +5,8 @@
 
 import { boardPurpose, findFormat, laneName } from "../formats.ts";
 import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
-import { type Board, type Thread, threads } from "../workspace.ts";
+import { threads } from "../threads.ts";
+import type { Board, Thread } from "../workspace.ts";
 import { labelSaid, toMermaid } from "./mermaid.ts";
 
 export interface ExportMeta {

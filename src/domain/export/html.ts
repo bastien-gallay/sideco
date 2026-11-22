@@ -6,7 +6,8 @@ import { boardPurpose, findFormat, laneName } from "../formats.ts";
 import { DEFAULT_LOCALE, WORDS } from "../i18n.ts";
 import { layoutBoard } from "../layout/index.ts";
 import { esc, sceneToSvg } from "../render/svg.ts";
-import { type Board, threads } from "../workspace.ts";
+import { threads } from "../threads.ts";
+import type { Board } from "../workspace.ts";
 import type { ExportMeta } from "./markdown.ts";
 import { labelSaid } from "./mermaid.ts";
 

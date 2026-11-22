@@ -12,16 +12,16 @@ import { asLocale, formerly, LOCALES } from "../domain/i18n.ts";
 import { sameLabel } from "../domain/labels.ts";
 import { chipText, labelColours } from "../domain/render/labels.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
-import { hasSpoken, TURNS_SHOWN } from "../domain/sessions.ts";
 import {
-  type Board,
-  findBoard,
+  hasSpoken,
   isOpen,
   readerOf,
   type Session,
   sessionLabel,
   shownSession,
-} from "../domain/workspace.ts";
+  TURNS_SHOWN,
+} from "../domain/sessions.ts";
+import { type Board, findBoard } from "../domain/workspace.ts";
 import { mountBoard } from "./board-view.ts";
 import {
   askToRemove,

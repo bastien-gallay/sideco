@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { Recorded } from "../../src/domain/events.ts";
 import { forPage, RECENT_EVENTS, recentFrom } from "../../src/domain/opening.ts";
-import { TURNS_SHOWN } from "../../src/domain/sessions.ts";
-import { emptyWorkspace, replay, type Session } from "../../src/domain/workspace.ts";
+import { type Session, TURNS_SHOWN } from "../../src/domain/sessions.ts";
+import { emptyWorkspace, replay } from "../../src/domain/workspace.ts";
 
 const NOW = Date.parse("2026-11-21T12:00:00.000Z");
 const RECENTLY = "2026-11-21T11:59:00.000Z";

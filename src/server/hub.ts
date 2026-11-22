@@ -9,8 +9,8 @@ import { type Context, decide } from "../domain/decide.ts";
 import { type Changes, describeChanges } from "../domain/digest.ts";
 import type { Recorded, SidecoEvent } from "../domain/events.ts";
 import { forPage, type Opening, RECENT_EVENTS, recentFrom } from "../domain/opening.ts";
-import { forThePage } from "../domain/sessions.ts";
-import { apply, concerns, findSession, replay, type Workspace } from "../domain/workspace.ts";
+import { concerns, forThePage } from "../domain/sessions.ts";
+import { apply, findSession, replay, type Workspace } from "../domain/workspace.ts";
 
 /**
  * The port the hub keeps its events through: everything recorded so far, in

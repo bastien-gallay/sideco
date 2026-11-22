@@ -10,16 +10,8 @@ import { asBoardId, asElementId } from "../domain/ids.ts";
 import { boardLink, cardLink, HOME_LINK, readLink } from "../domain/links.ts";
 import type { Opening } from "../domain/opening.ts";
 import type { Presence } from "../domain/presence.ts";
-import {
-  apply,
-  type Board,
-  emptyWorkspace,
-  findBoard,
-  replay,
-  type Session,
-  shownSession,
-  type Workspace,
-} from "../domain/workspace.ts";
+import { type Session, shownSession } from "../domain/sessions.ts";
+import { apply, type Board, emptyWorkspace, findBoard, replay, type Workspace } from "../domain/workspace.ts";
 import { t } from "./locale.ts";
 import { needsPast, withPast } from "./past.ts";
 import { postCommands } from "./post.ts";

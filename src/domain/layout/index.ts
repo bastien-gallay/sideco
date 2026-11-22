@@ -4,7 +4,8 @@
  */
 import { type ElementType, type Format, findFormat, findType, wearsDone } from "../formats.ts";
 import { DEFAULT_LOCALE, formerly, type Locale, WORDS } from "../i18n.ts";
-import { type Board, type Element, threads } from "../workspace.ts";
+import { threads } from "../threads.ts";
+import type { Board, Element } from "../workspace.ts";
 import {
   dropLane,
   headingSlide,

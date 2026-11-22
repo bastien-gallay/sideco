@@ -7,7 +7,7 @@ import { describe, expect, test } from "bun:test";
 import { parseBatch } from "../../src/cli/argv.ts";
 import { type Command, parseCommand } from "../../src/domain/commands.ts";
 import type { Actor } from "../../src/domain/events.ts";
-import { readerOf } from "../../src/domain/workspace.ts";
+import { readerOf } from "../../src/domain/sessions.ts";
 import { Hub } from "../../src/server/hub.ts";
 import { memoryJournal } from "../../src/server/journal.ts";
 import { pendingChanges, unreadOn } from "../../src/web/view.ts";

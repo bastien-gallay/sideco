@@ -142,22 +142,6 @@
       }
     },
     {
-      "includes": ["src/domain/workspace.ts"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noExcessiveLinesPerFile": {
-              "level": "error",
-              "options": {
-                "maxLines": 464,
-                "skipBlankLines": true
-              }
-            }
-          }
-        }
-      }
-    },
-    {
       "includes": ["src/domain/decide.ts"],
       "linter": {
         "rules": {

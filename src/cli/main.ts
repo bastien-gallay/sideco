@@ -14,7 +14,8 @@ import { fromModel } from "../domain/export/model.ts";
 import { FORMATS } from "../domain/formats.ts";
 import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale, WORDS } from "../domain/i18n.ts";
 import { describeFind, describeLabels, describeSessions } from "../domain/project-digest.ts";
-import { type Board, latestSession, type Workspace } from "../domain/workspace.ts";
+import { latestSession } from "../domain/sessions.ts";
+import type { Board, Workspace } from "../domain/workspace.ts";
 import { DEFAULT_PORT, dataDir, IDLE_GRACE_MS, readJournal, readWorkspace, start } from "../server/start.ts";
 import { addressOf } from "./address.ts";
 import {

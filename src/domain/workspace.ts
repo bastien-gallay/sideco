@@ -12,7 +12,8 @@ import { handledAll } from "./handled-all.ts";
 import { hasLabel, sameLabel } from "./labels.ts";
 import { remember } from "./minting.ts";
 import { renumber } from "./renumber.ts";
-import { applyToSession, follow, hasSpoken, type SessionRecorded } from "./sessions.ts";
+import { applyToSession, follow, hasSpoken, type Session, type SessionRecorded } from "./sessions.ts";
+import { threadOf } from "./threads.ts";
 import {
   invert,
   leaveBehind,
@@ -122,54 +123,6 @@ export interface Board {
   writer?: string;
 }
 
-export interface ToolCall {
-  call: string;
-  tool: string;
-  summary: string;
-  status: "running" | "ok" | "failed";
-  seq: number;
-}
-
-export interface SessionTurn {
-  prompt: string;
-  startedSeq: number;
-  startedAt: string;
-  tools: ToolCall[];
-  ended: boolean;
-}
-
-/** `ended`: the terminal session is over; it comes back to `idle` if it is resumed. */
-export type AgentStatus = "idle" | "thinking" | "running" | "waiting" | "ended";
-
-export interface Session {
-  id: string;
-  /** What the session goes by, once it was named; else the start of its id (see `sessionLabel`). */
-  name?: string;
-  cwd?: string;
-  startedAt: string;
-  turns: SessionTurn[];
-  todos: Todo[];
-  status: AgentStatus;
-  /** What the status is about: the running tool, or the notification text. */
-  statusDetail?: string;
-  /** Human changes up to this seq have been handed to the agent. */
-  deliveredUpTo: number;
-  lastSeq: number;
-  /** When it last said anything: a session silent too long was killed (see `isOpen`). */
-  lastAt: string;
-}
-
-/**
- * A session silent for this long was killed rather than ended: it never sent
- * `SessionEnded`. A working day, as long as a session at rest stays reachable.
- */
-export const STALE_SESSION_MS = 12 * 60 * 60 * 1000;
-
-/** Whether a session is still open at `now`: it has not ended, and spoke within `staleMs`. */
-export function isOpen(session: Session, now: number, staleMs = STALE_SESSION_MS): boolean {
-  return session.status !== "ended" && now - Date.parse(session.lastAt) < staleMs;
-}
-
 export interface Workspace {
   /** In the order they were created. */
   boards: Board[];
@@ -203,38 +156,6 @@ export function findElement(board: Board, id: string): Element | undefined {
 
 export function findSession(ws: Workspace, id: string): Session | undefined {
   return ws.sessions.find((s) => s.id === id);
-}
-
-/** The session the agent most recently acted in, if any, among those `keep` keeps. */
-export function latestSession(ws: Workspace, keep = (_: Session) => true): Session | undefined {
-  const kept = ws.sessions.filter(keep);
-  return kept.reduce<Session | undefined>((a, s) => (a && a.lastSeq > s.lastSeq ? a : s), undefined);
-}
-
-/** What a session goes by: its name, else the start of its id. */
-export function sessionLabel(session: Session): string {
-  return session.name ?? session.id.slice(0, 8);
-}
-
-/**
- * The session the page tells about: the one the reader chose, while it exists; else
- * the one the board in view is for (`addressee`); else the last spoken to (`hasSpoken`).
- */
-export function shownSession(ws: Workspace, board?: string, chosen?: string): Session | undefined {
-  const picked = chosen ? findSession(ws, chosen) : undefined;
-  const latest = latestSession(ws, hasSpoken) ?? latestSession(ws);
-  return picked ?? (board ? addressee(ws, board) : undefined) ?? latest;
-}
-
-/**
- * The session a hand-over on `board` goes to when none is named: the last one
- * to write on it, while it runs; else the latest session the board is for.
- */
-export function addressee(ws: Workspace, board: string): Session | undefined {
-  const writer = findBoard(ws, board)?.writer;
-  const session = writer ? findSession(ws, writer) : undefined;
-  if (session && session.status !== "ended") return session;
-  return latestSession(ws, (s) => s.status !== "ended" && concerns(ws, s.id, board));
 }
 
 export function apply(ws: Workspace, e: Recorded): void {
@@ -523,41 +444,4 @@ function restack(board: Board, el: Element, before: string | undefined): void {
   if (at === -1) rest.push(el);
   else rest.splice(at, 0, el);
   board.elements = rest;
-}
-
-/**
- * True when what happens on `board` is for `session`: it follows the board; or
- * no other session still running does, and it did not let go of it.
- */
-export function concerns(ws: Workspace, session: string, board: string): boolean {
-  if (ws.follows[session]?.includes(board)) return true;
-  if (ws.left[session]?.includes(board)) return false;
-  return !ws.sessions.some(
-    (other) => other.id !== session && other.status !== "ended" && ws.follows[other.id]?.includes(board),
-  );
-}
-
-/**
- * The session that reads what happens on `board`: the latest that it concerns.
- * Its delivery cursor says what on the board is not read yet; another session's
- * cursor moves past changes it was never told about.
- */
-export function readerOf(ws: Workspace, board: string): Session | undefined {
-  return latestSession(ws, (s) => concerns(ws, s.id, board));
-}
-
-/** The id of the discussion a note belongs to. */
-export function threadOf(note: Note): string {
-  return note.thread ?? note.id;
-}
-
-/** The board's notes as discussions, in the order they were opened. */
-export function threads(board: Board): Thread[] {
-  const byId = new Map<string, Thread>();
-  for (const note of board.notes) {
-    const thread = byId.get(threadOf(note));
-    if (thread) thread.notes.push(note);
-    else byId.set(note.id, { id: note.id, target: note.target, resolved: note.resolved, notes: [note] });
-  }
-  return [...byId.values()];
 }

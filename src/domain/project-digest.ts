@@ -4,7 +4,8 @@
  */
 import { type Found, findInWorkspace } from "./find.ts";
 import { normalLabel } from "./labels.ts";
-import { findBoard, isOpen, type Workspace } from "./workspace.ts";
+import { isOpen } from "./sessions.ts";
+import { findBoard, type Workspace } from "./workspace.ts";
 
 /**
  * Every label of the project with the cards that wear it, across boards, in

@@ -13,16 +13,9 @@ import { type Found, findInWorkspace, queryWords } from "../domain/find.ts";
 import { findFormat, findType, laneName, lanesOf } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
 import { type Band, headingOf, stepOf, type Target, vacancy } from "../domain/layout/index.ts";
-import {
-  type AgentStatus,
-  type Board,
-  findBoard,
-  findElement,
-  type Session,
-  type SessionTurn,
-  threads,
-  type Workspace,
-} from "../domain/workspace.ts";
+import type { AgentStatus, Session, SessionTurn } from "../domain/sessions.ts";
+import { threads } from "../domain/threads.ts";
+import { type Board, findBoard, findElement, type Workspace } from "../domain/workspace.ts";
 import { MESSAGES } from "./messages.ts";
 
 export type Tone = "off" | "idle" | "busy" | "waiting" | "listening";

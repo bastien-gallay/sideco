@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { latestSession, replay } from "../../src/domain/workspace.ts";
+import { latestSession } from "../../src/domain/sessions.ts";
+import { replay } from "../../src/domain/workspace.ts";
 import { KANBAN, ORDERING, table } from "../support.ts";
 
 test("replaying the journal gives the same workspace as living through it", () => {

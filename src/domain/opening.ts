@@ -5,8 +5,8 @@
  * until the page asks for them: travelling back in time, or a visit from long ago.
  */
 import type { Recorded } from "./events.ts";
-import { TURNS_SHOWN } from "./sessions.ts";
-import { isOpen, type Workspace } from "./workspace.ts";
+import { isOpen, TURNS_SHOWN } from "./sessions.ts";
+import type { Workspace } from "./workspace.ts";
 
 /** The first frame of a page's stream: everything up to `workspace.seq` is in it. */
 export interface Opening {

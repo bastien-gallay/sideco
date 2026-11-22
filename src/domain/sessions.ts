@@ -3,9 +3,46 @@
  * thinking, running a tool, waiting, ended; and the boards each follows.
  * Folded by `apply` in workspace.ts, the one place a projection changes.
  */
-import type { Recorded } from "./events.ts";
+import type { Recorded, Todo } from "./events.ts";
 import { handledAll } from "./handled-all.ts";
-import type { AgentStatus, Session, SessionTurn, Workspace } from "./workspace.ts";
+import { findBoard, findSession, type Workspace } from "./workspace.ts";
+
+export interface ToolCall {
+  call: string;
+  tool: string;
+  summary: string;
+  status: "running" | "ok" | "failed";
+  seq: number;
+}
+
+export interface SessionTurn {
+  prompt: string;
+  startedSeq: number;
+  startedAt: string;
+  tools: ToolCall[];
+  ended: boolean;
+}
+
+/** `ended`: the terminal session is over; it comes back to `idle` if it is resumed. */
+export type AgentStatus = "idle" | "thinking" | "running" | "waiting" | "ended";
+
+export interface Session {
+  id: string;
+  /** What the session goes by, once it was named; else the start of its id (see `sessionLabel`). */
+  name?: string;
+  cwd?: string;
+  startedAt: string;
+  turns: SessionTurn[];
+  todos: Todo[];
+  status: AgentStatus;
+  /** What the status is about: the running tool, or the notification text. */
+  statusDetail?: string;
+  /** Human changes up to this seq have been handed to the agent. */
+  deliveredUpTo: number;
+  lastSeq: number;
+  /** When it last said anything: a session silent too long was killed (see `isOpen`). */
+  lastAt: string;
+}
 
 export function follow(ws: Workspace, session: string, boards: readonly string[]): void {
   ws.follows[session] = [...without(ws.follows[session], boards), ...boards];
@@ -131,4 +168,68 @@ export function forThePage(ws: Workspace): (e: Recorded) => boolean {
  */
 export function hasSpoken(session: Session): boolean {
   return session.turns.length > 0;
+}
+
+/**
+ * A session silent for this long was killed rather than ended: it never sent
+ * `SessionEnded`. A working day, as long as a session at rest stays reachable.
+ */
+export const STALE_SESSION_MS = 12 * 60 * 60 * 1000;
+
+/** Whether a session is still open at `now`: it has not ended, and spoke within `staleMs`. */
+export function isOpen(session: Session, now: number, staleMs = STALE_SESSION_MS): boolean {
+  return session.status !== "ended" && now - Date.parse(session.lastAt) < staleMs;
+}
+
+/** The session the agent most recently acted in, if any, among those `keep` keeps. */
+export function latestSession(ws: Workspace, keep = (_: Session) => true): Session | undefined {
+  const kept = ws.sessions.filter(keep);
+  return kept.reduce<Session | undefined>((a, s) => (a && a.lastSeq > s.lastSeq ? a : s), undefined);
+}
+
+/** What a session goes by: its name, else the start of its id. */
+export function sessionLabel(session: Session): string {
+  return session.name ?? session.id.slice(0, 8);
+}
+
+/**
+ * The session the page tells about: the one the reader chose, while it exists; else
+ * the one the board in view is for (`addressee`); else the last spoken to (`hasSpoken`).
+ */
+export function shownSession(ws: Workspace, board?: string, chosen?: string): Session | undefined {
+  const picked = chosen ? findSession(ws, chosen) : undefined;
+  const latest = latestSession(ws, hasSpoken) ?? latestSession(ws);
+  return picked ?? (board ? addressee(ws, board) : undefined) ?? latest;
+}
+
+/**
+ * The session a hand-over on `board` goes to when none is named: the last one
+ * to write on it, while it runs; else the latest session the board is for.
+ */
+export function addressee(ws: Workspace, board: string): Session | undefined {
+  const writer = findBoard(ws, board)?.writer;
+  const session = writer ? findSession(ws, writer) : undefined;
+  if (session && session.status !== "ended") return session;
+  return latestSession(ws, (s) => s.status !== "ended" && concerns(ws, s.id, board));
+}
+
+/**
+ * True when what happens on `board` is for `session`: it follows the board; or
+ * no other session still running does, and it did not let go of it.
+ */
+export function concerns(ws: Workspace, session: string, board: string): boolean {
+  if (ws.follows[session]?.includes(board)) return true;
+  if (ws.left[session]?.includes(board)) return false;
+  return !ws.sessions.some(
+    (other) => other.id !== session && other.status !== "ended" && ws.follows[other.id]?.includes(board),
+  );
+}
+
+/**
+ * The session that reads what happens on `board`: the latest that it concerns.
+ * Its delivery cursor says what on the board is not read yet; another session's
+ * cursor moves past changes it was never told about.
+ */
+export function readerOf(ws: Workspace, board: string): Session | undefined {
+  return latestSession(ws, (s) => concerns(ws, s.id, board));
 }

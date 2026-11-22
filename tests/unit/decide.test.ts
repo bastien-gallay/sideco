@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { CommandError } from "../../src/domain/commands.ts";
-import { threads } from "../../src/domain/workspace.ts";
+import { threads } from "../../src/domain/threads.ts";
 import { FLOW, KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 describe("boards", () => {

@@ -3,7 +3,7 @@
  * from the journal and the running server.
  */
 import { sharedIdsLine } from "../domain/minting.ts";
-import { latestSession, sessionLabel } from "../domain/workspace.ts";
+import { latestSession, sessionLabel } from "../domain/sessions.ts";
 import type { JournalRead } from "../server/start.ts";
 import { Blocked, findServer, get, type Server } from "./client.ts";
 

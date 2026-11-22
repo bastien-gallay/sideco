@@ -30,14 +30,14 @@ import { claim, mint } from "./minting.ts";
 import { renumbering } from "./renumber.ts";
 import { reverse } from "./reverse.ts";
 import { decideOnSession } from "./session-decide.ts";
+import { addressee } from "./sessions.ts";
+import { threadOf } from "./threads.ts";
 import {
-  addressee,
   type Board,
   type Element,
   findBoard,
   findElement,
   findSession,
-  threadOf,
   type Workspace,
 } from "./workspace.ts";
 

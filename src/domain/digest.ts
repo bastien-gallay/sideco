@@ -15,6 +15,7 @@ import { cancelledOut } from "./cancelled.ts";
 import { CommandError } from "./commands.ts";
 import type { Actor, Recorded } from "./events.ts";
 import { findFormat, laneHint, laneName, lanesOf, planAxis, wearsDone } from "./formats.ts";
+import { threads } from "./threads.ts";
 import {
   apply,
   type Board,
@@ -23,7 +24,6 @@ import {
   findBoard,
   findElement,
   type Thread,
-  threads,
   type Workspace,
 } from "./workspace.ts";
 

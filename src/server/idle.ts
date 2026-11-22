@@ -4,7 +4,7 @@
  * used it has ended. It stops only once that has lasted a grace period, so a
  * page that reloads or a session that starts right after does not find it gone.
  */
-import { isOpen, STALE_SESSION_MS } from "../domain/workspace.ts";
+import { isOpen, STALE_SESSION_MS } from "../domain/sessions.ts";
 import type { Hub } from "./hub.ts";
 
 export { STALE_SESSION_MS };

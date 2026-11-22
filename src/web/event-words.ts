@@ -6,7 +6,8 @@
 import type { Recorded } from "../domain/events.ts";
 import { FORMATS, findFormat, laneName } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
-import { findSession, type Session, type Workspace } from "../domain/workspace.ts";
+import type { Session } from "../domain/sessions.ts";
+import { findSession, type Workspace } from "../domain/workspace.ts";
 
 const MAX_LINE = 90;
 
