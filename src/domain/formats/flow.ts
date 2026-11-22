@@ -1,3 +1,6 @@
+/**
+ * A flow: steps, decisions and outcomes, placed from their links.
+ */
 import { DARK, type Format, t } from "./types.ts";
 
 export const FLOW: Format = {

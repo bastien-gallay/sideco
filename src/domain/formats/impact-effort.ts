@@ -1,3 +1,6 @@
+/**
+ * An impact / effort sort: items in four lanes, from quick wins to what to avoid.
+ */
 import { DARK, type Format, t } from "./types.ts";
 
 /**

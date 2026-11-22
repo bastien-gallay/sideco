@@ -1,3 +1,7 @@
+/**
+ * Event storming: actors, commands, aggregates, events and policies on a timeline,
+ * one row per kind.
+ */
 import { DARK, type Format, LIGHT, t } from "./types.ts";
 
 export const EVENT_STORMING: Format = {

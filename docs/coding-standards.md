@@ -218,14 +218,15 @@ A new concept gets its word here before it gets a type in the code.
 ## Known gaps
 
 The code was not written to this page from its first line. Each gap closes
-when a card touches the code around it, never in a commit of its own that
-changes nothing else.
+when a card touches the code around it: the tidying goes in a commit of its
+own, just before that card's change (*Tidy first?* in
+[CONTRIBUTING.md](../CONTRIBUTING.md)), never in a commit that serves no card.
 
 | Gap | Where | Target |
 | --- | --- | --- |
 | Ids are branded where they are parsed, still plain `string` in the commands, events and boards | `BoardId`, `ElementId` in `src/domain/ids.ts`, made by `parseCommand` and `slugify`; `Command`, `Recorded`, `Board` take `string` | The same types on those fields, a card at a time; the page builds commands too |
 | Switches that do things, not all checked yet | `src/domain/undo.ts`, `src/domain/digest.ts`, `src/web/view.ts`; `apply` and the page's stream are | `handledAll`, or a comment saying the switch is partial on purpose |
 | No `Result` type yet | Domain | The small module above, with the first code that needs it |
-| Eight modules over 400 lines, each capped at its size by an override in `biome.json` | The largest: `src/web/main.ts`, `src/web/board-view.ts`, `src/web/view.ts` | Split by job; a commit that shrinks one lowers its cap, and drops it under 400 |
-| Nested `else` chains | `src/web/board-view.ts`, `src/domain/digest.ts`, `src/web/main.ts` | Early returns |
-| One default clock in the domain | `describeSessions` in `src/domain/digest.ts` (`now = Date.now()`) | `now` passed by the caller |
+| Five modules over 400 lines, each capped at its size by an override in `biome.json` | `src/web/main.ts`, `src/web/board-view.ts`, `src/web/messages.ts`, `src/domain/digest.ts`, `src/web/view.ts` | Split by job; a commit that shrinks one lowers its cap, and drops it under 400 |
+| Nested `else` chains | `src/web/board-view.ts`, `src/domain/digest.ts`, `src/cli/argv.ts`, `src/web/main.ts` | Early returns |
+| One default clock in the domain | `describeSessions` in `src/domain/project-digest.ts` (`now = Date.now()`) | `now` passed by the caller |

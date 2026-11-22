@@ -1,3 +1,7 @@
+/**
+ * The C4 system context: people, the system and the external systems it talks to,
+ * placed from their links.
+ */
 import { type Format, LIGHT, t } from "./types.ts";
 
 /**

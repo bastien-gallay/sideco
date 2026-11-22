@@ -1,3 +1,7 @@
+/**
+ * A story map: activities along a timeline, the tasks under them and the stories
+ * that slice them.
+ */
 import { DARK, type Format, LIGHT, t } from "./types.ts";
 
 export const STORY_MAP: Format = {

@@ -1,3 +1,6 @@
+/**
+ * A kanban: stories, tasks and blockers in lanes, from to do to done.
+ */
 import { DARK, type Format, LIGHT, t } from "./types.ts";
 
 export const KANBAN: Format = {

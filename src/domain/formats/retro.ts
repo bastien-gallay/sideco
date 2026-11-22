@@ -1,3 +1,7 @@
+/**
+ * A retrospective: points in lanes, from what went well to what to try, and the
+ * actions they lead to.
+ */
 import { DARK, type Format, t } from "./types.ts";
 
 export const RETRO: Format = {
