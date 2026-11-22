@@ -17,9 +17,10 @@ import {
 } from "../domain/layout/index.ts";
 import { cardName } from "../domain/layout/scene.ts";
 import { chipText } from "../domain/render/labels.ts";
-import { arrowDefs, bandMarkup, cardMarkup, connectorMarkup, esc } from "../domain/render/svg.ts";
+import { arrowDefs, bandMarkup, cardMarkup, esc } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import type { BoardHooks, BoardView } from "./board-api.ts";
+import { drawLinks, linkAt, nameSpot, type PickedLink, showLinkTools, stillLinked } from "./board-links.ts";
 import { h, svg } from "./dom.ts";
 import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
@@ -185,7 +186,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   /** The axis word just written: the keyboard goes back to it once the axis is drawn again. */
   let axisArriving: { axis: string; bound: "low" | "high" | undefined } | undefined;
   /** The link the human clicked, and where, so its toolbar opens under the pointer. */
-  let pickedLink: { src: string; dst: string; x: number; y: number } | undefined;
+  let pickedLink: PickedLink | undefined;
   /** The one card Tab stops at: the board is a single stop, and the arrows go from card to card inside it. */
   let current: string | undefined;
   /** The reader put the keyboard on `current`, or selected it: until then, Tab enters at the first card read. */
@@ -304,11 +305,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         laneArriving = undefined;
       }
     }
-    conns.innerHTML = scene.connectors.map(connectorMarkup).join("");
-    for (const conn of conns.querySelectorAll<SVGGElement>(".conn")) {
-      const path = conn.querySelector("path");
-      if (path) conn.prepend(svg("path", { class: "conn-hit", d: path.getAttribute("d") ?? "" }));
-    }
+    drawLinks(conns, scene);
 
     const switched = paintedBoard !== board.id;
     paintedBoard = board.id;
@@ -636,26 +633,13 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const id = state.selected;
     const node = id ? nodes.get(id) : undefined;
     const link = pickedLink;
-    if (
-      board &&
-      link &&
-      isLive() &&
-      !editing &&
-      board.edges.some((e) => e.src === link.src && e.dst === link.dst)
-    ) {
+    if (board && link && isLive() && !editing && stillLinked(board, link)) {
       const boardId = board.id;
       const remove = (): void => {
         pickedLink = undefined;
         void send({ kind: "unlink", board: boardId, src: link.src, dst: link.dst });
       };
-      tools.replaceChildren(
-        h("span", { class: "tools-label" }, t.linkBetween(link.src, link.dst)),
-        h("button", { type: "button", onclick: () => nameLink(link.src, link.dst) }, t.nameLink),
-        h("button", { type: "button", class: "danger", onclick: remove }, t.removeLink),
-      );
-      tools.hidden = false;
-      tools.style.left = `${Math.max(8, link.x)}px`;
-      tools.style.top = `${Math.max(8, link.y + 12)}px`;
+      showLinkTools(tools, link, { name: () => nameLink(link.src, link.dst), remove });
       return;
     }
     pickedLink = undefined;
@@ -1084,16 +1068,10 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const edge = board?.edges.find((e) => e.src === src && e.dst === dst);
     if (!board || !edge || !isLive()) return;
     const boardId = board.id;
-    const conn = [...conns.querySelectorAll<SVGGElement>("g.conn")].find(
-      (g) => g.dataset.src === src && g.dataset.dst === dst,
-    );
-    const named = conn?.querySelector("text.conn-label")?.getBoundingClientRect();
-    const frame = host.getBoundingClientRect();
-    const at =
-      named ?? new DOMRect(frame.left + (pickedLink?.x ?? 0), frame.top + (pickedLink?.y ?? 0), 0, 0);
+    const spot = nameSpot(conns, host.getBoundingClientRect(), { src, dst }, pickedLink);
     pickedLink = undefined;
     openEditor(
-      new DOMRect(at.left - 6, at.top - 8, 180, 36),
+      spot,
       edge.label ?? "",
       t.linkName,
       { fill: "var(--surface)", ink: "var(--ink)" },
@@ -1493,13 +1471,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       else if (board && isLive()) void send({ kind: "insert-column", board: board.id, at: Number(column) });
       return;
     }
-    const conn = target?.closest<SVGGElement>("g.conn");
-    const { src, dst } = conn?.dataset ?? {};
-    const frame = host.getBoundingClientRect();
-    pickedLink =
-      src && dst && isLive()
-        ? { src, dst, x: event.clientX - frame.left, y: event.clientY - frame.top }
-        : undefined;
+    pickedLink = isLive() ? linkAt(target, event, host.getBoundingClientRect()) : undefined;
     state.selected = null;
     state.linking = null;
     changed();
