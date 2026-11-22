@@ -22,8 +22,6 @@ function sheetKind(board: Board | undefined): SheetKind {
 
 /** Each mark drawn as the card draws it, in a box of its own; the words beside it say what it means. */
 const MARK_DRAWN: Record<CardMark, string> = {
-  agent: '<path class="card-author" d="M0 -4l4 4l-4 4l-4-4z"/>',
-  human: '<circle class="card-author" r="3"/>',
   detail: '<text class="card-detail" y="4" text-anchor="middle">≡</text>',
   done: '<text class="card-done" y="4" text-anchor="middle">✓</text>',
   notes: '<g class="card-notes"><circle r="8"/><text y="3.5">1</text></g>',

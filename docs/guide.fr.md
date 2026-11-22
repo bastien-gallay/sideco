@@ -6,7 +6,7 @@ Sideco est le compagnon visuel de Claude Code : une page web locale, ouverte à 
 
 ![Un flow dans Sideco : Claude a mis le focus sur une décision et demande combien de tentatives avant de bloquer la carte ; ta réponse attend dans le fil à droite, et la barre du bas lui rend la main](img/sideco-payment.png)
 
-<sub>Source : `bun scripts/screenshots.ts docs/img`, qui photographie la page actuelle. Le losange en haut d'une carte marque une carte posée par Claude, le point une carte touchée par toi.</sub>
+<sub>Source : `bun scripts/screenshots.ts docs/img`, qui photographie la page actuelle. Qui a posé une carte se lit dans son info-bulle.</sub>
 
 **Complète** le terminal, ne le remplace pas : la conversation reste dans Claude Code.
 

@@ -51,7 +51,9 @@ add event "Stock reserved" --col 4 --alias reserved
 add hotspot "What if stock runs out?" --col 3
 link @place @placed
 link @placed @reserve
-link @reserve @reserved`,
+link @reserve @reserved
+detail @reserve "One reservation per order line."
+note "Paid before or after the stock?" --on @placed`,
     human: `rename X1 "Partner warehouse"`,
   },
   {
@@ -65,7 +67,8 @@ add outcome "Cart kept for 24 h" --from @other
 note "How many attempts before we block the card?" --on @bank
 focus @bank --why "The retry rule is not settled"`,
     late: `pass "How many attempts before we block the card?"`,
-    human: `reply N1 "Three, then block it for an hour."`,
+    // N2: ids are unique in the project, and the note of ordering takes N1.
+    human: `reply N2 "Three, then block it for an hour."`,
     shot: "page",
     tab: "#tab-notes",
   },
@@ -194,13 +197,13 @@ async function piece(page: Page, board: string, selector: string): Promise<strin
 }
 
 /**
- * The three marks a card can carry, each on a real card of the event storming, enlarged and named:
+ * Three marks a card can carry, each on a real card of the event storming, enlarged and named:
  * at the size of a README a mark on a whole board is a few pixels. Taken while the outline holds.
  */
 async function marks(sharp: Page, scheme: Scheme): Promise<void> {
   const MARKS = [
-    { card: "Place order", says: "A diamond: Claude placed it" },
-    { card: "Partner warehouse", says: "A dot: you touched it" },
+    { card: "Order placed", says: "A number: notes to answer" },
+    { card: "Reserve the stock", says: "≡: a detail to read" },
     { card: "Stock reserved", says: "A blue outline: Claude just changed it" },
   ];
   // One window for the three, centred on each card: the outline widens the box of the card that carries it.
@@ -254,7 +257,7 @@ async function twoWorkshops(scheme: Scheme): Promise<void> {
   await sharp.locator("g.card").first().waitFor();
   await Bun.sleep(800);
   // Written anew for each picture: only what Claude just changed is outlined.
-  await post("agent", `detail R1 "One reservation per order line (${scheme})."\ndetail E2 "Sent to billing (${scheme})."`, "ordering");
+  await post("agent", `detail E2 "Sent to billing (${scheme})."`, "ordering");
   await sharp.locator("g.card.is-fresh").first().waitFor();
   const stormingPng = await sharp.locator("svg.sideco-board").first().screenshot();
   await marks(sharp, scheme);

@@ -290,7 +290,7 @@ export interface Messages {
 }
 
 /** The marks a card can wear, each told in the sheet of keys. */
-export type CardMark = "agent" | "human" | "detail" | "done" | "notes" | "unread" | "changed";
+export type CardMark = "detail" | "done" | "notes" | "unread" | "changed";
 
 /** How a board is laid out, as far as its keys and gestures go. */
 export type SheetKind = "timeline" | "lanes" | "kanban" | "grid" | "graph";
@@ -614,8 +614,6 @@ const en: Messages = {
   withTheMouse: "With the mouse",
   onACard: "On a card",
   marks: {
-    agent: "Added by Claude",
-    human: "Added by you",
     detail: "Has a detail: press ≡ to read it",
     done: "Done",
     notes: "Open notes on it: press the count to read them",
@@ -946,8 +944,6 @@ const fr: Messages = {
   withTheMouse: "À la souris",
   onACard: "Sur une carte",
   marks: {
-    agent: "Ajoutée par Claude",
-    human: "Ajoutée par toi",
     detail: "A un détail : appuie sur ≡ pour le lire",
     done: "Faite",
     notes: "Notes ouvertes sur elle : appuie sur le nombre pour les lire",

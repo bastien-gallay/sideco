@@ -2346,10 +2346,6 @@ legend {
   fill: currentColor;
 }
 
-.mark-list .card-author {
-  opacity: 0.7;
-}
-
 .mark-list .card-detail,
 .mark-list .card-done {
   font-size: 13px;

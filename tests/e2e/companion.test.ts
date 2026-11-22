@@ -2339,7 +2339,9 @@ describe("a kanban's own lanes, from the page", () => {
     // What the marks of a card mean, each drawn as the card draws it.
     expect(await sheet.locator("h3", { hasText: "On a card" }).count()).toBe(1);
     const marks = sheet.locator(".mark-list");
-    expect(await marks.locator("dt svg").count()).toBe(7);
+    // Who added a card is said by its tooltip, not by a mark (S324).
+    expect(await marks.locator("dt svg").count()).toBe(5);
+    expect(await marks.locator("dd", { hasText: "Added by" }).count()).toBe(0);
     expect(await marks.locator("dd", { hasText: "Has a detail" }).count()).toBe(1);
     expect(await marks.locator("dd", { hasText: "Changed by Claude since your last visit" }).count()).toBe(1);
     await shot("44-keys-kanban");

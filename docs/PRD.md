@@ -104,7 +104,7 @@ Pourquoi D1 pèse le plus : pour un diagramme de séquence simple, Mermaid coût
 | --- | --- | --- |
 | E1 | Passer la main, dans les deux sens | En atelier on se passe le feutre ; ici c'est un événement, et il réveille l'autre |
 | E2 | Identifiants courts et stables sur chaque post-it | « Découpe E3 » se dit pareil au clavier et à l'écran |
-| E3 | Auteur visible sur chaque post-it (losange agent, point humain) | La modélisation croisée se lit d'un coup d'œil, sans dépendre d'une couleur |
+| E3 | Auteur de chaque post-it dit dans son info-bulle ; la marque losange ou point est retirée (S324, 2026-11-22) | La carte reste légère ; qui a posé quoi se lit au survol et par le lecteur d'écran |
 | E4 | Curseur « vu par Claude » | L'humain sait lesquelles de ses modifications l'agent a déjà reçues |
 | E5 | Focus avec raison | Un problème à la fois, désigné par celui qui parle |
 | E6 | Notes épinglées, adressées à l'autre | Répondre dans le dessin plutôt qu'à côté |

@@ -38,11 +38,11 @@ Claude creates the workspace (a `.sideco/` folder in the project), starts a loca
 
 ## One turn of the loop
 
-You edit the board yourself: add, rename, drag, link, answer in a card's thread, undo. One click on **Send to Claude** hands the turn back. Each card says who did what:
+You edit the board yourself: add, rename, drag, link, answer in a card's thread, undo. One click on **Send to Claude** hands the turn back. Each card shows what waits on it, and what Claude just changed:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/sideco-marks-dark.png">
-  <img alt="Three cards, enlarged. A diamond in the corner: Claude placed it. A dot on the corner: you touched it. A blue outline: Claude just changed it" src="docs/img/sideco-marks.png">
+  <img alt="Three cards, enlarged. A number in the corner: notes to answer. ≡ in the corner: a detail to read. A blue outline: Claude just changed it" src="docs/img/sideco-marks.png">
 </picture>
 
 | When you send, Claude | It reads your changes |

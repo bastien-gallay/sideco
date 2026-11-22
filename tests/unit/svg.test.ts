@@ -98,9 +98,9 @@ describe("a card", () => {
   const cards = layoutBoard(t.board()).cards;
   const markup = (id: string): string => cardMarkup(cards.find((c) => c.id === id) ?? (cards[0] as never));
 
-  test("tells who added it by shape, not by colour: a diamond for the agent, a dot for the human", () => {
-    expect(markup("E1")).toMatch(/<path class="card-author"/);
-    expect(markup("E3")).toMatch(/<circle class="card-author"/);
+  test("says who added it in its tooltip, with no mark in its corner (S324)", () => {
+    expect(markup("E1")).not.toContain("card-author");
+    expect(markup("E3")).not.toContain("card-author");
     expect(markup("E1")).toContain("<title>E1 · Event · added by Claude</title>");
     expect(markup("E3")).toContain("<title>E3 · Event · added by you</title>");
   });
@@ -126,8 +126,8 @@ describe("a card", () => {
   test("keeps its marks in the strip of its id, where a long last line of label never runs into them", () => {
     expect(markup("R1")).toMatch(/<text class="card-detail" x="[\d.]+" y="14"/);
     const detailX = Number(markup("R1").match(/class="card-detail" x="([\d.]+)"/)?.[1]);
-    const authorX = Number(markup("R1").match(/class="card-author"[^>]*d="M([\d.]+)/)?.[1]);
-    expect(detailX).toBeLessThan(authorX - 4);
+    const notesX = Number(markup("R1").match(/<g class="card-notes"><circle cx="([\d.]+)"/)?.[1]);
+    expect(detailX).toBeLessThan(notesX - 4);
   });
 
   test("is drawn at the origin, so the page can move it without repainting", () => {
@@ -141,23 +141,14 @@ function count(text: string, pattern: string): number {
   return [...text.matchAll(new RegExp(pattern, "g"))].length;
 }
 
-test("on shapes with cut corners, the id and the author mark sit inside the shape", () => {
+test("on shapes with cut corners, the id sits inside the shape", () => {
   const flow = layoutBoard(table(FLOW).board()).cards;
-  const corner = (id: string): { idX: number; authorX: number; w: number } => {
+  const idX = (id: string): number => {
     const c = flow.find((card) => card.id === id);
     if (!c) throw new Error(`no card ${id}`);
-    const markup = cardMarkup(c);
-    return {
-      idX: Number(/class="card-id" x="([\d.]+)"/.exec(markup)?.[1]),
-      authorX: Number(/class="card-author"[^>]* d="M([\d.]+) /.exec(markup)?.[1]),
-      w: c.w,
-    };
+    return Number(/class="card-id" x="([\d.]+)"/.exec(cardMarkup(c))?.[1]);
   };
   // F1 is a box: the corners are free. D1 is a diamond, O1 a pill: 14 px and more are cut away.
-  expect(corner("F1").idX).toBe(8);
-  for (const id of ["D1", "O1"]) {
-    const { idX, authorX, w } = corner(id);
-    expect(idX).toBeGreaterThanOrEqual(22);
-    expect(authorX).toBeLessThanOrEqual(w - 26);
-  }
+  expect(idX("F1")).toBe(8);
+  for (const id of ["D1", "O1"]) expect(idX(id)).toBeGreaterThanOrEqual(22);
 });
