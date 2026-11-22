@@ -161,9 +161,11 @@ describe("the skill", () => {
   });
 });
 
-test("the README exists and shows how to start", () => {
+test("the README shows how to install, and the guide how to try a clone", () => {
   expect(existsSync(join(ROOT, "README.md"))).toBe(true);
-  expect(read("README.md")).toContain("--plugin-dir");
+  expect(read("README.md")).toContain("claude plugin install sideco@sideco");
+  expect(read("README.md")).toContain("docs/guide.md");
+  expect(read("docs/guide.md")).toContain("--plugin-dir");
 });
 
 test("the repository is its own marketplace, so the plugin installs without --plugin-dir", () => {
