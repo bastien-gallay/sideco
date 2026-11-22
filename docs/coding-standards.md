@@ -105,7 +105,7 @@ Jeff Bay's nine rules, read for a functional core:
 | First-class collections | Kept: a collection with rules gets its type and its functions (`lanesOf`, `threads`). |
 | One dot per line | Read as *don't reach through*: a function takes what it needs, not the workspace to dig into. |
 | Don't abbreviate | Kept. `element`, not `el`, outside a one-line lambda. |
-| Keep entities small | **A module stays under 400 lines** and does one job: a firm limit, since a reader who sees a large file in pieces misses the function that already does what they add. A function fits on a screen (about 40 lines), with a cognitive complexity of 15 at most: a guide. Biome checks both: the module limit is an error, the function ones are infos. |
+| Keep entities small | **A module stays under 400 lines** and does one job: a firm limit, since a reader who sees a large file in pieces misses the function that already does what they add. A function fits on a screen (about 40 lines), with a cognitive complexity of 15 at most: a guide. Biome checks both: the module limit is an error, the function ones are infos, and the number of functions over them in each module may only come down ([tests/function-limits.ts](../tests/function-limits.ts)). |
 | Two instance variables at most | Replaced: three parameters at most, beyond that one named object. |
 | No getters or setters | For shell objects: *tell, don't ask*, they expose verbs, not their state. For data: not applicable, data is read directly. |
 
