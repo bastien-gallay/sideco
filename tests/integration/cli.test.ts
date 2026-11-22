@@ -124,6 +124,24 @@ describe("a workspace", () => {
       /journal {4}seq 0, 0 events, 0 kB, read in \d+ ms, 0 boards/,
     );
   });
+
+  test("status names the ids an older journal gave on several boards", async () => {
+    // A journal of its own: the other tests share `root`.
+    const cwd = realpathSync(mkdtempSync(join(tmpdir(), "sideco-ids-")));
+    await sideco(["init"], { cwd });
+    const line = (seq: number, event: object) =>
+      `${JSON.stringify({ seq, ts: "2026-11-18T08:00:00.000Z", actor: "agent", ...event })}\n`;
+    const task = { event: "ElementAdded", id: "T1", type: "task", label: "Un", col: 1, lane: "todo" };
+    writeFileSync(
+      join(cwd, ".sideco", "boards.jsonl"),
+      line(1, { event: "BoardCreated", board: "a", title: "A", format: "kanban" }) +
+        line(2, { event: "BoardCreated", board: "b", title: "B", format: "kanban" }) +
+        line(3, { ...task, board: "a" }) +
+        line(4, { ...task, board: "b" }),
+    );
+    expect((await sideco(["status"], { cwd })).out).toContain("ids        1 on several boards: T1 (a, b)");
+    rmSync(cwd, { recursive: true, force: true });
+  });
 });
 
 describe("the agent models from the terminal", () => {
@@ -175,9 +193,10 @@ note "Is the stock checked first?" --on @reserve
 add command "Pay" --col 3 --from @placed
 `,
     });
-    expect(ran).toEqual({ code: 0, out: "applied 7 commands (seq 15): E1 P1 N1 C1", err: "" });
+    // An id is given once in the project: E1, P1 and C1 are on the board before.
+    expect(ran).toEqual({ code: 0, out: "applied 7 commands (seq 15): E2 P2 N1 C2", err: "" });
     const shown = (await sideco(["show", "checkout"])).out;
-    for (const piece of ["E1 -> P1", "E1 -> C1", "Emitted by the checkout", "N1 by agent on P1"])
+    for (const piece of ["E2 -> P2", "E2 -> C2", "Emitted by the checkout", "N1 by agent on P2"])
       expect(shown).toContain(piece);
     expect(readFileSync(join(root, ".sideco", "boards.jsonl"), "utf8")).not.toContain("@placed");
   });
@@ -306,11 +325,12 @@ describe("Claude Code hooks, through stdin as Claude Code calls them", () => {
   });
 
   test("Claude answers a note in its thread, and reads the thread back", async () => {
-    const replied = await sideco(["reply", "N1", "L'entrepôt", "--board", "passage-de-commande"]);
+    // N1 went to the note on the checkout board: a note's id, too, is given once in the project.
+    const replied = await sideco(["reply", "N2", "L'entrepôt", "--board", "passage-de-commande"]);
     expect(replied.code).toBe(0);
-    expect(replied.out.trim()).toBe("N2");
+    expect(replied.out.trim()).toBe("N3");
     const shown = await sideco(["show", "passage-de-commande"]);
-    expect(shown.out).toContain("  N1 by human on P1: Qui réserve ?\n    N2 by agent: L'entrepôt");
+    expect(shown.out).toContain("  N2 by human on P1: Qui réserve ?\n    N3 by agent: L'entrepôt");
     const refused = await sideco(["reply", "N9", "x", "--board", "passage-de-commande"]);
     expect(refused.code).not.toBe(0);
     expect(refused.err).toContain("no note N9");
@@ -448,11 +468,13 @@ describe("sharing", () => {
     const ran = await sideco(["import", file, "--id", "copie"]);
     expect(ran.out).toStartWith("imported as board copie");
     // The model carries the design, not the conversation: open notes stay behind.
+    // An id is given once in the project, so the copy's cards take new ones: compare without them.
     const body = (text: string): string =>
-      text.split("\n").slice(1).join("\n").split("\nopen notes")[0] ?? "";
+      (text.split("\n").slice(1).join("\n").split("\nopen notes")[0] ?? "").replace(/\b[A-Z]\d+\b/g, "#");
     expect(body((await sideco(["show", "copie"])).out)).toBe(
       body((await sideco(["show", "passage-de-commande"])).out),
     );
+    expect((await sideco(["status"])).out).not.toContain("on several boards");
   });
 
   test("publish writes a static site that the companion serves", async () => {
@@ -725,10 +747,11 @@ describe("Bun, the one thing Sideco needs", () => {
 
 describe("Claude takes back its own gestures", () => {
   const B = ["--board", "annuler-cli"];
+  let first = "";
 
   test("`sideco undo --dry-run` names the gesture and writes nothing; undo and redo name what they did", async () => {
     await sideco(["board", "new", "Annuler", "--id", "annuler-cli"]);
-    await sideco(["add", "event", "Commande passée", "--col", "1", ...B]);
+    first = (await sideco(["add", "event", "Commande passée", "--col", "1", ...B])).out;
     await sideco(["add", "event", "Annulable", "--col", "3", ...B]);
     const preview = await sideco(["undo", "--dry-run", ...B]);
     expect(preview.out).toMatch(/^would undo seq \d+: add event "Annulable" \(E\d+\)$/);
@@ -742,19 +765,23 @@ describe("Claude takes back its own gestures", () => {
   });
 
   test("a gesture the human changed since is refused, in words, with exit code 1", async () => {
-    await sideco(["rename", "E1", "Par Claude", ...B]);
-    expect((await human({ kind: "rename", board: "annuler-cli", id: "E1", label: "Par toi" })).status).toBe(
+    await sideco(["rename", first, "Par Claude", ...B]);
+    expect((await human({ kind: "rename", board: "annuler-cli", id: first, label: "Par toi" })).status).toBe(
       200,
     );
     const preview = await sideco(["undo", "--dry-run", ...B]);
     expect(preview.code).toBe(0);
-    expect(preview.out).toMatch(/^would be refused: your gesture seq \d+ \(rename E1 "Par Claude"\)/);
+    expect(preview.out).toMatch(
+      new RegExp(`^would be refused: your gesture seq \\d+ \\(rename ${first} "Par Claude"\\)`),
+    );
     const refused = await sideco(["undo", ...B]);
     expect(refused.code).toBe(1);
     expect(refused.err).toMatch(
-      /^sideco: refused: your gesture seq \d+ \(rename E1 "Par Claude"\) was changed since by the human \(seq \d+: rename E1 "Par toi"\); the next undo takes back seq \d+/,
+      new RegExp(
+        `^sideco: refused: your gesture seq \\d+ \\(rename ${first} "Par Claude"\\) was changed since by the human \\(seq \\d+: rename ${first} "Par toi"\\); the next undo takes back seq \\d+`,
+      ),
     );
-    expect((await sideco(["show", "E1", ...B])).out).toContain("Par toi");
+    expect((await sideco(["show", first, ...B])).out).toContain("Par toi");
   });
 });
 
@@ -829,7 +856,7 @@ describe("history", () => {
       "--board",
       "passage-de-commande",
     ]);
-    expect(ran.out).toBe("E2");
+    expect(ran.out).toMatch(/^E\d+$/);
     url = note().url;
     expect(Number(/seq (\d+)/.exec((await sideco(["status"])).out)?.[1])).toBe(seq + 1);
   });

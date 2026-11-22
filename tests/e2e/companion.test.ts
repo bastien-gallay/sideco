@@ -14,6 +14,7 @@ import { parseBatch } from "../../src/cli/argv.ts";
 import { initRoot } from "../../src/cli/client.ts";
 import { runHook } from "../../src/cli/hook.ts";
 import type { Locale } from "../../src/domain/i18n.ts";
+import { mint } from "../../src/domain/minting.ts";
 import type { Workspace } from "../../src/domain/workspace.ts";
 import { type Running, start } from "../../src/server/start.ts";
 
@@ -29,14 +30,19 @@ let browser: Browser;
 let page: Page;
 const problems: string[] = [];
 
-/** The agent's side: a script in the CLI grammar, posted as one batch. */
-async function agent(script: string, board?: string): Promise<void> {
+/** The ids a batch made, in order. Ids are given once in the project: a test reads them, never guesses them. */
+type Made = [string, string, string, string, string, string, string, string, ...string[]];
+
+/** The agent's side: a script in the CLI grammar, posted as one batch. Gives the ids it made, in order. */
+async function agent(script: string, board?: string): Promise<Made> {
   const response = await fetch(`${running.url}/api/commands`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ actor: "agent", session: SESSION, commands: parseBatch(script, board) }),
   });
   if (!response.ok) throw new Error(`agent batch refused: ${await response.text()}`);
+  const { minted } = (await response.json()) as { minted: (string | null)[] };
+  return minted.filter((id): id is string => id !== null) as Made;
 }
 
 /** Claude Code's side: one hook event, through the code the plugin runs. */
@@ -470,7 +476,7 @@ describe("history", () => {
       until(`the history reads ${what}`, async () =>
         what.test((await page.locator(".history-label").textContent()) ?? ""),
       );
-    await agent(
+    const [asked, issued, signed] = await agent(
       [
         'board new "Devis" --id devis',
         'board new "Facture" --id facture',
@@ -481,7 +487,7 @@ describe("history", () => {
       ].join("\n"),
     );
     await page.locator(".board-picker select").selectOption("devis");
-    await card("E2").waitFor();
+    await card(signed).waitFor();
     const all = (await workspace()).seq;
 
     // This board, by default: one step back is its previous event, not the other board's.
@@ -489,7 +495,7 @@ describe("history", () => {
     expect(await scope.locator("option").allTextContents()).toEqual(["This board", "Everything"]);
     await reads(/^Live · 3 events$/);
     await back.click();
-    await reads(/^2 \/ 3 · .*Claude adds E1 “Devis demandé”$/);
+    await reads(new RegExp(`^2 / 3 · .*Claude adds ${asked} “Devis demandé”$`));
     expect(await page.locator("g.card").count()).toBe(1);
     await back.click();
     await reads(/^1 \/ 3 · .*Claude creates the board “Devis”$/);
@@ -508,15 +514,15 @@ describe("history", () => {
     await scope.selectOption("everything");
     await reads(new RegExp(`^Live · ${all} events$`));
     await back.click();
-    await reads(new RegExp(`^${all - 1} / ${all} · .*Claude adds E2 “Devis signé”$`));
+    await reads(new RegExp(`^${all - 1} / ${all} · .*Claude adds ${signed} “Devis signé”$`));
     expect(await page.locator("g.card").count()).toBe(2);
     await back.click();
-    await reads(new RegExp(`^${all - 2} / ${all} · .*Claude adds E1 “Facture émise”$`));
+    await reads(new RegExp(`^${all - 2} / ${all} · .*Claude adds ${issued} “Facture émise”$`));
 
     // Back to this board from a moment that is not one of its events: the board is as its latest
     // event left it, and a step goes to its nearest event that way.
     await scope.selectOption("board");
-    await reads(/^2 \/ 3 · .*Claude adds E1 “Devis demandé”$/);
+    await reads(new RegExp(`^2 / 3 · .*Claude adds ${asked} “Devis demandé”$`));
     await forward.click();
     await reads(/^Live · 3 events$/);
     await page.locator(".banner").waitFor({ state: "hidden" });
@@ -527,8 +533,11 @@ describe("history", () => {
 });
 
 describe("other workshops", () => {
+  // The task the sprint's tests move about.
+  let write = "";
+
   test("kanban: dragging a task to another column tells the agent which lane", async () => {
-    await agent(
+    const [plug, written, mockup, blocker] = await agent(
       [
         'board new "Sprint 12" --format kanban --id sprint',
         'add task "Brancher le paiement" --lane todo',
@@ -542,17 +551,18 @@ describe("other workshops", () => {
     await page.locator(".toast", { hasText: "Claude created the board “Sprint 12”" }).waitFor();
     expect(page.url()).toEndWith("#/b/commande");
     await page.locator(".board-picker select").selectOption("sprint");
-    await card("T3").waitFor();
+    write = written;
+    await card(mockup).waitFor();
     expect(await page.locator(".palette h2").textContent()).toBe("Kanban");
     // A board that asks its own question: the palette says it, not the workshop's.
     await agent('purpose "Qu\'est-ce qui bloque le sprint ?" --board sprint');
     await page.locator(".palette .purpose", { hasText: "Qu'est-ce qui bloque le sprint ?" }).waitFor();
 
-    const doing = await centre("B1");
-    await dragTo("T1", doing.x, doing.y + 120);
-    await until("T1 is in progress", async () => (await elementOf("sprint", "T1"))?.lane === "doing");
-    expect(await pending()).toContain("→ T1 moved lane todo → doing");
-    await settled("T1");
+    const doing = await centre(blocker);
+    await dragTo(plug, doing.x, doing.y + 120);
+    await until("the task is in progress", async () => (await elementOf("sprint", plug))?.lane === "doing");
+    expect(await pending()).toContain(`→ ${plug} moved lane todo → doing`);
+    await settled(plug);
     await shot("07-kanban");
   });
 
@@ -570,7 +580,7 @@ describe("other workshops", () => {
   });
 
   test("kanban: Mark done takes a task to the last lane, D to the lane before; the lane says it, not a tick", async () => {
-    await card("T2").click();
+    await card(write).click();
     // Out of the way under ⋯: the toolbar shows the actions taken most.
     const tools = page.locator(".card-tools");
     expect(await tools.locator(":scope > button").allTextContents()).toEqual([
@@ -590,33 +600,33 @@ describe("other workshops", () => {
       "the list closed",
       async () => (await tools.locator("details.card-more").getAttribute("open")) === null,
     );
-    await until("T2 is in Done", async () => (await elementOf("sprint", "T2"))?.lane === "done");
-    expect(await pending()).toContain("→ T2 moved lane todo → done");
-    expect(await card("T2").locator(".card-done").count()).toBe(0);
+    await until("the task is in Done", async () => (await elementOf("sprint", write))?.lane === "done");
+    expect(await pending()).toContain(`→ ${write} moved lane todo → done`);
+    expect(await card(write).locator(".card-done").count()).toBe(0);
     await page.locator(".card-tools button", { hasText: "Not done" }).waitFor({ state: "attached" });
     await shot("21-done");
 
-    await card("T2").focus();
+    await card(write).focus();
     await page.keyboard.press("d");
-    await until("T2 is in À valider", async () => (await elementOf("sprint", "T2"))?.lane === "doing");
+    await until("the task is in À valider", async () => (await elementOf("sprint", write))?.lane === "doing");
     await page.locator(".spoken", { hasText: "À valider" }).waitFor({ state: "attached" });
   });
 
   test("the card toolbar leaves the board to the panel: it hides when the keyboard goes there, and comes back with the card", async () => {
     const tools = page.locator(".card-tools");
-    await card("T2").click();
+    await card(write).click();
     await tools.waitFor();
     await page.locator("#tab-history").click();
     await tools.waitFor({ state: "hidden" });
-    await card("T2").click();
+    await card(write).click();
     await tools.waitFor();
     await page.keyboard.press("Escape");
   });
 
   test("a click beside the drawing lets the card go; the panels and the controls keep it", async () => {
-    const chosen = async () => ((await card("T2").getAttribute("class")) ?? "").includes("is-selected");
+    const chosen = async () => ((await card(write).getAttribute("class")) ?? "").includes("is-selected");
     const choose = async () => {
-      await card("T2").click();
+      await card(write).click();
       await until("the card is chosen", chosen);
     };
     const letGo = async (what: string) => until(`${what} lets the card go`, async () => !(await chosen()));
@@ -649,7 +659,7 @@ describe("other workshops", () => {
   test("with cards all around it, the card toolbar never covers the card chosen", async () => {
     const lane = (name: string, n: number) =>
       Array.from({ length: n }, (_, k) => `add task "${name} ${k + 1}" --lane ${name}`);
-    await agent(
+    const made = await agent(
       [
         'board new "Serré" --format kanban --id serre-tools',
         ...lane("todo", 5),
@@ -659,10 +669,11 @@ describe("other workshops", () => {
     );
     await page.locator(".board-picker select").selectOption("serre-tools");
     // The third of the middle lane: a card above, one under, a lane on each side.
-    await card("T8").click();
+    const middle = made[7];
+    await card(middle).click();
     const tools = page.locator(".card-tools");
     await tools.waitFor();
-    const [bar, chosen] = [await tools.boundingBox(), await card("T8").boundingBox()];
+    const [bar, chosen] = [await tools.boundingBox(), await card(middle).boundingBox()];
     if (!bar || !chosen) throw new Error("drawn");
     const covers =
       bar.x < chosen.x + chosen.width &&
@@ -674,31 +685,34 @@ describe("other workshops", () => {
   });
 
   test("flow: a step added while another is selected is linked to it", async () => {
-    await agent(
+    const [, , ship] = await agent(
       [
         'board new "Livraison" --format flow --id livraison',
-        'add step "Recevoir la commande"',
-        'add decision "En stock ?" --from S1',
-        'add step "Expédier" --from D1 --edge "oui"',
-        'add outcome "Commande annulée" --from D1 --edge "non"',
+        'add step "Recevoir la commande" --alias recevoir',
+        'add decision "En stock ?" --from @recevoir --alias stock',
+        'add step "Expédier" --from @stock --edge "oui"',
+        'add outcome "Commande annulée" --from @stock --edge "non"',
       ].join("\n"),
     );
     await page.locator(".board-picker select").selectOption("livraison");
-    await card("S2").waitFor();
-    await card("S2").click();
+    await card(ship).waitFor();
+    await card(ship).click();
     await page.waitForFunction(
-      () => document.querySelector(".palette .how")?.textContent === "The new element will be linked to S2.",
+      (id) =>
+        document.querySelector(".palette .how")?.textContent === `The new element will be linked to ${id}.`,
+      ship,
     );
+    const delivered = mint(await workspace(), "O");
     await paletteType("Outcome").click();
     await typeInEditor("Colis livré");
-    await card("O2").waitFor();
+    await card(delivered).waitFor();
     const board = (await workspace()).boards.find((b) => b.id === "livraison");
-    expect(board?.edges.some((e) => e.src === "S2" && e.dst === "O2")).toBe(true);
+    expect(board?.edges.some((e) => e.src === ship && e.dst === delivered)).toBe(true);
     await shot("08-flow");
   });
 
   test("impact / effort: four lanes say the impact and the effort they stand for, and a drag re-sorts", async () => {
-    await agent(
+    const [insert, , canvas] = await agent(
       [
         'board new "Priorités" --format impact-effort --id priorites',
         'add item "Insérer une colonne" --lane quick',
@@ -707,7 +721,7 @@ describe("other workshops", () => {
       ].join("\n"),
     );
     await page.locator(".board-picker select").selectOption("priorites");
-    await card("I3").waitFor();
+    await card(canvas).waitFor();
     expect(await page.locator(".palette h2").textContent()).toBe("Impact / Effort");
     expect(await page.locator(".lane-label").allTextContents()).toEqual([
       "Quick wins",
@@ -723,16 +737,16 @@ describe("other workshops", () => {
     ]);
 
     // The plan is two cells by two: the low-impact cell sits under the quick wins, the big bets beside them.
-    const quick = await centre("I1");
-    const fill = await centre("I3");
+    const quick = await centre(insert);
+    const fill = await centre(canvas);
     expect(fill.y).toBeGreaterThan(quick.y + 100);
     expect(await page.locator(".axis-label").allTextContents()).toEqual(["Impact →", "Effort →"]);
     const bets = await page.locator(".band-lane .lane-label", { hasText: "Big bets" }).boundingBox();
     if (!bets) throw new Error("no Big bets cell");
-    await dragTo("I3", bets.x + 100, quick.y);
-    await until("I3 is a big bet", async () => (await elementOf("priorites", "I3"))?.lane === "bet");
-    expect(await pending()).toContain("→ I3 moved lane fill → bet");
-    await settled("I3");
+    await dragTo(canvas, bets.x + 100, quick.y);
+    await until("the item is a big bet", async () => (await elementOf("priorites", canvas))?.lane === "bet");
+    expect(await pending()).toContain(`→ ${canvas} moved lane fill → bet`);
+    await settled(canvas);
     await shot("19-impact-effort");
 
     // Each axis names its two ends; zoomed in and scrolled sideways, a cell keeps its name in sight.
@@ -740,12 +754,12 @@ describe("other workshops", () => {
     const zoomIn = page.getByRole("button", { name: "Zoom in" });
     const zoomOut = page.getByRole("button", { name: "Zoom out" });
     for (let i = 0; i < 4; i++) await zoomIn.click();
-    const canvas = page.locator(".canvas-scroll");
+    const scroller = page.locator(".canvas-scroll");
     const quickName = page.locator(".lane-label", { hasText: "Quick wins" });
     const quickCell = page.locator(".band-lane .lane-bg").first();
-    const frameLeft = (await canvas.boundingBox())?.x ?? 0;
+    const frameLeft = (await scroller.boundingBox())?.x ?? 0;
     const cellLeft = (await quickCell.boundingBox())?.x ?? 0;
-    await canvas.evaluate(
+    await scroller.evaluate(
       (el, by) => {
         el.scrollLeft += by;
       },
@@ -777,27 +791,30 @@ describe("other workshops", () => {
     await page.locator(".palette h2", { hasText: "Retrospective" }).waitFor();
     expect(await page.locator(".palette h2").textContent()).toBe("Retrospective");
 
+    const point = mint(await workspace(), "P");
     await paletteType("Observation").click();
     await typeInEditor("Les revues sont rapides");
-    await card("P1").waitFor();
+    await card(point).waitFor();
     expect((await workspace()).boards.find((b) => b.id === "retro-sprint-12")?.elements[0]).toMatchObject({
-      id: "P1",
+      id: point,
       lane: "went-well",
     });
 
     // An action from the palette lands in Try; one made from a point is linked from it.
+    const action = mint(await workspace(), "A");
     await paletteType("Action").click();
     await typeInEditor("Garder des revues courtes");
-    await card("A1").waitFor();
-    expect((await elementOf("retro-sprint-12", "A1"))?.lane).toBe("try");
-    await card("P1").click();
+    await card(action).waitFor();
+    expect((await elementOf("retro-sprint-12", action))?.lane).toBe("try");
+    const made = mint(await workspace(), "A");
+    await card(point).click();
     await page.locator(".card-tools button", { hasText: "Make an action of it" }).click();
     await typeInEditor("Revue à deux");
-    await card("A2").waitFor();
+    await card(made).waitFor();
     const retro = (await workspace()).boards.find((b) => b.id === "retro-sprint-12");
-    expect(retro?.elements.find((e) => e.id === "A2")?.lane).toBe("try");
-    expect(retro?.edges).toContainEqual(expect.objectContaining({ src: "P1", dst: "A2" }));
-    await settled("A2");
+    expect(retro?.elements.find((e) => e.id === made)?.lane).toBe("try");
+    expect(retro?.edges).toContainEqual(expect.objectContaining({ src: point, dst: made }));
+    await settled(made);
     await shot("47-retro-action");
   });
 });
@@ -890,41 +907,43 @@ describe("taking a gesture back", () => {
   const offered = (button: ReturnType<typeof undo>): Promise<void> =>
     until("the page offers it", async () => !(await button.isDisabled()));
 
+  let [placed, reserved] = ["", ""];
+
   test("Undo and Redo are offered once the human has done something, and only then", async () => {
-    await agent(
-      `board new "Retour" --id ${BOARD}\nadd event "Commande passée" --col 1\nadd event "Stock réservé" --col 2\nlink E1 E2`,
+    [placed, reserved] = await agent(
+      `board new "Retour" --id ${BOARD}\nadd event "Commande passée" --col 1 --alias a\nadd event "Stock réservé" --col 2 --alias b\nlink @a @b`,
     );
     await page.locator(".board-picker select").selectOption(BOARD);
-    // The board shown before also had an E1: wait for this one's label, not for any card.
-    await card("E1").getByText("Commande passée").waitFor();
+    // Wait for this card's label, not for any card.
+    await card(placed).getByText("Commande passée").waitFor();
     expect(await undo().getAttribute("aria-label")).toStartWith("Undo");
     expect(await undo().isDisabled()).toBe(true);
     expect(await redo().isDisabled()).toBe(true);
 
-    await card("E1").dblclick();
+    await card(placed).dblclick();
     await typeInEditor("Validée");
-    await until("the rename reached the journal", async () => (await labelOf("E1")) === "Validée");
+    await until("the rename reached the journal", async () => (await labelOf(placed)) === "Validée");
     await until("Undo is offered", async () => !(await undo().isDisabled()));
     await shot("13-undo");
 
     await undo().click();
-    await until("the label is back", async () => (await labelOf("E1")) === "Commande passée");
-    await card("E1").getByText("Commande passée").waitFor();
+    await until("the label is back", async () => (await labelOf(placed)) === "Commande passée");
+    await card(placed).getByText("Commande passée").waitFor();
     await until("Redo is offered", async () => !(await redo().isDisabled()));
     expect(await undo().isDisabled()).toBe(true);
     await redo().click();
-    await until("the rename is back", async () => (await labelOf("E1")) === "Validée");
+    await until("the rename is back", async () => (await labelOf(placed)) === "Validée");
   });
 
   test("the keyboard does the same, and leaves a text being typed alone", async () => {
     await offered(undo());
     await page.keyboard.press("Control+z");
-    await until("Ctrl+Z took the rename back", async () => (await labelOf("E1")) === "Commande passée");
+    await until("Ctrl+Z took the rename back", async () => (await labelOf(placed)) === "Commande passée");
     await offered(redo());
     await page.keyboard.press("Control+Shift+z");
-    await until("Ctrl+Shift+Z put it back", async () => (await labelOf("E1")) === "Validée");
+    await until("Ctrl+Shift+Z put it back", async () => (await labelOf(placed)) === "Validée");
 
-    await card("E2").dblclick();
+    await card(reserved).dblclick();
     const editor = page.locator("textarea.card-editor");
     await editor.waitFor({ state: "visible" });
     const before = (await workspace()).seq;
@@ -935,15 +954,15 @@ describe("taking a gesture back", () => {
   });
 
   test("a removed card comes back under its id, with its link", async () => {
-    await card("E2").focus();
+    await card(reserved).focus();
     await page.keyboard.press("Delete");
-    await until("E2 is gone", async () => (await elementOf(BOARD, "E2")) === undefined);
-    await card("E2").waitFor({ state: "detached" });
+    await until("the card is gone", async () => (await elementOf(BOARD, reserved)) === undefined);
+    await card(reserved).waitFor({ state: "detached" });
     await page.keyboard.press("Control+z");
-    await until("E2 is back", async () => (await elementOf(BOARD, "E2"))?.by === "agent");
-    await card("E2").waitFor();
+    await until("the card is back", async () => (await elementOf(BOARD, reserved))?.by === "agent");
+    await card(reserved).waitFor();
     const board = (await workspace()).boards.find((b) => b.id === BOARD);
-    expect(board?.edges.map((e) => `${e.src}>${e.dst}`)).toEqual(["E1>E2"]);
+    expect(board?.edges.map((e) => `${e.src}>${e.dst}`)).toEqual([`${placed}>${reserved}`]);
   });
 
   test("a removed board is offered back at once, and comes back whole", async () => {
@@ -961,12 +980,12 @@ describe("taking a gesture back", () => {
     await offer.click();
     await until("the board is back", async () => (await workspace()).boards.some((b) => b.id === BOARD));
     await until("the page shows it again", async () => page.url().endsWith(`#/b/${BOARD}`));
-    await card("E2").waitFor();
-    expect(await labelOf("E1")).toBe("Validée");
+    await card(reserved).waitFor();
+    expect(await labelOf(placed)).toBe("Validée");
 
     // Net of the back-and-forth, Claude is told one thing: the rename that stands.
     const told = await pending();
-    expect(told).toContain('~ E1 renamed "Commande passée" → "Validée"');
+    expect(told).toContain(`~ ${placed} renamed "Commande passée" → "Validée"`);
     expect(told).not.toContain("removed");
     expect(told).not.toContain("restored");
   });
@@ -978,13 +997,15 @@ describe("talking it through, note by note", () => {
   const said = (id: string) => thread(id).locator(".thread-notes > li");
   const replyField = (id: string) => thread(id).locator(".thread-reply [name^=reply-]");
   const badge = (id: string) => card(id).locator(".card-notes text");
+  // The cards and the two notes Claude starts with; the human's answer, once given.
+  let [placed, reserved, asked, rest, answer] = ["", "", "", "", ""];
 
   test("a note says which card it is about, who wrote it and who is waited for", async () => {
-    await agent(
-      `board new "Fil" --id ${BOARD}\nadd event "Commande passée" --col 1\nadd event "Stock réservé" --col 2\nnote "Qui réserve ?" --on E2\nnote "Et le reste ?"`,
+    [placed, reserved, asked, rest] = await agent(
+      `board new "Fil" --id ${BOARD}\nadd event "Commande passée" --col 1\nadd event "Stock réservé" --col 2 --alias b\nnote "Qui réserve ?" --on @b\nnote "Et le reste ?"`,
     );
     await page.locator(".board-picker select").selectOption(BOARD);
-    await thread("N1").waitFor({ state: "attached" });
+    await thread(asked).waitFor({ state: "attached" });
     // Already there when the board was shown, they wait in their tab, which says so.
     const tab = page.locator("#tab-notes");
     expect(await tab.getAttribute("aria-selected")).toBe("false");
@@ -992,57 +1013,58 @@ describe("talking it through, note by note", () => {
     expect(await tab.locator(".tab-count").getAttribute("class")).toContain("is-yours");
     expect(await tab.getAttribute("aria-label")).toBe("Notes: 2 open, 2 awaiting your answer");
     await tab.click();
-    await thread("N1").waitFor();
+    await thread(asked).waitFor();
     expect(await page.locator(".notes h2").textContent()).toBe("Open notes (2)");
-    expect(await thread("N1").locator(".thread-on").textContent()).toBe("E2 · Stock réservé");
+    expect(await thread(asked).locator(".thread-on").textContent()).toBe(`${reserved} · Stock réservé`);
     // The card a note is about says so in its name, as its badge does to the eye.
-    expect(await card("E2").getAttribute("aria-label")).toContain(" · 1 open note");
-    expect(await card("E1").getAttribute("aria-label")).not.toContain("open note");
-    expect(await thread("N2").locator(".thread-on").textContent()).toBe("Whole board");
-    expect(await said("N1").locator(".thread-author").textContent()).toBe("Claude");
+    expect(await card(reserved).getAttribute("aria-label")).toContain(" · 1 open note");
+    expect(await card(placed).getAttribute("aria-label")).not.toContain("open note");
+    expect(await thread(rest).locator(".thread-on").textContent()).toBe("Whole board");
+    expect(await said(asked).locator(".thread-author").textContent()).toBe("Claude");
     // The id Claude uses in the terminal is on the message it names.
-    expect(await said("N1").locator(".thread-id").textContent()).toBe("N1");
-    expect(await said("N1").locator("p").textContent()).toBe("Qui réserve ?");
-    expect(await thread("N1").locator(".thread-waits").textContent()).toBe("Awaits your answer");
-    expect(await badge("E2").textContent()).toBe("1");
+    expect(await said(asked).locator(".thread-id").textContent()).toBe(asked);
+    expect(await said(asked).locator("p").textContent()).toBe("Qui réserve ?");
+    expect(await thread(asked).locator(".thread-waits").textContent()).toBe("Awaits your answer");
+    expect(await badge(reserved).textContent()).toBe("1");
   });
 
   test("the human answers in the thread, and Claude is told which note the answer is to", async () => {
     // Several lines in one answer: Shift+Enter breaks the line, Enter sends.
-    await replyField("N1").fill("L'entrepôt");
-    await replyField("N1").press("Shift+Enter");
-    await replyField("N1").pressSequentially("de Lyon");
-    await replyField("N1").press("Enter");
-    await said("N1").nth(1).waitFor();
-    expect(await said("N1").nth(1).locator(".thread-author").textContent()).toBe("You");
-    expect(await said("N1").nth(1).locator("p").textContent()).toBe("L'entrepôt\nde Lyon");
+    answer = mint(await workspace(), "N");
+    await replyField(asked).fill("L'entrepôt");
+    await replyField(asked).press("Shift+Enter");
+    await replyField(asked).pressSequentially("de Lyon");
+    await replyField(asked).press("Enter");
+    await said(asked).nth(1).waitFor();
+    expect(await said(asked).nth(1).locator(".thread-author").textContent()).toBe("You");
+    expect(await said(asked).nth(1).locator("p").textContent()).toBe("L'entrepôt\nde Lyon");
     expect(
-      await said("N1")
+      await said(asked)
         .nth(1)
         .locator("p")
         .evaluate((p) => getComputedStyle(p).whiteSpace),
     ).toBe("pre-wrap");
-    expect(await thread("N1").locator(".thread-waits").textContent()).toBe("Awaits Claude");
-    expect(await replyField("N1").inputValue()).toBe("");
+    expect(await thread(asked).locator(".thread-waits").textContent()).toBe("Awaits Claude");
+    expect(await replyField(asked).inputValue()).toBe("");
     // Still one discussion on the card, and two on the board.
-    expect(await badge("E2").textContent()).toBe("1");
+    expect(await badge(reserved).textContent()).toBe("1");
     expect(await page.locator(".notes h2").textContent()).toBe("Open notes (2)");
-    expect(await pending()).toContain("reply N3 to N1 on E2: L'entrepôt");
+    expect(await pending()).toContain(`reply ${answer} to ${asked} on ${reserved}: L'entrepôt`);
   });
 
   test("Claude's answer lands in the same thread, and a reply being typed elsewhere survives it", async () => {
-    await replyField("N2").fill("Brouillon en cours");
-    await agent('reply N1 "Toujours l\'entrepôt ?"', BOARD);
-    await said("N1").nth(2).waitFor();
-    expect(await said("N1").allTextContents()).toEqual([
-      "ClaudeN1Qui réserve ?",
-      "YouN3L'entrepôt\nde Lyon",
-      "ClaudeN4Toujours l'entrepôt ?",
+    await replyField(rest).fill("Brouillon en cours");
+    const [again] = await agent(`reply ${asked} "Toujours l'entrepôt ?"`, BOARD);
+    await said(asked).nth(2).waitFor();
+    expect(await said(asked).allTextContents()).toEqual([
+      `Claude${asked}Qui réserve ?`,
+      `You${answer}L'entrepôt\nde Lyon`,
+      `Claude${again}Toujours l'entrepôt ?`,
     ]);
-    expect(await thread("N1").locator(".thread-waits").textContent()).toBe("Awaits your answer");
-    expect(await replyField("N2").inputValue()).toBe("Brouillon en cours");
-    expect(await replyField("N2").evaluate((field) => field === document.activeElement)).toBe(true);
-    await replyField("N2").fill("");
+    expect(await thread(asked).locator(".thread-waits").textContent()).toBe("Awaits your answer");
+    expect(await replyField(rest).inputValue()).toBe("Brouillon en cours");
+    expect(await replyField(rest).evaluate((field) => field === document.activeElement)).toBe(true);
+    await replyField(rest).fill("");
   });
 
   test("a card points to its discussions, and a discussion points back to its card", async () => {
@@ -1051,34 +1073,34 @@ describe("talking it through, note by note", () => {
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await page.keyboard.press("Escape");
     await page.locator("#tab-session").click();
-    await card("E2").click();
+    await card(reserved).click();
     // Chosen from the session, the card shows its detail, which leads to its discussions.
     const toNotes = page.locator(".card-panel-notes");
     await toNotes.waitFor();
     expect(await toNotes.textContent()).toBe("1 open note on this card");
     await toNotes.click();
     await until("the card's discussion is marked", async () =>
-      (await classes(thread("N1"))).includes("is-current"),
+      (await classes(thread(asked))).includes("is-current"),
     );
     expect(await page.locator("#tab-notes").getAttribute("aria-selected")).toBe("true");
-    expect(await classes(thread("N2"))).not.toContain("is-current");
+    expect(await classes(thread(rest))).not.toContain("is-current");
     await shot("15-threads");
 
     await page.keyboard.press("Escape");
-    await until("nothing is selected", async () => !(await classes(card("E2"))).includes("is-selected"));
-    await thread("N1").hover();
-    await until("the card is pointed at", async () => (await classes(card("E2"))).includes("is-pointed"));
-    await thread("N1").locator(".thread-on").click();
-    await until("the card is selected", async () => (await classes(card("E2"))).includes("is-selected"));
+    await until("nothing is selected", async () => !(await classes(card(reserved))).includes("is-selected"));
+    await thread(asked).hover();
+    await until("the card is pointed at", async () => (await classes(card(reserved))).includes("is-pointed"));
+    await thread(asked).locator(".thread-on").click();
+    await until("the card is selected", async () => (await classes(card(reserved))).includes("is-selected"));
     await page.keyboard.press("Escape");
     await until(
       "nothing is selected again",
-      async () => !(await classes(card("E2"))).includes("is-selected"),
+      async () => !(await classes(card(reserved))).includes("is-selected"),
     );
     // Answering a note shows its card as its title does, and leaves the keyboard in the answer.
-    await thread("N1").locator(".thread-reply textarea").click();
+    await thread(asked).locator(".thread-reply textarea").click();
     await until("the card is selected by the answer", async () =>
-      (await classes(card("E2"))).includes("is-selected"),
+      (await classes(card(reserved))).includes("is-selected"),
     );
     expect(await page.evaluate(() => document.activeElement?.tagName)).toBe("TEXTAREA");
     // Chosen from its discussion, the card leaves the reader in the Notes tab.
@@ -1091,45 +1113,45 @@ describe("talking it through, note by note", () => {
     const notesTab = page.locator("#tab-notes");
     const chosen = async () => (await notesTab.getAttribute("aria-selected")) === "true";
     await page.locator("#tab-session").click();
-    await agent('note "Et la commande annulée ?" --on E1', BOARD);
+    const [cancelled] = await agent(`note "Et la commande annulée ?" --on ${placed}`, BOARD);
     await until("the Notes tab opened", chosen);
     // Opened without being asked, it is said to whoever does not see the panel change.
     await page
       .locator(".spoken", { hasText: "Claude wrote a note that waits for you: the Notes tab is open." })
       .waitFor({ state: "attached" });
-    await thread("N5").waitFor();
+    await thread(cancelled).waitFor();
     expect(await notesTab.locator(".tab-count").textContent()).toBe("3");
 
     await page.locator("#tab-history").click();
-    await badge("E1").click();
+    await badge(placed).click();
     await until("the count led to the Notes tab", chosen);
     await page.keyboard.press("Escape");
-    await thread("N5").locator(".thread-resolve").click();
-    await thread("N5").waitFor({ state: "detached" });
+    await thread(cancelled).locator(".thread-resolve").click();
+    await thread(cancelled).waitFor({ state: "detached" });
   });
 
   test("resolving closes the whole thread", async () => {
-    await thread("N1").locator(".thread-resolve").click();
-    await thread("N1").waitFor({ state: "detached" });
-    await until("the card no longer counts it", async () => (await badge("E2").count()) === 0);
+    await thread(asked).locator(".thread-resolve").click();
+    await thread(asked).waitFor({ state: "detached" });
+    await until("the card no longer counts it", async () => (await badge(reserved).count()) === 0);
     expect(await page.locator(".notes h2").textContent()).toBe("Open notes (1)");
-    expect(await pending()).toContain("✓ note N1 resolved");
+    expect(await pending()).toContain(`✓ note ${asked} resolved`);
   });
 
   test("closing a thread with an answer typed but not sent says it first: nothing typed is lost", async () => {
-    const resolve = thread("N2").locator(".thread-resolve");
+    const resolve = thread(rest).locator(".thread-resolve");
     expect(await resolve.textContent()).toBe("Resolve");
-    await replyField("N2").fill("Réponse de dernière minute");
+    await replyField(rest).fill("Réponse de dernière minute");
     // The button says what it will do with the words in the field.
     await until("the button offers both", async () => (await resolve.textContent()) === "Reply and resolve");
-    await replyField("N2").fill("  ");
+    await replyField(rest).fill("  ");
     await until("the button only closes", async () => (await resolve.textContent()) === "Resolve");
-    await replyField("N2").fill("Réponse de dernière minute");
+    await replyField(rest).fill("Réponse de dernière minute");
     await resolve.click();
-    await thread("N2").waitFor({ state: "detached" });
+    await thread(rest).waitFor({ state: "detached" });
     const told = await pending();
-    expect(told).toContain("to N2: Réponse de dernière minute");
-    expect(told).toContain("✓ note N2 resolved");
+    expect(told).toContain(`to ${rest}: Réponse de dernière minute`);
+    expect(told).toContain(`✓ note ${rest} resolved`);
   });
 });
 
@@ -1140,59 +1162,63 @@ describe("what Claude has not read yet", () => {
   const threadMark = (id: string) => page.locator(`.notes .thread[data-thread="${id}"] .thread-unread`);
 
   test("a card the human renamed and a thread they answered are marked, until Claude has read them", async () => {
-    await agent(
+    const [issued, paid, chase] = await agent(
       `board new "Non lu" --id ${BOARD}\nadd event "Facture émise" --col 1\nadd event "Facture payée" --col 2\nnote "Qui relance ?"`,
     );
     await page.locator(".board-picker select").selectOption(BOARD);
-    await card("E2").getByText("Facture payée").waitFor();
+    await card(paid).getByText("Facture payée").waitFor();
     expect(await page.locator(".card-unread, .thread-unread").count()).toBe(0);
 
-    await card("E1").dblclick();
+    await card(issued).dblclick();
     await typeInEditor("Facture envoyée");
-    await cardMark("E1").waitFor();
+    await cardMark(issued).waitFor();
     // Said in words too: to a pointer on the mark, and in the card's name for a screen reader.
-    expect(await cardMark("E1").locator("title").textContent()).toBe(WORDS);
-    expect(await card("E1").getAttribute("aria-label")).toEndWith(WORDS);
-    expect(await cardMark("E2").count()).toBe(0);
+    expect(await cardMark(issued).locator("title").textContent()).toBe(WORDS);
+    expect(await card(issued).getAttribute("aria-label")).toEndWith(WORDS);
+    expect(await cardMark(paid).count()).toBe(0);
 
     // Already there when the board was shown, the note is read in its tab.
     await page.locator("#tab-notes").click();
-    const reply = page.locator(`.notes .thread[data-thread="N1"] .thread-reply [name^=reply-]`);
+    const reply = page.locator(`.notes .thread[data-thread="${chase}"] .thread-reply [name^=reply-]`);
     await reply.fill("La compta");
     await reply.press("Enter");
-    await threadMark("N1").waitFor();
-    expect(await threadMark("N1").textContent()).toBe(WORDS);
+    await threadMark(chase).waitFor();
+    expect(await threadMark(chase).textContent()).toBe(WORDS);
     await shot("18-unread");
 
     // The marks tell about now: a board shown as it was carries none.
     await openHistory();
     await page.locator(".history button", { hasText: "◄" }).click();
     await page.locator(".banner").waitFor({ state: "visible" });
-    await card("E1").getByText("Facture envoyée").waitFor();
+    await card(issued).getByText("Facture envoyée").waitFor();
     expect(await page.locator(".card-unread, .thread-unread").count()).toBe(0);
     await page.locator(".banner button").click();
-    await cardMark("E1").waitFor();
+    await cardMark(issued).waitFor();
 
     // The session reads its digest, as the hooks do.
     await fetch(`${running.url}/api/changes?session=${SESSION}&ack=1`);
-    await cardMark("E1").waitFor({ state: "detached" });
-    await threadMark("N1").waitFor({ state: "detached" });
+    await cardMark(issued).waitFor({ state: "detached" });
+    await threadMark(chase).waitFor({ state: "detached" });
     // Read, the card is heard by its words alone.
-    expect(await card("E1").getAttribute("aria-label")).toStartWith("Facture envoyée · E1");
-    expect(await card("E1").getAttribute("aria-label")).not.toEndWith(WORDS);
+    expect(await card(issued).getAttribute("aria-label")).toStartWith(`Facture envoyée · ${issued}`);
+    expect(await card(issued).getAttribute("aria-label")).not.toEndWith(WORDS);
   });
 });
+
+// The two events of the board "ajout-case", read by the describes that follow it too.
+let [placed, reserved] = ["", ""];
 
 describe("adding where the pointer is", () => {
   const offer = (type: string) => page.locator(`.sideco-board .add-here[data-type="${type}"]`);
   const offers = () => page.locator(".sideco-board .add-here");
+  let policy = "";
 
   test("retro: a column offers one + per kind of card, and the card lands in that column", async () => {
-    await agent(
+    const [tests] = await agent(
       `board new "Rétro du sprint" --format retro --id ajout\nadd point "Les tests d'abord" --lane keep`,
     );
     await page.locator(".board-picker select").selectOption("ajout");
-    await card("P1").getByText("Les tests").waitFor();
+    await card(tests).getByText("Les tests").waitFor();
     // Nothing is offered while the pointer is elsewhere.
     await page.mouse.move(700, 20);
     expect(await offers().count()).toBe(0);
@@ -1210,13 +1236,14 @@ describe("adding where the pointer is", () => {
     await Bun.sleep(200);
     await shot("16-add-here");
 
+    const action = mint(await workspace(), "A");
     await offer("action").click();
     await typeInEditor("Écrire le test avant le code");
     await until("the action is in Try", async () => {
-      const added = await elementOf("ajout", "A1");
+      const added = await elementOf("ajout", action);
       return added?.type === "action" && added.lane === "try";
     });
-    await card("A1").getByText("Écrire le test").waitFor();
+    await card(action).getByText("Écrire le test").waitFor();
     // How to add is in the keys sheet; the palette keeps the types, each saying what it is for on hover.
     expect(await page.locator(".palette .how").count()).toBe(0);
     expect(await page.locator(".palette .type", { hasText: "Action" }).getAttribute("title")).toContain(
@@ -1225,14 +1252,14 @@ describe("adding where the pointer is", () => {
   });
 
   test("timeline: a cell offers the kind of its row, and the card lands in that step", async () => {
-    await agent(
+    [placed, reserved] = await agent(
       `board new "Ajout en case" --id ajout-case\nadd event "Commande passée" --col 1\nadd event "Stock réservé" --col 2`,
     );
     await page.locator(".board-picker select").selectOption("ajout-case");
-    await card("E2").getByText("Stock réservé").waitFor();
+    await card(reserved).getByText("Stock réservé").waitFor();
     // The row names sit over the cards, where they stay while the board scrolls.
     const row = await page.locator(".heads-rows .band-label", { hasText: "Policy" }).boundingBox();
-    const e2 = await centre("E2");
+    const e2 = await centre(reserved);
     if (!row) throw new Error("no Policy row");
     await page.mouse.move(e2.x, row.y + row.height / 2);
     await offer("policy").waitFor();
@@ -1240,14 +1267,15 @@ describe("adding where the pointer is", () => {
     await Bun.sleep(200);
     await shot("17-add-in-cell");
 
+    policy = mint(await workspace(), "P");
     await offer("policy").click();
     await typeInEditor("Quand stock réservé, facturer");
-    await until("the policy is in step 2", async () => (await elementOf("ajout-case", "P1"))?.col === 2);
-    await card("P1").waitFor();
+    await until("the policy is in step 2", async () => (await elementOf("ajout-case", policy))?.col === 2);
+    await card(policy).waitFor();
   });
 
   test("timeline: the edge between two steps offers a column, and the steps after it move over", async () => {
-    const e2 = await settled("E2");
+    const e2 = await settled(reserved);
     const heading = await page.locator(".band-step-label", { hasText: /^2$/ }).boundingBox();
     if (!heading) throw new Error("no heading for step 2");
     // Just right of the rule that opens step 2, as high as the step numbers.
@@ -1260,17 +1288,17 @@ describe("adding where the pointer is", () => {
     await shot("20-insert-column");
 
     await column.click();
-    await until("step 2 moved to 3", async () => (await elementOf("ajout-case", "E2"))?.col === 3);
-    expect((await elementOf("ajout-case", "P1"))?.col).toBe(3);
-    expect((await elementOf("ajout-case", "E1"))?.col).toBe(1);
+    await until("step 2 moved to 3", async () => (await elementOf("ajout-case", reserved))?.col === 3);
+    expect((await elementOf("ajout-case", policy))?.col).toBe(3);
+    expect((await elementOf("ajout-case", placed))?.col).toBe(1);
   });
 
   test("timeline: an empty step offers a « × » at its top, and the steps after it move back", async () => {
     // The card added before is still selected: its toolbar would cover the step.
     await page.keyboard.press("Escape");
     await page.locator(".card-tools").waitFor({ state: "hidden" });
-    // Step 2 is the empty one the column made; its event cell is level with E1, one step right.
-    const e1 = await centre("E1");
+    // Step 2 is the empty one the column made; its event cell is level with the first event, one step right.
+    const e1 = await centre(placed);
     const step = await page.locator(".band-step-label", { hasText: /^2$/ }).boundingBox();
     if (!step) throw new Error("no heading for step 2");
     await page.mouse.move(step.x + step.width / 2, e1.y);
@@ -1281,24 +1309,24 @@ describe("adding where the pointer is", () => {
     await shot("21-remove-step");
 
     await remove.click();
-    await until("step 3 moved back to 2", async () => (await elementOf("ajout-case", "E2"))?.col === 2);
-    expect((await elementOf("ajout-case", "P1"))?.col).toBe(2);
+    await until("step 3 moved back to 2", async () => (await elementOf("ajout-case", reserved))?.col === 2);
+    expect((await elementOf("ajout-case", policy))?.col).toBe(2);
     await page.keyboard.press("Control+z");
     await until(
       "Undo puts the empty step back",
-      async () => (await elementOf("ajout-case", "E2"))?.col === 3,
+      async () => (await elementOf("ajout-case", reserved))?.col === 3,
     );
     // The page offers Redo once the undo has reached it, not before.
     await page.locator("button:not([disabled])", { hasText: /^Redo$/ }).waitFor();
     await page.keyboard.press("Control+Shift+z");
-    await until("Redo takes it out again", async () => (await elementOf("ajout-case", "E2"))?.col === 2);
+    await until("Redo takes it out again", async () => (await elementOf("ajout-case", reserved))?.col === 2);
   });
 
   test("the offer leaves with the pointer, and is not made on a board shown as it was", async () => {
-    // The card added before is still selected: its toolbar, kept inside the window, would cover E2.
+    // The card added before is still selected: its toolbar, kept inside the window, would cover the second event.
     await page.keyboard.press("Escape");
     await page.locator(".card-tools").waitFor({ state: "hidden" });
-    const e2 = await centre("E2");
+    const e2 = await centre(reserved);
     await page.mouse.move(e2.x, e2.y);
     await offer("event").waitFor();
     await page.mouse.move(700, 20);
@@ -1327,16 +1355,16 @@ describe("reopening a card without changing it", () => {
       body: JSON.stringify({
         actor: "agent",
         session: SESSION,
-        commands: [{ kind: "annotate", board: "ajout-case", id: "E1", detail }],
+        commands: [{ kind: "annotate", board: "ajout-case", id: placed, detail }],
       }),
     });
     expect(posted.ok).toBe(true);
-    await card("E1").locator(".card-detail").waitFor();
+    await card(placed).locator(".card-detail").waitFor();
     const before = (await workspace()).seq;
     const field = page.locator("textarea.card-panel-editor");
     const editor = page.locator("textarea.card-editor");
 
-    await card("E1").click();
+    await card(placed).click();
     await page.locator(".card-tools button", { hasText: "Detail" }).click();
     await field.waitFor({ state: "visible" });
     // A detail is read before it is changed: nothing comes selected, the caret waits at its start.
@@ -1346,23 +1374,23 @@ describe("reopening a card without changing it", () => {
           document.activeElement === f && f.selectionStart === 0 && f.selectionEnd === 0,
       ),
     ).toBe(true);
-    expect(await field.getAttribute("aria-label")).toBe("Detail of E1");
+    expect(await field.getAttribute("aria-label")).toBe(`Detail of ${placed}`);
     await field.press("ControlOrMeta+Enter");
     await field.waitFor({ state: "hidden" });
 
-    await card("E1").dblclick();
+    await card(placed).dblclick();
     await editor.waitFor({ state: "visible" });
     await editor.press("Enter");
     await editor.waitFor({ state: "hidden" });
 
     await Bun.sleep(200);
     expect((await workspace()).seq).toBe(before);
-    expect((await elementOf("ajout-case", "E1"))?.detail).toBe(detail);
+    expect((await elementOf("ajout-case", placed))?.detail).toBe(detail);
   });
 
   test("a detail typed on several lines keeps its lines: Enter breaks the line, ⌘/Ctrl+Enter saves", async () => {
     const field = page.locator("textarea.card-panel-editor");
-    await card("E1").click();
+    await card(placed).click();
     await page.locator(".card-tools button", { hasText: "Detail" }).click();
     await field.waitFor({ state: "visible" });
     await field.fill("Première  ligne");
@@ -1371,14 +1399,14 @@ describe("reopening a card without changing it", () => {
     await field.press("ControlOrMeta+Enter");
     await field.waitFor({ state: "hidden" });
     // The keyboard is back on the card the detail is about, and the ear is told it is kept.
-    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe("E1");
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe(placed);
     await until(
       "the detail is kept line by line",
-      async () => (await elementOf("ajout-case", "E1"))?.detail === "Première ligne\nseconde ligne",
+      async () => (await elementOf("ajout-case", placed))?.detail === "Première ligne\nseconde ligne",
     );
     await until(
       "the save is said",
-      async () => (await page.locator(".spoken").textContent()) === "Detail of E1 saved",
+      async () => (await page.locator(".spoken").textContent()) === `Detail of ${placed} saved`,
     );
     await page.keyboard.press("Escape");
   });
@@ -1399,7 +1427,7 @@ describe("the chosen card, read in the right panel", () => {
           {
             kind: "annotate",
             board: "ajout-case",
-            id: "E1",
+            id: placed,
             detail: "Paiement par carte.\nVirement refusé.",
           },
         ],
@@ -1408,12 +1436,12 @@ describe("the chosen card, read in the right panel", () => {
     expect(posted.ok).toBe(true);
     // A card chosen while the session is shown opens the Detail tab.
     await page.locator("#tab-session").click();
-    await card("E1").click();
+    await card(placed).click();
     await panel().waitFor({ state: "visible" });
     expect(await page.locator("#tab-detail").getAttribute("aria-selected")).toBe("true");
-    expect(await panel().locator("h2").textContent()).toBe("Card E1");
+    expect(await panel().locator("h2").textContent()).toBe(`Card ${placed}`);
     expect(await panel().locator(".card-panel-name").textContent()).toBe(
-      (await elementOf("ajout-case", "E1"))?.label ?? null,
+      (await elementOf("ajout-case", placed))?.label ?? null,
     );
     // One paragraph, its two lines kept.
     expect(await panel().locator(".card-panel-detail p").count()).toBe(1);
@@ -1433,7 +1461,7 @@ describe("the chosen card, read in the right panel", () => {
       body: JSON.stringify({
         actor: "agent",
         session: SESSION,
-        commands: [{ kind: "annotate", board: "ajout-case", id: "E1", detail }],
+        commands: [{ kind: "annotate", board: "ajout-case", id: placed, detail }],
       }),
     });
     const shown = panel().locator(".card-panel-detail");
@@ -1469,7 +1497,7 @@ describe("the chosen card, read in the right panel", () => {
     const field = panel().locator("textarea.card-panel-editor");
     await panel().locator("button", { hasText: "Edit the detail" }).click();
     await field.waitFor({ state: "visible" });
-    expect(await field.getAttribute("aria-label")).toBe("Detail of E1");
+    expect(await field.getAttribute("aria-label")).toBe(`Detail of ${placed}`);
     // The whole detail from its first line: the field grows with its words.
     expect(await field.evaluate((f: HTMLTextAreaElement) => f.scrollHeight <= f.clientHeight + 2)).toBe(true);
     expect(await panel().locator(".card-panel-keys").textContent()).toContain("⌘/Ctrl+Enter saves");
@@ -1485,7 +1513,7 @@ describe("the chosen card, read in the right panel", () => {
   });
 
   test("E on a card opens its detail in the panel; another card chosen meanwhile waits", async () => {
-    await card("E1").focus();
+    await card(placed).focus();
     await page.keyboard.press("e");
     const field = panel().locator("textarea.card-panel-editor");
     await field.waitFor({ state: "visible" });
@@ -1493,20 +1521,20 @@ describe("the chosen card, read in the right panel", () => {
       true,
     );
     // Choosing another card does not take the words away: the panel stays on the one being written.
-    await card("E2").click();
-    expect(await panel().locator("h2").textContent()).toBe("Card E1");
+    await card(reserved).click();
+    expect(await panel().locator("h2").textContent()).toBe(`Card ${placed}`);
     await panel().locator("button", { hasText: "Cancel" }).click();
     await field.waitFor({ state: "hidden" });
-    expect(await panel().locator("h2").textContent()).toBe("Card E2");
-    await card("E1").click();
+    expect(await panel().locator("h2").textContent()).toBe(`Card ${reserved}`);
+    await card(placed).click();
   });
 
   test("the Session tab, once chosen, stays while the board changes under it", async () => {
     await page.locator("#tab-session").click();
     await panel().waitFor({ state: "hidden" });
-    await agent('rename E1 "Paiement accepté"', "ajout-case");
+    await agent(`rename ${placed} "Paiement accepté"`, "ajout-case");
     await until("the board has the new name", async () =>
-      ((await card("E1").textContent()) ?? "").includes("Paiement accepté"),
+      ((await card(placed).textContent()) ?? "").includes("Paiement accepté"),
     );
     expect(await page.locator(".session").isVisible()).toBe(true);
     await page.locator("#tab-detail").click();
@@ -1540,7 +1568,7 @@ describe("the chosen card, read in the right panel", () => {
     await page.locator("#tab-history").click();
     await page.keyboard.press("]");
     await until("the right panel is folded", foldedRight);
-    await card("E1").click();
+    await card(placed).click();
     await page.locator(".card-tools button", { hasText: "Detail" }).click();
     await until("the right panel is open again", async () => !(await foldedRight()));
     expect(await page.locator("#tab-detail").getAttribute("aria-selected")).toBe("true");
@@ -1554,18 +1582,18 @@ describe("the chosen card, read in the right panel", () => {
     await page.keyboard.press("]");
     await until("the right panel is folded", foldedRight);
     // Heard as well as seen: the name says the card has a detail.
-    expect(await card("E1").getAttribute("aria-label")).toContain(" · has a detail");
-    await card("E1").locator(".card-detail").click();
+    expect(await card(placed).getAttribute("aria-label")).toContain(" · has a detail");
+    await card(placed).locator(".card-detail").click();
     await until("the right panel is open again", async () => !(await foldedRight()));
     expect(await page.locator("#tab-detail").getAttribute("aria-selected")).toBe("true");
     expect(await panel().locator(".card-panel-name").textContent()).toBe(
-      (await elementOf("ajout-case", "E1"))?.label ?? null,
+      (await elementOf("ajout-case", placed))?.label ?? null,
     );
     // Read, not written: the detail is shown, no editor opened.
     expect(await page.locator(".card-panel.is-editing").count()).toBe(0);
     // Chosen already, it opens the tab again from another one.
     await page.locator("#tab-history").click();
-    await card("E1").locator(".card-detail").click();
+    await card(placed).locator(".card-detail").click();
     await until(
       "back on Detail",
       async () => (await page.locator("#tab-detail").getAttribute("aria-selected")) === "true",
@@ -1598,7 +1626,7 @@ describe("the chosen card, read in the right panel", () => {
     await page.setViewportSize({ width: 1024, height: 800 });
     try {
       await until("the narrow window folds the panel", foldedRight);
-      await card("E1").click();
+      await card(placed).click();
       await until("the panel unfolds for the card", async () => !(await foldedRight()));
       expect(await page.locator("#tab-detail").getAttribute("aria-selected")).toBe("true");
       await page.keyboard.press("Escape");
@@ -1612,10 +1640,10 @@ describe("the chosen card, read in the right panel", () => {
   test("a card chosen from Notes or History leaves the reader there; from Session it opens Detail, then gives Session back", async () => {
     const on = async (id: string) =>
       (await page.locator(`#tab-${id}`).getAttribute("aria-selected")) === "true";
-    const selected = async () => ((await card("E1").getAttribute("class")) ?? "").includes("is-selected");
+    const selected = async () => ((await card(placed).getAttribute("class")) ?? "").includes("is-selected");
     for (const reading of ["history", "notes"]) {
       await page.locator(`#tab-${reading}`).click();
-      await card("E1").click();
+      await card(placed).click();
       await until("the card is chosen", selected);
       expect(await on(reading)).toBe(true);
       await page.keyboard.press("Escape");
@@ -1623,7 +1651,7 @@ describe("the chosen card, read in the right panel", () => {
       expect(await on(reading)).toBe(true);
     }
     await page.locator("#tab-session").click();
-    await card("E1").click();
+    await card(placed).click();
     await until("Detail opened from Session", () => on("detail"));
     await page.keyboard.press("Escape");
     await until("Session given back", () => on("session"));
@@ -1731,51 +1759,53 @@ describe("the board for who cannot see it", () => {
       })),
     );
 
+  let [finished, after, before] = ["", "", ""];
+
   test("cards are read lane by lane, each lane a named group, whatever the order they were made in", async () => {
-    await agent(
+    [finished, after, before] = await agent(
       `board new "Lecture" --format kanban --id ${BOARD}\nadd task "Fini" --lane done\nadd task "Après" --lane todo\nadd task "Avant" --lane todo`,
     );
     await page.locator(".board-picker select").selectOption(BOARD);
-    await card("T3").waitFor();
-    // T3 was made last; it sits at the top of To do, so it is read first.
-    await agent("move T3 --lane todo --before T2", BOARD);
-    await until("T3 is read before T2", async () => (await labels())[0]?.ids?.[0] === "T3");
+    await card(before).waitFor();
+    // Made last, it sits at the top of To do, so it is read first.
+    await agent(`move ${before} --lane todo --before ${after}`, BOARD);
+    await until("Avant is read before Après", async () => (await labels())[0]?.ids?.[0] === before);
     expect(await labels()).toEqual([
-      { label: "To do", role: "group", ids: ["T3", "T2"] },
-      { label: "Done", role: "group", ids: ["T1"] },
+      { label: "To do", role: "group", ids: [before, after] },
+      { label: "Done", role: "group", ids: [finished] },
     ]);
-    expect(await page.locator('g.card[tabindex="0"]').getAttribute("data-id")).toBe("T3");
+    expect(await page.locator('g.card[tabindex="0"]').getAttribute("data-id")).toBe(before);
   });
 
   test("a card moved by the keyboard joins its new group, and the keyboard stays on it", async () => {
-    await card("T3").focus();
+    await card(before).focus();
     await page.keyboard.press("Shift+ArrowRight");
-    await until("T3 moved to Doing", async () => (await labels()).some((g) => g.label === "Doing"));
-    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe("T3");
-    expect((await labels()).find((g) => g.label === "Doing")?.ids).toEqual(["T3"]);
+    await until("Avant moved to Doing", async () => (await labels()).some((g) => g.label === "Doing"));
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe(before);
+    expect((await labels()).find((g) => g.label === "Doing")?.ids).toEqual([before]);
   });
 
   test("Undo is said, with what it took back", async () => {
     await page.keyboard.press("Control+z");
-    await until("T3 is back in To do", async () => (await labels())[0]?.ids?.includes("T3") === true);
+    await until("Avant is back in To do", async () => (await labels())[0]?.ids?.includes(before) === true);
     await page.locator(".spoken", { hasText: /^Undone: / }).waitFor({ state: "attached" });
     await page.keyboard.press("Control+Shift+z");
     await page.locator(".spoken", { hasText: "Done again" }).waitFor({ state: "attached" });
   });
 
   test("on a flow, a card tells where it leads and where it comes from, branches named", async () => {
-    await agent(
-      `board new "Lecture flow" --format flow --id ${FLOWING}\nadd step "Recevoir"\nadd decision "En stock ?" --from S1\nadd step "Expédier" --from D1 --edge oui`,
+    const [receive, stock, ship] = await agent(
+      `board new "Lecture flow" --format flow --id ${FLOWING}\nadd step "Recevoir" --alias r\nadd decision "En stock ?" --from @r --alias d\nadd step "Expédier" --from @d --edge oui`,
     );
     await page.locator(".board-picker select").selectOption(FLOWING);
-    await card("D1").waitFor();
-    expect(await card("D1").getAttribute("aria-description")).toBe(
-      "leads to S2 Expédier (oui) · comes from S1 Recevoir",
+    await card(stock).waitFor();
+    expect(await card(stock).getAttribute("aria-description")).toBe(
+      `leads to ${ship} Expédier (oui) · comes from ${receive} Recevoir`,
     );
     // Shift and an arrow cannot move a card a flow places from its links: the page says so.
-    await card("D1").focus();
+    await card(stock).focus();
     await page.keyboard.press("Shift+ArrowRight");
-    await page.locator(".toast", { hasText: "D1 is placed by its links" }).waitFor();
+    await page.locator(".toast", { hasText: `${stock} is placed by its links` }).waitFor();
     await agent(`board rm ${FLOWING}\nboard rm ${BOARD}`);
     await until("the page has left the boards removed", async () => {
       const shown = await page.locator(".board-picker select").inputValue();
@@ -1796,18 +1826,22 @@ describe("undoing a gesture Claude changed since (B8)", () => {
     await until(`${id} renamed on the page`, async () => (await labelOf(id)) === text);
   };
 
+  let [first, second] = ["", ""];
+
   test("the page asks first; Escape leaves everything as it was", async () => {
-    await agent(`board new "Écrase" --id ${BOARD}\nadd event "Avant" --col 1\nadd event "Deux" --col 2`);
+    [first, second] = await agent(
+      `board new "Écrase" --id ${BOARD}\nadd event "Avant" --col 1\nadd event "Deux" --col 2`,
+    );
     await page.locator(".board-picker select").selectOption(BOARD);
-    await card("E1").getByText("Avant").waitFor();
-    await renameOnPage("E1", "À moi");
-    await agent('rename E1 "À Claude"', BOARD);
-    await card("E1").getByText("À Claude").waitFor();
+    await card(first).getByText("Avant").waitFor();
+    await renameOnPage(first, "À moi");
+    await agent(`rename ${first} "À Claude"`, BOARD);
+    await card(first).getByText("À Claude").waitFor();
     await offered();
     await undo().click();
     await ask().waitFor({ state: "visible" });
     expect(await ask().locator("h2").textContent()).toBe("Claude changed it since. Undo anyway?");
-    expect(await ask().textContent()).toContain("Claude renames E1 to “À Claude”");
+    expect(await ask().textContent()).toContain(`Claude renames ${first} to “À Claude”`);
     expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Keep Claude's change");
     const before = (await workspace()).seq;
     await page.keyboard.press("Escape");
@@ -1819,29 +1853,29 @@ describe("undoing a gesture Claude changed since (B8)", () => {
   test("Undo anyway brings the old label back over Claude's", async () => {
     await undo().click();
     await ask().getByRole("button", { name: "Undo anyway" }).click();
-    await until("the old label is back", async () => (await labelOf("E1")) === "Avant");
+    await until("the old label is back", async () => (await labelOf(first)) === "Avant");
     await ask().waitFor({ state: "hidden" });
   });
 
   test("keeping Claude's change takes the gesture off the Undo list, with no error shown", async () => {
-    await renameOnPage("E2", "Moi");
-    await agent('rename E2 "Le sien"', BOARD);
-    await card("E2").getByText("Le sien").waitFor();
+    await renameOnPage(second, "Moi");
+    await agent(`rename ${second} "Le sien"`, BOARD);
+    await card(second).getByText("Le sien").waitFor();
     await undo().click();
     await ask().getByRole("button", { name: "Keep Claude's change" }).click();
     await ask().waitFor({ state: "hidden" });
-    // The rename of E1 was already taken back: with E2's gone too, nothing is left to undo.
+    // The rename of the first card was already taken back: with the second's gone too, nothing is left to undo.
     await until("the gesture left the Undo list", async () => await undo().isDisabled());
-    expect(await labelOf("E2")).toBe("Le sien");
+    expect(await labelOf(second)).toBe("Le sien");
     expect(await page.locator(".toast", { hasText: "refused" }).count()).toBe(0);
   });
 
   test("a card Claude removed since offers only to keep its change", async () => {
-    await agent('add event "Trois" --col 3', BOARD);
-    await card("E3").waitFor();
-    await renameOnPage("E3", "Mien");
-    await agent("rm E3", BOARD);
-    await card("E3").waitFor({ state: "detached" });
+    const [third] = await agent('add event "Trois" --col 3', BOARD);
+    await card(third).waitFor();
+    await renameOnPage(third, "Mien");
+    await agent(`rm ${third}`, BOARD);
+    await card(third).waitFor({ state: "detached" });
     await offered();
     await undo().click();
     await ask().waitFor({ state: "visible" });
@@ -1863,6 +1897,7 @@ describe("adding from the keyboard", () => {
         cls: el?.className ?? null,
       };
     });
+  let [first, above] = ["", ""];
 
   test("on an empty board, « Skip to the board » leads to the cards one can add", async () => {
     await agent(`board new "Ajout clavier" --format kanban --id ${BOARD}`);
@@ -1874,11 +1909,12 @@ describe("adding from the keyboard", () => {
   });
 
   test("the card just added has the keyboard, not the page", async () => {
+    first = mint(await workspace(), "T");
     await page.keyboard.press("Enter");
     await typeInEditor("Premier");
-    await card("T1").waitFor();
-    await until("the keyboard is on T1", async () => (await active()).id === "T1");
-    expect(await page.locator('g.card[tabindex="0"]').getAttribute("data-id")).toBe("T1");
+    await card(first).waitFor();
+    await until("the keyboard is on the card", async () => (await active()).id === first);
+    expect(await page.locator('g.card[tabindex="0"]').getAttribute("data-id")).toBe(first);
   });
 
   const lanes = () =>
@@ -1892,24 +1928,26 @@ describe("adding from the keyboard", () => {
     );
 
   test("Alt and an arrow add a card of its kind beside the focused one, and give it the keyboard", async () => {
-    await card("T1").focus();
+    const right = mint(await workspace(), "T");
+    await card(first).focus();
     await page.keyboard.press("Alt+ArrowRight");
     await typeInEditor("À droite");
-    await card("T2").waitFor();
-    await until("the keyboard is on T2", async () => (await active()).id === "T2");
-    expect(await lanes()).toEqual({ "To do": ["T1"], Doing: ["T2"] });
+    await card(right).waitFor();
+    await until("the keyboard is on the card added", async () => (await active()).id === right);
+    expect(await lanes()).toEqual({ "To do": [first], Doing: [right] });
 
-    await card("T1").focus();
+    above = mint(await workspace(), "T");
+    await card(first).focus();
     await page.keyboard.press("Alt+ArrowUp");
     await typeInEditor("Au-dessus");
-    await card("T3").waitFor();
-    expect((await lanes())["To do"]).toEqual(["T3", "T1"]);
+    await card(above).waitFor();
+    expect((await lanes())["To do"]).toEqual([above, first]);
   });
 
   test("one Undo takes the card added beside back", async () => {
     await page.keyboard.press("Control+z");
-    await card("T3").waitFor({ state: "detached" });
-    expect((await lanes())["To do"]).toEqual(["T1"]);
+    await card(above).waitFor({ state: "detached" });
+    expect((await lanes())["To do"]).toEqual([first]);
     await agent(`board rm ${BOARD}`);
     await until("the page has left the board removed", async () => {
       return (await page.locator(".board-picker select").inputValue()) !== BOARD;
@@ -1924,14 +1962,14 @@ describe("Claude waits for the human", () => {
   test("a pill in the header says so, from another board too, and leads to the board", async () => {
     const elsewhere = await page.locator(".board-picker select").inputValue();
     expect(elsewhere).not.toBe(BOARD);
-    await agent(
-      `board new "Attente" --id ${BOARD}\nadd event "Devis envoyé" --col 1\npass "Ton avis sur E1 ?"`,
+    const [sent] = await agent(
+      `board new "Attente" --id ${BOARD}\nadd event "Devis envoyé" --col 1\npass "Ton avis sur le devis ?"`,
     );
     await page.locator(".board-picker select").selectOption(elsewhere);
     await pill().waitFor();
     // Other boards of this run may wait too: they are counted after the name.
     expect(await pill().textContent()).toStartWith("Claude waits · Attente");
-    expect(await pill().getAttribute("title")).toBe("Ton avis sur E1 ?");
+    expect(await pill().getAttribute("title")).toBe("Ton avis sur le devis ?");
     // The tab says it too, for who looks at another one.
     expect(await page.title()).toStartWith("● Claude waits for you · ");
     // In the middle of the header, beside what Claude is doing.
@@ -1939,11 +1977,11 @@ describe("Claude waits for the human", () => {
     await shot("22-claude-waits");
 
     await pill().click();
-    await card("E1").getByText("Devis envoyé").waitFor();
+    await card(sent).getByText("Devis envoyé").waitFor();
     expect(await pill().textContent()).toStartWith("Claude waits for you");
     // Pressed, the pill says why: Claude's words, on the board they are about.
     await until("the words are said", async () =>
-      ((await page.locator(".toast").textContent()) ?? "").includes("Your turn: Ton avis sur E1 ?"),
+      ((await page.locator(".toast").textContent()) ?? "").includes("Your turn: Ton avis sur le devis ?"),
     );
   });
 
@@ -1976,37 +2014,47 @@ describe("an editor kept while the board changes under it", () => {
   const editor = () => page.locator(".card-editor");
   const labelOf = async (id: string): Promise<string | undefined> => (await elementOf(BOARD, id))?.label;
 
+  let [first, second, third] = ["", "", ""];
+
   test("Claude adds a card and renames another while a label is typed: the words stay, and are saved", async () => {
-    await agent(`board new "Garde" --id ${BOARD}\nadd event "Première" --col 1\nadd event "Seconde" --col 2`);
+    [first, second] = await agent(
+      `board new "Garde" --id ${BOARD}\nadd event "Première" --col 1\nadd event "Seconde" --col 2`,
+    );
     await page.locator(".board-picker select").selectOption(BOARD);
-    await card("E1").getByText("Première").waitFor();
-    await card("E1").dblclick();
+    await card(first).getByText("Première").waitFor();
+    await card(first).dblclick();
     await editor().fill("En cours de frappe");
-    await agent('add event "Arrivée entre-temps" --col 3\nrename E2 "Renommée par Claude"', BOARD);
-    await card("E3").waitFor();
-    await card("E2").getByText("Renommée par Claude").waitFor();
+    [third] = await agent(
+      `add event "Arrivée entre-temps" --col 3\nrename ${second} "Renommée par Claude"`,
+      BOARD,
+    );
+    await card(third).waitFor();
+    await card(second).getByText("Renommée par Claude").waitFor();
     expect(await editor().isVisible()).toBe(true);
     expect(await editor().inputValue()).toBe("En cours de frappe");
     expect(await editor().evaluate((field) => field === document.activeElement)).toBe(true);
     await editor().press("Enter");
-    await until("the label typed is saved", async () => (await labelOf("E1")) === "En cours de frappe");
+    await until("the label typed is saved", async () => (await labelOf(first)) === "En cours de frappe");
   });
 
   test("Claude renames the very card being edited: what the human types is kept, and wins", async () => {
-    await card("E2").dblclick();
+    await card(second).dblclick();
     await editor().fill("Mon libellé");
-    await agent('rename E2 "Celui de Claude"', BOARD);
-    await until("Claude's name reached the journal", async () => (await labelOf("E2")) === "Celui de Claude");
+    await agent(`rename ${second} "Celui de Claude"`, BOARD);
+    await until(
+      "Claude's name reached the journal",
+      async () => (await labelOf(second)) === "Celui de Claude",
+    );
     expect(await editor().inputValue()).toBe("Mon libellé");
     await editor().press("Enter");
-    await until("the human's label is saved", async () => (await labelOf("E2")) === "Mon libellé");
+    await until("the human's label is saved", async () => (await labelOf(second)) === "Mon libellé");
   });
 
   test("Claude removes the card being edited: the words are not lost without a word", async () => {
-    await card("E3").dblclick();
+    await card(third).dblclick();
     await editor().fill("Trop tard");
-    await agent("rm E3", BOARD);
-    await card("E3").waitFor({ state: "detached" });
+    await agent(`rm ${third}`, BOARD);
+    await card(third).waitFor({ state: "detached" });
     await editor().waitFor({ state: "hidden" });
     await page.locator(".toast", { hasText: "Trop tard" }).waitFor();
   });
@@ -2017,12 +2065,12 @@ describe("a save the companion does not answer", () => {
   const editor = () => page.locator(".card-editor");
 
   test("the page says it is saving, and a failed save gives the words back to the editor", async () => {
-    await agent(`board new "Envoi" --id ${BOARD}\nadd event "Avant" --col 1`);
+    const [before] = await agent(`board new "Envoi" --id ${BOARD}\nadd event "Avant" --col 1`);
     await page.locator(".board-picker select").selectOption(BOARD);
-    await card("E1").getByText("Avant").waitFor();
+    await card(before).getByText("Avant").waitFor();
     const held: import("playwright-core").Route[] = [];
     await page.route("**/api/commands", (route) => void held.push(route));
-    await card("E1").dblclick();
+    await card(before).dblclick();
     await editor().fill("Après");
     await editor().press("Enter");
     // Held: the words stay on screen, not editable, and the page says it is saving.
@@ -2045,7 +2093,7 @@ describe("a save the companion does not answer", () => {
     await editor().press("Enter");
     await until(
       "the label is saved once the companion answers",
-      async () => (await elementOf(BOARD, "E1"))?.label === "Après",
+      async () => (await elementOf(BOARD, before))?.label === "Après",
     );
     await editor().waitFor({ state: "hidden" });
     await page.locator(".error-bar").waitFor({ state: "hidden" });
@@ -2055,10 +2103,12 @@ describe("a save the companion does not answer", () => {
 
 describe("a reply handed over in one chord (T208)", () => {
   test("⌘↵ in a note's reply sends the reply, then hands the turn to Claude", async () => {
-    await agent(`board new "Accord" --id accord\nadd event "Livré" --col 1\nnote "Qui livre ?" --on E1`);
+    const [, who] = await agent(
+      `board new "Accord" --id accord\nadd event "Livré" --col 1 --alias l\nnote "Qui livre ?" --on @l`,
+    );
     await page.locator(".board-picker select").selectOption("accord");
     await page.locator("#tab-notes").click();
-    const reply = page.locator('.notes .thread[data-thread="N1"] .thread-reply [name^=reply-]');
+    const reply = page.locator(`.notes .thread[data-thread="${who}"] .thread-reply [name^=reply-]`);
     await reply.fill("Le transporteur");
     await reply.press("ControlOrMeta+Enter");
     await until("the reply and the hand-over are both recorded", async () => {
@@ -2080,7 +2130,7 @@ describe("every board at a glance (T90)", () => {
       `board new "Sprint du jeudi" --format kanban --id jeudi\nadd task "Livrer" --lane todo\nadd task "Tester" --lane todo`,
     );
     await agent(
-      `board new "Parcours client" --format flow --id parcours\nadd step "Commander" --id S1\nnote "Et le retour ?" --on S1`,
+      `board new "Parcours client" --format flow --id parcours\nadd step "Commander" --alias c\nnote "Et le retour ?" --on @c`,
     );
     await page.locator(".brand").click();
     await page.locator(".home .board-tile").first().waitFor();
@@ -2111,27 +2161,31 @@ describe("what the page said, kept in its tab (T89)", () => {
   const tab = () => page.locator("#tab-notices");
   const items = () => page.locator(".notices-list li");
 
+  let [one, two] = ["", ""];
+
   test("a notice said over an offer leaves the offer in the Notifications tab, still pressable", async () => {
-    await agent(`board new "Avis" --id ${BOARD}\nadd event "Un" --col 1\nadd event "Deux" --col 2`);
+    [one, two] = await agent(
+      `board new "Avis" --id ${BOARD}\nadd event "Un" --col 1\nadd event "Deux" --col 2`,
+    );
     await page.locator(".board-picker select").selectOption(BOARD);
     // What earlier tests had said, seen: from here the tab counts afresh.
     await tab().click();
     await page.locator("#tab-session").click();
-    await card("E1").focus();
+    await card(one).focus();
     await page.keyboard.press("Delete");
-    await page.locator(".toast", { hasText: "E1 removed." }).waitFor();
+    await page.locator(".toast", { hasText: `${one} removed.` }).waitFor();
     // Claude speaks over it: the toast says Claude's words, the tab keeps both.
     await agent(`board new "Ailleurs" --id ailleurs`);
     await page.locator(".toast", { hasText: "Claude created the board" }).waitFor();
     await tab().locator(".tab-count", { hasText: "2" }).waitFor();
     await tab().click();
     expect(await items().nth(0).textContent()).toContain("Claude created the board “Ailleurs”");
-    expect(await items().nth(1).textContent()).toContain("E1 removed.");
+    expect(await items().nth(1).textContent()).toContain(`${one} removed.`);
     await shot("62-notices-tab");
     // Seen: the count leaves the tab.
     await tab().locator(".tab-count").waitFor({ state: "hidden" });
     await items().nth(1).getByRole("button", { name: "Undo" }).click();
-    await until("E1 is back", async () => (await elementOf(BOARD, "E1")) !== undefined);
+    await until("the card is back", async () => (await elementOf(BOARD, one)) !== undefined);
     // Taken, the offer leaves the list: the line stays, its button goes.
     await items().nth(1).getByRole("button").waitFor({ state: "detached" });
     await agent("board rm ailleurs");
@@ -2140,28 +2194,33 @@ describe("what the page said, kept in its tab (T89)", () => {
   });
 
   test("an offer holds until the reader's next gesture, in the toast as in the tab", async () => {
-    await card("E2").focus();
+    await card(two).focus();
     await page.keyboard.press("Delete");
     await page.locator(".toast button", { hasText: "Undo" }).waitFor();
     // Another gesture: Undo would now take that one back, so the offer leaves everywhere.
-    await card("E1").dblclick();
+    await card(one).dblclick();
     await page.locator(".card-editor").fill("Un bis");
     await page.locator(".card-editor").press("Enter");
-    await until("the rename is saved", async () => (await elementOf(BOARD, "E1"))?.label === "Un bis");
+    await until("the rename is saved", async () => (await elementOf(BOARD, one))?.label === "Un bis");
     await page.locator(".toast button").waitFor({ state: "detached" });
     await tab().click();
-    expect(await items().filter({ hasText: "E2 removed." }).getByRole("button").count()).toBe(0);
+    expect(
+      await items()
+        .filter({ hasText: `${two} removed.` })
+        .getByRole("button")
+        .count(),
+    ).toBe(0);
     await agent(`board rm ${BOARD}`);
   });
 
   test("an error stays until dismissed, and the tab keeps it once", async () => {
-    await agent(`board new "Panne" --id panne\nadd event "Avant" --col 1`);
+    const [before] = await agent(`board new "Panne" --id panne\nadd event "Avant" --col 1`);
     await page.locator(".board-picker select").selectOption("panne");
-    await card("E1").getByText("Avant").waitFor();
+    await card(before).getByText("Avant").waitFor();
     const errors = page.locator(".notices-list li.is-error");
-    const before = await errors.count();
+    const already = await errors.count();
     await page.route("**/api/commands", (route) => void route.abort("connectionrefused"));
-    await card("E1").dblclick();
+    await card(before).dblclick();
     await page.locator(".card-editor").fill("Après");
     await page.locator(".card-editor").press("Enter");
     const bar = page.locator(".error-bar", { hasText: "nothing was saved" });
@@ -2171,11 +2230,11 @@ describe("what the page said, kept in its tab (T89)", () => {
     await page.unroute("**/api/commands");
     await page.locator(".card-editor").press("Escape");
     // Claude's change repaints the page: the error is neither gone nor said again.
-    await agent(`add event "Pendant" --col 2`, "panne");
-    await card("E2").waitFor();
+    const [during] = await agent(`add event "Pendant" --col 2`, "panne");
+    await card(during).waitFor();
     expect(await bar.isVisible()).toBe(true);
     await tab().click();
-    expect(await errors.count()).toBe(before + 1);
+    expect(await errors.count()).toBe(already + 1);
     await shot("63-error-bar");
     await bar.getByRole("button", { name: "Dismiss" }).click();
     await bar.waitFor({ state: "hidden" });
@@ -2189,35 +2248,35 @@ describe("many tabs open on the companion", () => {
   // A browser keeps six connections per host. With one event stream per tab,
   // the sixth tab's writes queued behind the streams and never left.
   test("the seventh tab still writes at once, and every tab hears it", async () => {
-    await agent(`board new "Onglets" --id ${BOARD}\nadd event "Ouverte partout" --col 1`);
+    const [open] = await agent(`board new "Onglets" --id ${BOARD}\nadd event "Ouverte partout" --col 1`);
     const context = await browser.newContext();
     const tabs: Page[] = [];
     for (let i = 0; i < 7; i++) {
       const tab = await context.newPage();
       tab.setDefaultTimeout(4000);
       await tab.goto(`${running.url}/#/b/${BOARD}`);
-      await tab.locator('g.card[data-id="E1"]').waitFor();
+      await tab.locator(`g.card[data-id="${open}"]`).waitFor();
       tabs.push(tab);
     }
     const last = tabs.at(-1) as Page;
-    const answered = await last.evaluate(async () => {
+    const answered = await last.evaluate(async (id) => {
       const started = performance.now();
       const response = await fetch("/api/commands", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           actor: "human",
-          commands: [{ kind: "rename", board: "", id: "E1", label: "" }],
+          commands: [{ kind: "rename", board: "", id, label: "" }],
         }),
         signal: AbortSignal.timeout(3000),
       }).catch(() => null);
       return { status: response?.status ?? "stalled", ms: performance.now() - started };
-    });
+    }, open);
     // Refused for its empty label, but answered: the request reached the companion.
     expect(answered.status).toBe(400);
     expect(answered.ms).toBeLessThan(1000);
-    await agent('add event "Vue partout" --col 2', BOARD);
-    for (const tab of tabs) await tab.locator('g.card[data-id="E2"]').waitFor();
+    const [seen] = await agent('add event "Vue partout" --col 2', BOARD);
+    for (const tab of tabs) await tab.locator(`g.card[data-id="${seen}"]`).waitFor();
     await agent(`board rm ${BOARD}`);
     await context.close();
   });
@@ -2244,10 +2303,12 @@ describe("a kanban's own lanes, from the page", () => {
     throw new Error(`no steady heading ${name}`);
   };
 
+  let there = "";
+
   test("the edge between two headings offers a lane; named, it is added there", async () => {
-    await agent(`board new "Colonnes" --format kanban --id ${BOARD}\nadd task "Là" --lane doing`);
+    [there] = await agent(`board new "Colonnes" --format kanban --id ${BOARD}\nadd task "Là" --lane doing`);
     await page.locator(".board-picker select").selectOption(BOARD);
-    await card("T1").waitFor();
+    await card(there).waitFor();
     const doing = await heading("Doing");
     // The label sits 14 px into its lane; the edge is the gap just left of the lane.
     await page.mouse.move(doing.x - 14 - 8, doing.y + doing.height / 2);
@@ -2267,7 +2328,7 @@ describe("a kanban's own lanes, from the page", () => {
   });
 
   test("`?` on a kanban says what D does there, and what the mouse does to lanes", async () => {
-    await card("T1").focus();
+    await card(there).focus();
     await page.keyboard.press("?");
     const sheet = page.locator("dialog.keys");
     await sheet.waitFor({ state: "visible" });
@@ -2317,7 +2378,7 @@ describe("a kanban's own lanes, from the page", () => {
     await shot("42-move-lane");
     await page.mouse.up();
     await until("Doing is first", async () => (await lanes()).join() === "doing,todo,lane-1,done");
-    expect((await elementOf(BOARD, "T1"))?.lane).toBe("doing");
+    expect((await elementOf(BOARD, there))?.lane).toBe("doing");
     // A double click on the name still renames it: the drag takes the heading only once it moves.
     await page.locator(".layer-heads .lane-label", { hasText: /^Doing$/ }).dblclick();
     await typeInEditor("En cours");
@@ -2350,7 +2411,7 @@ describe("a kanban's own lanes, from the page", () => {
     await page.keyboard.press("Delete");
     await page.locator(".toast", { hasText: "Lane En cours still has cards" }).waitFor();
     await page.keyboard.press("ArrowDown");
-    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe("T1");
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe(there);
     await agent(`board rm ${BOARD}`);
     await until("the page has left the board removed", async () => {
       return (await page.locator(".board-picker select").inputValue()) !== BOARD;
@@ -2363,29 +2424,31 @@ describe("a card reordered in its cell, by the mouse", () => {
   const stack = async (): Promise<string> =>
     ((await workspace()).boards.find((b) => b.id === BOARD)?.elements ?? []).map((e) => e.id).join();
 
+  let [one, two, three] = ["", "", ""];
+
   test("dropped on the upper half of a card, it lands before it; on its own place, nothing is sent", async () => {
-    await agent(
+    [one, two, three] = await agent(
       `board new "Pile" --id ${BOARD}\nadd event "Un" --col 1\nadd event "Deux" --col 1\nadd event "Trois" --col 1`,
     );
     await page.locator(".board-picker select").selectOption(BOARD);
-    await card("E3").waitFor();
+    await card(three).waitFor();
     const seq = (await workspace()).seq;
-    const three = await centre("E3");
-    await dragTo("E3", three.x, three.y + 3);
+    const at = await centre(three);
+    await dragTo(three, at.x, at.y + 3);
     await Bun.sleep(300);
     expect((await workspace()).seq).toBe(seq);
-    const one = await settled("E1");
-    await page.mouse.move(three.x, three.y);
+    const first = await settled(one);
+    await page.mouse.move(at.x, at.y);
     await page.mouse.down();
-    await page.mouse.move(one.x + one.width / 2, one.y + 4, { steps: 12 });
+    await page.mouse.move(first.x + first.width / 2, first.y + 4, { steps: 12 });
     await page.locator(".drop-line").waitFor();
     await shot("43-reorder-in-cell");
     await page.mouse.up();
-    await until("E3 is first in its cell", async () => (await stack()) === "E3,E1,E2");
-    expect((await elementOf(BOARD, "E3"))?.col).toBe(1);
+    await until("Trois is first in its cell", async () => (await stack()) === [three, one, two].join());
+    expect((await elementOf(BOARD, three))?.col).toBe(1);
     // The ear hears where it now sits: its step, its row, its rank in the cell.
-    await until("E3 is heard first in its cell", async () =>
-      ((await card("E3").getAttribute("aria-label")) ?? "").includes("step 1, row Event, 1 of 3"),
+    await until("Trois is heard first in its cell", async () =>
+      ((await card(three).getAttribute("aria-label")) ?? "").includes("step 1, row Event, 1 of 3"),
     );
   });
 
@@ -2393,17 +2456,17 @@ describe("a card reordered in its cell, by the mouse", () => {
     await agent("insert-col 1", BOARD);
     // The page has the empty step too: three numbers, the spare one included.
     await page.locator(".band-step-label", { hasText: /^3$/ }).waitFor();
-    const two = await page.locator(".band-step-label", { hasText: /^2$/ }).boundingBox();
-    const one = await page.locator(".band-step-label", { hasText: /^1$/ }).boundingBox();
-    if (!one || !two) throw new Error("no step numbers");
-    await page.mouse.move(two.x + two.width / 2, two.y + two.height / 2);
+    const second = await page.locator(".band-step-label", { hasText: /^2$/ }).boundingBox();
+    const first = await page.locator(".band-step-label", { hasText: /^1$/ }).boundingBox();
+    if (!first || !second) throw new Error("no step numbers");
+    await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2);
     await page.mouse.down();
-    await page.mouse.move(one.x + one.width / 2, one.y + one.height / 2, { steps: 12 });
+    await page.mouse.move(first.x + first.width / 2, first.y + first.height / 2, { steps: 12 });
     await page.locator(".drop-hint.is-lane-drop").waitFor();
     await shot("46-move-step");
     await page.mouse.up();
-    await until("the cards are in step 1", async () => (await elementOf(BOARD, "E1"))?.col === 1);
-    expect((await elementOf(BOARD, "E2"))?.col).toBe(1);
+    await until("the cards are in step 1", async () => (await elementOf(BOARD, one))?.col === 1);
+    expect((await elementOf(BOARD, two))?.col).toBe(1);
     await agent(`board rm ${BOARD}`);
     await until("the page has left the board removed", async () => {
       return (await page.locator(".board-picker select").inputValue()) !== BOARD;
@@ -2413,11 +2476,11 @@ describe("a card reordered in its cell, by the mouse", () => {
 
 describe("a story map's step taken by its heading", () => {
   test('anywhere along the heading but its edges, with no "+" in the way', async () => {
-    await agent(
+    const [, pay, story] = await agent(
       'board new "Poignée" --format story-map --id poignee\nadd activity "Chercher" --col 1\nadd activity "Payer" --col 2\nadd story "Par titre" --col 1',
     );
     await page.locator(".board-picker select").selectOption("poignee");
-    await card("S1").waitFor();
+    await card(story).waitFor();
     const two = await page.locator(".band-step-label", { hasText: /^2$/ }).boundingBox();
     const one = await page.locator(".band-step-label", { hasText: /^1$/ }).boundingBox();
     if (!one || !two) throw new Error("no step numbers");
@@ -2434,7 +2497,7 @@ describe("a story map's step taken by its heading", () => {
     await page.locator(".drop-hint.is-lane-drop").waitFor();
     expect(await page.locator("svg.sideco-board").getAttribute("class")).toContain("is-grabbing");
     await page.mouse.up();
-    await until("Payer is in step 1", async () => (await elementOf("poignee", "A2"))?.col === 1);
+    await until("Payer is in step 1", async () => (await elementOf("poignee", pay))?.col === 1);
     await agent("board rm poignee");
     await until("the page has left the board removed", async () => {
       return (await page.locator(".board-picker select").inputValue()) !== "poignee";
@@ -2449,7 +2512,7 @@ describe("a story map scrolled down", () => {
       `board new "Carte" --format story-map --id carte-longue\nadd activity "Trouver un livre" --col 1\nadd task "Chercher par titre" --col 1\n${stories}`,
     );
     await page.locator(".board-picker select").selectOption("carte-longue");
-    await card("S14").waitFor();
+    await page.locator("g.card", { hasText: "Story 14" }).waitFor();
     // The activity runs on into the spare step: the caption of step 1 is the first.
     const caption = page.locator(".heads-steps .step-caption", { hasText: "Trouver un livre" }).first();
     // At rest the activity is on the board itself: the caption would only say it twice.
@@ -2469,15 +2532,15 @@ describe("a story map scrolled down", () => {
 
 describe("a story map cut into slices", () => {
   test("draws each slice as a line under the stories, its name in the frozen margin", async () => {
-    await agent(
+    const [, , search] = await agent(
       `board new "Lots" --format story-map --id lots\nadd activity "Acheter" --col 1\nadd task "Chercher" --col 1\nadd story "Recherche simple" --col 1\nslice add "Lot 1"\nslice add "Plus tard"`,
     );
     await page.locator(".board-picker select").selectOption("lots");
-    await card("S1").waitFor();
+    await card(search).waitFor();
     const name = page.locator(".heads-rows .slice-label", { hasText: "Lot 1" });
     await name.waitFor();
     await page.locator(".heads-rows .slice-label", { hasText: "Plus tard" }).waitFor();
-    const story = await card("S1").boundingBox();
+    const story = await card(search).boundingBox();
     const line = await name.boundingBox();
     if (!story || !line) throw new Error("no story or no slice name");
     expect(line.y).toBeGreaterThan(story.y + story.height);
@@ -2494,21 +2557,21 @@ describe("a flow's branches named from the page", () => {
   const named = (src: string, dst: string) => conn(src, dst).locator("text.conn-label");
 
   test("a link takes a name from its toolbar or a double click, and an empty name comes off", async () => {
-    await agent(
-      'board new "Branches" --format flow --id branches\nadd decision "En stock ?"\nadd step "Expédier" --from D1 --edge oui\nadd step "Commander" --from D1',
+    const [stock, ship, order] = await agent(
+      'board new "Branches" --format flow --id branches\nadd decision "En stock ?" --alias d\nadd step "Expédier" --from @d --edge oui\nadd step "Commander" --from @d',
     );
     await page.locator(".board-picker select").selectOption("branches");
-    await conn("D1", "S2").waitFor();
+    await conn(stock, order).waitFor();
 
     // A click on the link opens its toolbar; Name opens the editor on its name.
-    await named("D1", "S1").click();
+    await named(stock, ship).click();
     await page.locator(".card-tools button", { hasText: "Name" }).click();
     expect(await page.locator("textarea.card-editor").inputValue()).toBe("oui");
     await typeInEditor("en stock");
-    await until("the branch is renamed", async () => (await named("D1", "S1").textContent()) === "en stock");
+    await until("the branch is renamed", async () => (await named(stock, ship).textContent()) === "en stock");
 
     // A double click on a link without a name names it.
-    const middle = await conn("D1", "S2")
+    const middle = await conn(stock, order)
       .locator("path")
       .first()
       .evaluate((path: SVGPathElement) => {
@@ -2518,14 +2581,14 @@ describe("a flow's branches named from the page", () => {
       });
     await page.mouse.dblclick(middle.x, middle.y);
     await typeInEditor("en rupture");
-    await named("D1", "S2").waitFor();
-    expect(await named("D1", "S2").textContent()).toBe("en rupture");
+    await named(stock, order).waitFor();
+    expect(await named(stock, order).textContent()).toBe("en rupture");
     await shot("51-flow-branches-named");
 
     // Emptied, the name comes off the link.
-    await named("D1", "S1").dblclick();
+    await named(stock, ship).dblclick();
     await typeInEditor("");
-    await named("D1", "S1").waitFor({ state: "detached" });
+    await named(stock, ship).waitFor({ state: "detached" });
 
     await agent("board rm branches");
     await until("the page has left the board removed", async () => {
@@ -2536,10 +2599,15 @@ describe("a flow's branches named from the page", () => {
 
 describe("a long flow in a wide window", () => {
   test("folds into columns side by side, and fits the window without scrolling", async () => {
-    const steps = Array.from({ length: 14 }, (_, i) => `add step "Étape ${i + 2}" --from S${i + 1}`);
-    await agent(['board new "Chaîne" --format flow --id chaine', 'add step "Étape 1"', ...steps].join("\n"));
+    const steps = Array.from(
+      { length: 14 },
+      (_, i) => `add step "Étape ${i + 2}" --from @s${i + 1} --alias s${i + 2}`,
+    );
+    await agent(
+      ['board new "Chaîne" --format flow --id chaine', 'add step "Étape 1" --alias s1', ...steps].join("\n"),
+    );
     await page.locator(".board-picker select").selectOption("chaine");
-    await card("S15").waitFor();
+    await page.locator("g.card", { hasText: "Étape 15" }).waitFor();
     const lefts = await page
       .locator("g.card")
       .evaluateAll((cards) => [...new Set(cards.map((c) => Math.round(c.getBoundingClientRect().left)))]);
@@ -2562,21 +2630,21 @@ describe("a tab opened on no board in particular", () => {
   const OTHER = "autre-session";
 
   test("keeps the board it shows when another one is created, and Undo acts on it", async () => {
-    await agent(`board new "Tenu" --format kanban --id ${MINE}\nadd task "Ici"`);
+    const [here] = await agent(`board new "Tenu" --format kanban --id ${MINE}\nadd task "Ici"`);
     const context = await browser.newContext();
     const tab = await context.newPage();
     tab.setDefaultTimeout(4000);
     await tab.goto(running.url);
     // The board shown is named in the address: it is that tab's own, not whichever came last.
     await tab.waitForFunction((id) => location.hash === `#/b/${id}`, MINE);
-    await tab.locator('g.card[data-id="T1"]').focus();
+    await tab.locator(`g.card[data-id="${here}"]`).focus();
     await tab.keyboard.press("Shift+ArrowRight");
-    await until("T1 moved", async () => (await elementOf(MINE, "T1"))?.lane === "doing");
+    await until("the task moved", async () => (await elementOf(MINE, here))?.lane === "doing");
     await agent(`board new "Autre session" --format kanban --id ${OTHER}`);
     await tab.locator(".toast", { hasText: "Autre session" }).waitFor();
     expect(await tab.evaluate(() => location.hash)).toBe(`#/b/${MINE}`);
     await tab.keyboard.press("Control+z");
-    await until("T1 is back", async () => (await elementOf(MINE, "T1"))?.lane === "todo");
+    await until("the task is back", async () => (await elementOf(MINE, here))?.lane === "todo");
     await agent(`board rm ${OTHER}\nboard rm ${MINE}`);
     await context.close();
   });
@@ -2607,11 +2675,15 @@ describe("tidying up", () => {
     });
   const marked = (): Promise<boolean> =>
     page.evaluate(() => (window as { sameDocument?: true }).sameDocument === true);
+  // The cards of "flux-sideco", as Claude adds them across the restarts.
+  let [started, resumed, latest] = ["", "", ""];
 
   test("a board Claude removes leaves the picker; the page moves to one that exists and says so", async () => {
-    await agent('board new "Brouillon" --format retro --id brouillon\nadd point "À jeter" --lane keep');
+    const [discard] = await agent(
+      'board new "Brouillon" --format retro --id brouillon\nadd point "À jeter" --lane keep',
+    );
     await page.locator(".board-picker select").selectOption("brouillon");
-    await card("P1").waitFor();
+    await card(discard).waitFor();
 
     await agent("board rm brouillon");
     await until("the removed board left the picker", async () => !(await listed()).includes("brouillon"));
@@ -2624,9 +2696,11 @@ describe("tidying up", () => {
   });
 
   test("the human removes a board from the page, after being asked once", async () => {
-    await agent('board new "À jeter" --format kanban --id a-jeter\nadd task "Rien" --lane todo');
+    const [nothing] = await agent(
+      'board new "À jeter" --format kanban --id a-jeter\nadd task "Rien" --lane todo',
+    );
     await page.locator(".board-picker select").selectOption("a-jeter");
-    await card("T1").waitFor();
+    await card(nothing).waitFor();
 
     const remove = page.locator(".board-menu button.remove-board");
     const sheet = page.locator("dialog.remove-board");
@@ -2664,12 +2738,12 @@ describe("tidying up", () => {
     running.stop();
     renameSync(join(root, ".sideco", "boards.jsonl"), join(root, ".sideco", "boards.jsonl.bak"));
     running = await start(root, port);
-    await agent('board new "Flux Sideco" --id flux-sideco\nadd event "Session démarrée" --col 1');
+    [started] = await agent('board new "Flux Sideco" --id flux-sideco\nadd event "Session démarrée" --col 1');
 
     for (let attempt = 0; attempt < 200 && (await listed()).join() !== "flux-sideco"; attempt++)
       await Bun.sleep(50);
     expect(await listed()).toEqual(["flux-sideco"]);
-    await card("E1").waitFor();
+    await card(started).waitFor();
     expect(await page.locator("g.card").count()).toBe(1);
     expect(page.url()).toEndWith("#/b/flux-sideco");
     expect(await status().textContent()).not.toContain("disconnected");
@@ -2682,23 +2756,23 @@ describe("tidying up", () => {
     await restart();
     // Once the tab follows the new run, its presence frame is sent: a card added then comes after it.
     for (let attempt = 0; attempt < 200 && running.hub.watching === 0; attempt++) await Bun.sleep(50);
-    await agent('add event "Session reprise" --col 2', "flux-sideco");
-    await card("E2").waitFor();
+    [resumed] = await agent('add event "Session reprise" --col 2', "flux-sideco");
+    await card(resumed).waitFor();
     expect(await marked()).toBe(true);
     forgiveTheCut(before);
   });
 
   test("a companion restarted with the same page keeps the card chosen, without a reload", async () => {
     const before = problems.length;
-    await card("E1").click();
-    const chosen = async () => ((await card("E1").getAttribute("class")) ?? "").includes("is-selected");
+    await card(started).click();
+    const chosen = async () => ((await card(started).getAttribute("class")) ?? "").includes("is-selected");
     await until("chosen", chosen);
     await mark();
     await restart();
     for (let attempt = 0; attempt < 200 && running.hub.watching === 0; attempt++) await Bun.sleep(50);
     // The tab replays the journal again: the card comes back chosen once it is done.
-    await agent('add event "Après le redémarrage" --col 3', "flux-sideco");
-    await card("E3").waitFor();
+    [latest] = await agent('add event "Après le redémarrage" --col 3', "flux-sideco");
+    await card(latest).waitFor();
     await until("chosen again after the restart", chosen);
     expect(await marked()).toBe(true);
     await page.keyboard.press("Escape");
@@ -2713,13 +2787,13 @@ describe("tidying up", () => {
     // The language a page opens in is part of it: started in French, the companion serves another build.
     await restart("fr");
     await reloaded;
-    await card("E2").waitFor();
+    await card(resumed).waitFor();
     expect(await marked()).toBe(false);
 
     // The page it got is the page served: it stays.
     await mark();
-    await agent('add event "Session rechargée" --col 3', "flux-sideco");
-    await card("E3").waitFor();
+    [latest] = await agent('add event "Session rechargée" --col 3', "flux-sideco");
+    await card(latest).waitFor();
     expect(await marked()).toBe(true);
     forgiveTheCut(before);
   });
@@ -2742,7 +2816,7 @@ describe("tidying up", () => {
     const reloaded = page.waitForEvent("load");
     await toast.locator("button", { hasText: "Reload" }).click();
     await reloaded;
-    await card("E3").waitFor();
+    await card(latest).waitFor();
     expect(await marked()).toBe(false);
     forgiveTheCut(before);
   });
@@ -2790,7 +2864,7 @@ describe("tidying up", () => {
     const reloaded = page.waitForEvent("load");
     await toast.locator("button", { hasText: "Reload" }).click();
     await reloaded;
-    await card("E3").waitFor();
+    await card(latest).waitFor();
   });
 
   test("the last board removed brings back the first screen", async () => {
@@ -2798,10 +2872,10 @@ describe("tidying up", () => {
     await page.locator(".home h1").waitFor();
     expect(await listed()).toEqual([]);
     expect(page.url()).not.toContain("#/b/");
-    await agent(
+    const [, placed] = await agent(
       'board new "Passage de commande" --id commande\nadd actor "Client" --col 1\nadd event "Commande passée" --col 1',
     );
-    await card("E1").waitFor();
+    await card(placed).waitFor();
   });
 });
 
@@ -2813,7 +2887,10 @@ describe("side panels folded away", () => {
 
   test("each folds into a rail, by its button or a key, and stays so after a reload", async () => {
     await page.locator(".board-picker select").selectOption("commande");
-    await card("E1").waitFor();
+    // The board made again as the last one: its event, whatever id it was given.
+    const board = (await workspace()).boards.find((b) => b.id === "commande");
+    const placed = board?.elements.find((e) => e.type === "event")?.id ?? "";
+    await card(placed).waitFor();
     const stage = await width(".stage");
     const left = page.locator(".left button.fold");
     expect(await left.getAttribute("aria-expanded")).toBe("true");
@@ -2832,7 +2909,7 @@ describe("side panels folded away", () => {
     await shot("54-panels-folded");
 
     await page.reload();
-    await card("E1").waitFor();
+    await card(placed).waitFor();
     expect([await folded("left"), await folded("right")]).toEqual([true, true]);
     await page.keyboard.press("[");
     await page.keyboard.press("]");
@@ -2844,13 +2921,13 @@ describe("side panels folded away", () => {
 
     // < and > too, a key away on a French keyboard, where [ and ] are not (T201): the sign shows the side.
     expect(await left.getAttribute("title")).toBe("Fold the palette (<)");
-    await card("E1").focus();
+    await card(placed).focus();
     await page.keyboard.press("<");
     await page.keyboard.press(">");
     expect([await folded("left"), await folded("right")]).toEqual([true, true]);
     expect(
       await page.evaluate(() => document.activeElement?.closest("g.card")?.getAttribute("data-id")),
-    ).toBe("E1");
+    ).toBe(placed);
     await page.keyboard.press("<");
     await page.keyboard.press(">");
     expect([await folded("left"), await folded("right")]).toEqual([false, false]);
@@ -2861,12 +2938,12 @@ describe("the card toolbar", () => {
   test("stands above its card, or under it when the card above would be hidden", async () => {
     const picker = page.locator(".board-picker select");
     const before = await picker.inputValue();
-    await agent(
+    const [stock, reserved] = await agent(
       'board new "Barre" --id barre\nadd aggregate "Stock" --col 1\nadd event "Stock réservé" --col 1',
     );
     await page.locator('.board-picker option[value="barre"]').waitFor({ state: "attached" });
     await picker.selectOption("barre");
-    await card("E1").waitFor();
+    await card(reserved).waitFor();
     const tools = page.locator(".card-tools");
     const box = async (locator: ReturnType<typeof page.locator>) => {
       const b = await locator.boundingBox();
@@ -2874,30 +2951,30 @@ describe("the card toolbar", () => {
       return b;
     };
     // The event has the aggregate right above it: the toolbar goes under.
-    await card("E1").click();
+    await card(reserved).click();
     await tools.waitFor();
     expect((await box(tools)).y).toBeGreaterThanOrEqual(
-      (await box(card("E1"))).y + (await box(card("E1"))).height,
+      (await box(card(reserved))).y + (await box(card(reserved))).height,
     );
     await page.keyboard.press("Escape");
     // Nothing above the aggregate but its row's band: the toolbar stays above.
-    await card("A1").click();
+    await card(stock).click();
     await tools.waitFor();
     const over = await box(tools);
-    expect(over.y + over.height).toBeLessThanOrEqual((await box(card("A1"))).y);
+    expect(over.y + over.height).toBeLessThanOrEqual((await box(card(stock))).y);
     await page.keyboard.press("Escape");
 
     // A card between two others in a lane: the toolbar goes beside it, over neither.
-    await agent(
+    const [one, two, three] = await agent(
       'board new "Pile" --format kanban --id pile\nadd task "Un" --lane todo\nadd task "Deux" --lane todo\nadd task "Trois" --lane todo',
     );
     await page.locator('.board-picker option[value="pile"]').waitFor({ state: "attached" });
     await picker.selectOption("pile");
-    await card("T3").waitFor();
-    await card("T2").click();
+    await card(three).waitFor();
+    await card(two).click();
     await tools.waitFor();
     const bar = await box(tools);
-    for (const other of ["T1", "T3"]) {
+    for (const other of [one, three]) {
       const r = await box(card(other));
       const meets =
         r.x < bar.x + bar.width &&
@@ -2916,16 +2993,16 @@ describe("the card toolbar", () => {
     await page.setViewportSize({ width: 760, height: 700 });
     // Put back whatever happens: a narrow window left behind fails the tests after this one.
     try {
-      await agent(
+      const [leave] = await agent(
         'board new "Loin" --format kanban --id loin\nadd task "Partir" --lane todo\nadd task "Rester" --lane todo',
       );
       await page.locator('.board-picker option[value="loin"]').waitFor({ state: "attached" });
       await picker.selectOption("loin");
-      await card("T1").waitFor();
+      await card(leave).waitFor();
       const tools = page.locator(".card-tools");
       const near = async () => {
         const [c, b, seen] = await Promise.all([
-          card("T1").boundingBox(),
+          card(leave).boundingBox(),
           tools.boundingBox(),
           page.locator(".canvas-scroll").boundingBox(),
         ]);
@@ -2939,11 +3016,11 @@ describe("the card toolbar", () => {
         );
         return inView && gap <= 12;
       };
-      await card("T1").click();
+      await card(leave).click();
       await tools.waitFor();
       // Done sends it to the last lane, out of a narrow window: it is brought into view, its toolbar with it.
       await page.keyboard.press("d");
-      await until("T1 in Done", async () => (await elementOf("loin", "T1"))?.lane === "done");
+      await until("the task in Done", async () => (await elementOf("loin", leave))?.lane === "done");
       await until("the card in view, its toolbar beside it", near);
       // The panels fold under 1100 px: until the board's width stops moving, the page may still bring
       // the card back (T154), and a scroll made before that would be undone.
@@ -2991,8 +3068,10 @@ describe("what Claude changed while the reader was away", () => {
     await page.locator(`svg[aria-label="Cards of “${title}”"]`).waitFor({ state: "attached" });
   };
 
+  let [placed, paid] = ["", ""];
+
   test("back on a board, the page says what Claude changed there meanwhile, and marks it", async () => {
-    await agent(
+    [placed] = await agent(
       'board new "Visite" --id visite\nadd event "Commande passée" --col 1\nadd event "Stock réservé" --col 2',
     );
     await agent('board new "Ailleurs" --id ailleurs\nadd event "Autre chose" --col 1');
@@ -3000,7 +3079,10 @@ describe("what Claude changed while the reader was away", () => {
     expect(await bar().isHidden()).toBe(true);
     await show("ailleurs", "Ailleurs");
     // While the reader looks elsewhere, Claude works on the first board.
-    await agent('rename E1 "Commande validée"\nadd event "Paiement accepté" --col 3', "visite");
+    [paid] = await agent(
+      `rename ${placed} "Commande validée"\nadd event "Paiement accepté" --col 3`,
+      "visite",
+    );
     // The page has heard it all: the board on screen keeps its last look at the newest event.
     const seq = (await workspace()).seq;
     await until("the page has heard Claude's changes", async () => {
@@ -3008,21 +3090,23 @@ describe("what Claude changed while the reader was away", () => {
       return (JSON.parse(seen) as Record<string, number>).ailleurs === seq;
     });
     await show("visite", "Visite");
-    await card("E3").waitFor();
+    await card(paid).waitFor();
     await bar().waitFor({ state: "visible" });
     expect(await bar().textContent()).toContain("Since your last visit, Claude made 2 changes here.");
     const marked = await page
       .locator("g.card.is-new")
       .evaluateAll((gs) => gs.map((g) => g.getAttribute("data-id")));
-    expect(marked.sort()).toEqual(["E1", "E3"]);
-    expect(await card("E1").getAttribute("aria-label")).toContain("Changed by Claude since your last visit");
+    expect(marked.sort()).toEqual([placed, paid].sort());
+    expect(await card(placed).getAttribute("aria-label")).toContain(
+      "Changed by Claude since your last visit",
+    );
     expect(await page.locator("g.card.is-new", { has: page.locator("text") }).count()).toBe(2);
     // A sign of its own, in a corner: not the dashed ring a note or a link points with.
-    const sign = card("E1").locator(".card-changed");
+    const sign = card(placed).locator(".card-changed");
     expect(await sign.count()).toBe(1);
     expect(await sign.locator("title").textContent()).toBe("Changed by Claude since your last visit");
     expect(
-      await card("E1")
+      await card(placed)
         .locator(".card-shape")
         .evaluate((shape) => getComputedStyle(shape).strokeDasharray),
     ).toBe("none");
@@ -3030,11 +3114,11 @@ describe("what Claude changed while the reader was away", () => {
     const next = bar().getByRole("button", { name: "Next changed card (2)" });
     const focused = () => page.evaluate(() => document.activeElement?.getAttribute("data-id") ?? null);
     await next.click();
-    await until("on the first changed card", async () => (await focused()) === "E1");
+    await until("on the first changed card", async () => (await focused()) === placed);
     await next.click();
-    await until("on the second", async () => (await focused()) === "E3");
+    await until("on the second", async () => (await focused()) === paid);
     await next.click();
-    await until("round to the first", async () => (await focused()) === "E1");
+    await until("round to the first", async () => (await focused()) === placed);
     await shot("59-since-last-visit");
 
     // In History, the moments missed stand out.
@@ -3048,17 +3132,17 @@ describe("what Claude changed while the reader was away", () => {
     expect(await page.locator("g.card.is-new").count()).toBe(0);
     expect(await page.locator(".moment-missed").count()).toBe(0);
     await page.reload();
-    await card("E3").waitFor();
+    await card(paid).waitFor();
     expect(await bar().isHidden()).toBe(true);
   });
 
   test("what Claude does while the board is on screen is seen arriving, not reported as missed", async () => {
-    await agent('add event "Facture envoyée" --col 4', "visite");
-    await card("E4").waitFor();
+    const [sent] = await agent('add event "Facture envoyée" --col 4', "visite");
+    await card(sent).waitFor();
     expect(await bar().isHidden()).toBe(true);
     expect(await page.locator("g.card.is-new").count()).toBe(0);
     await page.reload();
-    await card("E4").waitFor();
+    await card(sent).waitFor();
     expect(await bar().isHidden()).toBe(true);
   });
 });
@@ -3140,9 +3224,11 @@ describe("a lane's subtitle and a plan's axes, rewritten by the mouse", () => {
   const editor = () => page.locator("textarea.card-editor");
 
   test("a lane without a subtitle offers one under the pointer; written, then emptied, it comes and goes", async () => {
-    await agent('board new "Sous-titres" --format kanban --id colonnes-t118\nadd task "Là" --lane doing');
+    const [there] = await agent(
+      'board new "Sous-titres" --format kanban --id colonnes-t118\nadd task "Là" --lane doing',
+    );
     await page.locator(".board-picker select").selectOption("colonnes-t118");
-    await card("T1").waitFor();
+    await card(there).waitFor();
     const blank = page.locator('.layer-heads .lane-hint-blank[data-lane="doing"]');
     expect(await blank.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
     await page.locator('.layer-heads .lane-label[data-lane="doing"]').hover();
@@ -3191,9 +3277,11 @@ describe("a lane's subtitle and a plan's axes, rewritten by the mouse", () => {
   });
 
   test("an axis takes a new name and new words at its ends; emptied, each gives the workshop's back", async () => {
-    await agent('board new "Axes" --format impact-effort --id axes-t118\nadd item "Un" --lane quick');
+    const [one] = await agent(
+      'board new "Axes" --format impact-effort --id axes-t118\nadd item "Un" --lane quick',
+    );
     await page.locator(".board-picker select").selectOption("axes-t118");
-    await card("I1").waitFor();
+    await card(one).waitFor();
     const label = page.locator('.band-axis .axis-label[data-axis="y"]');
     await label.dblclick();
     expect(await editor().inputValue()).toBe("Impact");
@@ -3244,11 +3332,11 @@ describe("a plan's axes, from the keyboard", () => {
   const editor = () => page.locator("textarea.card-editor");
 
   test("each word of an axis is a key stop: Enter or F2 writes it on one line, and the keyboard comes back to it", async () => {
-    await agent(
+    const [one] = await agent(
       'board new "Axes clavier" --format impact-effort --id axes-t157\nadd item "Un" --lane quick\naxis y "Valeur"',
     );
     await page.locator(".board-picker select").selectOption("axes-t157");
-    await card("I1").waitFor();
+    await card(one).waitFor();
     const label = page.locator('.band-axis .axis-label[data-axis="y"]');
     await until("the axis named by the board", async () =>
       ((await label.getAttribute("aria-label")) ?? "").includes("Valeur"),
@@ -3290,23 +3378,22 @@ describe("a plan's axes, from the keyboard", () => {
 
 describe("labels on a card, from the page", () => {
   test("a card wears its labels as chips, says them, and the Detail tab adds and takes them off", async () => {
-    await agent(
+    const [fix, deliver] = await agent(
       [
         'board new "Étiquettes" --format kanban --id etiquettes',
         'add task "Corriger la connexion" --lane todo',
-        "label T1 type:bug @bastien",
         'add task "Livrer" --lane todo',
-        "label T2 env:prod",
       ].join("\n"),
     );
+    await agent(`label ${fix} type:bug @bastien\nlabel ${deliver} env:prod`, "etiquettes");
     await page.locator(".board-picker select").selectOption("etiquettes");
-    await card("T2").waitFor();
+    await card(deliver).waitFor();
     // On the card: a chip each, and its name says them.
     // The chip says the value, its colour the key; the name says the label whole.
-    expect(await card("T1").locator(".card-labels text").allTextContents()).toEqual(["bug", "@bastien"]);
-    expect(await card("T1").getAttribute("aria-label")).toContain("labels type:bug, @bastien");
+    expect(await card(fix).locator(".card-labels text").allTextContents()).toEqual(["bug", "@bastien"]);
+    expect(await card(fix).getAttribute("aria-label")).toContain("labels type:bug, @bastien");
 
-    await card("T1").click();
+    await card(fix).click();
     await page.getByRole("tab", { name: "Detail" }).click();
     const chips = page.locator(".card-panel-labels .label-chip");
     await until("the chips in the Detail tab", async () => (await chips.count()) === 2);
@@ -3322,36 +3409,36 @@ describe("labels on a card, from the page", () => {
     await field.press("Enter");
     await until(
       "two labels more",
-      async () => ((await elementOf("etiquettes", "T1"))?.labels ?? []).length === 4,
+      async () => ((await elementOf("etiquettes", fix))?.labels ?? []).length === 4,
     );
     await until("the field emptied", async () => (await field.inputValue()) === "");
 
     await page.getByRole("button", { name: "Remove the label @bastien" }).click();
     await until(
       "the assignee taken off",
-      async () => !((await elementOf("etiquettes", "T1"))?.labels ?? []).includes("assignee:bastien"),
+      async () => !((await elementOf("etiquettes", fix))?.labels ?? []).includes("assignee:bastien"),
     );
-    expect((await elementOf("etiquettes", "T1"))?.labels).toEqual(["type:bug", "urgent", "release:2026.12"]);
+    expect((await elementOf("etiquettes", fix))?.labels).toEqual(["type:bug", "urgent", "release:2026.12"]);
     await until("the page took it off too", async () => (await chips.count()) === 3);
     await shot("60-labels");
     await page.keyboard.press("Escape");
   });
 
   test("the keyboard stays in the labels: the field after Enter, the next × after one, and each change is said", async () => {
-    await agent(
+    const [sort] = await agent(
       ['board new "Clavier labels" --format kanban --id labels-t155', 'add task "Trier" --lane todo'].join(
         "\n",
       ),
     );
     await page.locator(".board-picker select").selectOption("labels-t155");
-    await card("T1").click();
+    await card(sort).click();
     await page.getByRole("tab", { name: "Detail" }).click();
     const field = page.locator(".label-field");
     await field.fill("alpha, beta, gamma");
     await field.press("Enter");
     await until(
       "three labels",
-      async () => ((await elementOf("labels-t155", "T1"))?.labels ?? []).length === 3,
+      async () => ((await elementOf("labels-t155", sort))?.labels ?? []).length === 3,
     );
     await until("the field emptied", async () => (await field.inputValue()) === "");
     const active = () =>
@@ -3369,7 +3456,7 @@ describe("labels on a card, from the page", () => {
     await page.getByRole("button", { name: "Remove the label beta" }).click();
     await until(
       "beta taken off",
-      async () => !((await elementOf("labels-t155", "T1"))?.labels ?? []).includes("beta"),
+      async () => !((await elementOf("labels-t155", sort))?.labels ?? []).includes("beta"),
     );
     await until("the keyboard on the next ×", async () => (await active()) === "Remove the label gamma");
     await until("the removal is said", async () =>
@@ -3378,14 +3465,14 @@ describe("labels on a card, from the page", () => {
     await page.keyboard.press("Enter");
     await until(
       "gamma taken off",
-      async () => !((await elementOf("labels-t155", "T1"))?.labels ?? []).includes("gamma"),
+      async () => !((await elementOf("labels-t155", sort))?.labels ?? []).includes("gamma"),
     );
     // The last one gone, the keyboard goes back to the one before, then to the field.
     await until("the keyboard on the × left", async () => (await active()) === "Remove the label alpha");
     await page.keyboard.press("Enter");
     await until(
       "no label left",
-      async () => ((await elementOf("labels-t155", "T1"))?.labels ?? []).length === 0,
+      async () => ((await elementOf("labels-t155", sort))?.labels ?? []).length === 0,
     );
     await until("the keyboard back in the field", async () => (await active()) === "field");
     await page.keyboard.press("Escape");
@@ -3394,29 +3481,26 @@ describe("labels on a card, from the page", () => {
 
 describe("the card chosen, through a reload", () => {
   test("a reload keeps the card chosen, and the keyboard on it", async () => {
-    await agent(
+    const [, two] = await agent(
       'board new "Rechargement" --format kanban --id recharge-t160\nadd task "Un" --lane todo\nadd task "Deux" --lane todo',
     );
     await page.locator(".board-picker select").selectOption("recharge-t160");
-    await card("T2").click();
+    await card(two).click();
     await until("chosen", async () =>
-      ((await card("T2").getAttribute("class")) ?? "").includes("is-selected"),
+      ((await card(two).getAttribute("class")) ?? "").includes("is-selected"),
     );
     await page.reload();
     await until("chosen again after the reload", async () =>
-      ((await card("T2").getAttribute("class")) ?? "").includes("is-selected"),
+      ((await card(two).getAttribute("class")) ?? "").includes("is-selected"),
     );
     await until("the keyboard on it", async () =>
-      page.evaluate(() => document.activeElement?.getAttribute("data-id") === "T2"),
+      page.evaluate((id) => document.activeElement?.getAttribute("data-id") === id, two),
     );
     // Left, it is not chosen again at the next reload.
     await page.keyboard.press("Escape");
-    await until(
-      "left",
-      async () => !((await card("T2").getAttribute("class")) ?? "").includes("is-selected"),
-    );
+    await until("left", async () => !((await card(two).getAttribute("class")) ?? "").includes("is-selected"));
     await page.reload();
-    await card("T2").waitFor();
+    await card(two).waitFor();
     await Bun.sleep(300);
     expect(await page.locator("g.card.is-selected").count()).toBe(0);
   });
@@ -3424,31 +3508,34 @@ describe("the card chosen, through a reload", () => {
 
 describe("a link to a card", () => {
   test("the address says the card chosen, and a link to a card opens its board on it, centred and lit up", async () => {
-    await agent(
+    const made = await agent(
       [
         'board new "Lien direct" --format kanban --id lien-t182',
         ...Array.from({ length: 40 }, (_, k) => `add task "Carte ${k + 1}" --lane todo`),
       ].join("\n"),
     );
     await page.locator(".board-picker select").selectOption("lien-t182");
-    await card("T1").click();
-    await until("the address names the card", async () => page.url().endsWith("#/b/lien-t182/T1"));
+    const [first] = made;
+    // Halfway down a long lane.
+    const far = made[19] ?? "";
+    await card(first).click();
+    await until("the address names the card", async () => page.url().endsWith(`#/b/lien-t182/${first}`));
     await page.keyboard.press("Escape");
     await until("and the board alone once it is left", async () => page.url().endsWith("#/b/lien-t182"));
 
     // Pasted in the address bar: from another board, to a card halfway down a long lane.
     await page.locator(".board-picker select").selectOption({ index: 0 });
-    await page.evaluate(() => {
-      location.hash = "#/b/lien-t182/T20";
-    });
-    const chosen = async () => ((await card("T20").getAttribute("class")) ?? "").includes("is-selected");
+    await page.evaluate((id) => {
+      location.hash = `#/b/lien-t182/${id}`;
+    }, far);
+    const chosen = async () => ((await card(far).getAttribute("class")) ?? "").includes("is-selected");
     await until("chosen", chosen);
-    expect(await card("T20").getAttribute("class")).toContain("is-fresh");
+    expect(await card(far).getAttribute("class")).toContain("is-fresh");
     await until("the keyboard on it", async () =>
-      page.evaluate(() => document.activeElement?.getAttribute("data-id") === "T20"),
+      page.evaluate((id) => document.activeElement?.getAttribute("data-id") === id, far),
     );
     // Centred: its middle near the middle of the board's frame.
-    const [frame, box] = [await page.locator(".canvas").boundingBox(), await card("T20").boundingBox()];
+    const [frame, box] = [await page.locator(".canvas").boundingBox(), await card(far).boundingBox()];
     if (!frame || !box) throw new Error("drawn");
     expect(Math.abs(box.y + box.height / 2 - (frame.y + frame.height / 2))).toBeLessThan(frame.height / 4);
     await page.keyboard.press("Escape");
@@ -3459,20 +3546,20 @@ describe("search across the boards, from the page", () => {
   const focused = () => page.evaluate(() => document.activeElement?.getAttribute("data-id") ?? null);
 
   test("Ctrl+K lists the cards found on every board as words are typed, and Enter goes to one elsewhere", async () => {
-    await agent(
+    const [read, pay] = await agent(
       [
         'board new "Recherche ici" --format kanban --id cherche-ici',
         'add task "Relire la note quetzal" --lane todo',
         'board new "Recherche ailleurs" --format kanban --id cherche-ailleurs',
         'add task "Payer la note quetzal du traiteur" --lane todo',
-        'add task "Réserver la salle" --lane todo',
-        'detail T2 "Après la note quetzal."',
+        'add task "Réserver la salle" --lane todo --alias salle',
+        'detail @salle "Après la note quetzal."',
       ].join("\n"),
     );
     await page.locator(".board-picker select").selectOption("cherche-ici");
-    await card("T1").waitFor();
+    await card(read).waitFor();
     await page.locator(".canvas").click({ position: { x: 4, y: 4 } });
-    const boardTop = async () => (await card("T1").boundingBox())?.y;
+    const boardTop = async () => (await card(read).boundingBox())?.y;
     const before = await boardTop();
     await page.keyboard.press("Control+k");
     const field = page.getByRole("combobox", { name: "Find a card" });
@@ -3485,24 +3572,24 @@ describe("search across the boards, from the page", () => {
     // The board shown first, its own card pointed; the others say their board, and where the words were.
     const texts = await options.allTextContents();
     expect(texts[0]).toContain("Relire la note quetzal");
-    expect(texts[1]).toBe("T1 Payer la note quetzal du traiteur Recherche ailleurs");
+    expect(texts[1]).toBe(`${pay} Payer la note quetzal du traiteur Recherche ailleurs`);
     expect(texts[2]).toContain("Après la note quetzal.");
     // The words asked are marked where they were found, as written there.
     expect(await options.first().locator("mark").allTextContents()).toEqual(["quetzal"]);
-    expect(await card("T1").getAttribute("class")).toContain("is-pointed");
+    expect(await card(read).getAttribute("class")).toContain("is-pointed");
     expect(await options.first().getAttribute("aria-selected")).toBe("true");
 
     await field.press("ArrowDown");
     expect(await field.getAttribute("aria-activedescendant")).toBe(await options.nth(1).getAttribute("id"));
-    expect(await page.locator(".find-count").textContent()).toMatch(/^2 \/ 3 · T1 Payer/);
+    expect(await page.locator(".find-count").textContent()).toMatch(new RegExp(`^2 / 3 · ${pay} Payer`));
     await shot("61-find");
     await field.press("Enter");
     // Another board: the page goes there, and the keyboard lands on the card.
     // The card's own address: the board, then the card.
-    await until("on the other board", async () => page.url().endsWith("#/b/cherche-ailleurs/T1"));
+    await until("on the other board", async () => page.url().endsWith(`#/b/cherche-ailleurs/${pay}`));
     await page.locator(".find-bar").waitFor({ state: "hidden" });
-    await until("the card has the keyboard", async () => (await focused()) === "T1");
-    expect(await card("T1").textContent()).toContain("Payer");
+    await until("the card has the keyboard", async () => (await focused()) === pay);
+    expect(await card(pay).textContent()).toContain("Payer");
   });
 });
 
@@ -3645,8 +3732,8 @@ describe("a long journal", () => {
 
   test("a page opens on the board as it stands, and fetches the journal's past only to travel back", async () => {
     await agent(`board new "Ancien" --format kanban --id ancien`);
-    await agent(`add task "Premier nom" --lane todo --id T1`, "ancien");
-    await agent(`rename T1 "Nom d'aujourd'hui"`, "ancien");
+    const [named] = await agent(`add task "Premier nom" --lane todo`, "ancien");
+    await agent(`rename ${named} "Nom d'aujourd'hui"`, "ancien");
     // Pushes the board's start out of the events a page opens with.
     await agent(`board new "Remplissage" --format kanban --id remplissage`);
     for (let batch = 0; batch < 2; batch++)
@@ -3664,12 +3751,12 @@ describe("a long journal", () => {
     await page.goto(`${running.url}/#/b/ancien`);
     await page.locator("g.card", { hasText: "Nom d'aujourd'hui" }).waitFor();
     // Live on, as before: what happens next is drawn.
-    await agent(`rename T1 "Nom de ce soir"`, "ancien");
+    await agent(`rename ${named} "Nom de ce soir"`, "ancien");
     await page.locator("g.card", { hasText: "Nom de ce soir" }).waitFor();
     expect(asked).toEqual([]);
 
     await openHistory();
-    await page.locator(".history-list .moment", { hasText: /Claude adds T1 / }).click();
+    await page.locator(".history-list .moment", { hasText: `Claude adds ${named} ` }).click();
     await page.locator(".banner").waitFor({ state: "visible" });
     await page.locator("g.card", { hasText: "Premier nom" }).waitFor();
     expect(asked).toHaveLength(1);

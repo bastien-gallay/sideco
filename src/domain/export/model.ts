@@ -8,8 +8,8 @@
 import { type Command, CommandError } from "../commands.ts";
 import { type Format, findFormat, findType, wearsDone } from "../formats.ts";
 import { isElementId } from "../ids.ts";
-import { idNumber } from "../minting.ts";
-import type { Board } from "../workspace.ts";
+import { heldBy, highestUsed, idNumber } from "../minting.ts";
+import type { Board, Workspace } from "../workspace.ts";
 
 export interface ModelElement {
   id?: string;
@@ -81,9 +81,10 @@ export function toModel(board: Board): Model {
 /**
  * The commands that rebuild a model as a new board. Elements keep the order of
  * the file, which is their stacking order, and the ids of the file, which is how
- * people refer to them.
+ * people refer to them; given the project's workspace, an id it already holds is
+ * given anew, since an id is given once in the whole project.
  */
-export function fromModel(input: unknown, board: string): Command[] {
+export function fromModel(input: unknown, board: string, ws?: Workspace): Command[] {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     throw new CommandError("a model file is a JSON object");
   }
@@ -153,9 +154,12 @@ export function fromModel(input: unknown, board: string): Command[] {
     }
 
   const elements = Array.isArray(model.elements) ? model.elements.map((e, i) => readElement(e, i, v1)) : [];
-  const idFor = idGiver(format, elements);
+  const idFor = idGiver(format, elements, ws);
+  // An id the project already holds is given anew, and the links follow it.
+  const renamed = new Map<string, string>();
   for (const e of elements) {
-    const id = e.id ?? idFor(e.type);
+    const id = (e.id && !(ws && heldBy(ws, e.id)) ? e.id : undefined) ?? idFor(e.type);
+    if (e.id && id && id !== e.id) renamed.set(e.id, id);
     commands.push({
       kind: "add",
       board,
@@ -172,18 +176,20 @@ export function fromModel(input: unknown, board: string): Command[] {
   }
   for (const edge of Array.isArray(model.edges) ? model.edges : []) {
     const [src, dst, label] = readEdge(edge, v1);
-    commands.push({ kind: "link", board, src, dst, label });
+    commands.push({ kind: "link", board, src: renamed.get(src) ?? src, dst: renamed.get(dst) ?? dst, label });
   }
   return commands;
 }
 
 /**
- * Ids for the elements that came without one, chosen above every id the file
- * names so that the two never collide whatever their order.
+ * Ids for the elements that came without one, or with one the project holds,
+ * chosen above every id the file names and the project used, so that none
+ * collide whatever their order.
  */
 function idGiver(
   format: Format | undefined,
   elements: readonly ModelElement[],
+  ws: Workspace | undefined,
 ): (type: string) => string | undefined {
   const highest = new Map<string, number>();
   for (const e of elements) {
@@ -192,7 +198,7 @@ function idGiver(
   return (typeId) => {
     const prefix = format ? findType(format, typeId)?.prefix : undefined;
     if (!prefix) return undefined;
-    const n = (highest.get(prefix) ?? 0) + 1;
+    const n = Math.max(highest.get(prefix) ?? 0, ws ? highestUsed(ws, prefix) : 0) + 1;
     highest.set(prefix, n);
     return `${prefix}${n}`;
   };

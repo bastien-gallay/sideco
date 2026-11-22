@@ -183,7 +183,7 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
     case "remove-board":
       return { events: [{ event: "BoardRemoved", board: b, title: board.title }] };
     case "add":
-      return add(board, format, cmd);
+      return add(ws, board, format, cmd);
     case "rename":
       if (requireElement(board, cmd.id).label === cmd.label) return unchanged();
       return { events: [{ event: "ElementRenamed", board: b, id: cmd.id, label: cmd.label }] };
@@ -277,7 +277,7 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       };
     case "note": {
       if (cmd.target) requireElement(board, cmd.target);
-      const id = mint(board, NOTE_PREFIX);
+      const id = mint(ws, NOTE_PREFIX);
       return {
         events: [{ event: "NoteAdded", board: b, id, text: cmd.text, target: cmd.target }],
         minted: id,
@@ -286,7 +286,7 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
     case "reply": {
       const note = requireNote(board, cmd.to);
       if (note.resolved) throw new CommandError(`note ${threadOf(note)} is resolved: open a new note`);
-      const id = mint(board, NOTE_PREFIX);
+      const id = mint(ws, NOTE_PREFIX);
       return {
         events: [
           { event: "NoteAdded", board: b, id, text: cmd.text, target: note.target, thread: threadOf(note) },
@@ -318,14 +318,14 @@ function noBoard(ws: Workspace, id: string): CommandError {
   return new CommandError(`no board "${id}" (boards: ${known})`);
 }
 
-function add(board: Board, format: Format, cmd: Extract<Command, { kind: "add" }>): BoardDecision {
+function add(ws: Workspace, board: Board, format: Format, cmd: BoardCommand & { kind: "add" }) {
   const type = findType(format, cmd.type);
   if (!type) {
     const allowed = format.types.map((t) => t.id).join(", ");
     throw new CommandError(`${format.name.en} has no "${cmd.type}" (types: ${allowed})`);
   }
   if (cmd.from) requireElement(board, cmd.from);
-  const id = cmd.id === undefined ? mint(board, type.prefix) : claim(board, type, cmd.id);
+  const id = cmd.id === undefined ? mint(ws, type.prefix) : claim(ws, type, cmd.id);
   const anchor = cmd.before === undefined ? undefined : requireElement(board, cmd.before);
   const { col, lane } = placeNew(board, format, type, {
     col: cmd.col ?? (format.layout === "timeline" ? anchor?.col : undefined),

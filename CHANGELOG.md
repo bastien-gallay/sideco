@@ -20,6 +20,13 @@ All notable changes to Sideco are listed here. The format follows
 
 ### Changed
 
+- An element id is given once in the whole project, per letter, no longer once
+  per board: a new card takes the next number of its letter across every board,
+  removed boards included, and `add --id` refuses an id another board holds or
+  held, naming that board. Notes follow the same rule; lanes and slices stay
+  numbered per board. `sideco import` gives a copied card a new id when the
+  project already holds its own, and its links follow. `sideco status` lists
+  the ids an older journal gave on several boards.
 - The JSON export (`model.json`) says its `version`: version 2 counts `col` from
   1, as the board does, and writes edges as `{src, dst, label}`. A file with no
   version is read as version 1, as before: `col` from 0, `[src, dst]` pairs, and

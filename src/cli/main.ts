@@ -21,16 +21,8 @@ import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.t
 import { fromModel } from "../domain/export/model.ts";
 import { FORMATS } from "../domain/formats.ts";
 import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale, WORDS } from "../domain/i18n.ts";
-import { type Board, findBoard, latestSession, sessionLabel, type Workspace } from "../domain/workspace.ts";
-import {
-  DEFAULT_PORT,
-  dataDir,
-  IDLE_GRACE_MS,
-  type JournalRead,
-  readJournal,
-  readWorkspace,
-  start,
-} from "../server/start.ts";
+import { type Board, findBoard, latestSession, type Workspace } from "../domain/workspace.ts";
+import { DEFAULT_PORT, dataDir, IDLE_GRACE_MS, readJournal, readWorkspace, start } from "../server/start.ts";
 import { addressOf } from "./address.ts";
 import {
   type Action,
@@ -44,7 +36,6 @@ import {
 import { openBrowser } from "./browser.ts";
 import { chooseBoard, defaultBoard, named } from "./choose.ts";
 import {
-  Blocked,
   ClientError,
   ensureServer,
   findRoot,
@@ -60,6 +51,7 @@ import {
 } from "./client.ts";
 import { hookFromStdin } from "./hook.ts";
 import { readSetting } from "./setting.ts";
+import { statusText, watchers } from "./status.ts";
 import { statusline } from "./statusline.ts";
 
 const HELP = `sideco — a visual companion for Claude Code
@@ -341,7 +333,7 @@ async function run(verb: string, rest: string[]): Promise<number> {
       const id =
         args.flags.get("id") ??
         slugify(typeof title === "string" ? title : file.replace(/^.*\//, "").replace(/\..*$/, ""));
-      const done = await post(server, actor, session, fromModel(model, id));
+      const done = await post(server, actor, session, fromModel(model, id, read()));
       console.log(`imported as board ${id} (seq ${done.seq})`);
       return 0;
     }
@@ -497,11 +489,6 @@ async function watched(server: Server, withinMs: number): Promise<boolean> {
   }
 }
 
-/** How many pages follow this companion right now. */
-async function watchers(server: Server): Promise<number> {
-  return (await get<{ watching?: number }>(server, "/health", 1000)).watching ?? 0;
-}
-
 function formatsText(): string {
   return FORMATS.map((f) => {
     const place =
@@ -522,30 +509,6 @@ function formatsText(): string {
 function boardsText(ws: Workspace): string {
   if (ws.boards.length === 0) return 'no board yet; create one with `sideco board new "Title"`';
   return ws.boards.map((b) => `${b.id}  ${b.format}  ${b.elements.length} elements  "${b.title}"`).join("\n");
-}
-
-async function statusText(root: string, journal: JournalRead): Promise<string> {
-  const ws = journal.workspace;
-  const server = await findServer(root).catch((error: unknown) => {
-    if (error instanceof Blocked) return "out of reach from this shell (a sandbox blocks local connections)";
-    throw error;
-  });
-  const session = latestSession(ws);
-  const watching = server && typeof server !== "string" ? await watchers(server).catch(() => 0) : 0;
-  const page =
-    watching > 0
-      ? `open in ${watching} window${watching === 1 ? "" : "s"}`
-      : "not open (open it with `sideco open`)";
-  return [
-    `workspace  ${root}`,
-    `server     ${typeof server === "string" ? server : server ? server.url : "not running (start it with `sideco open`)"}`,
-    `page       ${page}`,
-    `journal    seq ${ws.seq}, ${journal.events} events, ${Math.round(journal.bytes / 1024)} kB, read in ${Math.round(journal.ms)} ms, ${ws.boards.length} board${ws.boards.length === 1 ? "" : "s"}, ${ws.sessions.length} session${ws.sessions.length === 1 ? "" : "s"}`,
-    ...(session
-      ? [`session    ${sessionLabel(session)} is ${session.status} (all: \`sideco sessions\`)`]
-      : []),
-    ...ws.boards.map((b) => `board      ${b.id}  ${b.format}  ${b.elements.length} elements`),
-  ].join("\n");
 }
 
 function exportOne(ws: Workspace, args: Args): number {

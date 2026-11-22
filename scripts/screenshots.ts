@@ -106,7 +106,8 @@ add task "Sales dashboard" --lane doing
 add blocker "Bank API access" --lane doing
 add task "Accounting export" --lane todo
 add task "Loyalty discounts" --lane todo`,
-    human: `move T2 --lane done`,
+    // Ids are given once in the project: the story map above took T1 to T4, so "E-mail reminders" is T6.
+    human: `move T6 --lane done`,
     shot: "board",
   },
   {
