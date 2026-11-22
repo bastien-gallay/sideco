@@ -14,6 +14,7 @@ import {
   NOTE_PREFIX,
   SLICE_PREFIX,
 } from "./formats.ts";
+import { claim, mint } from "./minting.ts";
 import { reverse } from "./reverse.ts";
 import {
   addressee,
@@ -480,23 +481,6 @@ function homeOf(board: Board, type: ElementType): string {
 function requireOwnLanes(format: Format, verb: string): void {
   if (!format.ownLanes)
     throw new CommandError(`${format.name.en} boards have no lanes to ${verb}: their workshop sets them`);
-}
-
-function mint(board: Board, prefix: string): string {
-  return `${prefix}${(board.minted[prefix] ?? 0) + 1}`;
-}
-
-/** An id chosen by the caller is accepted only if no element, present or removed, ever had it. */
-function claim(board: Board, type: ElementType, id: string): string {
-  if (id.charAt(0) !== type.prefix && id.charAt(0) !== type.formerPrefix) {
-    throw new CommandError(`a ${type.id} id starts with ${type.prefix}, got ${id}`);
-  }
-  if (findElement(board, id) || board.retired.includes(id)) {
-    throw new CommandError(
-      `${id} was already used on "${board.id}"; ids are never reused (next: ${mint(board, type.prefix)})`,
-    );
-  }
-  return id;
 }
 
 function decideOnSession(ws: Workspace, cmd: SessionCommand, ctx: Context): SidecoEvent[] {

@@ -8,7 +8,8 @@
 import { type Command, CommandError } from "../commands.ts";
 import { type Format, findFormat, findType, wearsDone } from "../formats.ts";
 import { isElementId } from "../ids.ts";
-import { type Board, idNumber } from "../workspace.ts";
+import { idNumber } from "../minting.ts";
+import type { Board } from "../workspace.ts";
 
 export interface ModelElement {
   id?: string;

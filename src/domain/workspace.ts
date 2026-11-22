@@ -8,6 +8,7 @@
 import type { Actor, Recorded, Todo } from "./events.ts";
 import { LANE_PREFIX, lanesOf, SLICE_PREFIX } from "./formats.ts";
 import { handledAll } from "./handled-all.ts";
+import { remember } from "./minting.ts";
 import { applyToSession, follow, hasSpoken, type SessionRecorded } from "./sessions.ts";
 import {
   invert,
@@ -260,12 +261,6 @@ export function columnAfterMove(col: number, from: number, to: number): number {
 /** The highest column in use; 0 on an empty board, since columns are numbered from 1. */
 export function lastColumn(board: Board): number {
   return board.elements.reduce((max, e) => Math.max(max, e.col), 0);
-}
-
-/** The number part of an id shaped `<letter><digits>`, or 0. */
-export function idNumber(id: string): number {
-  const n = Number(id.slice(1));
-  return Number.isInteger(n) && n > 0 ? n : 0;
 }
 
 export function apply(ws: Workspace, e: Recorded): void {
@@ -533,11 +528,6 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
   }
   if (inverse) rememberGesture(board, e, inverse);
   supersede(board, e);
-}
-
-function remember(board: Board, id: string): void {
-  const prefix = id.charAt(0);
-  board.minted[prefix] = Math.max(board.minted[prefix] ?? 0, idNumber(id));
 }
 
 function touch(board: Board, id: string, seq: number, change: (el: Element) => void): Element | undefined {
