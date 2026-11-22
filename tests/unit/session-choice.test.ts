@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { boardAction } from "../../src/cli/argv.ts";
-import { describeSessions } from "../../src/domain/digest.ts";
+import { describeSessions } from "../../src/domain/project-digest.ts";
 import { hasSpoken } from "../../src/domain/sessions.ts";
 import { isOpen, STALE_SESSION_MS, sessionLabel, shownSession } from "../../src/domain/workspace.ts";
 import { describeEvent } from "../../src/web/event-words.ts";

@@ -8,6 +8,7 @@
 import type { Actor, Recorded, Todo } from "./events.ts";
 import { LANE_PREFIX, lanesOf, SLICE_PREFIX } from "./formats.ts";
 import { handledAll } from "./handled-all.ts";
+import { hasLabel, sameLabel } from "./labels.ts";
 import { remember } from "./minting.ts";
 import { applyToSession, follow, hasSpoken, type SessionRecorded } from "./sessions.ts";
 import {
@@ -204,24 +205,6 @@ export function findSession(ws: Workspace, id: string): Session | undefined {
 export function latestSession(ws: Workspace, keep = (_: Session) => true): Session | undefined {
   const kept = ws.sessions.filter(keep);
   return kept.reduce<Session | undefined>((a, s) => (a && a.lastSeq > s.lastSeq ? a : s), undefined);
-}
-
-/**
- * A label as it is kept: spaces at the edges dropped, runs of spaces made one;
- * `@name` is the short way to say `assignee:name`.
- */
-export function normalLabel(raw: string): string {
-  const said = raw.trim().replace(/\s+/g, " ");
-  return said.startsWith("@") && said.length > 1 ? `assignee:${said.slice(1)}` : said;
-}
-
-/** Two labels are one when they differ only by case. */
-export function sameLabel(a: string, b: string): boolean {
-  return a.toLowerCase() === b.toLowerCase();
-}
-
-export function hasLabel(el: { labels?: readonly string[] }, label: string): boolean {
-  return (el.labels ?? []).some((own) => sameLabel(own, label));
 }
 
 /** What a session goes by: its name, else the start of its id. */

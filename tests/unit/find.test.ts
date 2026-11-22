@@ -4,7 +4,7 @@
  * that `show ID` takes over.
  */
 import { describe, expect, test } from "bun:test";
-import { describeFind } from "../../src/domain/digest.ts";
+import { describeFind } from "../../src/domain/project-digest.ts";
 import { FLOW, KANBAN, table } from "../support.ts";
 
 describe("`sideco find`", () => {

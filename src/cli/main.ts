@@ -8,19 +8,14 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CommandError, slugify } from "../domain/commands.ts";
 import { decide } from "../domain/decide.ts";
-import {
-  describeBoard,
-  describeCard,
-  describeFind,
-  describeLabels,
-  describeSessions,
-} from "../domain/digest.ts";
+import { describeBoard, describeCard } from "../domain/digest.ts";
 import { ACTORS, type Actor } from "../domain/events.ts";
 import { toIndexHtml } from "../domain/export/html.ts";
 import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.ts";
 import { fromModel } from "../domain/export/model.ts";
 import { FORMATS } from "../domain/formats.ts";
 import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale, WORDS } from "../domain/i18n.ts";
+import { describeFind, describeLabels, describeSessions } from "../domain/project-digest.ts";
 import { type Board, findBoard, latestSession, type Workspace } from "../domain/workspace.ts";
 import { DEFAULT_PORT, dataDir, IDLE_GRACE_MS, readJournal, readWorkspace, start } from "../server/start.ts";
 import { addressOf } from "./address.ts";

@@ -7,13 +7,24 @@ import type { Actor, BoardEvent, SidecoEvent, Todo } from "./events.ts";
 import {
   type ElementType,
   type Format,
-  findFormat,
   findType,
   LANE_PREFIX,
   lanesOf,
   NOTE_PREFIX,
   SLICE_PREFIX,
 } from "./formats.ts";
+import {
+  noBoard,
+  refuse,
+  requireElement,
+  requireFormat,
+  requireLane,
+  requireNote,
+  requireOwnLanes,
+  requireSlice,
+  requireSliced,
+} from "./guards.ts";
+import { hasLabel, normalLabel, sameLabel } from "./labels.ts";
 import { claim, mint } from "./minting.ts";
 import { reverse } from "./reverse.ts";
 import {
@@ -24,11 +35,7 @@ import {
   findBoard,
   findElement,
   findSession,
-  hasLabel,
   lastColumn,
-  type Note,
-  normalLabel,
-  sameLabel,
   threadOf,
   type Workspace,
 } from "./workspace.ts";
@@ -313,11 +320,6 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
   }
 }
 
-function noBoard(ws: Workspace, id: string): CommandError {
-  const known = ws.boards.map((b) => b.id).join(", ") || "none yet";
-  return new CommandError(`no board "${id}" (boards: ${known})`);
-}
-
 function add(ws: Workspace, board: Board, format: Format, cmd: BoardCommand & { kind: "add" }) {
   const type = findType(format, cmd.type);
   if (!type) {
@@ -431,58 +433,11 @@ function stays(board: Board, format: Format, moved: Moved): boolean {
   return cell[cell.indexOf(el) + 1]?.id === moved.before;
 }
 
-function refuse(value: unknown, field: string, format: Format, why: string): void {
-  if (value !== undefined) throw new CommandError(`${format.name.en} boards take no \`${field}\`: ${why}`);
-}
-
-function requireFormat(id: string): Format {
-  const format = findFormat(id);
-  if (!format) throw new CommandError(`unknown format "${id}"`);
-  return format;
-}
-
-function requireElement(board: Board, id: string): Element {
-  const el = findElement(board, id);
-  if (!el) throw new CommandError(`no element ${id} on "${board.id}"`);
-  return el;
-}
-
-function requireNote(board: Board, id: string): Note {
-  const note = board.notes.find((n) => n.id === id);
-  if (!note) throw new CommandError(`no note ${id} on "${board.id}"`);
-  return note;
-}
-
-function requireSliced(format: Format): void {
-  if (!format.sliced) throw new CommandError(`${format.name.en} boards have no slices`);
-}
-
-function requireSlice(board: Board, slice: string): string {
-  const ids = (board.slices ?? []).map((s) => s.id);
-  if (!ids.includes(slice))
-    throw new CommandError(`no slice "${slice}" on "${board.id}" (slices: ${ids.join(", ") || "none"})`);
-  return slice;
-}
-
-function requireLane(board: Board, format: Format, lane: string): string {
-  const lanes = lanesOf(board);
-  if (!lanes.includes(lane)) {
-    throw new CommandError(`${format.name.en} has no lane "${lane}" (lanes: ${lanes.join(", ")})`);
-  }
-  return lane;
-}
-
 /** Where a card goes when no lane is said: its kind's home, when the board has it, else the first lane. */
 function homeOf(board: Board, type: ElementType): string {
   const lanes = lanesOf(board);
   return type.home && lanes.includes(type.home) ? type.home : (lanes[0] ?? "");
 }
-
-function requireOwnLanes(format: Format, verb: string): void {
-  if (!format.ownLanes)
-    throw new CommandError(`${format.name.en} boards have no lanes to ${verb}: their workshop sets them`);
-}
-
 function decideOnSession(ws: Workspace, cmd: SessionCommand, ctx: Context): SidecoEvent[] {
   if (!ctx.session) throw new CommandError(`\`${cmd.kind}\` needs a session`);
   const todos = findSession(ws, ctx.session)?.todos ?? [];

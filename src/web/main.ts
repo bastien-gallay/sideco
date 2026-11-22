@@ -9,6 +9,7 @@ import { toMermaid } from "../domain/export/mermaid.ts";
 import { markWords, queryWords } from "../domain/find.ts";
 import { boardPurpose, findFormat, findType, planAxis } from "../domain/formats.ts";
 import { asLocale, LOCALES } from "../domain/i18n.ts";
+import { sameLabel } from "../domain/labels.ts";
 import { chipText, labelColours } from "../domain/render/labels.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import { hasSpoken, TURNS_SHOWN } from "../domain/sessions.ts";
@@ -18,7 +19,6 @@ import {
   isOpen,
   readerOf,
   type Session,
-  sameLabel,
   sessionLabel,
   shownSession,
 } from "../domain/workspace.ts";

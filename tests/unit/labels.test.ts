@@ -5,8 +5,9 @@
  */
 import { describe, expect, test } from "bun:test";
 import { boardAction } from "../../src/cli/argv.ts";
-import { describeBoard, describeChanges, describeLabels } from "../../src/domain/digest.ts";
+import { describeBoard, describeChanges } from "../../src/domain/digest.ts";
 import { fromModel, toModel } from "../../src/domain/export/model.ts";
+import { describeLabels } from "../../src/domain/project-digest.ts";
 import { describeEvent } from "../../src/web/event-words.ts";
 import { FLOW, KANBAN, table } from "../support.ts";
 
