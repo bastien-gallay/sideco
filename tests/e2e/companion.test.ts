@@ -2838,6 +2838,19 @@ describe("side panels folded away", () => {
       async () => !(await folded("left")) && !(await folded("right")),
     );
     await until("the left panel is whole again", async () => (await width(".left")) > 200);
+
+    // < and > too, a key away on a French keyboard, where [ and ] are not (T201): the sign shows the side.
+    expect(await left.getAttribute("title")).toBe("Fold the palette (<)");
+    await card("E1").focus();
+    await page.keyboard.press("<");
+    await page.keyboard.press(">");
+    expect([await folded("left"), await folded("right")]).toEqual([true, true]);
+    expect(
+      await page.evaluate(() => document.activeElement?.closest("g.card")?.getAttribute("data-id")),
+    ).toBe("E1");
+    await page.keyboard.press("<");
+    await page.keyboard.press(">");
+    expect([await folded("left"), await folded("right")]).toEqual([false, false]);
   });
 });
 

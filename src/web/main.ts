@@ -709,7 +709,7 @@ function paintFolds(): void {
     button.setAttribute("aria-expanded", String(!folded));
     const label = folded ? t.showPanel[side] : t.hidePanel[side];
     button.setAttribute("aria-label", label);
-    button.title = `${label} (${side === "left" ? "[" : "]"})`;
+    button.title = `${label} (${side === "left" ? "<" : ">"})`;
     // The arrow points where the panel goes.
     button.textContent = (side === "left") === folded ? "›" : "‹";
   }
@@ -1911,8 +1911,9 @@ window.addEventListener("keydown", (event) => {
   if (event.ctrlKey || event.metaKey || event.altKey || typing(event.target)) return;
   if (event.key === "/" && shown().boards.length > 0) openFind();
   else if (event.key === "?") openKeys();
-  else if (event.key === "[") toggleFold("left");
-  else if (event.key === "]") toggleFold("right");
+  // < and > a key away on a French keyboard, [ and ] on an American one (T201).
+  else if (event.key === "<" || event.key === "[") toggleFold("left");
+  else if (event.key === ">" || event.key === "]") toggleFold("right");
   else return;
   event.preventDefault();
 });

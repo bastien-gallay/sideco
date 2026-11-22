@@ -562,7 +562,7 @@ const en: Messages = {
     ["⌘↵ / Ctrl+Enter", "Send to Claude, with the word typed for it"],
     ["Esc", "Close, cancel, deselect"],
     ["?", "These shortcuts"],
-    ["[ and ]", "Fold or show the left panel, the right panel"],
+    ["< and >, or [ and ]", "Fold or show the left panel, the right panel"],
     ...(how === "kanban"
       ? ([
           [
@@ -894,7 +894,7 @@ const fr: Messages = {
     ["⌘↵ / Ctrl+Entrée", "Envoyer à Claude, avec le mot écrit pour lui"],
     ["Échap", "Fermer, annuler, désélectionner"],
     ["?", "Ces raccourcis"],
-    ["[ et ]", "Replier ou afficher le panneau de gauche, celui de droite"],
+    ["< et >, ou [ et ]", "Replier ou afficher le panneau de gauche, celui de droite"],
     ...(how === "kanban"
       ? ([
           [
