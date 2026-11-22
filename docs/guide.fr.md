@@ -18,10 +18,17 @@ Sideco est le compagnon visuel de Claude Code : une page web locale, ouverte à 
 
 ## Démarrer
 
-Il faut [Bun](https://bun.sh) 1.4 ou plus récent. Aucune autre dépendance à l'exécution.
+Il faut [Bun](https://bun.sh) 1.4 ou plus récent. Aucune autre dépendance à l'exécution. Claude Code installe le plugin depuis GitHub, sans clone :
 
 ```sh
-# Dans ton projet : lance Claude Code avec le plugin
+claude plugin marketplace add bastien-gallay/sideco && claude plugin install sideco@sideco
+```
+
+Sans Bun, la même ligne l'installe d'abord : `curl -fsSL https://bun.sh/install | bash && …`. S'il manque, `sideco` le dit et donne cette commande, au lieu de `bun: not found`. Installé dans `~/.bun/bin` mais absent du `PATH` du shell d'un hook, il est trouvé quand même.
+
+Pour essayer un clone sans l'installer, dans ton projet :
+
+```sh
 cd /chemin/vers/ton-projet
 claude --plugin-dir /chemin/vers/sideco
 ```
@@ -37,7 +44,7 @@ Demande ensuite, dans le terminal : « modélisons le passage de commande sur le
 
 Tu peux aussi l'ouvrir toi-même, à tout moment : `/chemin/vers/sideco/bin/sideco open`. La variable `BROWSER` choisit le navigateur.
 
-Pour ne plus passer `--plugin-dir` à chaque fois, installe le plugin une fois ; le dépôt est sa propre place de marché :
+Un clone est aussi sa propre place de marché, pour installer ta version locale :
 
 ```sh
 claude plugin marketplace add /chemin/vers/sideco
@@ -87,18 +94,16 @@ Plusieurs sessions dans le même projet : le passage de main va à une seule : d
 
 Chacun de tes messages rappelle aussi à Claude l'adresse du compagnon de ce projet, en une ligne que tu ne vois pas, même après un compactage de la conversation. Quand il cite un tableau ou une carte dans sa réponse, il en fait un lien : `[T152](http://127.0.0.1:4747/#/b/backlog/T152)`. Un clic ouvre la page sur cette carte. `sideco url T152 --board backlog` imprime cette adresse, et `sideco show T152` la donne sous sa première ligne quand le compagnon tourne.
 
-Pour voir toi aussi l'adresse du compagnon, ajoute-la à la ligne d'état de Claude Code. `sideco statusline` lit la session que Claude Code lui passe et affiche `sideco · 127.0.0.1:4747`, cliquable (Cmd+clic) dans les terminaux qui le permettent (iTerm2, Kitty, WezTerm ; pas Terminal.app). Elle n'affiche rien hors d'un projet Sideco et ne démarre jamais le compagnon. Un plugin ne peut pas poser la ligne d'état : elle se règle dans `~/.claude/settings.json`.
-
-Sans ligne d'état à toi, pose celle de Sideco :
+Pour voir toi aussi l'adresse du compagnon, ajoute-la à la ligne d'état de Claude Code. `sideco statusline` lit la session que Claude Code lui passe et affiche `sideco · 127.0.0.1:4747`, cliquable (Cmd+clic) dans les terminaux qui le permettent (iTerm2, Kitty, WezTerm ; pas Terminal.app). Elle n'affiche rien hors d'un projet Sideco et ne démarre jamais le compagnon. Un plugin ne peut pas poser la ligne d'état : elle se règle dans `~/.claude/settings.json`. Demande à Claude de lancer `sideco statusline --install` : sans ligne d'état à toi, la commande pose celle de Sideco, en gardant le reste du fichier (sous `CLAUDE_CONFIG_DIR` s'il est défini). Elle vise le binaire de la place de marché, qui survit aux mises à jour, plutôt que la copie numérotée par version :
 
 ```json
-{ "statusLine": { "type": "command", "command": "sideco statusline" } }
+{ "statusLine": { "type": "command", "command": "~/.claude/plugins/marketplaces/sideco/bin/sideco statusline" } }
 ```
 
-Avec un script à toi, ajoute-lui ces deux lignes à la fin : l'adresse vient en dernière ligne de la barre, seulement dans un projet Sideco. Le script reçoit la session sur stdin, et la garde dans `$input` :
+Avec un script à toi, elle n'y touche pas et imprime les deux lignes à lui ajouter à la fin : l'adresse vient en dernière ligne de la barre, seulement dans un projet Sideco. Le script reçoit la session sur stdin, et la garde dans `$input` :
 
 ```bash
-sideco_line=$(printf '%s' "$input" | ~/sideco/bin/sideco statusline 2>/dev/null)
+sideco_line=$(printf '%s' "$input" | ~/.claude/plugins/marketplaces/sideco/bin/sideco statusline 2>/dev/null)
 [ -n "$sideco_line" ] && printf "%s\n" "$sideco_line"
 ```
 
@@ -115,7 +120,7 @@ echo 'export FORCE_HYPERLINK=1' >> ~/.zshrc
 | Terminal.app | ❌ pas de lien, l'adresse reste lisible |
 | tmux, SSH | ⚠️ peuvent retirer le lien |
 
-<sub>Source : `src/cli/statusline.ts` ; liens OSC 8 et `FORCE_HYPERLINK` : code.claude.com/docs/en/statusline, lue le 2026-11-21. `~/sideco` est le clone de l'installation ; `sideco` seul suffit s'il est dans le `PATH`.</sub>
+<sub>Source : `src/cli/statusline.ts` ; liens OSC 8 et `FORCE_HYPERLINK` : code.claude.com/docs/en/statusline, lue le 2026-11-21. Le chemin est celui d'une installation depuis GitHub ; `sideco statusline --install` imprime le bon pour la tienne.</sub>
 
 Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit comme un seul ajout. Signes : `+` ajouté, `−` supprimé, `~` modifié, `→` déplacé.
 

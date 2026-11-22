@@ -67,6 +67,7 @@ const HELP = `sideco — a visual companion for Claude Code
   sideco open                         start the companion if needed and show the page (a page already open is left alone)
   sideco url [BOARD | ID]             print its address, or a board's or a card's in the page
   sideco statusline                   its address for Claude Code's status line (the session's JSON on stdin)
+  sideco statusline --install         put it in Claude Code's status line (~/.claude/settings.json)
   sideco serve [--port N] [--lang L]  run it in the foreground
   sideco stop                         stop the companion; the journal stays. It also stops by itself
                                       5 min after the last page and session leave ($SIDECO_IDLE_MS, or off)
@@ -191,7 +192,7 @@ function isSystemError(error: unknown): error is Error {
 
 async function run(verb: string, rest: string[]): Promise<number> {
   if (verb === "hook") return hookFromStdin(rest.includes("--rewake"));
-  if (verb === "statusline") return statusline();
+  if (verb === "statusline") return statusline(rest.includes("--install"));
   const args = parseArgs(rest);
   const cwd = process.cwd();
 

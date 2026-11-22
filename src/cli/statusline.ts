@@ -8,6 +8,7 @@
  * it prints nothing.
  */
 import { findRoot, findServer } from "./client.ts";
+import { installStatusLine } from "./statusline-install.ts";
 
 /** The address of the companion of a workspace; undefined when none answers. */
 export type Locate = (root: string) => Promise<string | undefined>;
@@ -49,7 +50,8 @@ function directoryOf(input: string): string | undefined {
   return typeof dir === "string" && dir !== "" ? dir : undefined;
 }
 
-export async function statusline(): Promise<number> {
+export async function statusline(install = false): Promise<number> {
+  if (install) return installStatusLine();
   const line = await statusLineFor(await Bun.stdin.text());
   if (line !== "") console.log(line);
   return 0;

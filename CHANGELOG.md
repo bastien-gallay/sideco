@@ -4,6 +4,18 @@ All notable changes to Sideco are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Claude Code installs Sideco straight from GitHub, no clone needed:
+  `claude plugin marketplace add bastien-gallay/sideco && claude plugin install sideco@sideco`.
+- `sideco statusline --install` puts the companion's address in Claude Code's
+  status line, keeping the rest of `settings.json`; a status line of your own is
+  left alone, and the command prints the two lines to append to it.
+- Without Bun, `sideco` says how to install it instead of `bun: not found`, and
+  finds it in `~/.bun/bin` when a hook's shell does not have it in its `PATH`.
+
 ## [0.1.0] - 2026-11-20
 
 The first installable version: a live board, open in a browser beside the

@@ -16,27 +16,26 @@ A live, structured board beside the terminal: the agent lays out a flow, a backl
 
 ## Install
 
-You need [Bun](https://bun.sh) 1.4 or later and Claude Code. Sideco has no other runtime dependency.
+You need Claude Code and [Bun](https://bun.sh) 1.4 or later; Sideco has no other runtime dependency. Claude Code installs the plugin straight from GitHub, no clone needed:
 
 ```sh
-git clone https://github.com/bastien-gallay/sideco.git ~/sideco
-claude plugin marketplace add ~/sideco
-claude plugin install sideco@sideco
+claude plugin marketplace add bastien-gallay/sideco && claude plugin install sideco@sideco
+```
+
+Without Bun yet, install it first, in the same line:
+
+```sh
+curl -fsSL https://bun.sh/install | bash && claude plugin marketplace add bastien-gallay/sideco && claude plugin install sideco@sideco
 ```
 
 Then, in any project, start Claude Code and ask: *"let's model the checkout flow on the board"*. Claude creates the workspace, starts the companion and opens the page. There is nothing else to launch.
 
-To keep the companion's address in sight, put it in Claude Code's status line: `sideco statusline` prints `sideco · 127.0.0.1:4747`, a link where the terminal supports one, and nothing outside a Sideco project. A plugin cannot set the status line, so add it to `~/.claude/settings.json` yourself:
+To keep the companion's address in sight, put it in Claude Code's status line: it shows `sideco · 127.0.0.1:4747`, a link where the terminal supports one, and nothing outside a Sideco project. A plugin cannot set the status line; ask Claude to run `sideco statusline --install`, which writes it into `~/.claude/settings.json`. A status line of your own is left as it is: the command prints the two lines to append to your script instead.
 
-```json
-{ "statusLine": { "type": "command", "command": "~/sideco/bin/sideco statusline" } }
-```
-
-With a status line script of your own, the [guide](docs/guide.fr.md) gives the two lines to append to it.
-
-To try it without installing, pass the plugin for one session:
+To try a clone without installing it, pass the plugin for one session:
 
 ```sh
+git clone https://github.com/bastien-gallay/sideco.git ~/sideco
 claude --plugin-dir ~/sideco
 ```
 

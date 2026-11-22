@@ -3,7 +3,16 @@
  * what `tests/unit` cannot see (process start-up, the server note, stdin, exit codes).
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -660,6 +669,57 @@ describe("the status line of Claude Code", () => {
   test("outside a workspace it prints nothing and still succeeds", async () => {
     const line = await sideco(["statusline"], { stdin: JSON.stringify({ cwd: tmpdir() }), cwd: tmpdir() });
     expect(line).toEqual({ code: 0, out: "", err: "" });
+  });
+
+  test("`sideco statusline --install` sets it in Claude Code's settings, once, keeping the rest", async () => {
+    const config = mkdtempSync(join(tmpdir(), "sideco-config-"));
+    try {
+      writeFileSync(join(config, "settings.json"), JSON.stringify({ model: "opus" }));
+      const env = { CLAUDE_CONFIG_DIR: config };
+      const first = await sideco(["statusline", "--install"], { env });
+      expect(first.code).toBe(0);
+      expect(first.out).toContain("status line set in");
+      const settings = JSON.parse(readFileSync(join(config, "settings.json"), "utf8"));
+      expect(settings.model).toBe("opus");
+      expect(settings.statusLine).toEqual({ type: "command", command: `${SIDECO} statusline` });
+      const again = await sideco(["statusline", "--install"], { env });
+      expect(again.out).toContain("already shows Sideco");
+    } finally {
+      rmSync(config, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("Bun, the one thing Sideco needs", () => {
+  const bare = (home: string) =>
+    Bun.spawn(["/bin/sh", SIDECO, "help"], {
+      env: { PATH: "/usr/bin:/bin", HOME: home },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+  test("missing, the binary says what to install instead of `bun: not found`", async () => {
+    const home = mkdtempSync(join(tmpdir(), "sideco-home-"));
+    try {
+      const child = bare(home);
+      expect(await child.exited).toBe(1);
+      expect(await new Response(child.stderr).text()).toContain("curl -fsSL https://bun.sh/install | bash");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  test("installed in ~/.bun but not in the PATH, as a hook's shell may have it, it is found", async () => {
+    const home = mkdtempSync(join(tmpdir(), "sideco-home-"));
+    try {
+      mkdirSync(join(home, ".bun", "bin"), { recursive: true });
+      symlinkSync(process.execPath, join(home, ".bun", "bin", "bun"));
+      const child = bare(home);
+      expect(await child.exited).toBe(0);
+      expect(await new Response(child.stdout).text()).toContain("sideco statusline --install");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
   });
 });
 
