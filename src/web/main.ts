@@ -3,11 +3,11 @@
  * what Claude is doing on the right, time and the hand-over at the bottom.
  * Everything shown is a function of the journal; every gesture sends a command.
  */
-import { type Command, slugify } from "../domain/commands.ts";
+import type { Command } from "../domain/commands.ts";
 import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../domain/export/index.ts";
 import { toMermaid } from "../domain/export/mermaid.ts";
 import { markWords, queryWords } from "../domain/find.ts";
-import { boardPurpose, FORMATS, findFormat, findType, planAxis } from "../domain/formats.ts";
+import { boardPurpose, findFormat, findType, planAxis } from "../domain/formats.ts";
 import { asLocale, LOCALES } from "../domain/i18n.ts";
 import { chipText, labelColours } from "../domain/render/labels.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
@@ -23,6 +23,7 @@ import {
   shownSession,
 } from "../domain/workspace.ts";
 import { mountBoard } from "./board-view.ts";
+import { boardPicker, empty, newBoardSheet, openNewBoard, paintBoardPicker, paintEmpty } from "./boards.ts";
 import { clock, h, region } from "./dom.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
@@ -96,7 +97,6 @@ document.head.prepend(h("style", {}, SVG_STYLE));
 
 // ── Shell, built once ────────────────────────────────────────────────────────
 
-const boardPicker = h("div", { class: "board-picker" });
 const statusPill = h("div", { class: "status", role: "status", "aria-live": "polite" });
 const sessionPicker = h("div", { class: "session-picker" });
 /** Claude waits for the human: said just before the zoom, whatever board is on screen. */
@@ -124,7 +124,6 @@ const focusBar = h("div", { class: "focus-bar", hidden: true });
 /** What Claude changed on the board while the reader was away: said once, over the board, until they have seen it. */
 const visitBar = h("div", { class: "visit-bar", role: "status", hidden: true });
 const canvas = h("div", { class: "canvas" });
-const empty = h("div", { class: "empty", hidden: true });
 /** What Claude's session does, under the card panel: it scrolls on its own, to its latest step. */
 const sessionPanel = h("section", {
   class: "session",
@@ -384,7 +383,6 @@ const skip = h(
   },
   t.skipToBoard,
 );
-const dialog = h("dialog", { class: "sheet new-board" });
 const removal = h("dialog", { class: "sheet remove-board" });
 
 /** The reader's language: every language under its own name, so it is found whatever the page speaks. */
@@ -756,7 +754,7 @@ app.append(
   ),
   h("footer", { class: "bottom" }, turnBar),
   notices.bottom,
-  dialog,
+  newBoardSheet,
   removal,
   keysSheet,
   spoken,
@@ -803,31 +801,6 @@ function fit(): void {
 }
 
 // ── Regions: each repaints only when its own model changes ───────────────────
-
-interface BoardPickerModel {
-  boards: { id: string; title: string }[];
-  current: string | undefined;
-  live: boolean;
-}
-
-const paintBoardPicker = region(boardPicker, (m: BoardPickerModel) => {
-  return [
-    m.boards.length > 0 &&
-      h(
-        "select",
-        {
-          name: "board",
-          "aria-label": t.boardShown,
-          onchange: (event: Event) => openBoard((event.target as HTMLSelectElement).value),
-        },
-        ...m.boards.map((b) => h("option", { value: b.id, selected: b.id === m.current }, b.title)),
-      ),
-    // No board yet: creating one is the only thing to do, so it stays in sight.
-    m.boards.length === 0 &&
-      h("button", { type: "button", class: "quiet", onclick: () => openNewBoard() }, t.newBoardButton),
-  ];
-});
-
 // ── The Claude Code session the page tells about ─────────────────────────────
 
 /** The session the reader chose, kept in this browser across reloads. */
@@ -1324,31 +1297,6 @@ const paintFocus = region(
       : null,
   ],
 );
-
-const paintEmpty = region(empty, (m: { live: boolean }) => [
-  h("h1", {}, t.emptyTitle),
-  h("p", {}, t.emptyHint),
-  h(
-    "div",
-    { class: "formats" },
-    ...FORMATS.map((format) => formatCard(format.id, () => openNewBoard(format.id), !m.live)),
-  ),
-]);
-
-function formatCard(id: string, onPick: () => void, disabled = false): HTMLElement {
-  const format = findFormat(id);
-  return h(
-    "button",
-    { type: "button", class: "format", disabled, onclick: onPick },
-    h("span", { class: "format-name" }, format?.name[locale] ?? id),
-    h("span", { class: "format-purpose" }, format?.purpose[locale] ?? ""),
-    h(
-      "span",
-      { class: "format-swatches", "aria-hidden": "true" },
-      ...(format?.types ?? []).map((t) => h("span", { style: `background:${t.fill}` })),
-    ),
-  );
-}
 
 interface CardPanelModel {
   id: string;
@@ -1975,54 +1923,6 @@ window.addEventListener("keydown", (event) => {
 /** Meets each build the companion serves: a reload when no words would be lost, else an offer. */
 const meet = meetUpdates(say, () => [...drafts.values()].some((text) => text !== ""));
 
-function openNewBoard(formatId = "event-storming"): void {
-  const title = h("input", {
-    type: "text",
-    name: "title",
-    required: true,
-    maxlength: 120,
-    placeholder: t.titleExample,
-    "aria-label": t.boardTitle,
-  });
-  const choices = FORMATS.map((format) =>
-    h(
-      "label",
-      { class: "format choice" },
-      h("input", { type: "radio", name: "format", value: format.id, checked: format.id === formatId }),
-      h("span", { class: "format-name" }, format.name[locale]),
-      h("span", { class: "format-purpose" }, format.purpose[locale]),
-    ),
-  );
-  const create = async (event: Event): Promise<void> => {
-    event.preventDefault();
-    const format = new FormData(event.target as HTMLFormElement).get("format");
-    const name = title.value.trim();
-    if (!name || typeof format !== "string") return;
-    const id = freeId(slugify(name));
-    const done = await send({ kind: "create-board", board: id, title: name, format });
-    if (!done) return;
-    dialog.close();
-    openBoard(id);
-  };
-  dialog.replaceChildren(
-    h(
-      "form",
-      { onsubmit: (event: Event) => void create(event) },
-      h("h2", {}, t.newBoard),
-      h("label", { class: "field" }, t.title, title),
-      h("fieldset", {}, h("legend", {}, t.workshop), ...choices),
-      h(
-        "div",
-        { class: "actions" },
-        h("button", { type: "button", class: "quiet", onclick: () => dialog.close() }, t.cancel),
-        h("button", { type: "submit", class: "primary" }, t.create),
-      ),
-    ),
-  );
-  dialog.showModal();
-  title.focus();
-}
-
 /**
  * Removing a board takes it from Claude too, so the page asks first, and the
  * answer that keeps the board has the focus. Once removed, undoing is offered at once.
@@ -2048,15 +1948,6 @@ function askToRemove(id: string): void {
   );
   removal.showModal();
   keep.focus();
-}
-
-/** A board id not in use yet: the slug, or the slug with the first free number. */
-function freeId(slug: string): string {
-  if (!findBoard(state.live, slug)) return slug;
-  for (let n = 2; ; n++) {
-    const candidate = `${slug.slice(0, 36)}-${n}`;
-    if (!findBoard(state.live, candidate)) return candidate;
-  }
 }
 
 // ── The paint ────────────────────────────────────────────────────────────────
