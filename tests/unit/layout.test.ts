@@ -505,7 +505,7 @@ describe("a long flow folds into columns side by side, when the window is wide",
   const CHAIN = [
     'board new "Chaîne" --format flow --id chaine',
     'add step "Étape 1"',
-    ...Array.from({ length: 14 }, (_, i) => `add step "Étape ${i + 2}" --from S${i + 1}`),
+    ...Array.from({ length: 14 }, (_, i) => `add step "Étape ${i + 2}" --from F${i + 1}`),
   ].join("\n");
   const chain = table(CHAIN).board();
   const inside = (s: Segment, c: Card): boolean =>
@@ -524,7 +524,7 @@ describe("a long flow folds into columns side by side, when the window is wide",
     expect(xs.length).toBeGreaterThan(1);
     // Down a column, then on to the right, at the top again.
     for (let i = 1; i < 15; i++) {
-      const [a, b] = [card(scene, `S${i}`), card(scene, `S${i + 1}`)];
+      const [a, b] = [card(scene, `F${i}`), card(scene, `F${i + 1}`)];
       if (a.x === b.x) expect(b.y).toBeGreaterThan(a.y);
       else {
         expect(b.x).toBeGreaterThan(a.x);
