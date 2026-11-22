@@ -1739,6 +1739,11 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" });
     },
     focus: focusCard,
+    renamed(from, to) {
+      if (current === from) current = to;
+      if (editing?.from === from) editing.from = to;
+      if (document.activeElement === nodes.get(from)?.g) arriving = to;
+    },
     letGo() {
       if (dropped) dropped = false;
       else if (state.selected || state.linking) {

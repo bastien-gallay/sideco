@@ -24,6 +24,7 @@ import { t } from "./locale.ts";
 import { needsPast, withPast } from "./past.ts";
 import { postCommands } from "./post.ts";
 import type { Frame } from "./relay.ts";
+import { heldAfter, type Renumbering } from "./renumbered.ts";
 import { connect } from "./stream.ts";
 
 export interface State {
@@ -205,6 +206,7 @@ function receive(event: Recorded): void {
 function announce(event: Recorded): void {
   if ("board" in event && "id" in event && event.event !== "ElementRemoved")
     markFresh(`${event.board}/${event.event === "ElementRenumbered" ? event.to : event.id}`);
+  followRenumbered(event);
   if (event.event === "BoardRemoved") {
     if (event.actor === "agent") state.notice = t.agentRemovedBoard(event.title);
     leaveMissingBoard();
@@ -220,6 +222,20 @@ function announce(event: Recorded): void {
   if (state.boardId === null && !state.home) openBoard(event.board);
   else if (event.actor === "agent" && event.board !== state.boardId)
     state.notice = t.agentCreatedBoard(event.title);
+}
+
+/** Told, once the journal is caught up, of a card given a new id: the page moves onto it what it holds there. */
+export function onRenumbered(listener: (r: Renumbering) => void): void {
+  renumbered.push(listener);
+}
+const renumbered: ((r: Renumbering) => void)[] = [];
+
+/** A card renumbered: the card chosen and the start of a link go on under the new id, the address with them. */
+function followRenumbered(r: Recorded): void {
+  if (r.event !== "ElementRenumbered") return;
+  state.selected = heldAfter(state.selected, state.boardId, r);
+  state.linking = heldAfter(state.linking, state.boardId, r);
+  for (const listener of renumbered) listener(r);
 }
 
 export function markFresh(key: string): void {

@@ -23,6 +23,8 @@ export interface Words {
   addedBy: Record<Actor, string>;
   /** A card's tooltip, and its mark: what it stands for is done. */
   done: string;
+  /** Before the ids a card went by, renumbered since. */
+  formerly: string;
   /** An author, in a table cell. */
   who: Record<Actor, string>;
   step: string;
@@ -54,6 +56,7 @@ export const WORDS: Record<Locale, Words> = {
   en: {
     addedBy: { agent: "added by Claude", human: "added by you", system: "added by the system" },
     done: "done",
+    formerly: "formerly",
     who: { human: "human", agent: "agent", system: "system" },
     step: "Step",
     column: "Column",
@@ -79,6 +82,7 @@ export const WORDS: Record<Locale, Words> = {
   fr: {
     addedBy: { agent: "ajouté par Claude", human: "ajouté par toi", system: "ajouté par le système" },
     done: "fait",
+    formerly: "anciennement",
     who: { human: "humain", agent: "agent", system: "système" },
     step: "Étape",
     column: "Colonne",
@@ -103,3 +107,8 @@ export const WORDS: Record<Locale, Words> = {
     site: "Tableaux Sideco",
   },
 };
+
+/** The ids a card went by before it was renumbered, said in the reader's language: "formerly T1". */
+export function formerly(ids: readonly string[] | undefined, locale: Locale): string | undefined {
+  return ids && ids.length > 0 ? `${WORDS[locale].formerly} ${ids.join(", ")}` : undefined;
+}

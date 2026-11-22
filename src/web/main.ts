@@ -8,7 +8,7 @@ import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../do
 import { toMermaid } from "../domain/export/mermaid.ts";
 import { markWords, queryWords } from "../domain/find.ts";
 import { boardPurpose, findFormat, findType, planAxis } from "../domain/formats.ts";
-import { asLocale, LOCALES } from "../domain/i18n.ts";
+import { asLocale, formerly, LOCALES } from "../domain/i18n.ts";
 import { sameLabel } from "../domain/labels.ts";
 import { chipText, labelColours } from "../domain/render/labels.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
@@ -56,6 +56,7 @@ import {
   journalFor,
   linkedCard,
   markFresh,
+  onRenumbered,
   openBoard,
   send,
   settled,
@@ -1244,6 +1245,8 @@ const paintFocus = region(
 
 interface CardPanelModel {
   id: string;
+  /** The ids it went by, renumbered since: "formerly T1". */
+  former: string | undefined;
   label: string;
   type: string | undefined;
   /** None while it is being written: the field holds the words then. */
@@ -1364,6 +1367,11 @@ function labelChips(m: CardPanelModel): HTMLElement {
 
 /** The detail being written in the panel: its card, and where the keyboard was when it was asked for. */
 let detailEdit: { id: string; from: "card" | "panel" } | undefined;
+// A card given a new id keeps the words being written on it, and the keyboard (T224).
+onRenumbered((r) => {
+  if (r.board === state.boardId && detailEdit?.id === r.id) detailEdit = { ...detailEdit, id: r.to };
+  if (r.board === state.boardId) view.renamed(r.id, r.to);
+});
 /** Made once: the words being written keep their place and the keyboard through every repaint. */
 const detailField = h("textarea", {
   name: "detail",
@@ -1390,6 +1398,7 @@ let detailSaving = false;
 
 const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
   h("h2", {}, t.cardPanelOf(m.id)),
+  m.former && h("p", { class: "hint card-panel-former" }, m.former),
   h("p", { class: "card-panel-name" }, m.label),
   m.type !== undefined && h("p", { class: "hint" }, m.type),
   m.notes > 0 &&
@@ -2007,6 +2016,7 @@ function render(): void {
     const labelling = document.activeElement === labelField;
     paintCardPanel({
       id: chosen.id,
+      former: formerly(chosen.formerIds, locale),
       label: chosen.label,
       type: format && findType(format, chosen.type)?.label[locale],
       detail: editing ? undefined : chosen.detail,
