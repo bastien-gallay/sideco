@@ -23,8 +23,21 @@ All notable changes to Sideco are listed here. The format follows
   `sideco find` finds it by that id. An undo gives the old id back, and the
   gestures made before still undo. It settles the ids an older journal gave
   on several boards.
+- `sideco renumber --all` settles a project in one batch: every card minted
+  under a former letter takes the next id of its kind's letter, and every id an
+  older journal gave on several boards stays on one, a kanban first since
+  commits cite its ids, otherwise the board made first; the other holders take
+  the next of their letter. `--dry-run` lists the plan and writes nothing.
 
 ### Changed
+
+- One letter per concept in the whole project: a card's letter says what it is,
+  on any board. Event Storming: actor P (was X), policy R (was P), read model V
+  (was R), aggregate G (was A), external system X (was G). C4 context: system Y
+  (was S). Flow: step F (was S). Retrospective: point Q (was P), action T (was
+  A). Cards keep their ids until `sideco renumber --all`; `add --id` still takes
+  a former letter while no kind of the format holds it now. `sideco import`
+  gives a card written under a former letter the new one, its links following.
 
 - An element id is given once in the whole project, per letter, no longer once
   per board: a new card takes the next number of its letter across every board,

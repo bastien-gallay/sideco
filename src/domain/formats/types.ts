@@ -20,7 +20,7 @@ export type Shape = "sticky" | "sharp" | "box" | "pill" | "diamond" | "person";
 export interface ElementType {
   id: string;
   label: Text;
-  /** Ids are minted as `<prefix><n>`: E1, C2. One letter, unique within the format, never `N`. */
+  /** Ids are minted as `<prefix><n>`: E1, C2. One letter per concept in the whole project (formats.test.ts), never `N`. */
   prefix: string;
   fill: string;
   ink: string;
@@ -31,8 +31,12 @@ export interface ElementType {
   home?: string;
   /** The kind a card of this one leads to: the page offers, by `label`, to make one from it, linked. */
   leadsTo?: { type: string; label: Text };
-  /** A prefix the kind minted before: ids made then are still taken. */
-  formerPrefix?: string;
+  /**
+   * The letters the kind minted before, oldest first: a card made then keeps its id
+   * until `sideco renumber --all`, and one may still be chosen while no kind of the
+   * format holds it now.
+   */
+  formerPrefixes?: string[];
   /** On a format drawn in outline: this kind's colour on a dark page, as legible there as `fill` is on white. */
   dark?: string;
 }

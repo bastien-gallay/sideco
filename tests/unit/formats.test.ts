@@ -61,20 +61,45 @@ test("an element id names its type through its prefix", () => {
   expect(typeOfId(storming, "Z1")).toBeUndefined();
 });
 
-test("event storming keeps the prefixes its saved boards were minted with", () => {
-  const prefixes = Object.fromEntries(
-    (findFormat("event-storming")?.types ?? []).map((t) => [t.id, t.prefix]),
-  );
-  expect(prefixes).toEqual({
-    actor: "X",
+/** One letter per concept in the whole project (T206): a card's letter says what it is, on any board. */
+const LETTERS: Record<string, Record<string, string>> = {
+  "event-storming": {
+    actor: "P",
     command: "C",
-    aggregate: "A",
+    aggregate: "G",
     event: "E",
-    policy: "P",
-    readmodel: "R",
-    system: "G",
+    policy: "R",
+    readmodel: "V",
+    system: "X",
     hotspot: "H",
-  });
+  },
+  "c4-context": { person: "P", system: "Y", external: "X" },
+  flow: { step: "F", decision: "D", outcome: "O" },
+  retro: { point: "Q", action: "T" },
+  "story-map": { activity: "A", task: "T", story: "S" },
+  kanban: { task: "T", blocker: "B" },
+  "impact-effort": { item: "I" },
+};
+
+test("each format takes the letters of the project map", () => {
+  const letters = Object.fromEntries(
+    FORMATS.map((f) => [f.id, Object.fromEntries(f.types.map((t) => [t.id, t.prefix]))]),
+  );
+  expect(letters).toEqual(LETTERS);
+});
+
+test("a kind keeps the letters it minted before, never one another kind of its format holds", () => {
+  for (const format of FORMATS) {
+    const current = new Set(format.types.map((t) => t.prefix));
+    for (const type of format.types) {
+      expect(type.formerPrefixes?.includes(type.prefix) ?? false).toBe(false);
+    }
+    expect(current.size).toBe(format.types.length);
+  }
+  const storming = findFormat("event-storming");
+  expect(storming?.types.find((t) => t.id === "actor")?.formerPrefixes).toEqual(["X"]);
+  expect(findFormat("flow")?.types.find((t) => t.id === "step")?.formerPrefixes).toEqual(["S"]);
+  expect(findFormat("retro")?.types.find((t) => t.id === "point")?.formerPrefixes).toEqual(["K", "P"]);
 });
 
 function luminance(hex: string): number {

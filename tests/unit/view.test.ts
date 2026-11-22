@@ -133,10 +133,10 @@ describe("unreadOn is what the pending digest names on one board: the cards and 
     unreadOn(pendingChanges(t.events, session(t)), board);
 
   test("a card the human renamed and a thread they answered, until the changes are delivered", () => {
-    const t = withSession().script('note "Qui réserve ?" --on P1');
+    const t = withSession().script('note "Qui réserve ?" --on R1');
     expect(unread(t)).toEqual({ cards: [], threads: [] });
     t.script('rename E1 "Validée"\nreply N1 "L\'entrepôt"', "human");
-    expect(unread(t)).toEqual({ cards: ["E1", "P1"], threads: ["N1"] });
+    expect(unread(t)).toEqual({ cards: ["E1", "R1"], threads: ["N1"] });
     t.do({ kind: "delivered", upTo: t.seq }, "system", "s1");
     expect(unread(t)).toEqual({ cards: [], threads: [] });
     t.script('rename E2 "Réservé"', "human");
@@ -187,16 +187,16 @@ describe("describeEvent words one journal line for the history", () => {
     expect(line(t)).toBe("You move E2");
     t.script("rm H1", "human");
     expect(line(t)).toBe("You remove H1");
-    t.script("link E2 P1");
-    expect(line(t)).toBe("Claude links E2 → P1");
+    t.script("link E2 R1");
+    expect(line(t)).toBe("Claude links E2 → R1");
     t.script('focus E1 --why "ici"');
     expect(line(t)).toBe("Claude puts the focus on E1: ici");
-    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
-    expect(line(t)).toBe("You note on P1: Qui réserve ?");
+    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "R1" }, "human");
+    expect(line(t)).toBe("You note on R1: Qui réserve ?");
     t.script('reply N1 "L\'entrepôt"');
-    expect(line(t)).toBe("Claude replies to N1 on P1: L'entrepôt");
+    expect(line(t)).toBe("Claude replies to N1 on R1: L'entrepôt");
     t.script('reply N1 "Toujours ?"', "human");
-    expect(line(t)).toBe("You reply to N1 on P1: Toujours ?");
+    expect(line(t)).toBe("You reply to N1 on R1: Toujours ?");
     t.do({ kind: "pass", board: "commande", to: "agent" }, "human");
     expect(line(t)).toBe("You send to Claude");
     t.script('pass "à toi"');
@@ -268,8 +268,8 @@ describe("in French, when the reader asks for it", () => {
     expect(describeEvent(t.events[0] as never, "fr")).toBe("Claude crée le tableau « Passage de commande »");
     t.script('rename E1 "Validée"', "human");
     expect(line()).toBe("Tu renommes E1 en « Validée »");
-    t.script('note "Qui réserve ?" --on P1\nreply N1 "L\'entrepôt"');
-    expect(line()).toBe("Claude répond à N1 sur P1 : L'entrepôt");
+    t.script('note "Qui réserve ?" --on R1\nreply N1 "L\'entrepôt"');
+    expect(line()).toBe("Claude répond à N1 sur R1 : L'entrepôt");
     t.script('note "Et le reste ?"\nreply N3 "Plus tard"', "human");
     expect(line()).toBe("Tu réponds à N3 : Plus tard");
     t.do({ kind: "pass", board: "commande", to: "agent" }, "human");
@@ -336,13 +336,13 @@ describe("the page's own words", () => {
 
 describe("discussions are the open notes as the page shows them, thread by thread", () => {
   test("each one names its card, lists its messages in order, and says who is waited for", () => {
-    const t = table(ORDERING).script('note "Qui réserve ?" --on P1\nnote "Et le reste ?"');
+    const t = table(ORDERING).script('note "Qui réserve ?" --on R1\nnote "Et le reste ?"');
     t.script('reply N1 "L\'entrepôt"\nnote "Réglé" --on E1', "human");
     t.script("resolve N4");
     expect(discussions(t.board())).toEqual([
       {
         id: "N1",
-        on: { id: "P1", label: "Quand commande passée, réserver le stock" },
+        on: { id: "R1", label: "Quand commande passée, réserver le stock" },
         waits: "claude",
         notes: [
           { id: "N1", by: "agent", text: "Qui réserve ?" },
@@ -354,15 +354,15 @@ describe("discussions are the open notes as the page shows them, thread by threa
   });
 
   test("a discussion outlives its card: the id stays, the label is gone", () => {
-    const t = table(ORDERING).script('note "Qui réserve ?" --on P1\nrm P1');
-    expect(discussions(t.board())).toMatchObject([{ id: "N1", on: { id: "P1", label: undefined } }]);
+    const t = table(ORDERING).script('note "Qui réserve ?" --on R1\nrm R1');
+    expect(discussions(t.board())).toMatchObject([{ id: "N1", on: { id: "R1", label: undefined } }]);
   });
 
   test("the page's words for a discussion", () => {
     expect(MESSAGES.en.openNotes(2)).toBe("Open notes (2)");
     expect([MESSAGES.en.wholeBoard, MESSAGES.fr.wholeBoard]).toEqual(["Whole board", "Tout le tableau"]);
-    expect(MESSAGES.en.cardGone("P1")).toBe("P1 (removed)");
-    expect(MESSAGES.fr.cardGone("P1")).toBe("P1 (supprimé)");
+    expect(MESSAGES.en.cardGone("R1")).toBe("R1 (removed)");
+    expect(MESSAGES.fr.cardGone("R1")).toBe("R1 (supprimé)");
     expect([MESSAGES.en.author.human, MESSAGES.en.author.agent]).toEqual(["You", "Claude"]);
     expect([MESSAGES.fr.author.human, MESSAGES.fr.author.agent]).toEqual(["Toi", "Claude"]);
     expect([MESSAGES.en.waits.you, MESSAGES.en.waits.claude]).toEqual([

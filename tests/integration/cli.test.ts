@@ -179,16 +179,16 @@ describe("the agent models from the terminal", () => {
   });
 
   test("single commands print the id they minted", async () => {
-    expect((await sideco(["add", "actor", "Client", "--col", "1"])).out).toBe("X1");
+    expect((await sideco(["add", "actor", "Client", "--col", "1"])).out).toBe("P1");
     expect((await sideco(["add", "command", "Passer commande", "--col", "1"])).out).toBe("C1");
   });
 
   test("a batch on stdin is applied whole and reports its ids", async () => {
     const ran = await sideco(["apply"], {
       stdin:
-        'add event "Commande passée" --col 1\nadd policy "Réserver le stock" --col 2\nlink C1 E1\nlink E1 P1\n',
+        'add event "Commande passée" --col 1\nadd policy "Réserver le stock" --col 2\nlink C1 E1\nlink E1 R1\n',
     });
-    expect(ran).toEqual({ code: 0, out: "applied 4 commands (seq 7): E1 P1", err: "" });
+    expect(ran).toEqual({ code: 0, out: "applied 4 commands (seq 7): E1 R1", err: "" });
   });
 
   test("a batch with one bad line changes nothing and names the line", async () => {
@@ -209,10 +209,10 @@ note "Is the stock checked first?" --on @reserve
 add command "Pay" --col 3 --from @placed
 `,
     });
-    // An id is given once in the project: E1, P1 and C1 are on the board before.
-    expect(ran).toEqual({ code: 0, out: "applied 7 commands (seq 15): E2 P2 N1 C2", err: "" });
+    // An id is given once in the project: E1, R1 and C1 are on the board before.
+    expect(ran).toEqual({ code: 0, out: "applied 7 commands (seq 15): E2 R2 N1 C2", err: "" });
     const shown = (await sideco(["show", "checkout"])).out;
-    for (const piece of ["E2 -> P2", "E2 -> C2", "Emitted by the checkout", "N1 by agent on P2"])
+    for (const piece of ["E2 -> R2", "E2 -> C2", "Emitted by the checkout", "N1 by agent on R2"])
       expect(shown).toContain(piece);
     expect(readFileSync(join(root, ".sideco", "boards.jsonl"), "utf8")).not.toContain("@placed");
   });
@@ -249,12 +249,12 @@ add command "Pay" --col 3 --from @placed
   test("show prints the board as the agent reads it", async () => {
     const shown = (await sideco(["show"])).out;
     expect(shown).toContain("Passage de commande");
-    for (const piece of ["X1", "C1", "E1", "P1", "C1 -> E1", "E1 -> P1"]) expect(shown).toContain(piece);
+    for (const piece of ["P1", "C1", "E1", "R1", "C1 -> E1", "E1 -> R1"]) expect(shown).toContain(piece);
   });
 
   test("find prints the cards holding every word; with none, it says how to ask", async () => {
     expect((await sideco(["find", "stock", "reserver"])).out).toBe(
-      'passage-de-commande P1 policy "Réserver le stock"',
+      'passage-de-commande R1 policy "Réserver le stock"',
     );
     const bare = await sideco(["find"]);
     expect(bare.code).toBe(1);
@@ -330,7 +330,7 @@ describe("Claude Code hooks, through stdin as Claude Code calls them", () => {
   });
 
   test("UserPromptSubmit hands Claude the human's edits as additional context", async () => {
-    await human({ kind: "note", board: "passage-de-commande", text: "Qui réserve ?", target: "P1" });
+    await human({ kind: "note", board: "passage-de-commande", text: "Qui réserve ?", target: "R1" });
     const ran = await hook({ hook_event_name: "UserPromptSubmit", prompt: "Continue le modèle" });
     expect(ran.code).toBe(0);
     const output = JSON.parse(ran.out) as {
@@ -346,7 +346,7 @@ describe("Claude Code hooks, through stdin as Claude Code calls them", () => {
     expect(replied.code).toBe(0);
     expect(replied.out.trim()).toBe("N3");
     const shown = await sideco(["show", "passage-de-commande"]);
-    expect(shown.out).toContain("  N2 by human on P1: Qui réserve ?\n    N3 by agent: L'entrepôt");
+    expect(shown.out).toContain("  N2 by human on R1: Qui réserve ?\n    N3 by agent: L'entrepôt");
     const refused = await sideco(["reply", "N9", "x", "--board", "passage-de-commande"]);
     expect(refused.code).not.toBe(0);
     expect(refused.err).toContain("no note N9");
@@ -392,7 +392,7 @@ describe("Claude Code hooks, through stdin as Claude Code calls them", () => {
     const parked = hook({ hook_event_name: "Stop" }, {}, true);
     await Bun.sleep(600);
     await human(
-      { kind: "rename", board: "passage-de-commande", id: "P1", label: "Réserver le stock sous 5 min" },
+      { kind: "rename", board: "passage-de-commande", id: "R1", label: "Réserver le stock sous 5 min" },
       { kind: "pass", board: "passage-de-commande", to: "agent" },
     );
     const ran = await parked;

@@ -50,7 +50,7 @@ export interface Args {
 const SHORT: Record<string, string> = { "-o": "--out", "-b": "--board", "-f": "--format" };
 
 /** The flags that say yes by being there. */
-const SWITCHES: ReadonlySet<string> = new Set(["--brief", "--notes", "--dry-run"]);
+const SWITCHES: ReadonlySet<string> = new Set(["--brief", "--notes", "--dry-run", "--all"]);
 
 /** Every flag takes a value, `--col 3` or `--col=3`, but the switches: `--brief`. */
 export function parseArgs(tokens: readonly string[]): Args {

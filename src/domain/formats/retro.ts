@@ -20,8 +20,8 @@ export const RETRO: Format = {
     {
       id: "point",
       label: t("Observation", "Constat"),
-      prefix: "P",
-      formerPrefix: "K",
+      prefix: "Q",
+      formerPrefixes: ["K", "P"],
       leadsTo: { type: "action", label: t("Make an action of it", "En faire une action") },
       fill: "#FCEFA1",
       ink: DARK,
@@ -31,7 +31,8 @@ export const RETRO: Format = {
     {
       id: "action",
       label: t("Action", "Action"),
-      prefix: "A",
+      prefix: "T",
+      formerPrefixes: ["A"],
       fill: "#6FCF97",
       ink: DARK,
       shape: "sticky",

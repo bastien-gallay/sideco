@@ -60,7 +60,7 @@ describe("done on a kanban is the last lane", () => {
   });
 
   test("elsewhere, done stays a mark of its own", () => {
-    const t = table(FLOW).script("done S1");
+    const t = table(FLOW).script("done F1");
     const first = t.board().elements[0];
     if (!first) throw new Error("a step");
     expect(isDone(t.board(), first)).toBe(true);

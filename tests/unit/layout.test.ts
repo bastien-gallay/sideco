@@ -127,12 +127,12 @@ describe("timeline layout", () => {
     const stacked = layoutBoard(table(ORDERING).script('add event "Stock insuffisant" --col 2').board());
     expect(card(stacked, "E3").x).toBe(card(stacked, "E2").x);
     expect(card(stacked, "E3").y).toBeGreaterThanOrEqual(card(stacked, "E2").y + card(stacked, "E2").h);
-    expect(card(stacked, "P1").y).toBeGreaterThan(card(scene, "P1").y);
+    expect(card(stacked, "R1").y).toBeGreaterThan(card(scene, "R1").y);
     expectTidy(stacked);
   });
 
   test("links become connectors between the cards they name", () => {
-    expect(scene.connectors.map((c) => `${c.src}>${c.dst}`)).toEqual(["C1>E1", "E1>P1"]);
+    expect(scene.connectors.map((c) => `${c.src}>${c.dst}`)).toEqual(["C1>E1", "E1>R1"]);
     expect(scene.connectors.every((c) => c.d.startsWith("M"))).toBe(true);
   });
 
@@ -437,23 +437,23 @@ describe("graph layout", () => {
 
   test("a node sits below everything that leads to it", () => {
     const y = (id: string): number => card(scene, id).y;
-    expect(y("S1")).toBeLessThan(y("D1"));
-    expect(y("D1")).toBeLessThan(y("S2"));
-    expect(y("S2")).toBe(y("S3"));
-    expect(y("S2")).toBeLessThan(y("O1"));
+    expect(y("F1")).toBeLessThan(y("D1"));
+    expect(y("D1")).toBeLessThan(y("F2"));
+    expect(y("F2")).toBe(y("F3"));
+    expect(y("F2")).toBeLessThan(y("O1"));
   });
 
   test("a loop is a back edge: it does not push its target down", () => {
     const { rank, back } = rankNodes(
-      ["S1", "D1", "S3"],
+      ["F1", "D1", "F3"],
       [
-        ["S1", "D1"],
-        ["D1", "S3"],
-        ["S3", "D1"],
+        ["F1", "D1"],
+        ["D1", "F3"],
+        ["F3", "D1"],
       ],
     );
-    expect([...back]).toEqual(["S3>D1"]);
-    expect(Object.fromEntries(rank)).toEqual({ S1: 0, D1: 1, S3: 2 });
+    expect([...back]).toEqual(["F3>D1"]);
+    expect(Object.fromEntries(rank)).toEqual({ F1: 0, D1: 1, F3: 2 });
   });
 
   test("every link is drawn, with straight segments only", () => {
@@ -462,7 +462,7 @@ describe("graph layout", () => {
   });
 
   test("the back edge runs to the right of every box", () => {
-    const loop = scene.connectors.find((c) => c.src === "S3" && c.dst === "D1");
+    const loop = scene.connectors.find((c) => c.src === "F3" && c.dst === "D1");
     const right = Math.max(...scene.cards.map((c) => c.x + c.w));
     const lane = Number(/H([\d.]+)/.exec(loop?.d ?? "")?.[1]);
     expect(lane).toBeGreaterThan(right);
@@ -528,7 +528,7 @@ describe("a long flow folds into columns side by side, when the window is wide",
       if (a.x === b.x) expect(b.y).toBeGreaterThan(a.y);
       else {
         expect(b.x).toBeGreaterThan(a.x);
-        expect(b.y).toBe(card(scene, "S1").y);
+        expect(b.y).toBe(card(scene, "F1").y);
       }
     }
   });
@@ -553,7 +553,7 @@ describe("a long flow folds into columns side by side, when the window is wide",
   });
 
   test("a loop back over a fold would cross the columns: the flow is not folded there", () => {
-    const looped = table(`${CHAIN}\nlink S15 S1 "encore"`).board();
+    const looped = table(`${CHAIN}\nlink F15 F1 "encore"`).board();
     expect(new Set(layoutBoard(looped, "en", 900).cards.map((c) => c.x)).size).toBe(1);
   });
 });
@@ -565,21 +565,21 @@ test("the same board always gives the same scene", () => {
 });
 
 test("a card carries what the painter needs: colours, author, detail and open notes", () => {
-  const t = table(ORDERING).script('detail P1 "Règle n°4"');
-  t.do({ kind: "note", board: "commande", text: "Qui ?", target: "P1" }, "human");
-  t.do({ kind: "note", board: "commande", text: "Résolue", target: "P1" }, "human");
+  const t = table(ORDERING).script('detail R1 "Règle n°4"');
+  t.do({ kind: "note", board: "commande", text: "Qui ?", target: "R1" }, "human");
+  t.do({ kind: "note", board: "commande", text: "Résolue", target: "R1" }, "human");
   t.script("resolve N2");
   // A card counts its open discussions, not every message in them.
   t.script('reply N1 "Toi"');
   t.do({ kind: "add", board: "commande", type: "hotspot", label: "Doute", col: 1 }, "human");
   const scene = layoutBoard(t.board());
-  expect(card(scene, "P1")).toMatchObject({
+  expect(card(scene, "R1")).toMatchObject({
     fill: "#C39BD3",
     by: "agent",
     hasDetail: true,
     notes: 1,
     label: "Quand commande passée, réserver le stock",
-    tip: "P1 · Policy · added by Claude",
+    tip: "R1 · Policy · added by Claude",
     detail: "Règle n°4",
   });
   expect(card(scene, "H2")).toMatchObject({ by: "human", shape: "sharp", hasDetail: false, notes: 0 });

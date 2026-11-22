@@ -11,7 +11,7 @@ test("a prefix of the journal is the workspace at that moment", () => {
   const t = table(ORDERING);
   const past = replay(t.events.filter((e) => e.seq <= 3));
   expect(past.seq).toBe(3);
-  expect(past.boards[0]?.elements.map((e) => e.id)).toEqual(["X1", "C1"]);
+  expect(past.boards[0]?.elements.map((e) => e.id)).toEqual(["P1", "C1"]);
 });
 
 test("an element remembers who added it and when it last changed", () => {

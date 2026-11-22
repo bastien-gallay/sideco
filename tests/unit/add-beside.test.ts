@@ -32,7 +32,7 @@ describe("`add … --before ID` places the new card before another one of its ce
     expect(() => table(KANBAN).script('add task "Pas là" --lane doing --before T3')).toThrow(
       'T3 is not in lane "doing"',
     );
-    expect(() => table(FLOW).script('add step "Où ?" --before S1')).toThrow("link or unlink instead");
+    expect(() => table(FLOW).script('add step "Où ?" --before F1')).toThrow("link or unlink instead");
   });
 
   test("one undo takes the card back, and the agent reads one addition", () => {
@@ -88,10 +88,10 @@ describe("Alt and an arrow say where the new card goes, by the board's own rules
 
   test("on a graph, right and down: the next node, linked from it; left and up: nothing", () => {
     const board = table(FLOW).board();
-    expect(keyAdd(board, "S2", "right")).toEqual({ type: "step", from: "S2" });
+    expect(keyAdd(board, "F2", "right")).toEqual({ type: "step", from: "F2" });
     expect(keyAdd(board, "D1", "down")).toEqual({ type: "decision", from: "D1" });
-    expect(keyAdd(board, "S2", "left")).toBeUndefined();
-    expect(keyAdd(board, "S2", "up")).toBeUndefined();
+    expect(keyAdd(board, "F2", "left")).toBeUndefined();
+    expect(keyAdd(board, "F2", "up")).toBeUndefined();
   });
 
   test("an unknown card adds nothing", () => {

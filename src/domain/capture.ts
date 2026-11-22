@@ -128,16 +128,13 @@ function clean(label: string): string {
 /** The commands that build a captured diagram as a new Flux board. */
 export function captureCommands(diagram: CapturedDiagram, title: string): Command[] {
   const board = `capture-${diagram.hash}`;
-  const prefix = { step: "S", decision: "D", outcome: "O" } as const;
-  const count = { step: 0, decision: 0, outcome: 0 };
+  // The project gives the ids, one batch naming each node until it has its own.
   const ids = new Map<string, string>();
   const commands: Command[] = [{ kind: "create-board", board, title, format: "flow" }];
-  for (const node of diagram.nodes) {
-    count[node.type] += 1;
-    const id = `${prefix[node.type]}${count[node.type]}`;
-    ids.set(node.key, id);
-    commands.push({ kind: "add", board, type: node.type, label: node.label, id });
-  }
+  diagram.nodes.forEach((node, i) => {
+    ids.set(node.key, `@node-${i + 1}`);
+    commands.push({ kind: "add", board, type: node.type, label: node.label, alias: `node-${i + 1}` });
+  });
   for (const edge of diagram.edges) {
     const src = ids.get(edge.src);
     const dst = ids.get(edge.dst);

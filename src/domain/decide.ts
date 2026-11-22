@@ -240,7 +240,7 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       const el = requireElement(board, cmd.id);
       const type = findType(format, el.type);
       if (!type) throw new CommandError(`${format.name.en} has no "${el.type}"`);
-      const to = cmd.to === undefined ? mint(ws, type.prefix) : claim(ws, type, cmd.to);
+      const to = cmd.to === undefined ? mint(ws, type.prefix) : claim(ws, type, cmd.to, format);
       return { events: [{ event: "ElementRenumbered", board: b, id: cmd.id, to }], minted: to };
     }
     case "insert-column":
@@ -333,7 +333,7 @@ function add(ws: Workspace, board: Board, format: Format, cmd: BoardCommand & { 
     throw new CommandError(`${format.name.en} has no "${cmd.type}" (types: ${allowed})`);
   }
   if (cmd.from) requireElement(board, cmd.from);
-  const id = cmd.id === undefined ? mint(ws, type.prefix) : claim(ws, type, cmd.id);
+  const id = cmd.id === undefined ? mint(ws, type.prefix) : claim(ws, type, cmd.id, format);
   const anchor = cmd.before === undefined ? undefined : requireElement(board, cmd.before);
   const { col, lane } = placeNew(board, format, type, {
     col: cmd.col ?? (format.layout === "timeline" ? anchor?.col : undefined),

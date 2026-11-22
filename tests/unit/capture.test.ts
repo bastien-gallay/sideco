@@ -107,15 +107,27 @@ describe("captureCommands", () => {
     expect(board).toMatchObject({ id: `capture-${diagram.hash}`, format: "flow", title: "Capture" });
     expect(describeBoard(board).split("\n").slice(1)).toEqual([
       "elements",
-      '  S1 step "Recevoir la commande"',
+      '  F1 step "Recevoir la commande"',
       '  D1 decision "En stock ?"',
       '  O1 outcome "Expédier"',
-      '  S2 step "Commander au fournisseur"',
+      '  F2 step "Commander au fournisseur"',
       "links",
-      "  S1 -> D1",
+      "  F1 -> D1",
       '  D1 -> O1 "oui"',
-      '  D1 -> S2 "non"',
-      '  S2 -> D1 "à réception"',
+      '  D1 -> F2 "non"',
+      '  F2 -> D1 "à réception"',
+    ]);
+  });
+
+  test("a capture takes the next ids of the project, never one another board holds", () => {
+    const t = table(FLOW);
+    for (const command of captureCommands(diagram, "Capture")) t.do(command);
+    expect(t.board().elements.map((e) => e.id)).toEqual(["F4", "D2", "O2", "F5"]);
+    expect(t.board().edges.map((e) => `${e.src}->${e.dst}`)).toEqual([
+      "F4->D2",
+      "D2->O2",
+      "D2->F5",
+      "F5->D2",
     ]);
   });
 

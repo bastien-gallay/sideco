@@ -1,6 +1,5 @@
 import { DARK, type Format, LIGHT, t } from "./types.ts";
 
-/** The id prefixes are in every saved board: never change one. */
 export const EVENT_STORMING: Format = {
   id: "event-storming",
   name: t("Event Storming", "Event Storming"),
@@ -14,7 +13,8 @@ export const EVENT_STORMING: Format = {
     {
       id: "actor",
       label: t("Actor", "Acteur"),
-      prefix: "X",
+      prefix: "P",
+      formerPrefixes: ["X"],
       fill: "#FCEFA1",
       ink: DARK,
       shape: "sticky",
@@ -32,7 +32,8 @@ export const EVENT_STORMING: Format = {
     {
       id: "aggregate",
       label: t("Aggregate", "Agrégat"),
-      prefix: "A",
+      prefix: "G",
+      formerPrefixes: ["A"],
       fill: "#FFD23F",
       ink: DARK,
       shape: "sticky",
@@ -50,7 +51,8 @@ export const EVENT_STORMING: Format = {
     {
       id: "policy",
       label: t("Policy", "Règle"),
-      prefix: "P",
+      prefix: "R",
+      formerPrefixes: ["P"],
       fill: "#C39BD3",
       ink: DARK,
       shape: "sticky",
@@ -59,7 +61,8 @@ export const EVENT_STORMING: Format = {
     {
       id: "readmodel",
       label: t("Read model", "Vue"),
-      prefix: "R",
+      prefix: "V",
+      formerPrefixes: ["R"],
       fill: "#6FCF97",
       ink: DARK,
       shape: "sticky",
@@ -68,7 +71,8 @@ export const EVENT_STORMING: Format = {
     {
       id: "system",
       label: t("External system", "Système externe"),
-      prefix: "G",
+      prefix: "X",
+      formerPrefixes: ["G"],
       fill: "#F2A0C9",
       ink: DARK,
       shape: "sticky",

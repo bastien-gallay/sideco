@@ -20,7 +20,7 @@ each side sees the other's changes within a second.
    board you have not read in this turn: the user may have changed it.
 3. **Write in small batches** with `sideco apply`, five to nine elements at a
    time, so the user watches the model grow and can stop you early.
-4. **Point** at what you want discussed: `sideco focus E3 P1 --why "…"`.
+4. **Point** at what you want discussed: `sideco focus E3 R1 --why "…"`.
 5. **Hand over** with one question: `sideco pass "Qui réserve le stock ?"`.
 6. **Wait** when the next step depends on the user: `sideco wait`. It blocks
    until they press "Send to Claude" ("Envoyer à Claude" when their page is
@@ -43,7 +43,7 @@ add policy "Réserver le stock" --col 2 --alias reserver
 link @passer @passee
 link @passee @reserver
 EOF
-sideco focus P1 --why "La règle de réservation n'est pas claire"
+sideco focus R1 --why "La règle de réservation n'est pas claire"
 sideco pass "Qui réserve le stock : nous ou l'entrepôt ?"
 sideco wait
 ```
@@ -56,11 +56,11 @@ sideco wait
   user brings the element back.
 - **In a batch, name what you add.** A line cannot know the id an earlier
   line will get: write `add event "Payée" --alias payee`, then `@payee` where
-  an id goes on the lines after it (`link @payee P1`, `detail @payee "…"`,
+  an id goes on the lines after it (`link @payee R1`, `detail @payee "…"`,
   `note "…" --on @payee`). A name is lowercase letters, digits and dashes.
   It lives for that one `sideco apply`: afterwards, use the id that was printed.
 - **Positions are semantic**, never pixels: a column (`--col N`), a lane
-  (`--lane doing`), or a link (`--from S1`). The layout is computed.
+  (`--lane doing`), or a link (`--from F1`). The layout is computed.
 - **A batch is all or nothing.** One bad line and nothing is applied; the
   error names the line. A `@name` no earlier line gave is a bad line.
 - **The user's edits win.** Do not undo a rename, a move or a removal they
@@ -74,7 +74,7 @@ sideco wait
 - **Answer a note in its thread**: `sideco reply N1 "…"`. Never answer by
   opening a new note, or only by editing a card: the user could not tell
   what your answer is to. If the answer changed the board, say what changed
-  in the reply. In `sideco changes`, `reply N7 to N1 on S3: …` is the user's
+  in the reply. In `sideco changes`, `reply N7 to N1 on F3: …` is the user's
   answer to note N1; `sideco show` lists each thread with its replies.
 - **Close a thread when it is settled**: `sideco resolve N1` closes the whole
   thread. Close yours once the user has answered and you have acted on it;
@@ -98,7 +98,7 @@ sideco wait
 | which path, where it branches | `flow` | `--from ID`, `--edge "oui"` |
 | where the work stands, what blocks it | `kanban` | `--lane todo`, `doing` or `done` |
 | which journey, what ships first | `story-map` | `--col N` |
-| what went well or not, what to keep, stop, try | `retro` | `--lane went-well`, `went-badly`, `keep`, `drop` or `try`; an action from a point: `add action "…" --from P1` |
+| what went well or not, what to keep, stop, try | `retro` | `--lane went-well`, `went-badly`, `keep`, `drop` or `try`; an action from a point: `add action "…" --from Q1` |
 | what to do first, for what it brings and costs | `impact-effort` | `--lane quick`, `bet`, `fill` or `avoid` |
 | who uses the system, what it depends on (C4 level 1) | `c4-context` | `--from ID --edge "uses"`; the detail is the description |
 
@@ -113,7 +113,7 @@ sideco board new "Title" [--format F] [--id ID]   sideco board rm ID (removes th
 sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--from ID [--edge "label"]] [--detail "…"]
 sideco rename ID "Label"            sideco detail ID "Text"
 sideco move ID --col N | --lane L [--before ID]   # --before alone: before that card, in its cell
-sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)   sideco renumber ID [NEW] (a new id for a card, the next of its letter by default; its links and notes follow)
+sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)   sideco renumber ID [NEW] (a new id for a card, the next of its letter by default; its links and notes follow)   sideco renumber --all [--dry-run] (every card under a former letter, or whose id another board keeps)
 sideco lane L "Name" (names it here) · lane hint L "What it stands for" · purpose "Its own question?" · plan: axis x|y "Name" [Low] [High] ("" gives the workshop's back) · kanban, retro: lane add "Name" [--before L] · lane rm L · lane move L [--before L] · story map: slice add "Lot 1" [--before S] (a line under the stories) · slice rm S
 sideco done ID   sideco undone ID   sideco undo|redo [--dry-run] (your own last gesture, named; never the human's)
 sideco link SRC DST ["label"]       sideco unlink SRC DST   (link again: renames the link)

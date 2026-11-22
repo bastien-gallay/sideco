@@ -41,7 +41,7 @@ describe("boards", () => {
 describe("adding elements", () => {
   test("ids are minted per type prefix, in order", () => {
     const t = table(ORDERING);
-    expect(t.board().elements.map((e) => e.id)).toEqual(["X1", "C1", "E1", "P1", "C2", "E2", "H1"]);
+    expect(t.board().elements.map((e) => e.id)).toEqual(["P1", "C1", "E1", "R1", "C2", "E2", "H1"]);
   });
 
   test("an id is never reused, even after its element is removed", () => {
@@ -51,7 +51,7 @@ describe("adding elements", () => {
 
   test("a chosen id must carry the type's prefix and never have been used", () => {
     const t = table(ORDERING);
-    expect(() => t.script('add event "x" --id C9')).toThrow("a event id starts with E, got C9");
+    expect(() => t.script('add event "x" --id C9')).toThrow("an event id starts with E, got C9");
     expect(() => t.script('add event "x" --id E2')).toThrow("E2 was already used");
     expect(t.do({ kind: "add", board: "commande", type: "event", label: "Payée", id: "E7" })).toBe("E7");
     expect(t.do({ kind: "add", board: "commande", type: "event", label: "Livrée" })).toBe("E8");
@@ -101,13 +101,13 @@ describe("adding elements", () => {
   test("`--from` adds the element and its incoming link in one command", () => {
     const t = table(FLOW);
     expect(t.board().edges.map((e) => `${e.src}>${e.dst}:${e.label ?? ""}`)).toEqual([
-      "S1>D1:",
-      "D1>S2:oui",
-      "D1>S3:non",
-      "S2>O1:",
-      "S3>D1:à réception",
+      "F1>D1:",
+      "D1>F2:oui",
+      "D1>F3:non",
+      "F2>O1:",
+      "F3>D1:à réception",
     ]);
-    expect(() => t.script('add step "x" --from S9')).toThrow('no element S9 on "livraison"');
+    expect(() => t.script('add step "x" --from F9')).toThrow('no element F9 on "livraison"');
   });
 });
 
@@ -120,10 +120,10 @@ describe("changing elements", () => {
   });
 
   test("removing an element removes its links and takes it out of the focus", () => {
-    const t = table(ORDERING).script("focus E1 P1 --why revue").script("rm E1");
+    const t = table(ORDERING).script("focus E1 R1 --why revue").script("rm E1");
     expect(t.board().edges).toEqual([]);
-    expect(t.board().focus).toEqual({ ids: ["P1"], reason: "revue" });
-    expect(t.script("rm P1").board().focus).toBeNull();
+    expect(t.board().focus).toEqual({ ids: ["R1"], reason: "revue" });
+    expect(t.script("rm R1").board().focus).toBeNull();
   });
 
   test("a timeline element moves to a column; a lane makes no sense there", () => {
@@ -145,7 +145,7 @@ describe("changing elements", () => {
   });
 
   test("a graph places its nodes itself", () => {
-    expect(() => table(FLOW).script("move S1 --col 2")).toThrow("link or unlink instead");
+    expect(() => table(FLOW).script("move F1 --col 2")).toThrow("link or unlink instead");
   });
 
   test("inserting a column shifts the columns at and after it", () => {
@@ -178,7 +178,7 @@ describe("links, focus, notes, turn", () => {
 
   test("notes get their own ids and resolve once", () => {
     const t = table(ORDERING);
-    expect(t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human")).toBe(
+    expect(t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "R1" }, "human")).toBe(
       "N1",
     );
     expect(t.do({ kind: "note", board: "commande", text: "Vue d'ensemble" }, "human")).toBe("N2");
@@ -192,13 +192,13 @@ describe("links, focus, notes, turn", () => {
 
   test("a reply joins the thread of the note it answers, and stays on its card", () => {
     const t = table(ORDERING);
-    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
+    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "R1" }, "human");
     expect(t.do({ kind: "reply", board: "commande", to: "N1", text: "L'entrepôt" })).toBe("N2");
     expect(t.events.at(-1)).toMatchObject({
       event: "NoteAdded",
       id: "N2",
       thread: "N1",
-      target: "P1",
+      target: "R1",
       text: "L'entrepôt",
     });
     // Answering a reply answers its thread: a discussion is one line, not a tree.
@@ -207,7 +207,7 @@ describe("links, focus, notes, turn", () => {
     expect(threads(t.board())).toMatchObject([
       {
         id: "N1",
-        target: "P1",
+        target: "R1",
         resolved: false,
         notes: [
           { id: "N1", by: "human" },
@@ -221,7 +221,7 @@ describe("links, focus, notes, turn", () => {
 
   test("resolving any note of a thread resolves the whole thread, once", () => {
     const t = table(ORDERING);
-    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
+    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "R1" }, "human");
     t.script('reply N1 "L\'entrepôt"');
     const before = t.seq;
     t.script("resolve N2").script("resolve N1");
@@ -233,7 +233,7 @@ describe("links, focus, notes, turn", () => {
 
   test("a reply needs a note that is still open", () => {
     const t = table(ORDERING);
-    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
+    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "R1" }, "human");
     expect(() => t.script('reply N9 "x"')).toThrow('no note N9 on "commande"');
     expect(() => t.script('reply E1 "x"')).toThrow('no note E1 on "commande"');
     t.script("resolve N1");

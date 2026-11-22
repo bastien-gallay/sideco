@@ -13,7 +13,8 @@ export const FLOW: Format = {
     {
       id: "step",
       label: t("Step", "Étape"),
-      prefix: "S",
+      prefix: "F",
+      formerPrefixes: ["S"],
       fill: "#E8EEF4",
       ink: DARK,
       shape: "box",

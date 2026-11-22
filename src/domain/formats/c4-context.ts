@@ -32,7 +32,8 @@ export const C4_CONTEXT: Format = {
     {
       id: "system",
       label: t("System", "Système"),
-      prefix: "S",
+      prefix: "Y",
+      formerPrefixes: ["S"],
       fill: "#1168BD",
       dark: "#4EA0F2",
       ink: LIGHT,

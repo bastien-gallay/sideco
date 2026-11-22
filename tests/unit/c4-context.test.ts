@@ -17,9 +17,9 @@ board new "Boutique" --format c4-context --id boutique
 add person "Client"
 detail P1 "Achète en ligne"
 add system "Boutique" --from P1 --edge "passe commande"
-detail S1 "Catalogue, panier, paiement"
-add external "Stripe" --from S1 --edge "encaisse via"
-add external "Brevo" --from S1 --edge "envoie les mails via"
+detail Y1 "Catalogue, panier, paiement"
+add external "Stripe" --from Y1 --edge "encaisse via"
+add external "Brevo" --from Y1 --edge "envoie les mails via"
 `;
 
 describe("a C4 system context", () => {
@@ -28,21 +28,21 @@ describe("a C4 system context", () => {
     expect(format?.layout).toBe("graph");
     expect(format?.types.map((t) => [t.id, t.prefix])).toEqual([
       ["person", "P"],
-      ["system", "S"],
+      ["system", "Y"],
       ["external", "X"],
     ]);
     expect(
       table(SHOP)
         .board()
         .elements.map((e) => e.id),
-    ).toEqual(["P1", "S1", "X1", "X2"]);
+    ).toEqual(["P1", "Y1", "X1", "X2"]);
   });
 
   test("ranks the person above the system, and the system above what it depends on", () => {
     const cards = layoutBoard(table(SHOP).board()).cards;
     const y = (id: string): number => cards.find((c) => c.id === id)?.y ?? Number.NaN;
-    expect(y("P1")).toBeLessThan(y("S1"));
-    expect(y("S1")).toBeLessThan(y("X1"));
+    expect(y("P1")).toBeLessThan(y("Y1"));
+    expect(y("Y1")).toBeLessThan(y("X1"));
     expect(y("X1")).toBe(y("X2"));
   });
 
@@ -52,12 +52,12 @@ describe("a C4 system context", () => {
         "C4Context",
         "  title Boutique",
         '  Person(P1, "Client", "Achète en ligne")',
-        '  System(S1, "Boutique", "Catalogue, panier, paiement")',
+        '  System(Y1, "Boutique", "Catalogue, panier, paiement")',
         '  System_Ext(X1, "Stripe")',
         '  System_Ext(X2, "Brevo")',
-        '  Rel(P1, S1, "passe commande")',
-        '  Rel(S1, X1, "encaisse via")',
-        '  Rel(S1, X2, "envoie les mails via")',
+        '  Rel(P1, Y1, "passe commande")',
+        '  Rel(Y1, X1, "encaisse via")',
+        '  Rel(Y1, X2, "envoie les mails via")',
       ].join("\n"),
     );
   });
@@ -72,7 +72,7 @@ describe("a C4 system context", () => {
   test("the agent reads the elements and the links as on a flow", () => {
     const said = describeBoard(table(SHOP).board());
     expect(said).toContain('P1 person "Client"');
-    expect(said).toContain('S1 -> X1 "encaisse via"');
+    expect(said).toContain('Y1 -> X1 "encaisse via"');
   });
 });
 
@@ -84,7 +84,7 @@ detail P1 "Modélise avec Claude : décrit dans le terminal, dessine et corrige 
 add person "Coéquipier"
 detail P2 "Partage les tableaux par git : le journal est versionné avec le code. Pas encore de synchronisation en direct (S87, S88)."
 add system "Sideco"
-detail S1 "Compagnon local d'un projet : journal d'événements (.sideco/boards.jsonl), serveur hub, page web, CLI et hooks."
+detail Y1 "Compagnon local d'un projet : journal d'événements (.sideco/boards.jsonl), serveur hub, page web, CLI et hooks."
 add external "Claude Code"
 detail X1 "La session de l'agent dans le terminal. Charge le plugin sideco : skill, hooks, commande bin/sideco."
 add external "Navigateur"
@@ -95,12 +95,12 @@ add external "Documentation"
 detail X4 "README, PR, wiki : là où vont les exports markdown, mermaid, html, svg."
 link P1 X1 "travaille avec, dans le terminal"
 link P1 X2 "dessine et lit les tableaux"
-link X2 S1 "page et direct (HTTP, flux)"
-link X1 S1 "lit et écrit par la CLI ; hooks de session et de passage de main"
-link S1 X1 "remet les changements de l'utilisateur au prompt suivant"
-link S1 X3 "journal .sideco/ versionné"
+link X2 Y1 "page et direct (HTTP, flux)"
+link X1 Y1 "lit et écrit par la CLI ; hooks de session et de passage de main"
+link Y1 X1 "remet les changements de l'utilisateur au prompt suivant"
+link Y1 X3 "journal .sideco/ versionné"
 link P2 X3 "pull / push du journal"
-link S1 X4 "exporte md, mermaid, html, svg"
+link Y1 X4 "exporte md, mermaid, html, svg"
 `;
 
 type Stretch = readonly [number, number, number, number];
@@ -182,8 +182,8 @@ describe("the links of a C4 context (T203)", () => {
   });
 
   test("a long name takes two lines of about 28 characters at most; the link says it whole on hover", () => {
-    const long = scene.connectors.find((c) => c.src === "X1" && c.dst === "S1");
-    if (!long) throw new Error("no link X1 -> S1");
+    const long = scene.connectors.find((c) => c.src === "X1" && c.dst === "Y1");
+    if (!long) throw new Error("no link X1 -> Y1");
     const markup = connectorMarkup(long);
     const lines = [...markup.matchAll(/<tspan[^>]*>([^<]*)<\/tspan>/g)].map((m) => m[1] ?? "");
     expect(lines).toHaveLength(2);

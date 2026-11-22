@@ -13,7 +13,7 @@ describe("the page's search", () => {
   test("the board shown comes first, then the others in their order, each hit with its board's title", () => {
     const t = table(KANBAN).script(FLOW).script('add task "Commande groupée"', "human", "sprint");
     const hits = findHits(t.ws, "commande", "sprint");
-    expect(ids(hits)).toEqual(["sprint T5", "livraison S1", "livraison S3"]);
+    expect(ids(hits)).toEqual(["sprint T5", "livraison F1", "livraison F3"]);
     expect(hits.map((hit) => [hit.title, hit.here])).toEqual([
       ["Sprint 12", true],
       ["Livraison", false],

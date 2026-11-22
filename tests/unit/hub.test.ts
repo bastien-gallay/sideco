@@ -78,11 +78,11 @@ note "Is the stock checked first?" --on @reserve
 add command "Pay" --col 3 --from @placed`),
       { actor: "agent" },
     );
-    expect(done.minted).toEqual([undefined, "E1", "P1", undefined, undefined, "N1", "C1"]);
+    expect(done.minted).toEqual([undefined, "E1", "R1", undefined, undefined, "N1", "C1"]);
     expect(done.events.slice(3)).toMatchObject([
-      { event: "EdgeAdded", src: "E1", dst: "P1" },
+      { event: "EdgeAdded", src: "E1", dst: "R1" },
       { event: "ElementAnnotated", id: "E1", detail: "Emitted by the checkout" },
-      { event: "NoteAdded", id: "N1", target: "P1" },
+      { event: "NoteAdded", id: "N1", target: "R1" },
       { event: "ElementAdded", id: "C1" },
       { event: "EdgeAdded", src: "E1", dst: "C1" },
     ]);

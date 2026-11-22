@@ -19,12 +19,12 @@ describe("removing a column of a timeline", () => {
   test("`rm-col N` removes an empty column; the columns after it shift left", () => {
     const t = table(GAP).script("rm-col 3");
     expect(t.events.at(-1)).toMatchObject({ event: "ColumnRemoved", at: 3 });
-    expect(columns(t)).toMatchObject({ X1: 1, P1: 2, E3: 3 });
+    expect(columns(t)).toMatchObject({ P1: 1, R1: 2, E3: 3 });
   });
 
   test("a column that holds cards is refused, and says which", () => {
     const t = table(GAP);
-    expect(() => t.script("rm-col 1")).toThrow("column 1 holds X1, C1, E1: move or remove them first");
+    expect(() => t.script("rm-col 1")).toThrow("column 1 holds P1, C1, E1: move or remove them first");
   });
 
   test("only a step of the board, only on a timeline", () => {
@@ -35,18 +35,18 @@ describe("removing a column of a timeline", () => {
   test("one undo puts the column back, one redo removes it again", () => {
     const t = table(GAP).script("rm-col 3", "human");
     t.do({ kind: "undo", board: "commande" }, "human");
-    expect(columns(t)).toMatchObject({ P1: 2, E3: 4 });
+    expect(columns(t)).toMatchObject({ R1: 2, E3: 4 });
     t.do({ kind: "redo", board: "commande" }, "human");
-    expect(columns(t)).toMatchObject({ P1: 2, E3: 3 });
+    expect(columns(t)).toMatchObject({ R1: 2, E3: 3 });
   });
 
   test("a column inserted is now taken back by undo", () => {
     const t = table(ORDERING).script("insert-col 2", "human");
-    expect(columns(t)).toMatchObject({ X1: 1, P1: 3 });
+    expect(columns(t)).toMatchObject({ P1: 1, R1: 3 });
     t.do({ kind: "undo", board: "commande" }, "human");
-    expect(columns(t)).toMatchObject({ X1: 1, P1: 2 });
+    expect(columns(t)).toMatchObject({ P1: 1, R1: 2 });
     t.do({ kind: "redo", board: "commande" }, "human");
-    expect(columns(t)).toMatchObject({ P1: 3 });
+    expect(columns(t)).toMatchObject({ R1: 3 });
   });
 
   test("a column Claude removes takes along the place your move comes back to", () => {

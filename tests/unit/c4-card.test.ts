@@ -17,8 +17,8 @@ board new "Boutique" --format c4-context --id boutique
 add person "Client"
 detail P1 "Achète **en ligne**, depuis [le site](https://example.com)"
 add system "Boutique" --from P1 --edge "passe commande"
-detail S1 "Catalogue, panier, paiement, suivi des commandes et des retours, factures envoyées par mail"
-add external "Stripe" --from S1 --edge "encaisse via"
+detail Y1 "Catalogue, panier, paiement, suivi des commandes et des retours, factures envoyées par mail"
+add external "Stripe" --from Y1 --edge "encaisse via"
 `;
 
 const cards = (script: string) => layoutBoard(table(script).board()).cards;
@@ -37,7 +37,7 @@ describe("a C4 person", () => {
     const svg = cardMarkup(cardOf(SHOP, "P1"));
     expect(svg).toContain('class="card-person"');
     expect(svg).toMatch(/<circle [^>]*r="/);
-    expect(cardMarkup(cardOf(SHOP, "S1"))).not.toContain("card-person");
+    expect(cardMarkup(cardOf(SHOP, "Y1"))).not.toContain("card-person");
   });
 });
 
@@ -47,7 +47,7 @@ describe("a C4 card's description", () => {
   });
 
   test("is shown whole when it holds in five lines, on a card wider than a sticky", () => {
-    const s1 = cardOf(SHOP, "S1");
+    const s1 = cardOf(SHOP, "Y1");
     expect(s1.w).toBe(200);
     expect(s1.blurb?.join(" ")).toBe(
       "Catalogue, panier, paiement, suivi des commandes et des retours, factures envoyées par mail",
@@ -92,8 +92,8 @@ describe("a C4 card's description", () => {
     const flow = cardOf(
       `board new "Parcours" --format flow --id parcours
 add step "Payer"
-detail S1 "Par carte"`,
-      "S1",
+detail F1 "Par carte"`,
+      "F1",
     );
     expect(flow.blurb).toBeUndefined();
     expect(flow.hasDetail).toBe(true);

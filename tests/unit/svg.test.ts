@@ -30,7 +30,7 @@ test("a card's tooltip carries its whole label and its detail, which the card it
 });
 
 test("the id and the marks of a card are drawn in full ink, so they read on every sticky colour", () => {
-  const svg = svgOf(`${ORDERING}\ndetail P1 "Règle"`);
+  const svg = svgOf(`${ORDERING}\ndetail R1 "Règle"`);
   expect(svg).toMatch(/\.card-id \{[^}]*\}/);
   expect(svg.match(/\.card-id \{[^}]*\}/)?.[0]).not.toContain("opacity");
   expect(svg.match(/\.card-detail \{[^}]*\}/)?.[0]).not.toContain("opacity");
@@ -92,8 +92,8 @@ test("every element shows its id, and every link an arrow", () => {
 });
 
 describe("a card", () => {
-  const t = table(ORDERING).script('detail P1 "Règle n°4"');
-  t.do({ kind: "note", board: "commande", text: "Qui ?", target: "P1" }, "human");
+  const t = table(ORDERING).script('detail R1 "Règle n°4"');
+  t.do({ kind: "note", board: "commande", text: "Qui ?", target: "R1" }, "human");
   t.do({ kind: "add", board: "commande", type: "event", label: "Payée", col: 3 }, "human");
   const cards = layoutBoard(t.board()).cards;
   const markup = (id: string): string => cardMarkup(cards.find((c) => c.id === id) ?? (cards[0] as never));
@@ -106,14 +106,14 @@ describe("a card", () => {
   });
 
   test("marks a detail and counts its open notes", () => {
-    expect(markup("P1")).toContain('class="card-detail"');
-    expect(markup("P1")).toContain('<g class="card-notes">');
+    expect(markup("R1")).toContain('class="card-detail"');
+    expect(markup("R1")).toContain('<g class="card-notes">');
     expect(markup("E1")).not.toContain("card-detail");
     expect(markup("E1")).not.toContain("card-notes");
   });
 
   test("gives its ≡ a target a finger can take: 22 by 24, around the glyph, under it", () => {
-    const svg = markup("P1");
+    const svg = markup("R1");
     const hit = /<rect class="card-detail-hit" x="([\d.-]+)" y="0" width="22" height="24"/.exec(svg);
     expect(hit).not.toBeNull();
     const glyph = Number(/class="card-detail" x="([\d.]+)"/.exec(svg)?.[1]);
@@ -124,9 +124,9 @@ describe("a card", () => {
   });
 
   test("keeps its marks in the strip of its id, where a long last line of label never runs into them", () => {
-    expect(markup("P1")).toMatch(/<text class="card-detail" x="[\d.]+" y="14"/);
-    const detailX = Number(markup("P1").match(/class="card-detail" x="([\d.]+)"/)?.[1]);
-    const authorX = Number(markup("P1").match(/class="card-author"[^>]*d="M([\d.]+)/)?.[1]);
+    expect(markup("R1")).toMatch(/<text class="card-detail" x="[\d.]+" y="14"/);
+    const detailX = Number(markup("R1").match(/class="card-detail" x="([\d.]+)"/)?.[1]);
+    const authorX = Number(markup("R1").match(/class="card-author"[^>]*d="M([\d.]+)/)?.[1]);
     expect(detailX).toBeLessThan(authorX - 4);
   });
 
@@ -153,8 +153,8 @@ test("on shapes with cut corners, the id and the author mark sit inside the shap
       w: c.w,
     };
   };
-  // S1 is a box: the corners are free. D1 is a diamond, O1 a pill: 14 px and more are cut away.
-  expect(corner("S1").idX).toBe(8);
+  // F1 is a box: the corners are free. D1 is a diamond, O1 a pill: 14 px and more are cut away.
+  expect(corner("F1").idX).toBe(8);
   for (const id of ["D1", "O1"]) {
     const { idX, authorX, w } = corner(id);
     expect(idX).toBeGreaterThanOrEqual(22);

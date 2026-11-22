@@ -171,7 +171,7 @@ add outcome "Order confirmed" --from @bank --edge "yes"`,
     .map((row) => row.trim())
     .filter((row) => row.includes("renamed"));
   if (said.length === 0) throw new Error(`the hook said nothing of the rename: ${JSON.stringify(woke)}`);
-  const command = `sideco add outcome "Paid by transfer" --from S2`;
+  const command = `sideco add outcome "Paid by transfer" --from F2`;
   await hook({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command } });
   await line(page, "back", said[0] ?? "");
   await pause(1100);

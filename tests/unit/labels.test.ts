@@ -87,16 +87,16 @@ describe("`sideco labels`", () => {
   test("lists every label of the project with its cards, across boards; a key or a label narrows it", () => {
     const t = table(KANBAN).script("label T1 type:bug @bastien\nlabel T2 type:story");
     t.script(FLOW);
-    t.script("label S1 type:bug", "agent", "livraison");
+    t.script("label F1 type:bug", "agent", "livraison");
     expect(describeLabels(t.ws)).toBe(
       [
         "assignee:bastien  1  sprint T1",
-        "type:bug  2  sprint T1 · livraison S1",
+        "type:bug  2  sprint T1 · livraison F1",
         "type:story  1  sprint T2",
       ].join("\n"),
     );
     expect(describeLabels(t.ws, "type")).toBe(
-      ["type:bug  2  sprint T1 · livraison S1", "type:story  1  sprint T2"].join("\n"),
+      ["type:bug  2  sprint T1 · livraison F1", "type:story  1  sprint T2"].join("\n"),
     );
     expect(describeLabels(t.ws, "type:")).toBe(describeLabels(t.ws, "type"));
     expect(describeLabels(t.ws, "@bastien")).toBe("assignee:bastien  1  sprint T1");

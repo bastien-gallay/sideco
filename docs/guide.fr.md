@@ -133,7 +133,7 @@ Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit
 | Dans une frise, survoler entre deux numéros d'étape, cliquer le « + » | Insère une colonne à cet endroit : les étapes suivantes se décalent d'un cran ; Undo la retire. Une étape vide se retire par le « × » qui apparaît en haut de l'étape quand on la survole, ou par `sideco rm-col N` ; Undo la remet. Glisser l'en-tête d'une étape, n'importe où sauf tout près d'un bord où s'offre l'insertion, la déplace, ses cartes avec elle (`sideco move-col DE VERS`). ⚠️ Aucun raccourci clavier |
 | Double-cliquer une carte | La renomme |
 | Kanban et rétro : survoler l'espace entre deux en-têtes, cliquer le « + » | Ajoute une colonne à cet endroit, à nommer. Une colonne vide offre un « × » dans son en-tête ; glisser un en-tête déplace la colonne avec ses cartes. Au clavier, chaque en-tête est un arrêt de Tab : Entrée renomme, `Maj` + `←` `→` déplace, `Suppr` supprime si vide, `+` ou `Alt` + `←` `→` ajoute une colonne, `↓` va aux cartes. Claude : `sideco lane add "Nom" [--before L]`, `lane rm L`, `lane move L [--before L]`. Tout s'annule |
-| Rétro : sélectionner un constat, « En faire une action » | Ouvre la saisie d'une action dans Try, reliée au constat. Une action ajoutée sans colonne va aussi dans Try. Claude : `sideco add action "…" --from P1` |
+| Rétro : sélectionner un constat, « En faire une action » | Ouvre la saisie d'une action dans Try, reliée au constat. Une action ajoutée sans colonne va aussi dans Try. Claude : `sideco add action "…" --from Q1` |
 | Double-cliquer le nom d'une colonne (kanban, rétro, Impact / Effort) | Renomme la colonne pour ce tableau ; Entrée valide, Échap abandonne. ⚠️ Revenir au nom de l'atelier ne se fait que par Undo |
 | Glisser une carte | La change d'étape ou de colonne, ou de place dans sa case ; une ligne montre où elle tombera. La position reste sémantique, jamais en pixels |
 | Sur une carte qui a le focus, `Alt` + flèche (`⌥` sur Mac) | Ajoute une carte du même type à côté, du côté de la flèche, et ouvre sa saisie : étape ou colonne voisine à gauche et à droite, juste au-dessus ou au-dessous dans la même case ; dans un flux, `→` et `↓` ajoutent l'étape suivante, reliée. Un seul Undo la retire. Claude fait de même par `sideco add … --before ID` |
@@ -184,7 +184,7 @@ Un atelier est une donnée (un fichier par atelier dans `src/domain/formats/`, l
 
 Un `flow` trop long pour tenir en hauteur se replie, si la fenêtre est assez large, en colonnes côte à côte : on lit la première de haut en bas, puis la flèche monte par l'allée et reprend en haut de la suivante. Le repli ne coupe qu'à un endroit où une seule flèche passe, jamais sous une boucle qui remonte, et suit la largeur de la fenêtre ; les exports gardent une seule colonne.
 
-Sur un `c4-context`, le détail d'une carte est sa description : la carte en montre le début sous son nom, en plus petit, trois lignes au plus (`sideco detail S1 "Catalogue, panier, paiement"`). Une personne porte une tête et des épaules au-dessus de son nom.
+Sur un `c4-context`, le détail d'une carte est sa description : la carte en montre le début sous son nom, en plus petit, trois lignes au plus (`sideco detail Y1 "Catalogue, panier, paiement"`). Une personne porte une tête et des épaules au-dessus de son nom.
 
 Sur une `story-map`, quand le tableau défile vers le bas et que les activités passent sous les numéros d'étape, chaque numéro affiche dessous l'activité et la tâche de son étape ; l'activité court jusqu'à l'étape qui en a une autre.
 

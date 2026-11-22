@@ -4,12 +4,12 @@ import { cardLinks, cardPlace, keyMove, neighbour, readingGroups, readingOrder }
 import { FLOW, IMPACT_EFFORT, KANBAN, ORDERING, table } from "../support.ts";
 
 describe("the arrow keys go from a card to the next one on screen", () => {
-  // ORDERING: column 1 holds X1, C1, E1 from top to bottom; column 2 holds P1, C2, E2, H1.
+  // ORDERING: column 1 holds P1, C1, E1 from top to bottom; column 2 holds R1, C2, E2, H1.
   const cards = layoutBoard(table(ORDERING).board()).cards;
 
   test("down and up stay in the column", () => {
     expect(neighbour(cards, "C1", "down")).toBe("E1");
-    expect(neighbour(cards, "C1", "up")).toBe("X1");
+    expect(neighbour(cards, "C1", "up")).toBe("P1");
   });
 
   test("right and left go to the nearest card of the next column, at about the same height", () => {
@@ -18,14 +18,14 @@ describe("the arrow keys go from a card to the next one on screen", () => {
   });
 
   test("down and up never leave the column, even when the next card below is in another one", () => {
-    // Nothing is under E1 in column 1; P1, in column 2, is lower down.
+    // Nothing is under E1 in column 1; R1, in column 2, is lower down.
     expect(neighbour(cards, "E1", "down")).toBeUndefined();
-    expect(neighbour(cards, "P1", "up")).toBe("E2");
+    expect(neighbour(cards, "R1", "up")).toBe("E2");
   });
 
   test("at an edge there is nowhere to go", () => {
-    expect(neighbour(cards, "X1", "up")).toBeUndefined();
-    expect(neighbour(cards, "X1", "left")).toBeUndefined();
+    expect(neighbour(cards, "P1", "up")).toBeUndefined();
+    expect(neighbour(cards, "P1", "left")).toBeUndefined();
     expect(neighbour(cards, "Z9", "down")).toBeUndefined();
   });
 
@@ -33,8 +33,8 @@ describe("the arrow keys go from a card to the next one on screen", () => {
     const t = table(ORDERING);
     t.do({ kind: "add", board: "commande", type: "actor", label: "Caisse", col: 2 });
     const order = readingOrder(layoutBoard(t.board()).cards);
-    expect(order.slice(0, 3)).toEqual(["X1", "C1", "E1"]);
-    expect(order.indexOf("X2")).toBeLessThan(order.indexOf("P1"));
+    expect(order.slice(0, 3)).toEqual(["P1", "C1", "E1"]);
+    expect(order.indexOf("P2")).toBeLessThan(order.indexOf("R1"));
   });
 });
 
@@ -59,8 +59,8 @@ describe("a screen reader reads the board as it is drawn, not as it was made", (
     const board = t.board();
     const read = readingGroups(board, layoutBoard(board));
     expect(read.map((g) => g.label)).toEqual(["step 1", "step 2"]);
-    expect(read[0]?.ids).toEqual(["X1", "C1", "E1"]);
-    expect(read[1]?.ids[0]).toBe("X2");
+    expect(read[0]?.ids).toEqual(["P1", "C1", "E1"]);
+    expect(read[1]?.ids[0]).toBe("P2");
   });
 
   test("on a plan: cell by cell in the order of the plan, row after row inside a cell", () => {
@@ -78,8 +78,8 @@ describe("a screen reader reads the board as it is drawn, not as it was made", (
     const read = groups(FLOW);
     expect(read).toHaveLength(1);
     expect(read[0]?.label).toBeUndefined();
-    expect(read[0]?.ids[0]).toBe("S1");
-    expect([...(read[0]?.ids ?? [])].sort()).toEqual(["D1", "O1", "S1", "S2", "S3"]);
+    expect(read[0]?.ids[0]).toBe("F1");
+    expect([...(read[0]?.ids ?? [])].sort()).toEqual(["D1", "F1", "F2", "F3", "O1"]);
   });
 });
 
@@ -88,9 +88,9 @@ describe("a card says what it is linked to, for who cannot see the arrows", () =
 
   test("where it leads, with the name of each branch, and where it comes from", () => {
     expect(cardLinks(board, "D1")).toBe(
-      "leads to S2 Expédier (oui), S3 Commander au fournisseur (non) · comes from S1 Recevoir la commande, S3 Commander au fournisseur (à réception)",
+      "leads to F2 Expédier (oui), F3 Commander au fournisseur (non) · comes from F1 Recevoir la commande, F3 Commander au fournisseur (à réception)",
     );
-    expect(cardLinks(board, "S1", "fr")).toBe("mène à D1 En stock ?");
+    expect(cardLinks(board, "F1", "fr")).toBe("mène à D1 En stock ?");
   });
 
   test("a card without links says nothing more", () => {
@@ -101,8 +101,8 @@ describe("a card says what it is linked to, for who cannot see the arrows", () =
 describe("a card says where it is, for who cannot see the board", () => {
   test("on a timeline, its step and its row", () => {
     const board = table(ORDERING).board();
-    expect(cardPlace(board, layoutBoard(board).bands, "P1")).toBe("step 2, row Policy");
-    expect(cardPlace(board, layoutBoard(board, "fr").bands, "P1", "fr")).toBe("étape 2, rangée Règle");
+    expect(cardPlace(board, layoutBoard(board).bands, "R1")).toBe("step 2, row Policy");
+    expect(cardPlace(board, layoutBoard(board, "fr").bands, "R1", "fr")).toBe("étape 2, rangée Règle");
   });
 
   test("in a cell of several cards, its rank there, top to bottom", () => {

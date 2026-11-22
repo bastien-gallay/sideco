@@ -28,11 +28,11 @@ describe("a part of a board", () => {
   test("one column of a timeline", () => {
     const shown = describeBoard(table(ORDERING).board(), { col: 2 });
     expect(shown).toContain("· part: col 2");
-    expect(shown).toContain("  P1 policy");
+    expect(shown).toContain("  R1 policy");
     expect(shown).not.toContain("col 1");
-    expect(shown).not.toContain("X1 actor");
+    expect(shown).not.toContain("P1 actor");
     // A link is shown as soon as one of its ends is.
-    expect(shown).toContain("  E1 -> P1");
+    expect(shown).toContain("  E1 -> R1");
     expect(shown).not.toContain("C1 -> E1");
   });
 
@@ -84,7 +84,7 @@ describe("one card", () => {
   });
 
   test("in a timeline it says its column; an unknown card is refused", () => {
-    expect(describeCard(table(ORDERING).board(), "P1")).toContain("  in col 2");
+    expect(describeCard(table(ORDERING).board(), "R1")).toContain("  in col 2");
     expect(() => describeCard(table(ORDERING).board(), "Z9")).toThrow("no element Z9");
   });
 });

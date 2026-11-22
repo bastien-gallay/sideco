@@ -81,8 +81,9 @@ export function toModel(board: Board): Model {
 /**
  * The commands that rebuild a model as a new board. Elements keep the order of
  * the file, which is their stacking order, and the ids of the file, which is how
- * people refer to them; given the project's workspace, an id it already holds is
- * given anew, since an id is given once in the whole project.
+ * people refer to them. An id under a letter its kind no longer takes is given
+ * anew, and so is, given the project's workspace, an id it already holds, since
+ * an id is given once in the whole project.
  */
 export function fromModel(input: unknown, board: string, ws?: Workspace): Command[] {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
@@ -154,11 +155,13 @@ export function fromModel(input: unknown, board: string, ws?: Workspace): Comman
     }
 
   const elements = Array.isArray(model.elements) ? model.elements.map((e, i) => readElement(e, i, v1)) : [];
-  const idFor = idGiver(format, elements, ws);
-  // An id the project already holds is given anew, and the links follow it.
+  // An id the project already holds, or under a letter its kind no longer takes, is given anew; links follow.
+  const fits = (e: ModelElement): boolean =>
+    !!e.id && e.id.charAt(0) === (format && findType(format, e.type)?.prefix) && !(ws && heldBy(ws, e.id));
+  const idFor = idGiver(format, elements.filter(fits), ws);
   const renamed = new Map<string, string>();
   for (const e of elements) {
-    const id = (e.id && !(ws && heldBy(ws, e.id)) ? e.id : undefined) ?? idFor(e.type);
+    const id = (fits(e) ? e.id : undefined) ?? idFor(e.type);
     if (e.id && id && id !== e.id) renamed.set(e.id, id);
     commands.push({
       kind: "add",
@@ -182,8 +185,8 @@ export function fromModel(input: unknown, board: string, ws?: Workspace): Comman
 }
 
 /**
- * Ids for the elements that came without one, or with one the project holds,
- * chosen above every id the file names and the project used, so that none
+ * Ids for the elements that came without one, or with one they cannot keep,
+ * chosen above every id the file keeps and the project used, so that none
  * collide whatever their order.
  */
 function idGiver(

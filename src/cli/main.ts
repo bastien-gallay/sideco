@@ -6,7 +6,7 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { CommandError, slugify } from "../domain/commands.ts";
+import { type Command, CommandError, slugify } from "../domain/commands.ts";
 import { describeBoard, describeCard } from "../domain/digest.ts";
 import { toIndexHtml } from "../domain/export/html.ts";
 import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.ts";
@@ -43,6 +43,7 @@ import {
   stopServer,
 } from "./client.ts";
 import { hookFromStdin } from "./hook.ts";
+import { renumberAll } from "./renumber-all.ts";
 import { readSetting } from "./setting.ts";
 import { statusText, watchers } from "./status.ts";
 import { statusline } from "./statusline.ts";
@@ -79,6 +80,7 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco move-col FROM TO             a column takes the number TO, its cards with it
   sideco renumber ID [NEW]            a card takes a new id, NEW or the next of its letter; its links, notes and
                                     focus follow, and show and find still name the old one
+  sideco renumber --all [--dry-run]   so do the cards under a former letter, or whose id another board keeps
   sideco lane LANE "Name"             call a lane of this board your own way
   sideco label ID type:bug @name ...  put labels on a card, shared by every board; unlabel ID LABEL... takes them off
   sideco labels [LABEL|KEY]           every label of the project and its cards, across boards (labels type: every type:…)
@@ -335,6 +337,11 @@ async function run(verb: string, rest: string[]): Promise<number> {
     }
   }
 
+  if (verb === "renumber" && args.flags.has("all")) {
+    const send = (commands: Command[]) => post(server, actor, session, commands);
+    console.log(await renumberAll(read(), args.flags.has("dry-run"), send));
+    return 0;
+  }
   if (!BOARD_VERBS.has(verb)) throw new UsageError(`unknown command "${verb}" (try \`sideco help\`)`);
   // `board new` and `board rm` name their board themselves, and `session name` is on none: no default applies.
   const action = boardAction(

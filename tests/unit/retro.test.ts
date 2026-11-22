@@ -20,8 +20,8 @@ describe("the lanes of a retrospective", () => {
     const t = table(`${RETRO}
 add point "Revue rapide" --lane try`);
     expect(t.do({ kind: "add-lane", board: "retro", label: "Questions" })).toBe("lane-1");
-    t.script("move P1 --lane lane-1\ndone P1");
-    expect(t.events.at(-1)).toMatchObject({ event: "ElementMarked", id: "P1", done: true });
+    t.script("move Q1 --lane lane-1\ndone Q1");
+    expect(t.events.at(-1)).toMatchObject({ event: "ElementMarked", id: "Q1", done: true });
     expect(isDone(t.board(), { lane: "keep", done: true })).toBe(true);
     expect(isDone(t.board(), { lane: "lane-1" })).toBe(false);
   });
@@ -32,25 +32,27 @@ describe("a card added without a lane", () => {
     const t = table(`${RETRO}
 add point "Revue rapide"
 add action "Timeboxer"`);
-    expect(findElement(t.board(), "P1")?.lane).toBe("went-well");
-    expect(findElement(t.board(), "A1")?.lane).toBe("try");
+    expect(findElement(t.board(), "Q1")?.lane).toBe("went-well");
+    expect(findElement(t.board(), "T1")?.lane).toBe("try");
   });
 
   test("goes to the first lane when the board no longer has Try", () => {
     const t = table(`${RETRO}
 lane rm try
 add action "Timeboxer"`);
-    expect(findElement(t.board(), "A1")?.lane).toBe("went-well");
+    expect(findElement(t.board(), "T1")?.lane).toBe("went-well");
   });
 });
 
 describe("the ids of a retrospective", () => {
-  test("a point is P, not K, which reads Keep; an id from before, K, is still taken", () => {
-    expect(retro?.types.find((type) => type.id === "point")?.prefix).toBe("P");
+  test("a point is Q, a letter no other kind takes; an id from before, K or P, is still taken", () => {
+    expect(retro?.types.find((type) => type.id === "point")?.prefix).toBe("Q");
     const t = table(`${RETRO}
-add point "Ancien" --id K4`);
+add point "Ancien" --id K4
+add point "Moins ancien" --id P5`);
     expect(findElement(t.board(), "K4")?.type).toBe("point");
-    expect(() => t.script(`add point "Autre" --id A9`)).toThrow("starts with P");
+    expect(findElement(t.board(), "P5")?.type).toBe("point");
+    expect(() => t.script(`add point "Autre" --id A9`)).toThrow("starts with Q");
   });
 });
 
@@ -59,8 +61,8 @@ describe("a point made into an action", () => {
     expect(retro?.types.find((type) => type.id === "point")?.leadsTo?.type).toBe("action");
     const t = table(`${RETRO}
 add point "Réunions longues" --lane went-badly`);
-    t.do({ kind: "add", board: "retro", type: "action", label: "Timeboxer", from: "P1" }, "human");
-    expect(findElement(t.board(), "A1")?.lane).toBe("try");
-    expect(t.board().edges).toContainEqual(expect.objectContaining({ src: "P1", dst: "A1" }));
+    t.do({ kind: "add", board: "retro", type: "action", label: "Timeboxer", from: "Q1" }, "human");
+    expect(findElement(t.board(), "T1")?.lane).toBe("try");
+    expect(t.board().edges).toContainEqual(expect.objectContaining({ src: "Q1", dst: "T1" }));
   });
 });

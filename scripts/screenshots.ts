@@ -52,7 +52,7 @@ add hotspot "What if stock runs out?" --col 3
 link @place @placed
 link @placed @reserve
 link @reserve @reserved`,
-    human: `rename G1 "Partner warehouse"`,
+    human: `rename X1 "Partner warehouse"`,
   },
   {
     id: "payment",
@@ -255,7 +255,7 @@ async function twoWorkshops(scheme: Scheme): Promise<void> {
   await sharp.locator("g.card").first().waitFor();
   await Bun.sleep(800);
   // Written anew for each picture: only what Claude just changed is outlined.
-  await post("agent", `detail P1 "One reservation per order line (${scheme})."\ndetail E2 "Sent to billing (${scheme})."`, "ordering");
+  await post("agent", `detail R1 "One reservation per order line (${scheme})."\ndetail E2 "Sent to billing (${scheme})."`, "ordering");
   await sharp.locator("g.card.is-fresh").first().waitFor();
   const stormingPng = await sharp.locator("svg.sideco-board").first().screenshot();
   await marks(sharp, scheme);

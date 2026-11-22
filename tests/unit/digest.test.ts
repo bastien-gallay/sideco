@@ -8,9 +8,9 @@ const changes = (t: Table, after: number): string => describeChanges(t.events, a
 describe("describeBoard", () => {
   test("a timeline reads column by column, in the order of the type rows", () => {
     const t = table(ORDERING)
-      .script('detail P1 "Règle de gestion n°4"')
+      .script('detail R1 "Règle de gestion n°4"')
       .script('focus H1 --why "à trancher"');
-    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
+    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "R1" }, "human");
     t.script('reply N1 "L\'entrepôt"');
     t.do({ kind: "note", board: "commande", text: "Réglé", target: "E1" }, "human");
     t.script("resolve N3");
@@ -18,19 +18,19 @@ describe("describeBoard", () => {
       [
         `# commande — Passage de commande (event-storming, seq ${t.seq})`,
         "col 1",
-        '  X1 actor "Client"',
+        '  P1 actor "Client"',
         '  C1 command "Passer commande"',
         '  E1 event "Commande passée"',
         "col 2",
         '  C2 command "Réserver le stock"',
         '  E2 event "Stock réservé"',
-        '  P1 policy "Quand commande passée, réserver le stock" — Règle de gestion n°4',
+        '  R1 policy "Quand commande passée, réserver le stock" — Règle de gestion n°4',
         '  H1 hotspot "Et si le stock manque ?"',
         "links",
         "  C1 -> E1",
-        "  E1 -> P1",
+        "  E1 -> R1",
         "open notes",
-        "  N1 by human on P1: Qui réserve ?",
+        "  N1 by human on R1: Qui réserve ?",
         "    N2 by agent: L'entrepôt",
         "focus: H1 — à trancher",
       ].join("\n"),
@@ -64,8 +64,8 @@ describe("describeBoard", () => {
 
   test("a graph lists its elements, then its links", () => {
     const text = describeBoard(table(FLOW).board());
-    expect(text).toContain('elements\n  S1 step "Recevoir la commande"');
-    expect(text).toContain('  D1 -> S2 "oui"');
+    expect(text).toContain('elements\n  F1 step "Recevoir la commande"');
+    expect(text).toContain('  D1 -> F2 "oui"');
   });
 
   test("an empty board says so", () => {
@@ -99,7 +99,7 @@ describe("describeChanges", () => {
       'board commande "Reprise"',
       "  − board removed",
       '  + board created: "Reprise" (flow)',
-      '  + S1 step "Recevoir"',
+      '  + F1 step "Recevoir"',
     ]);
   });
 
@@ -131,9 +131,9 @@ describe("describeChanges", () => {
     human(t, 'rename E1 "Avant"');
     const mark = t.seq;
     t.script('rename E2 "Par l\'agent"');
-    human(t, 'rename X1 "Cliente"');
+    human(t, 'rename P1 "Cliente"');
     expect(changes(t, mark)).toBe(
-      'board commande "Passage de commande"\n  ~ X1 renamed "Client" → "Cliente"',
+      'board commande "Passage de commande"\n  ~ P1 renamed "Client" → "Cliente"',
     );
   });
 
@@ -166,38 +166,38 @@ describe("describeChanges", () => {
   test("notes, focus and the hand-over reach the agent, with the message", () => {
     const t = table(ORDERING);
     const mark = t.seq;
-    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
+    t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "R1" }, "human");
     t.do({ kind: "focus", board: "commande", ids: ["H1"], reason: "on commence ici" }, "human");
     t.do({ kind: "pass", board: "commande", to: "agent", message: "à toi" }, "human");
     const found = describeChanges(t.events, mark);
     expect(found.passed).toBe(true);
     expect(found.text.split("\n")).toEqual([
       'board commande "Passage de commande"',
-      "  note N1 on P1: Qui réserve ?",
+      "  note N1 on R1: Qui réserve ?",
       "  focus on H1: on commence ici",
       "The human passed you the turn: à toi",
     ]);
   });
 
   test("a reply names the note it answers and the card the thread is on", () => {
-    const t = table(ORDERING).script('note "Qui réserve ?" --on P1\nnote "Et le reste ?"');
+    const t = table(ORDERING).script('note "Qui réserve ?" --on R1\nnote "Et le reste ?"');
     const mark = t.seq;
     human(t, 'reply N1 "L\'entrepôt"\nreply N2 "Plus tard"');
     expect(changes(t, mark).split("\n")).toEqual([
       'board commande "Passage de commande"',
-      "  reply N3 to N1 on P1: L'entrepôt",
+      "  reply N3 to N1 on R1: L'entrepôt",
       "  reply N4 to N2: Plus tard",
     ]);
   });
 
   test("a reply and the thread it closes are both told; a thread opened and closed unseen is not", () => {
-    const t = table(ORDERING).script('note "Qui réserve ?" --on P1');
+    const t = table(ORDERING).script('note "Qui réserve ?" --on R1');
     const mark = t.seq;
     human(t, 'reply N1 "L\'entrepôt"\nresolve N1');
     human(t, 'note "Pour moi"\nreply N3 "Encore moi"\nresolve N3');
     expect(changes(t, mark).split("\n")).toEqual([
       'board commande "Passage de commande"',
-      "  reply N2 to N1 on P1: L'entrepôt",
+      "  reply N2 to N1 on R1: L'entrepôt",
       "  ✓ note N1 resolved",
     ]);
   });
@@ -264,9 +264,9 @@ describe("the digest says which cards and threads its lines name, board by board
       t,
       'add event "Payé" --col 3\nrename E1 "Validée"\nrename E1 "Commande validée"\ndetail E1 "à revoir"',
     );
-    human(t, "move E2 --col 3\nrm H1\nlink C2 E2\nunlink C1 E1\nfocus P1");
+    human(t, "move E2 --col 3\nrm H1\nlink C2 E2\nunlink C1 E1\nfocus R1");
     expect(about(t, mark)).toEqual([
-      { board: "commande", elements: ["E3", "E1", "E2", "H1", "C2", "C1", "P1"], threads: [] },
+      { board: "commande", elements: ["E3", "E1", "E2", "H1", "C2", "C1", "R1"], threads: [] },
     ]);
   });
 
@@ -280,11 +280,11 @@ describe("the digest says which cards and threads its lines name, board by board
   });
 
   test("a note names its thread, and the card it is pinned on; a reply names the thread it answers", () => {
-    const t = table(ORDERING).script('note "Qui réserve ?" --on P1\nnote "Et le reste ?"');
+    const t = table(ORDERING).script('note "Qui réserve ?" --on R1\nnote "Et le reste ?"');
     const mark = t.seq;
     human(t, 'reply N1 "L\'entrepôt"\nreply N1 "Toujours"\nnote "Pour toi" --on E1\nresolve N2');
     expect(about(t, mark)).toEqual([
-      { board: "commande", elements: ["P1", "E1"], threads: ["N1", "N5", "N2"] },
+      { board: "commande", elements: ["R1", "E1"], threads: ["N1", "N5", "N2"] },
     ]);
   });
 
@@ -360,7 +360,7 @@ describe("moves are worded against the final board", () => {
     test("a detail written then undone is no change", () => {
       const t = table(ORDERING);
       const mark = t.seq;
-      human(t, 'detail P1 "Règle n°4"');
+      human(t, 'detail R1 "Règle n°4"');
       undo(t);
       expect(describeChanges(t.events, mark)).toMatchObject({ text: "", count: 0 });
     });

@@ -73,21 +73,21 @@ describe("undo takes back the author's last gesture", () => {
   });
 
   test("a link and an unlink come back", () => {
-    const t = table(ORDERING).script("link E2 P1\nunlink C1 E1", "human");
+    const t = table(ORDERING).script("link E2 R1\nunlink C1 E1", "human");
     const has = (src: string, dst: string): boolean =>
       t.board().edges.some((e) => e.src === src && e.dst === dst);
     undo(t, "commande");
     expect(has("C1", "E1")).toBe(true);
     undo(t, "commande");
-    expect(has("E2", "P1")).toBe(false);
+    expect(has("E2", "R1")).toBe(false);
   });
 
   test("an element added with its link is one gesture: one undo removes both", () => {
-    const t = table(FLOW).script('add step "Emballer" --from S2', "human");
-    expect(findElement(t.board(), "S4")).toBeDefined();
+    const t = table(FLOW).script('add step "Emballer" --from F2', "human");
+    expect(findElement(t.board(), "F4")).toBeDefined();
     undo(t, "livraison");
-    expect(findElement(t.board(), "S4")).toBeUndefined();
-    expect(t.board().edges.some((e) => e.dst === "S4")).toBe(false);
+    expect(findElement(t.board(), "F4")).toBeUndefined();
+    expect(t.board().edges.some((e) => e.dst === "F4")).toBe(false);
     expect(() => undo(t, "livraison")).toThrow("nothing to undo");
   });
 });
@@ -137,11 +137,11 @@ describe("redo puts back what undo took", () => {
   });
 
   test("an added element undone, then redone, comes back with its link", () => {
-    const t = table(FLOW).script('add step "Emballer" --from S2', "human");
+    const t = table(FLOW).script('add step "Emballer" --from F2', "human");
     undo(t, "livraison");
     redo(t, "livraison");
-    expect(findElement(t.board(), "S4")).toMatchObject({ label: "Emballer", by: "human" });
-    expect(t.board().edges.some((e) => e.src === "S2" && e.dst === "S4")).toBe(true);
+    expect(findElement(t.board(), "F4")).toMatchObject({ label: "Emballer", by: "human" });
+    expect(t.board().edges.some((e) => e.src === "F2" && e.dst === "F4")).toBe(true);
   });
 
   test("a new gesture closes the way back: there is nothing left to redo", () => {
@@ -308,7 +308,7 @@ describe("a gesture the other author changed since is refused, said, then left b
     expect(findElement(t.board(), "E2")?.col).toBe(4);
     undo(t, "commande");
     expect(findElement(t.board(), "E2")?.col).toBe(3);
-    expect(findElement(t.board(), "P1")?.col).toBe(3);
+    expect(findElement(t.board(), "R1")?.col).toBe(3);
   });
 });
 

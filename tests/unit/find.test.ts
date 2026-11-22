@@ -12,7 +12,7 @@ describe("`sideco find`", () => {
     const t = table(KANBAN).script(FLOW);
     expect(describeFind(t.ws, "ecrire")).toBe('sprint T1 task "Écrire le PRD"');
     expect(describeFind(t.ws, "COMMANDE")).toBe(
-      ['livraison S1 step "Recevoir la commande"', 'livraison S3 step "Commander au fournisseur"'].join("\n"),
+      ['livraison F1 step "Recevoir la commande"', 'livraison F3 step "Commander au fournisseur"'].join("\n"),
     );
   });
 

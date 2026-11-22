@@ -29,8 +29,8 @@ describe("a link's name", () => {
     const scene = layoutBoard(
       table(
         'board new "Système" --format flow --id sys\nadd step "Agent"\nadd step "Page"\n' +
-          'add step "Compagnon" --from S1 --edge "lit et écrit par la CLI ; hooks de session"\n' +
-          'link S2 S3 "page et direct (HTTP, flux)"',
+          'add step "Compagnon" --from F1 --edge "lit et écrit par la CLI ; hooks de session"\n' +
+          'link F2 F3 "page et direct (HTTP, flux)"',
       ).board(),
     );
     expectReadable(scene);

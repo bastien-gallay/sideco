@@ -122,10 +122,10 @@ add story "Filtre" --col 1`).board(),
     const flow = layoutBoard(
       table(`board new "Parcours" --format flow --id parcours
 add step "Payer"
-label S1 api
-add step "Livrer" --from S1`).board(),
+label F1 api
+add step "Livrer" --from F1`).board(),
     ).cards;
     expect(new Set(flow.map((c) => c.h)).size).toBe(1);
-    expect(flow.find((c) => c.id === "S1")?.labels).toEqual(["api"]);
+    expect(flow.find((c) => c.id === "F1")?.labels).toEqual(["api"]);
   });
 });

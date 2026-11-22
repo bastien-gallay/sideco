@@ -185,8 +185,8 @@ describe("the agent writes, the page follows", () => {
         'add command "Réserver" --col 2',
         'add event "Stock réservé" --col 2',
         "link C1 E1",
-        "link E1 P1",
-        "link P1 C2",
+        "link E1 R1",
+        "link R1 C2",
         "link C2 E2",
       ].join("\n"),
     );
@@ -209,10 +209,10 @@ describe("the agent writes, the page follows", () => {
   });
 
   test("the agent points at what it wants discussed", async () => {
-    await agent('focus P1 --why "Qui décide de réserver ?"', "commande");
+    await agent('focus R1 --why "Qui décide de réserver ?"', "commande");
     await page.locator(".focus-bar").waitFor({ state: "visible" });
-    expect(await page.locator(".focus-bar").textContent()).toContain("Focus: P1 — Qui décide de réserver ?");
-    expect(await card("P1").getAttribute("class")).toContain("is-focus");
+    expect(await page.locator(".focus-bar").textContent()).toContain("Focus: R1 — Qui décide de réserver ?");
+    expect(await card("R1").getAttribute("class")).toContain("is-focus");
     expect(await card("E1").getAttribute("class")).toContain("is-dim");
     await shot("02-agent-wrote");
     await page.locator(".focus-bar button").click();
@@ -311,7 +311,7 @@ describe("the human edits, the agent is told", () => {
   });
 
   test("the card toolbar pins a note for Claude", async () => {
-    await card("P1").click();
+    await card("R1").click();
     await page.locator(".card-tools button", { hasText: "Note for Claude" }).click();
     await typeInEditor("L'entrepôt réserve, pas nous");
     await page.locator(".notes .thread").waitFor();
@@ -356,7 +356,7 @@ describe("the human edits, the agent is told", () => {
     await page.locator(".pass textarea").fill("J'ai corrigé la règle, continue");
     // From the board, not only from the field: ⌘↵ or Ctrl+Enter sends, the word typed with it.
     // A card holding the keyboard does not take the chord for its own Enter, which renames it.
-    await card("P1").focus();
+    await card("R1").focus();
     await page.keyboard.press("ControlOrMeta+Enter");
     const waited = await waiting;
     expect(await page.locator("textarea.card-editor").isVisible()).toBe(false);
@@ -418,7 +418,7 @@ describe("the human edits, the agent is told", () => {
   test("the message for Claude takes several lines: it grows on focus, Shift+Enter breaks the line", async () => {
     const field = page.locator(".pass textarea");
     const height = async () => (await field.boundingBox())?.height ?? 0;
-    await card("P1").focus();
+    await card("R1").focus();
     const resting = await height();
     await field.click();
     // Room to write as soon as the field has the keyboard, and back to one line once it is left.
@@ -433,7 +433,7 @@ describe("the human edits, the agent is told", () => {
     await until("Claude would be told both lines", async () =>
       (await pending()).includes("Deux choses :\nle stock, puis le paiement"),
     );
-    await card("P1").focus();
+    await card("R1").focus();
     await until("the field is back to one line", async () => (await height()) <= resting + 1);
   });
 });
@@ -791,7 +791,7 @@ describe("other workshops", () => {
     await page.locator(".palette h2", { hasText: "Retrospective" }).waitFor();
     expect(await page.locator(".palette h2").textContent()).toBe("Retrospective");
 
-    const point = mint(await workspace(), "P");
+    const point = mint(await workspace(), "Q");
     await paletteType("Observation").click();
     await typeInEditor("Les revues sont rapides");
     await card(point).waitFor();
@@ -801,12 +801,12 @@ describe("other workshops", () => {
     });
 
     // An action from the palette lands in Try; one made from a point is linked from it.
-    const action = mint(await workspace(), "A");
+    const action = mint(await workspace(), "T");
     await paletteType("Action").click();
     await typeInEditor("Garder des revues courtes");
     await card(action).waitFor();
     expect((await elementOf("retro-sprint-12", action))?.lane).toBe("try");
-    const made = mint(await workspace(), "A");
+    const made = mint(await workspace(), "T");
     await card(point).click();
     await page.locator(".card-tools button", { hasText: "Make an action of it" }).click();
     await typeInEditor("Revue à deux");
@@ -1236,7 +1236,7 @@ describe("adding where the pointer is", () => {
     await Bun.sleep(200);
     await shot("16-add-here");
 
-    const action = mint(await workspace(), "A");
+    const action = mint(await workspace(), "T");
     await offer("action").click();
     await typeInEditor("Écrire le test avant le code");
     await until("the action is in Try", async () => {
@@ -1267,7 +1267,7 @@ describe("adding where the pointer is", () => {
     await Bun.sleep(200);
     await shot("17-add-in-cell");
 
-    policy = mint(await workspace(), "P");
+    policy = mint(await workspace(), "R");
     await offer("policy").click();
     await typeInEditor("Quand stock réservé, facturer");
     await until("the policy is in step 2", async () => (await elementOf("ajout-case", policy))?.col === 2);

@@ -8,7 +8,7 @@
  */
 
 import { CommandError } from "./commands.ts";
-import type { ElementType } from "./formats.ts";
+import type { ElementType, Format } from "./formats.ts";
 import type { Board, Workspace } from "./workspace.ts";
 
 /** The number part of an id shaped `<letter><digits>`, or 0. */
@@ -37,10 +37,17 @@ export function heldBy(ws: Workspace, id: string): Board | undefined {
   return everyBoard(ws).find((b) => b.elements.some((e) => e.id === id) || b.retired.includes(id));
 }
 
+/** "an actor", "a task": the article a kind takes in a refusal. */
+function article(word: string): string {
+  return /^[aeiou]/.test(word) ? "an" : "a";
+}
+
 /** An id chosen by the caller is accepted only if no element of the project, present or removed, ever had it. */
-export function claim(ws: Workspace, type: ElementType, id: string): string {
-  if (id.charAt(0) !== type.prefix && id.charAt(0) !== type.formerPrefix) {
-    throw new CommandError(`a ${type.id} id starts with ${type.prefix}, got ${id}`);
+export function claim(ws: Workspace, type: ElementType, id: string, format: Format): string {
+  const letter = id.charAt(0);
+  const former = type.formerPrefixes?.includes(letter) && !format.types.some((t) => t.prefix === letter);
+  if (letter !== type.prefix && !former) {
+    throw new CommandError(`${article(type.id)} ${type.id} id starts with ${type.prefix}, got ${id}`);
   }
   const holder = heldBy(ws, id);
   if (holder) {

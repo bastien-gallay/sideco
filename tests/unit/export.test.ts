@@ -24,18 +24,18 @@ describe("mermaid", () => {
   test("a graph becomes a top-down flowchart with the shapes of its types", () => {
     expect(toMermaid(table(FLOW).board()).split("\n")).toEqual([
       "flowchart TD",
-      '  S1["Recevoir la commande"]',
+      '  F1["Recevoir la commande"]',
       '  D1{"En stock ?"}',
-      '  S2["Expédier"]',
-      '  S3["Commander au fournisseur"]',
+      '  F2["Expédier"]',
+      '  F3["Commander au fournisseur"]',
       '  O1(["Livrée"])',
-      "  S1 --> D1",
-      '  D1 -->|"oui"| S2',
-      '  D1 -->|"non"| S3',
-      "  S2 --> O1",
-      '  S3 -->|"à réception"| D1',
+      "  F1 --> D1",
+      '  D1 -->|"oui"| F2',
+      '  D1 -->|"non"| F3',
+      "  F2 --> O1",
+      '  F3 -->|"à réception"| D1',
       "  classDef step fill:#E8EEF4,color:#1F2328,stroke:#00000033",
-      "  class S1,S2,S3 step",
+      "  class F1,F2,F3 step",
       "  classDef decision fill:#FFD23F,color:#1F2328,stroke:#00000033",
       "  class D1 decision",
       "  classDef outcome fill:#6FCF97,color:#1F2328,stroke:#00000033",
@@ -49,7 +49,7 @@ describe("mermaid", () => {
       true,
     );
     expect(text).toContain(
-      '  subgraph step2["2"]\n    direction TB\n    P1["Quand commande passée, réserver le stock"]',
+      '  subgraph step2["2"]\n    direction TB\n    R1["Quand commande passée, réserver le stock"]',
     );
     expect(text).toContain("  C1 --> E1");
   });
@@ -68,7 +68,7 @@ describe("mermaid", () => {
     const flow = toMermaid(
       table('board new "X" --format flow --id x\nadd step "Dire \\"oui\\" [vite]"').board(),
     );
-    expect(flow).toContain('S1["Dire #quot;oui#quot; [vite]"]');
+    expect(flow).toContain('F1["Dire #quot;oui#quot; [vite]"]');
     const kanban = toMermaid(
       table('board new "X" --format kanban --id x\nadd task "Fix [bug] (urgent)"').board(),
     );
@@ -83,7 +83,7 @@ describe("model file", () => {
     ["graph", FLOW],
   ])("a %s board survives the round trip", (_layout, script) => {
     const original = table(script).script(
-      `detail ${script === ORDERING ? "E1" : script === KANBAN ? "T1" : "S1"} "Un détail"`,
+      `detail ${script === ORDERING ? "E1" : script === KANBAN ? "T1" : "F1"} "Un détail"`,
     );
     const copy = reimport(JSON.parse(JSON.stringify(toModel(original.board()))));
     expect(body(copy)).toBe(body(original));
@@ -118,8 +118,11 @@ describe("model file", () => {
     const edges = (sample as { edges: unknown[] }).edges;
     const board = reimport(sample, "v1").board();
     expect(board.format).toBe("event-storming");
-    expect(board.elements.map((e) => e.id).sort()).toEqual(elements.map((e) => e.id).sort());
-    expect(board.elements.find((e) => e.id === "X1")?.col).toBe(1);
+    // Read under the letters of today: an actor is P, a policy R, a read model V, an aggregate G.
+    const today: Record<string, string> = { X: "P", P: "R", R: "V", A: "G" };
+    const relettered = elements.map((e) => (today[e.id.charAt(0)] ?? e.id.charAt(0)) + e.id.slice(1));
+    expect(board.elements.map((e) => e.id).sort()).toEqual(relettered.sort());
+    expect(board.elements.find((e) => e.id === "P1")?.col).toBe(1);
     expect(board.edges).toHaveLength(edges.length);
     const mini = reimport({
       title: "Mini",
@@ -130,8 +133,8 @@ describe("model file", () => {
       ],
       edges: [["G1", "E1"]],
     }).board();
-    expect(mini.elements.map((e) => `${e.id}:${e.type}:${e.col}`)).toEqual(["G1:system:1", "E1:event:2"]);
-    expect(mini.edges).toMatchObject([{ src: "G1", dst: "E1" }]);
+    expect(mini.elements.map((e) => `${e.id}:${e.type}:${e.col}`)).toEqual(["X1:system:1", "E1:event:2"]);
+    expect(mini.edges).toMatchObject([{ src: "X1", dst: "E1" }]);
   });
 
   test("version 2 reads what it writes: edges as objects, types as they are; unknown fields are ignored", () => {
@@ -144,7 +147,7 @@ describe("model file", () => {
       ],
       edges: [{ src: "G1", dst: "E1", label: "paie" }],
     }).board();
-    expect(board.elements.map((e) => `${e.id}:${e.type}:${e.col}`)).toEqual(["G1:system:1", "E1:event:2"]);
+    expect(board.elements.map((e) => `${e.id}:${e.type}:${e.col}`)).toEqual(["X1:system:1", "E1:event:2"]);
     expect(() => fromModel({ version: 2, elements: [], edges: [["G1", "E1"]] }, "x")).toThrow(
       "an edge is {src, dst, label}",
     );
@@ -174,8 +177,8 @@ describe("model file", () => {
 });
 
 describe("markdown", () => {
-  const t = table(ORDERING).script('detail P1 "Règle | n°4"');
-  t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "P1" }, "human");
+  const t = table(ORDERING).script('detail R1 "Règle | n°4"');
+  t.do({ kind: "note", board: "commande", text: "Qui réserve ?", target: "R1" }, "human");
   t.do({ kind: "note", board: "commande", text: "Vu", target: "E1" }, "human");
   t.script("resolve N2");
   t.script('reply N1 "L\'entrepôt"');
@@ -191,7 +194,7 @@ describe("markdown", () => {
     expect(md).toContain("| E1 | Event | Commande passée | 1 |  | agent |");
     expect(md).toContain("## Links\n\n| From | To | Label |");
     expect(md).toContain(
-      "## Open questions\n\n- ❓ N1 (on P1), human: Qui réserve ?\n  - N3, agent: L'entrepôt\n",
+      "## Open questions\n\n- ❓ N1 (on R1), human: Qui réserve ?\n  - N3, agent: L'entrepôt\n",
     );
     expect(md).toContain("## Resolved notes\n\n- ✅ N2 (on E1), human: Vu");
   });
@@ -206,7 +209,7 @@ describe("markdown", () => {
     expect(fr).toContain("| E1 | Événement | Commande passée | 1 |  | agent |");
     expect(fr).toContain("## Liens\n\n| De | Vers | Libellé |");
     expect(fr).toContain(
-      "## Questions ouvertes\n\n- ❓ N1 (sur P1), humain : Qui réserve ?\n  - N3, agent : L'entrepôt\n",
+      "## Questions ouvertes\n\n- ❓ N1 (sur R1), humain : Qui réserve ?\n  - N3, agent : L'entrepôt\n",
     );
     expect(fr).toContain("## Notes résolues\n\n- ✅ N2 (sur E1), humain : Vu");
   });
@@ -299,11 +302,11 @@ describe("a card marked done", () => {
     const board = table(
       'board new "Rétro" --format retro\nadd point "Revue rapide" --lane keep\nadd point "Lent" --lane drop',
     )
-      .script("done P1")
+      .script("done Q1")
       .board();
-    expect(toMermaid(board)).toContain("P1[P1 ✓ Revue rapide]");
-    expect(toMermaid(board)).toContain("P2[P2 Lent]");
-    expect(toMarkdown(board, META)).toContain("| P1 | Observation | ✓ Revue rapide |");
+    expect(toMermaid(board)).toContain("Q1[Q1 ✓ Revue rapide]");
+    expect(toMermaid(board)).toContain("Q2[Q2 Lent]");
+    expect(toMarkdown(board, META)).toContain("| Q1 | Observation | ✓ Revue rapide |");
     expect(toHtml(board, META)).toContain("<td>✓ Revue rapide</td>");
     const timeline = table(ORDERING).script("done E1").board();
     expect(toMermaid(timeline)).toContain('"✓ Commande passée"');
