@@ -7,11 +7,11 @@
 A live, structured board beside the terminal: the agent lays out a flow, a backlog or an event storming; you answer right on the card in question; one click hands the turn back, and the agent reads what you changed. Local and MIT. Claude Code today; MCP for other agents on the roadmap.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/sideco-two-workshops-dark.png">
-  <img alt="Two boards in Sideco, cut by an oblique line. On the left an event storming of an ordering domain: Claude waits for you to send, and the two cards it just changed are outlined. On the right a flow: Claude asked on a decision how many attempts before blocking the card, and your answer sits in the thread with a field to reply" src="docs/img/sideco-two-workshops.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/sideco-loop-dark.gif">
+  <img alt="A terminal beside the board. Claude has written three cards of a flow; it adds a fourth, asks what to offer when the bank says no, and waits. In the page, one card is renamed and Send to Claude is clicked: the terminal shows the rename, and Claude adds the card that follows" src="docs/img/sideco-loop.gif">
 </picture>
 
-<sub>A diamond marks a card Claude placed, a dot one you touched, a blue outline what Claude just changed.</sub>
+<sub>One turn, filmed: the real page and the real commands, beside a terminal redrawn from what Claude receives.</sub>
 
 > [!NOTE]
 > Early: version 0.1.0, for one person and one active agent per workspace. [Tell me what breaks](https://github.com/bastien-gallay/sideco/issues).
@@ -24,7 +24,7 @@ You need Claude Code and [Bun](https://bun.sh) 1.4 or later, on macOS or Linux (
 claude plugin marketplace add bastien-gallay/sideco && claude plugin install sideco@sideco
 ```
 
-`claude plugin list` then shows `sideco`. The plugin adds a skill, and hooks that run a local command on the events of a session: that is how the board shows what Claude does and how your edits reach it. The hooks talk to a server on `127.0.0.1` only, and exit at once outside a Sideco workspace. One of them stays parked at the end of a turn, for 12 hours at most, to wake Claude when you send.
+Run it in your terminal, not inside a session. `claude plugin list` then shows `sideco`. [What it adds to your machine](#on-your-machine) is listed below.
 
 ## Your first board
 
@@ -34,18 +34,16 @@ In any project, start Claude Code and ask:
 Let's model the checkout flow on the Sideco board
 ```
 
-Claude creates the workspace (a `.sideco/` folder in the project), starts a local server and opens the board in your browser, at `http://127.0.0.1:4747`. The cards appear as Claude writes them. There is nothing else to launch, and no command for you to type: Claude runs them.
+Claude creates the workspace (a `.sideco/` folder in the project), starts a local server and opens the board in your browser, at `http://127.0.0.1:4747`. The cards appear as Claude writes them. There is nothing else to launch. Claude runs the `sideco` commands this page names; ask for one in plain words, or [type it yourself](docs/guide.md#the-commands).
 
 ## One turn of the loop
 
+You edit the board yourself: add, rename, drag, link, answer in a card's thread, undo. One click on **Send to Claude** hands the turn back. Each card says who did what:
+
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/sideco-loop-dark.gif">
-  <img alt="A terminal beside the board. Claude writes four cards of a flow, asks what to offer when the bank says no, and waits. In the page, one card is renamed and Send to Claude is clicked: the terminal shows the rename, and Claude adds the card that follows" src="docs/img/sideco-loop.gif">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/sideco-marks-dark.png">
+  <img alt="Three cards, enlarged. A diamond in the corner: Claude placed it. A dot on the corner: you touched it. A blue outline: Claude just changed it" src="docs/img/sideco-marks.png">
 </picture>
-
-<sub>The board is the real page, driven by the real commands and hooks; the terminal is redrawn from what the hook hands to Claude. Made by `bun scripts/loop.ts`.</sub>
-
-You edit the board yourself: add, rename, drag, link, answer in a card's thread, undo. One click on **Send to Claude** hands the turn back.
 
 | When you send, Claude | It reads your changes |
 | --- | --- |
@@ -68,17 +66,20 @@ Ask for one by its name, or let Claude choose from your question.
 | C4 context | Who uses the system, and what does it depend on? |
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/sideco-next-dark.png">
-  <img alt="An Impact / Effort board: four quadrants, Quick wins, Big bets, Fill-ins and Avoid, with the ideas of a shop sorted into them" src="docs/img/sideco-next.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/sideco-two-workshops-dark.png">
+  <img alt="Two boards in Sideco, cut by an oblique line. On the left an event storming of an ordering domain: Claude waits for you to send, and the two cards it just changed are outlined. On the right a flow: Claude asked on a decision how many attempts before blocking the card, and your answer sits in the thread with a field to reply" src="docs/img/sideco-two-workshops.png">
 </picture>
+
+<sub>An event storming and a flow, cut side by side. On the flow, Claude asked a question on a card and the answer sits in its thread.</sub>
 
 To show a board to your team, export it to Markdown, HTML, SVG, Mermaid or JSON, or let `sideco publish` turn every board into a static site. [Each workshop has its picture in the guide](docs/guide.md#workshops).
 
-## Your data stays local
+## On your machine
 
-- Everything is an event in an append-only log, `.sideco/boards.jsonl`, in your project. Commit it: the board's history travels with the code. One writer at a time: two people who edit it each on their side get a merge conflict.
-- The server listens on `127.0.0.1` only and refuses requests from another origin.
-- Undo, redo and a history slider come from the same log.
+- **What is installed.** A skill, and hooks that run a local command on the events of a session: that is how the board shows what Claude does and how your edits reach it. Outside a Sideco workspace they exit at once.
+- **What keeps running.** A server on `127.0.0.1` only, which refuses requests from another origin and stops by itself 5 minutes after the last page and session leave. At the end of a turn one hook stays parked, for 12 hours at most, to wake Claude when you send.
+- **Where your data goes.** Sideco sends nothing anywhere and has no telemetry. What Claude reads of a board goes where the rest of your Claude Code session goes.
+- **Where it is kept.** Every change is an event in an append-only log, `.sideco/boards.jsonl`, in your project; undo, redo and the history slider come from it. Commit it and the board's history travels with the code. One writer at a time: two people who edit it each on their side get a merge conflict.
 
 ## If something goes wrong
 
@@ -99,7 +100,7 @@ Anything else: [open an issue](https://github.com/bastien-gallay/sideco/issues),
 
 | Document | What is in it |
 | --- | --- |
-| [Guide](docs/guide.md) | Other ways to install, the gestures of the page, every workshop, the sandbox, known limits |
+| [Guide](docs/guide.md) | Other ways to install, the gestures of the page, every workshop, the commands, the sandbox, known limits |
 | [Guide détaillé](docs/guide.fr.md), in French | The same and more: the full CLI, labels, search, the data format |
 | [Contributing](CONTRIBUTING.md) | How to work on Sideco, with links to the coding standards and the PRD |
 

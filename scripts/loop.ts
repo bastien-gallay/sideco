@@ -35,8 +35,8 @@ const STAGE_HTML = (url: string) => `<!doctype html><style>
   #terminal .wait { color: #d29922; }
   iframe { flex: 1; border: 0; border-left: 1px solid #30363d; }
   #pointer { position: fixed; left: 900px; top: 420px; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
-    background: rgba(26, 111, 174, 0.35); border: 2px solid #1a6fae; transition: left 0.6s ease-out, top 0.6s ease-out;
-    pointer-events: none; }
+    background: rgba(26, 111, 174, 0.35); border: 2px solid #1a6fae; opacity: 0;
+    transition: left 0.6s ease-out, top 0.6s ease-out, opacity 0.2s; pointer-events: none; }
 </style>
 <div id="terminal"><div class="bar">claude · ~/shop</div></div>
 <iframe src="${url}/#/b/payment"></iframe><div id="pointer"></div>`;
@@ -70,6 +70,7 @@ async function point(page: Page, target: Locator): Promise<void> {
   await page.evaluate(
     ([x, y]) => {
       const pointer = document.getElementById("pointer") as HTMLElement;
+      pointer.style.opacity = "1";
       pointer.style.left = `${x}px`;
       pointer.style.top = `${y}px`;
     },
@@ -103,6 +104,19 @@ async function film(scheme: Scheme): Promise<void> {
   const board: FrameLocator = page.frameLocator("iframe");
   await board.locator("svg.sideco-board").first().waitFor();
   await pause(600);
+  // The film opens on a turn under way: the prompt is sent and the first cards are on the board, so its
+  // first picture, the one a reader sees before it moves, already shows a terminal and a board at work.
+  await line(page, "you", PROMPT);
+  await hook({ hook_event_name: "UserPromptSubmit", prompt: PROMPT });
+  await pause(500);
+  await line(page, "run", "sideco apply   3 cards");
+  await post(
+    `add step "Customer pays" --alias pays
+add decision "Bank agrees?" --from @pays --alias bank
+add outcome "Order confirmed" --from @bank --edge "yes"`,
+    "payment",
+  );
+  await pause(1000); // the cards glide to their place
   // The film is a photo every tenth of a second, each kept with the time it stayed on screen.
   const shots: { file: string; at: number }[] = [];
   let rolling = true;
@@ -116,18 +130,8 @@ async function film(scheme: Scheme): Promise<void> {
     }
   })();
 
-  // Claude's turn: the prompt, two batches, the question, then it parks.
-  await line(page, "you", PROMPT);
-  await hook({ hook_event_name: "UserPromptSubmit", prompt: PROMPT });
-  await pause(500);
-  await line(page, "run", "sideco apply   3 cards");
-  await post(
-    `add step "Customer pays" --alias pays
-add decision "Bank agrees?" --from @pays --alias bank
-add outcome "Order confirmed" --from @bank --edge "yes"`,
-    "payment",
-  );
-  await pause(1300);
+  // Claude's turn goes on: one more card, the question, then it parks.
+  await pause(1200);
   await line(page, "run", "sideco apply   1 card");
   await post(`add step "Offer another method" --from D1 --edge "no"`, "payment");
   await pause(1100);

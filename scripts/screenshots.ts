@@ -194,6 +194,44 @@ async function piece(page: Page, board: string, selector: string): Promise<strin
 }
 
 /**
+ * The three marks a card can carry, each on a real card of the event storming, enlarged and named:
+ * at the size of a README a mark on a whole board is a few pixels. Taken while the outline holds.
+ */
+async function marks(sharp: Page, scheme: Scheme): Promise<void> {
+  const MARKS = [
+    { card: "Place order", says: "A diamond: Claude placed it" },
+    { card: "Partner warehouse", says: "A dot: you touched it" },
+    { card: "Stock reserved", says: "A blue outline: Claude just changed it" },
+  ];
+  // One window for the three, centred on each card: the outline widens the box of the card that carries it.
+  const room = 7;
+  let window: { width: number; height: number } | undefined;
+  const cut: { png: string; says: string }[] = [];
+  for (const mark of MARKS) {
+    const box = await sharp.locator("g.card", { hasText: mark.card }).first().boundingBox();
+    if (!box) throw new Error(`no card named ${mark.card}`);
+    window ??= { width: box.width + 2 * room, height: box.height + 2 * room };
+    const clip = { x: box.x + box.width / 2 - window.width / 2, y: box.y + box.height / 2 - window.height / 2, ...window };
+    cut.push({ png: (await sharp.screenshot({ clip })).toString("base64"), says: mark.says });
+  }
+  const style = await sharp.evaluate(() => {
+    const body = getComputedStyle(document.body);
+    return { ground: body.backgroundColor, ink: body.color };
+  });
+  const page = await browser.newPage({ viewport: { width: 880, height: 400 }, deviceScaleFactor: 2 });
+  await page.setContent(`<!doctype html><style>
+    body { margin: 0; background: ${style.ground}; color: ${style.ink}; font: 600 15px/1.3 -apple-system, "Segoe UI", Inter, sans-serif; }
+    main { display: flex; justify-content: space-around; padding: 18px 0 20px; }
+    figure { margin: 0; width: 290px; text-align: center; white-space: nowrap; }
+    img { width: 250px; display: block; margin: 0 auto 10px; }
+  </style><main>${cut.map((one) => `<figure><img src="data:image/png;base64,${one.png}">${one.says}</figure>`).join("")}</main>`);
+  const path = join(OUT, `sideco-marks${suffix(scheme)}.png`);
+  await page.locator("main").screenshot({ path });
+  console.log(path);
+  await page.close();
+}
+
+/**
  * Two workshops cut by an oblique line, with the thread where the human
  * answered: the README's first picture, 1280×544, and the social preview,
  * 1280×640 with the name and the tagline under it. Each side is a piece of
@@ -220,6 +258,7 @@ async function twoWorkshops(scheme: Scheme): Promise<void> {
   await post("agent", `detail P1 "One reservation per order line (${scheme})."\ndetail E2 "Sent to billing (${scheme})."`, "ordering");
   await sharp.locator("g.card.is-fresh").first().waitFor();
   const stormingPng = await sharp.locator("svg.sideco-board").first().screenshot();
+  await marks(sharp, scheme);
   const storming = `data:image/png;base64,${stormingPng.toString("base64")}`;
   const flow = await piece(sharp, "payment", "svg.sideco-board");
   const thread = await piece(sharp, "payment", ".thread");

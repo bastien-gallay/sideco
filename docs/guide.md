@@ -8,6 +8,7 @@ What the [README](../README.md) leaves out. The [guide détaillé](guide.fr.md),
 - [How a turn travels](#how-a-turn-travels)
 - [In the page](#in-the-page)
 - [Workshops](#workshops)
+- [The commands](#the-commands)
 - [With Claude Code's sandbox](#with-claude-codes-sandbox)
 - [Known limits](#known-limits)
 
@@ -112,6 +113,23 @@ Event storming and flow are in the README's first picture; the others follow.
 </picture>
 
 <sub>Source: `bun scripts/screenshots.ts docs/img`, which photographs the page as it is.</sub>
+
+## The commands
+
+Claude runs `sideco` for you: in a session, the plugin puts it on the path of the commands Claude runs. Ask in plain words (*"export this board to Markdown"*) or name the command.
+
+| Command | What it does |
+| --- | --- |
+| `sideco url` | Prints the address of the page, starting the server if it is not running |
+| `sideco status` | Lists the boards, the sessions and the server: the output to join to an issue |
+| `sideco stop` | Stops the server; the log stays, and the next command starts it again |
+| `sideco export BOARD --format md` | Writes one board as Markdown; also `html`, `svg`, `mermaid`, `json`, and `-o FILE` |
+| `sideco publish` | Writes every board as a static site under `.sideco/site` |
+| `sideco help` | Lists every command, those Claude uses to write a board included |
+
+To type them in your own terminal, work from a clone and link its launcher: `ln -s ~/sideco/bin/sideco ~/.local/bin/sideco`. The [guide détaillé](guide.fr.md#la-ligne-de-commande), in French, describes the whole command line.
+
+<sub>Source: `sideco help`, read on 2026-11-22.</sub>
 
 ## With Claude Code's sandbox
 
