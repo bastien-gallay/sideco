@@ -236,6 +236,13 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
     case "remove":
       requireElement(board, cmd.id);
       return { events: [{ event: "ElementRemoved", board: b, id: cmd.id }] };
+    case "renumber": {
+      const el = requireElement(board, cmd.id);
+      const type = findType(format, el.type);
+      if (!type) throw new CommandError(`${format.name.en} has no "${el.type}"`);
+      const to = cmd.to === undefined ? mint(ws, type.prefix) : claim(ws, type, cmd.to);
+      return { events: [{ event: "ElementRenumbered", board: b, id: cmd.id, to }], minted: to };
+    }
     case "insert-column":
       if (format.layout !== "timeline")
         throw new CommandError(`${format.name.en} boards have no columns to insert`);

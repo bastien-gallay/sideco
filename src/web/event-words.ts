@@ -124,6 +124,8 @@ function english(e: Recorded, to: string, lane: LaneCalled): string {
       return `${does("move")} ${e.id}`;
     case "ElementRemoved":
       return `${does("remove")} ${e.id}`;
+    case "ElementRenumbered":
+      return `${does("renumber")} ${e.id} as ${e.to}`;
     case "ElementRestored":
       return `${does("restore")} ${e.id} “${e.label}”`;
     case "ColumnInserted":
@@ -241,6 +243,8 @@ function french(e: Recorded, to: string, lane: LaneCalled): string {
       return `${verb("déplaces", "déplace")} ${e.id}`;
     case "ElementRemoved":
       return `${verb("supprimes", "supprime")} ${e.id}`;
+    case "ElementRenumbered":
+      return `${verb("renumérotes", "renumérote")} ${e.id} en ${e.to}`;
     case "ElementRestored":
       return `${verb("restaures", "restaure")} ${e.id} « ${e.label} »`;
     case "ColumnInserted":

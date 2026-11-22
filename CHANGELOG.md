@@ -17,6 +17,12 @@ All notable changes to Sideco are listed here. The format follows
   keeps showing the rest of the status line.
 - Without Bun, `sideco` says how to install it instead of `bun: not found`, and
   finds it in `~/.bun/bin` when a hook's shell does not have it in its `PATH`.
+- `sideco renumber ID [NEW]` gives a card a new id: NEW, or the next of its
+  letter in the project. Its links, the notes on it and the focus follow, and
+  the old id is never given again. `sideco show` says the id the card had, and
+  `sideco find` finds it by that id. An undo gives the old id back, and the
+  gestures made before still undo. It settles the ids an older journal gave
+  on several boards.
 
 ### Changed
 

@@ -113,7 +113,7 @@ sideco board new "Title" [--format F] [--id ID]   sideco board rm ID (removes th
 sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--from ID [--edge "label"]] [--detail "…"]
 sideco rename ID "Label"            sideco detail ID "Text"
 sideco move ID --col N | --lane L [--before ID]   # --before alone: before that card, in its cell
-sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)
+sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)   sideco renumber ID [NEW] (a new id for a card, the next of its letter by default; its links and notes follow)
 sideco lane L "Name" (names it here) · lane hint L "What it stands for" · purpose "Its own question?" · plan: axis x|y "Name" [Low] [High] ("" gives the workshop's back) · kanban, retro: lane add "Name" [--before L] · lane rm L · lane move L [--before L] · story map: slice add "Lot 1" [--before S] (a line under the stories) · slice rm S
 sideco done ID   sideco undone ID   sideco undo|redo [--dry-run] (your own last gesture, named; never the human's)
 sideco link SRC DST ["label"]       sideco unlink SRC DST   (link again: renames the link)

@@ -204,7 +204,7 @@ function receive(event: Recorded): void {
 /** News, as opposed to history: draw the eye to it, and never move the human off their board. */
 function announce(event: Recorded): void {
   if ("board" in event && "id" in event && event.event !== "ElementRemoved")
-    markFresh(`${event.board}/${event.id}`);
+    markFresh(`${event.board}/${event.event === "ElementRenumbered" ? event.to : event.id}`);
   if (event.event === "BoardRemoved") {
     if (event.actor === "agent") state.notice = t.agentRemovedBoard(event.title);
     leaveMissingBoard();

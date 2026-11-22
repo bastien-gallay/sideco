@@ -78,6 +78,8 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
                                     Never the human's: one they changed since is refused, and says why
   sideco rm ID                        sideco insert-col N         sideco rm-col N (an empty column)
   sideco move-col FROM TO             a column takes the number TO, its cards with it
+  sideco renumber ID [NEW]            a card takes a new id, NEW or the next of its letter; its links, notes and
+                                    focus follow, and show and find still name the old one
   sideco lane LANE "Name"             call a lane of this board your own way
   sideco label ID type:bug @name ...  put labels on a card, shared by every board; unlabel ID LABEL... takes them off
   sideco labels [LABEL|KEY]           every label of the project and its cards, across boards (labels type: every type:…)

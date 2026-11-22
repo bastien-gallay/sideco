@@ -11,6 +11,7 @@ import { LANE_PREFIX, lanesOf, SLICE_PREFIX } from "./formats.ts";
 import { handledAll } from "./handled-all.ts";
 import { hasLabel, sameLabel } from "./labels.ts";
 import { remember } from "./minting.ts";
+import { renumber } from "./renumber.ts";
 import { applyToSession, follow, hasSpoken, type SessionRecorded } from "./sessions.ts";
 import {
   invert,
@@ -30,6 +31,8 @@ export interface Element {
   done?: boolean;
   /** Free words shared by every board: `type:bug`, `assignee:bastien`, `release 0.4`. Absent while none. */
   labels?: string[];
+  /** The ids it had before it was renumbered, oldest first. Absent while none. */
+  formerIds?: string[];
   col: number;
   lane: string;
   by: Actor;
@@ -422,6 +425,9 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
         board.focus = ids.length > 0 ? { ...board.focus, ids } : null;
       }
       break;
+    case "ElementRenumbered":
+      renumber(board, e);
+      break;
     case "ElementRestored": {
       if (findElement(board, e.id)) break;
       board.retired = board.retired.filter((id) => id !== e.id);
@@ -432,6 +438,7 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
         detail: e.detail,
         done: e.done || undefined,
         ...(e.labels?.length ? { labels: [...e.labels] } : {}),
+        ...(e.formerIds?.length ? { formerIds: [...e.formerIds] } : {}),
         col: e.col,
         lane: e.lane,
         by: e.by,

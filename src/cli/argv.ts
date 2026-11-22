@@ -252,6 +252,8 @@ export function boardAction(tokens: readonly string[], board: string | undefined
         };
       case "rm":
         return { command: { kind: "remove", board: target(), id: need(0, "an id") } };
+      case "renumber":
+        return { command: { kind: "renumber", board: target(), id: need(0, "an id"), to: at(1) } };
       case "insert-col": {
         const at = need(0, "a column number");
         if (!/^\d+$/.test(at)) throw new UsageError(`insert-col takes a whole number, got "${at}"`);
@@ -348,6 +350,7 @@ export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "redo",
   "move",
   "rm",
+  "renumber",
   "insert-col",
   "rm-col",
   "move-col",

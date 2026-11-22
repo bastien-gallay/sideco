@@ -131,6 +131,7 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
             detail: el.detail,
             done: el.done,
             ...(el.labels?.length ? { labels: [...el.labels] } : {}),
+            ...(el.formerIds?.length ? { formerIds: [...el.formerIds] } : {}),
             by: el.by,
             addedSeq: el.addedSeq,
             before: after(board, el),
@@ -140,6 +141,8 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
           },
         ]
       );
+    case "ElementRenumbered":
+      return [{ event: "ElementRenumbered", board: b, id: e.to, to: e.id }];
     case "ColumnInserted":
       return [{ event: "ColumnRemoved", board: b, at: e.at }];
     case "ColumnRemoved":
@@ -286,6 +289,8 @@ export function nameOf(board: Board, e: BoardEvent): string {
         : `move ${e.id} --col ${e.col}`;
     case "ElementRemoved":
       return `rm ${e.id}`;
+    case "ElementRenumbered":
+      return `renumber ${e.id} ${e.to}`;
     case "ColumnInserted":
       return `insert-col ${e.at}`;
     case "ColumnRemoved":

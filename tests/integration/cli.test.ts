@@ -140,7 +140,23 @@ describe("a workspace", () => {
         line(4, { ...task, board: "b" }),
     );
     expect((await sideco(["status"], { cwd })).out).toContain("ids        1 on several boards: T1 (a, b)");
-    rmSync(cwd, { recursive: true, force: true });
+    try {
+      expect(await sideco(["renumber", "T1", "T7", "--board", "b"], { cwd })).toEqual({
+        code: 0,
+        out: "T7",
+        err: "",
+      });
+      expect((await sideco(["status"], { cwd })).out).not.toContain("on several boards");
+      expect((await sideco(["show", "T7", "--board", "b"], { cwd })).out).toContain(
+        '  T7 (formerly T1) task "Un"',
+      );
+      expect((await sideco(["find", "T1"], { cwd })).out).toBe('a T1 task "Un"\nb T7 task "Un"');
+      const taken = await sideco(["renumber", "T7", "T1", "--board", "b"], { cwd });
+      expect(taken.err).toBe('sideco: T1 was already used on "a"; ids are never reused (next: T8)');
+    } finally {
+      await sideco(["stop"], { cwd });
+      rmSync(cwd, { recursive: true, force: true });
+    }
   });
 });
 

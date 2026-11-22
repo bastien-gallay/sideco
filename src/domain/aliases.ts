@@ -46,6 +46,7 @@ export function resolveAliases(command: Command, aliases: Aliases): Command {
     case "annotate":
     case "mark":
     case "remove":
+    case "renumber":
     case "resolve":
       return { ...command, id: id(command.id) };
     case "move":

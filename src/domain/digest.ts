@@ -48,7 +48,8 @@ function heading(board: Board, part: string[]): string {
 function cardLine(board: Board, e: Element, brief = false): string {
   const detail = e.detail && !brief ? ` — ${under(e.detail)}` : "";
   const labels = e.labels?.length ? ` [${e.labels.join(", ")}]` : "";
-  return `  ${e.id} ${e.type} ${quote(e.label)}${wearsDone(board, e) ? " ✓ done" : ""}${labels}${detail}`;
+  const former = e.formerIds?.length ? ` (formerly ${e.formerIds.join(", ")})` : "";
+  return `  ${e.id}${former} ${e.type} ${quote(e.label)}${wearsDone(board, e) ? " ✓ done" : ""}${labels}${detail}`;
 }
 
 function linkLine(edge: { src: string; dst: string; label?: string }): string {
@@ -222,6 +223,7 @@ type Change =
   | { kind: "labeled"; id: string; label: string; on: boolean }
   | { kind: "marked"; id: string; done: boolean }
   | { kind: "removed"; id: string; type: string; label: string }
+  | { kind: "renumbered"; id: string; to: string }
   | { kind: "column-inserted"; at: number }
   | { kind: "column-removed"; at: number }
   | { kind: "column-moved"; from: number; to: number }
@@ -431,6 +433,9 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
           if (added.delete(k("el", e.id)) || entries.delete(k("restore", e.id))) break;
           if (el) put("remove", e.id, { kind: "removed", id: e.id, type: el.type, label: el.label });
           break;
+        case "ElementRenumbered":
+          put("renumber", e.id, { kind: "renumbered", id: e.id, to: e.to });
+          break;
         case "ElementRestored":
           // Removed and restored since the reader looked: no news. Otherwise it is back, and they are told where.
           if (!entries.delete(k("remove", e.id))) put("restore", e.id, { ...asAdded(e), restored: true });
@@ -565,6 +570,8 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
       return `~ ${change.id} ${change.done ? "marked done" : "no longer done"}`;
     case "removed":
       return `− ${change.id} ${change.type} ${quote(change.label)} removed`;
+    case "renumbered":
+      return `~ ${change.id} renumbered as ${change.to}`;
     case "column-inserted":
       return `+ empty column inserted at ${change.at} (columns from ${change.at} shifted right)`;
     case "column-removed":
@@ -604,6 +611,8 @@ function named(change: Change): { elements: string[]; thread?: string } {
     case "marked":
     case "removed":
       return { elements: [change.id] };
+    case "renumbered":
+      return { elements: [change.to] };
     case "linked":
     case "unlinked":
       return { elements: [change.src, change.dst] };

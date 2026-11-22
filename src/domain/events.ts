@@ -86,6 +86,8 @@ type BoardFact =
   | { event: "ElementUnlabeled"; board: string; id: string; label: string }
   | { event: "ElementMoved"; board: string; id: string; col: number; lane: string; before?: string }
   | { event: "ElementRemoved"; board: string; id: string }
+  /** The element takes the id `to`; what points at it follows, and `id` is never given again. */
+  | { event: "ElementRenumbered"; board: string; id: string; to: string }
   /**
    * A removed element comes back under its id, the one case where an id returns.
    * The event carries the element whole: who added it, when, where it sat
@@ -102,6 +104,7 @@ type BoardFact =
       detail?: string;
       done?: boolean;
       labels?: string[];
+      formerIds?: string[];
       by: Actor;
       addedSeq: number;
       before?: string;
@@ -182,6 +185,7 @@ const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "ElementUnlabeled",
   "ElementMoved",
   "ElementRemoved",
+  "ElementRenumbered",
   "ElementRestored",
   "ColumnInserted",
   "ColumnRemoved",

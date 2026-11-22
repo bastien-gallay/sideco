@@ -69,10 +69,11 @@ export function findInWorkspace(ws: Workspace, query: string, only?: string): Fo
     for (const e of board.elements) {
       const notes = board.notes.filter((n) => n.target === e.id);
       const labels = (e.labels ?? []).join(", ");
-      if (!holds([e.id, e.label, labels, e.detail ?? "", ...notes.map((n) => n.text)])) continue;
+      const ids = [e.id, ...(e.formerIds ?? [])].join(" ");
+      if (!holds([ids, e.label, labels, e.detail ?? "", ...notes.map((n) => n.text)])) continue;
       const hit: Found = { board: board.id, id: e.id, kind: "card", type: e.type, label: e.label };
       const note = notes.find((n) => has(n.text));
-      const where: FoundWhere | undefined = holds([e.id, e.label])
+      const where: FoundWhere | undefined = holds([ids, e.label])
         ? undefined
         : labels && has(labels)
           ? { in: "labels", text: labels }
