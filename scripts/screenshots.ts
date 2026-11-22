@@ -1,5 +1,5 @@
 /**
- * The pictures of the README and of the repository's social preview, taken from
+ * The pictures of the README and of the guide, taken from
  * the page as it is today: a companion on a throwaway workspace, boards written
  * through the CLI grammar, one photo per board.
  *
@@ -130,7 +130,7 @@ add system "Online shop" --from @customer --edge "orders with" --alias shop
 add external "Bank" --from @shop --edge "charges through"
 add external "Warehouse" --from @shop --edge "reserves stock in"`,
     shot: "board",
-    size: { width: 640, height: 500 },
+    size: { width: 700, height: 740 },
   },
 ];
 
@@ -233,8 +233,7 @@ async function marks(sharp: Page, scheme: Scheme): Promise<void> {
 
 /**
  * Two workshops cut by an oblique line, with the thread where the human
- * answered: the README's first picture, 1280×544, and the social preview,
- * 1280×640 with the name and the tagline under it. Each side is a piece of
+ * answered: the picture under the README's Workshops, 1280×544. Each side is a piece of
  * the real page; only the layout is made here.
  */
 async function twoWorkshops(scheme: Scheme): Promise<void> {
@@ -266,11 +265,11 @@ async function twoWorkshops(scheme: Scheme): Promise<void> {
   const waits = await piece(sharp, "payment", ".waits");
   const ground = await sharp.evaluate(() => getComputedStyle(document.body).backgroundColor);
   await sharp.close();
-  const page = await browser.newPage({ viewport: { width: 1280, height: 640 } });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 544 } });
   await page.setContent(`<!doctype html><style>
-    body { margin: 0; width: 1280px; height: 640px; overflow: hidden; background: ${ground}; position: relative;
+    body { margin: 0; width: 1280px; height: 544px; overflow: hidden; background: ${ground}; position: relative;
       font-family: -apple-system, "Segoe UI", Inter, sans-serif; color: #1f2328; }
-    .side { position: absolute; inset: 0 0 96px 0; overflow: hidden; }
+    .side { position: absolute; inset: 0; overflow: hidden; }
     .left { clip-path: polygon(0 0, 800px 0, 560px 100%, 0 100%); }
     .right { clip-path: polygon(808px 0, 100% 0, 100% 100%, 568px 100%); }
     .left > img { position: absolute; left: 8px; top: 58px; height: 480px; }
@@ -280,17 +279,12 @@ async function twoWorkshops(scheme: Scheme): Promise<void> {
     .status { position: absolute; left: 24px; top: 12px; display: flex; gap: 14px; align-items: center;
       padding: 4px 14px; border-radius: 18px; background: ${ground}; box-shadow: 0 2px 10px rgba(31, 35, 40, 0.14); }
     .status img { zoom: 0.6; }
-    .cut { position: absolute; inset: 0 0 96px 0; background: #1a6fae;
+    .cut { position: absolute; inset: 0; background: #1a6fae;
       clip-path: polygon(800px 0, 808px 0, 568px 100%, 560px 100%); }
-    .band { position: absolute; left: 0; right: 0; bottom: 0; height: 96px; background: #1f2328; color: #fff;
-      display: flex; align-items: center; gap: 28px; padding: 0 48px; box-sizing: border-box; }
-    .band b { font-size: 40px; letter-spacing: -0.5px; }
-    .band span { font-size: 23px; line-height: 1.25; opacity: 0.92; }
   </style>
   <div class="side left"><img src="${storming}"><div class="status"><img src="${status}"><img src="${waits}"></div></div>
   <div class="side right" id="right"><img class="flow" id="flow" src="${flow}"><img class="thread" src="${thread}"></div>
-  <div class="cut"></div>
-  <div class="band"><b>Sideco</b><span>Turn your coding agent's walls of text into a conversation you can see and reshape.</span></div>`);
+  <div class="cut"></div>`);
   // The focus dims the flow's ground, which shows in the dark: its side takes the colour of its own corner.
   await page.evaluate(async () => {
     const flow = document.getElementById("flow") as HTMLImageElement;
@@ -303,14 +297,8 @@ async function twoWorkshops(scheme: Scheme): Promise<void> {
     const [r, g, b] = pen.getImageData(0, 0, 1, 1).data;
     (document.getElementById("right") as HTMLElement).style.background = `rgb(${r}, ${g}, ${b})`;
   });
-  // The social preview has one face, the light one.
-  if (scheme === "light") {
-    await page.screenshot({ path: join(OUT, "social-preview.png") });
-    console.log(join(OUT, "social-preview.png"));
-  }
-  // The README says the tagline itself, just above: its picture goes without the band.
   const path = join(OUT, `sideco-two-workshops${suffix(scheme)}.png`);
-  await page.screenshot({ path, clip: { x: 0, y: 0, width: 1280, height: 544 } });
+  await page.screenshot({ path });
   console.log(path);
   await page.close();
 }

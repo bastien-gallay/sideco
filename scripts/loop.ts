@@ -4,12 +4,14 @@
  * board. The board is the real page, driven by the real commands and hooks; the
  * terminal is drawn here, from what the session sends and what the hook answers.
  *
+ * It also makes the repository's social preview, from the film's own picture.
+ *
  *   bun scripts/loop.ts [OUT_DIR]   (default docs/img; needs Chrome, ffmpeg and a local port)
  */
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { chromium, type FrameLocator, type Locator, type Page } from "playwright-core";
+import { type BrowserContext, chromium, type FrameLocator, type Locator, type Page } from "playwright-core";
 import { parseBatch } from "../src/cli/argv.ts";
 import { initRoot } from "../src/cli/client.ts";
 import { runHook } from "../src/cli/hook.ts";
@@ -86,6 +88,30 @@ async function point(page: Page, target: Locator): Promise<void> {
     [box.x + box.width / 2, box.y + box.height / 2],
   );
   await pause(750);
+}
+
+/**
+ * The repository's social preview, 1280×640: the film's own picture at the moment you are about to send,
+ * the name and the tagline under it. The terminal's ground runs on to the left, the page's to the right.
+ */
+async function socialPreview(context: BrowserContext, still: Buffer): Promise<void> {
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1280, height: 640 });
+  await page.setContent(`<!doctype html><style>
+    body { margin: 0; width: 1280px; height: 640px; overflow: hidden; font-family: -apple-system, "Segoe UI", Inter, sans-serif;
+      background: linear-gradient(to right, #0d1117 50%, #fff 50%); }
+    img { display: block; height: 544px; margin: 0 auto; }
+    .band { height: 96px; background: #1f2328; color: #fff; display: flex; align-items: center; gap: 28px; padding: 0 48px;
+      box-sizing: border-box; }
+    .band b { font-size: 40px; letter-spacing: -0.5px; }
+    .band span { font-size: 23px; line-height: 1.25; opacity: 0.92; }
+  </style><img src="data:image/png;base64,${still.toString("base64")}">
+  <div class="band"><b>Sideco</b><span>Turn your coding agent's walls of text into a conversation you can see and reshape.</span></div>`);
+  await page.locator("img").evaluate((img: HTMLImageElement) => img.decode());
+  mkdirSync(OUT, { recursive: true });
+  await page.screenshot({ path: join(OUT, "social-preview.png") });
+  console.log(join(OUT, "social-preview.png"));
+  await page.close();
 }
 
 async function film(scheme: Scheme): Promise<void> {
@@ -183,6 +209,7 @@ link R1 @reserved`,
   await pause(600);
   const send = board.locator("button.primary", { hasText: "Send to Claude" });
   await point(page, send);
+  const still = await page.screenshot(); // the social preview's picture, composed once the film is over
   await send.click();
 
   // What the hook hands to Claude is what the terminal shows.
@@ -233,6 +260,7 @@ add task "Out-of-stock notice" --lane todo`,
   await camera;
   const end = Date.now();
 
+  if (scheme === "light") await socialPreview(context, still);
   await context.close();
   await browser.close();
   running.stop();
