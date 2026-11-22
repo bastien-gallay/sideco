@@ -1694,9 +1694,12 @@ describe("the board from the keyboard", () => {
   test("`/` finds a card by its id, and Esc leaves the keyboard on it", async () => {
     const id = (await page.locator("g.card").first().getAttribute("data-id")) ?? "";
     await page.locator(".canvas").click({ position: { x: 4, y: 4 } });
+    const shut = await page.locator(".canvas").boundingBox();
     await page.keyboard.press("/");
     const field = page.locator(".find-bar input");
     await field.waitFor({ state: "visible" });
+    // The bar lies over the board: the board keeps its place and its width (T212).
+    expect(await page.locator(".canvas").boundingBox()).toEqual(shut);
     await field.fill(id.toLowerCase());
     // The count names the card found: a screen reader hears which one, not just how many.
     expect(await page.locator(".find-count").textContent()).toMatch(new RegExp(`^1 / \\d+ · ${id} \\S`));
