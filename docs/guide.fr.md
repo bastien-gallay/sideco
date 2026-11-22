@@ -170,7 +170,7 @@ La page, le dessin et les exports sont en anglais par défaut ; le français est
 
 ## Les ateliers
 
-Un atelier est une donnée (`src/domain/formats.ts`), pas un moteur de rendu : types de post-its, couleurs, mise en page.
+Un atelier est une donnée (un fichier par atelier dans `src/domain/formats/`, listés par `src/domain/formats.ts`), pas un moteur de rendu : types de post-its, couleurs, mise en page.
 
 | Atelier | Question posée | Mise en page | Types (préfixe des identifiants) |
 | --- | --- | --- | --- |

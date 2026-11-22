@@ -188,22 +188,6 @@
           }
         }
       }
-    },
-    {
-      "includes": ["src/domain/formats.ts"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noExcessiveLinesPerFile": {
-              "level": "error",
-              "options": {
-                "maxLines": 451,
-                "skipBlankLines": true
-              }
-            }
-          }
-        }
-      }
     }
   ]
 }
