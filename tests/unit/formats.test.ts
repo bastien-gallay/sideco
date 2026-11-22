@@ -61,7 +61,7 @@ test("an element id names its type through its prefix", () => {
   expect(typeOfId(storming, "Z1")).toBeUndefined();
 });
 
-test("event storming keeps faceto's prefixes, so its files load unchanged", () => {
+test("event storming keeps the prefixes its saved boards were minted with", () => {
   const prefixes = Object.fromEntries(
     (findFormat("event-storming")?.types ?? []).map((t) => [t.id, t.prefix]),
   );

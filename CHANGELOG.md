@@ -16,6 +16,13 @@ All notable changes to Sideco are listed here. The format follows
 - Without Bun, `sideco` says how to install it instead of `bun: not found`, and
   finds it in `~/.bun/bin` when a hook's shell does not have it in its `PATH`.
 
+### Changed
+
+- The JSON export (`model.json`) says its `version`: version 2 counts `col` from
+  1, as the board does, and writes edges as `{src, dst, label}`. A file with no
+  version is read as version 1, as before: `col` from 0, `[src, dst]` pairs, and
+  `external` for `system`. Sideco no longer promises files compatible with faceto.
+
 ## [0.1.0] - 2026-11-20
 
 The first installable version: a live board, open in a browser beside the

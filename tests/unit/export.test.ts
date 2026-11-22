@@ -6,7 +6,7 @@ import { toHtml, toIndexHtml } from "../../src/domain/export/html.ts";
 import { EXPORT_FORMATS, exportBoard } from "../../src/domain/export/index.ts";
 import { toMarkdown } from "../../src/domain/export/markdown.ts";
 import { toMermaid } from "../../src/domain/export/mermaid.ts";
-import { fromModel, toModel } from "../../src/domain/export/model.ts";
+import { fromModel, MODEL_VERSION, toModel } from "../../src/domain/export/model.ts";
 import { FLOW, KANBAN, ORDERING, Table, table } from "../support.ts";
 
 const META = { exportedAt: "2026-11-17T10:00:00.000Z" };
@@ -98,9 +98,11 @@ describe("model file", () => {
     expect(body(copy)).toBe(body(original));
   });
 
-  test("columns count from 0 in the file, as in faceto, and from 1 on the board", () => {
+  test("a file says its version, and counts columns from 1, as the board does", () => {
     const model = toModel(table(ORDERING).board());
-    expect(model.elements.find((e) => e.id === "E1")?.col).toBe(0);
+    expect(model.version).toBe(MODEL_VERSION);
+    expect(Object.keys(model)[0]).toBe("version");
+    expect(model.elements.find((e) => e.id === "E1")?.col).toBe(1);
     expect(
       reimport(model)
         .board()
@@ -108,20 +110,18 @@ describe("model file", () => {
     ).toBe(1);
   });
 
-  test("a faceto model loads as it is", () => {
+  test("a file with no version is a version 1 file and still loads: columns from 0, pairs, `external`", () => {
     const sample: unknown = JSON.parse(
-      readFileSync(join(import.meta.dir, "..", "fixtures", "faceto.sample.model.json"), "utf8"),
+      readFileSync(join(import.meta.dir, "..", "fixtures", "version-1.model.json"), "utf8"),
     );
-    const elements = (sample as { elements: { id: string }[] }).elements;
+    const elements = (sample as { elements: { id: string; col: number }[] }).elements;
     const edges = (sample as { edges: unknown[] }).edges;
-    const board = reimport(sample, "faceto").board();
+    const board = reimport(sample, "v1").board();
     expect(board.format).toBe("event-storming");
     expect(board.elements.map((e) => e.id).sort()).toEqual(elements.map((e) => e.id).sort());
+    expect(board.elements.find((e) => e.id === "X1")?.col).toBe(1);
     expect(board.edges).toHaveLength(edges.length);
-  });
-
-  test("edges may be pairs; `external` reads as `system`; unknown fields are ignored", () => {
-    const board = reimport({
+    const mini = reimport({
       title: "Mini",
       phases: ["ignored"],
       elements: [
@@ -130,8 +130,36 @@ describe("model file", () => {
       ],
       edges: [["G1", "E1"]],
     }).board();
+    expect(mini.elements.map((e) => `${e.id}:${e.type}:${e.col}`)).toEqual(["G1:system:1", "E1:event:2"]);
+    expect(mini.edges).toMatchObject([{ src: "G1", dst: "E1" }]);
+  });
+
+  test("version 2 reads what it writes: edges as objects, types as they are; unknown fields are ignored", () => {
+    const board = reimport({
+      version: 2,
+      title: "Mini",
+      elements: [
+        { id: "G1", type: "system", label: "Banque", col: 1, links: ["ignored"] },
+        { id: "E1", type: "event", label: "Payé", col: 2 },
+      ],
+      edges: [{ src: "G1", dst: "E1", label: "paie" }],
+    }).board();
     expect(board.elements.map((e) => `${e.id}:${e.type}:${e.col}`)).toEqual(["G1:system:1", "E1:event:2"]);
-    expect(board.edges).toMatchObject([{ src: "G1", dst: "E1" }]);
+    expect(() => fromModel({ version: 2, elements: [], edges: [["G1", "E1"]] }, "x")).toThrow(
+      "an edge is {src, dst, label}",
+    );
+    const commands = fromModel(
+      { version: 2, elements: [{ type: "external", label: "Banque", col: 1 }] },
+      "x",
+    );
+    expect(commands.find((c) => c.kind === "add")).toMatchObject({ type: "external" });
+  });
+
+  test("a version this Sideco does not know is refused, not guessed", () => {
+    expect(() => fromModel({ version: 3, elements: [] }, "x")).toThrow(
+      "this model file is version 3; this Sideco reads versions 1 and 2",
+    );
+    expect(() => fromModel({ version: "2", elements: [] }, "x")).toThrow("`version` is a whole number");
   });
 
   test("a malformed file is refused with the place of the fault", () => {

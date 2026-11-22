@@ -58,7 +58,7 @@ Rédigé le 2026-11-17. Niveau de preuve : ✅ lu sur une source primaire, ⚠�
 | --- | --- | --- | --- |
 | show-me | Choisir le visuel d'après le contenu ; repères stables `D1…Dn` ; marqueurs en tête | Identifiants courts partagés (`E1`, `C2`), signe en plus de la couleur, hook `UserPromptSubmit` | Matrice des cibles Jira, Slack |
 | truepath | Processus en couches, déterministe, zéro dépendance | Mise en page de graphe portée de `layout.py` | Oracle, grille de cas, HTML figé |
-| faceto | Event storming, journal JSONL, `replay` pur | Grammaire des 8 couloirs et leurs couleurs, événements au participe passé, ids préfixés attribués par le serveur, fichier `model.json` compatible | Rechargement manuel, événements sans auteur ni date |
+| faceto | Event storming, journal JSONL, `replay` pur | Grammaire des 8 couloirs et leurs couleurs, événements au participe passé, ids préfixés attribués par le serveur | Rechargement manuel, événements sans auteur ni date |
 | prismantis | Repérer les blocs à dessiner dans une réponse | Capture des `flowchart` Mermaid de la dernière réponse | Rendu terminal ; API « mod » reportée en V2 |
 | impeccable live | Boucle navigateur ↔ agent | SSE + POST + attente longue côté CLI, témoin « l'agent écoute » | Injection de script dans les pages |
 
@@ -362,4 +362,4 @@ Hors MVP, assumé : dessin libre, images, curseurs multiples, comptes, synchroni
 - Une commande de l'agent est visible dans la page sans rechargement, en moins de 200 ms.
 - Une modification humaine arrive dans le contexte de l'agent sans copier-coller.
 - Un tableau exporté s'affiche tel quel dans un dépôt GitHub ou GitLab.
-- Un event storming de faceto s'importe et se réexporte sans perte de ses éléments ni de ses liens.
+- Un tableau exporté en JSON se réimporte sans perte de ses éléments ni de ses liens, et un fichier de la version 1 se relit encore.

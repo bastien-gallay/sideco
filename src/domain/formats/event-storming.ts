@@ -1,6 +1,6 @@
 import { DARK, type Format, LIGHT, t } from "./types.ts";
 
-/** Lanes, colours and id prefixes follow faceto, so its model files load unchanged. */
+/** The id prefixes are in every saved board: never change one. */
 export const EVENT_STORMING: Format = {
   id: "event-storming",
   name: t("Event Storming", "Event Storming"),

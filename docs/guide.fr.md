@@ -213,6 +213,7 @@ sideco status                     # tableaux, session, serveur
 sideco show                       # le tableau en texte, comme l'agent le lit
 sideco export --format md -o docs/design/commande.md
 sideco export --format md --lang fr   # le même, en français
+sideco export --format json -o commande.json   # le modèle, version 2 ; sideco import commande.json le refait (un fichier sans version se lit en version 1)
 sideco board rm brouillon         # supprime un tableau ; son histoire reste dans le journal
 sideco publish                    # tous les tableaux en site statique, sous .sideco/site
 sideco stop                       # arrête le compagnon ; le journal reste (il s'arrête aussi seul, 5 min après la dernière page et la dernière session)
@@ -263,7 +264,7 @@ Dans la page, une carte porte ses labels en puces à son pied, autant qu'il en t
 `sideco find` cherche dans tous les tableaux les cartes qui portent chacun des mots, dans leur nom, leurs labels, leur détail ou leurs notes. Une ligne par carte, le tableau et l'id d'abord, pour enchaîner sur `sideco show ID`.
 
 ```sh
-sideco find faceto                    # toutes les cartes qui en parlent
+sideco find paiement                  # toutes les cartes qui en parlent
 sideco find stock reserver            # les deux mots, dans n'importe quel ordre ; ni casse ni accents
 sideco find T100 --board backlog      # la carte T100 et celles qui la citent, jamais T1000
 ```

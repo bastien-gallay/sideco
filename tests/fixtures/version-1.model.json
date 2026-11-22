@@ -1,5 +1,5 @@
 {
-  "title": "faceto — sample board",
+  "title": "A version 1 file",
   "phases": [
     { "id": "K1", "label": "begin", "fromCol": 0, "toCol": 1 },
     { "id": "K2", "label": "work", "fromCol": 2, "toCol": 4 }
@@ -9,7 +9,7 @@
     { "id": "C1", "type": "command", "label": "start the day", "col": 0 },
     { "id": "A1", "type": "aggregate", "label": "DayPlan", "col": 1 },
     { "id": "E1", "type": "event", "label": "DayStarted (DayPlan scaffolded)", "col": 1 },
-    { "id": "C2", "type": "command", "label": "add an item", "col": 2, "links": ["https://github.com/bastien-gallay/faceto/issues/96", "https://example.com/docs/adding-items"] },
+    { "id": "C2", "type": "command", "label": "add an item", "col": 2, "links": ["https://example.com/docs/adding-items"] },
     { "id": "E2", "type": "event", "label": "ItemAdded", "col": 2 },
     { "id": "P1", "type": "policy", "label": "when ItemAdded, project forward", "col": 3 },
     { "id": "E3", "type": "event", "label": "UnfinishedWorkProjectedForward", "col": 3 },

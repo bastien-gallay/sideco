@@ -1,8 +1,9 @@
 /**
- * The interchange file: one JSON object per board. An event-storming board
- * written here loads in faceto and the reverse, so this file follows faceto's
- * conventions: `col` counts from 0, edges are `{src, dst, label}` or `[src, dst]`
- * pairs, and unknown fields are ignored on the way in.
+ * The interchange file: one JSON object per board, which `sideco import` turns
+ * back into a board. It says its `version`. Version 2, written here, counts `col`
+ * from 1 as the board does, and edges are `{src, dst, label}`. A file with no
+ * version is version 1 and still loads: `col` from 0, edges also as `[src, dst]`
+ * pairs, and `external` read as `system`. Unknown fields are ignored on the way in.
  */
 import { type Command, CommandError } from "../commands.ts";
 import { type Format, findFormat, findType, wearsDone } from "../formats.ts";
@@ -20,7 +21,11 @@ export interface ModelElement {
   done?: boolean;
 }
 
+/** The version of the file `toModel` writes. */
+export const MODEL_VERSION = 2;
+
 export interface Model {
+  version: number;
   title: string;
   format: string;
   /** The lanes the board calls its own way, by lane id. */
@@ -39,12 +44,13 @@ export interface Model {
   edges: { src: string; dst: string; label?: string }[];
 }
 
-/** faceto reads `external` as `system`; so do we. */
-const TYPE_ALIASES: Record<string, string> = { external: "system" };
+/** Version 1 files may say `external` for `system`. */
+const V1_TYPE_ALIASES: Record<string, string> = { external: "system" };
 
 export function toModel(board: Board): Model {
   const layout = findFormat(board.format)?.layout;
   return {
+    version: MODEL_VERSION,
     title: board.title,
     format: board.format,
     ...(Object.keys(board.lanes).length > 0 ? { lanes: { ...board.lanes } } : {}),
@@ -57,7 +63,7 @@ export function toModel(board: Board): Model {
       id: e.id,
       type: e.type,
       label: e.label,
-      ...(layout === "timeline" ? { col: e.col - 1 } : {}),
+      ...(layout === "timeline" ? { col: e.col } : {}),
       ...(layout === "columns" ? { lane: e.lane } : {}),
       ...(e.detail ? { detail: e.detail } : {}),
       ...(wearsDone(board, e) ? { done: true } : {}),
@@ -81,6 +87,7 @@ export function fromModel(input: unknown, board: string): Command[] {
     throw new CommandError("a model file is a JSON object");
   }
   const model = input as Record<string, unknown>;
+  const v1 = readVersion(model.version) === 1;
   const formatId = typeof model.format === "string" ? model.format : "event-storming";
   const format = findFormat(formatId);
   const layout = format?.layout;
@@ -144,7 +151,7 @@ export function fromModel(input: unknown, board: string): Command[] {
       });
     }
 
-  const elements = Array.isArray(model.elements) ? model.elements.map(readElement) : [];
+  const elements = Array.isArray(model.elements) ? model.elements.map((e, i) => readElement(e, i, v1)) : [];
   const idFor = idGiver(format, elements);
   for (const e of elements) {
     const id = e.id ?? idFor(e.type);
@@ -154,7 +161,7 @@ export function fromModel(input: unknown, board: string): Command[] {
       type: e.type,
       label: e.label,
       id,
-      col: layout === "timeline" && e.col !== undefined ? e.col + 1 : undefined,
+      col: layout === "timeline" && e.col !== undefined ? e.col + (v1 ? 1 : 0) : undefined,
       lane: layout === "columns" ? e.lane : undefined,
       detail: e.detail,
     });
@@ -163,7 +170,7 @@ export function fromModel(input: unknown, board: string): Command[] {
     if (e.labels?.length && id) commands.push({ kind: "label", board, id, labels: e.labels });
   }
   for (const edge of Array.isArray(model.edges) ? model.edges : []) {
-    const [src, dst, label] = readEdge(edge);
+    const [src, dst, label] = readEdge(edge, v1);
     commands.push({ kind: "link", board, src, dst, label });
   }
   return commands;
@@ -190,16 +197,29 @@ function idGiver(
   };
 }
 
-function readElement(input: unknown, index: number): ModelElement {
+/** A file with no version is version 1, from before files said theirs. */
+function readVersion(input: unknown): number {
+  if (input === undefined) return 1;
+  if (typeof input !== "number" || !Number.isInteger(input))
+    throw new CommandError("`version` is a whole number");
+  if (input < 1 || input > MODEL_VERSION) {
+    throw new CommandError(
+      `this model file is version ${input}; this Sideco reads versions 1 and ${MODEL_VERSION}`,
+    );
+  }
+  return input;
+}
+
+function readElement(input: unknown, index: number, v1: boolean): ModelElement {
   const e = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
   if (typeof e.type !== "string" || typeof e.label !== "string") {
     throw new CommandError(`elements[${index}] needs a \`type\` and a \`label\``);
   }
   return {
     id: typeof e.id === "string" && isElementId(e.id) ? e.id : undefined,
-    type: TYPE_ALIASES[e.type] ?? e.type,
+    type: (v1 ? V1_TYPE_ALIASES[e.type] : undefined) ?? e.type,
     label: e.label,
-    col: typeof e.col === "number" && Number.isInteger(e.col) && e.col >= 0 ? e.col : undefined,
+    col: readCol(e.col, v1),
     lane: typeof e.lane === "string" ? e.lane : undefined,
     detail: typeof e.detail === "string" && e.detail ? e.detail : undefined,
     done: e.done === true ? true : undefined,
@@ -209,13 +229,20 @@ function readElement(input: unknown, index: number): ModelElement {
   };
 }
 
-function readEdge(input: unknown): [string, string, string | undefined] {
-  if (Array.isArray(input) && typeof input[0] === "string" && typeof input[1] === "string") {
+/** A step: from 0 in a version 1 file, from 1 since. */
+function readCol(input: unknown, v1: boolean): number | undefined {
+  return typeof input === "number" && Number.isInteger(input) && input >= (v1 ? 0 : 1) ? input : undefined;
+}
+
+function readEdge(input: unknown, v1: boolean): [string, string, string | undefined] {
+  if (v1 && Array.isArray(input) && typeof input[0] === "string" && typeof input[1] === "string") {
     return [input[0], input[1], undefined];
   }
   const edge = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
   if (typeof edge.src !== "string" || typeof edge.dst !== "string") {
-    throw new CommandError("an edge is [src, dst] or {src, dst, label}");
+    throw new CommandError(
+      v1 ? "an edge is [src, dst] or {src, dst, label}" : "an edge is {src, dst, label}",
+    );
   }
   return [edge.src, edge.dst, typeof edge.label === "string" && edge.label ? edge.label : undefined];
 }

@@ -121,7 +121,7 @@ Work with the human
 
 Share
   sideco export [BOARD] --format md|html|svg|mermaid|json [-o FILE] [--lang L]
-  sideco import FILE [--id ID]        a model.json (faceto files load as they are)
+  sideco import FILE [--id ID]        a model.json, as export --format json writes it
   sideco publish [--out DIR] [--lang L]  every board as a static site
 
 Options: --as human|agent   --session ID   --board ID
