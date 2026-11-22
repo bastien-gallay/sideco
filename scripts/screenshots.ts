@@ -29,7 +29,7 @@ add event "Order placed" --col 2 --alias placed
 add policy "Reserve the stock" --col 3 --alias reserve
 add system "Warehouse" --col 3
 add event "Stock reserved" --col 4 --alias reserved
-add hotspot "What if stock runs out?" --col 4
+add hotspot "What if stock runs out?" --col 3
 link @place @placed
 link @placed @reserve
 link @reserve @reserved`,
@@ -110,11 +110,76 @@ async function photo(page: Page, board: string, name: string, tab?: string): Pro
   console.log(join(OUT, `${name}.png`));
 }
 
+/** One piece of the page, twice as sharp, as a data URL the composed picture can hold. */
+async function piece(page: Page, board: string, selector: string): Promise<string> {
+  await page.goto(`${running.url}/#/b/${board}`);
+  await page.locator("g.card").first().waitFor();
+  await page.locator("#tab-notes").click();
+  await Bun.sleep(800);
+  const png = await page.locator(selector).first().screenshot();
+  return `data:image/png;base64,${png.toString("base64")}`;
+}
+
+/**
+ * The social preview, 1280×640: two workshops cut by an oblique line, the
+ * thread where the human answered, and the tagline. Each side is a piece of
+ * the real page; only the layout is made here.
+ */
+async function socialPreview(): Promise<void> {
+  const sharp = await browser.newPage({ viewport: { width: 2200, height: 1000 }, deviceScaleFactor: 2 });
+  // What Claude just changed keeps its outline: the page fades it in 2.4 s, the photo holds its first instant.
+  await sharp.addInitScript(() => {
+    addEventListener("DOMContentLoaded", () => {
+      const hold = document.createElement("style");
+      hold.textContent = ".card.is-fresh .card-shape { animation-play-state: paused !important; }";
+      document.head.append(hold);
+    });
+  });
+  await sharp.goto(`${running.url}/#/b/ordering`);
+  await sharp.locator("g.card").first().waitFor();
+  await Bun.sleep(800);
+  await post("agent", `detail P1 "One reservation per order line."\ndetail E2 "Sent to billing."`, "ordering");
+  await sharp.locator("g.card.is-fresh").first().waitFor();
+  const stormingPng = await sharp.locator("svg.sideco-board").first().screenshot();
+  const storming = `data:image/png;base64,${stormingPng.toString("base64")}`;
+  const flow = await piece(sharp, "payment", "svg.sideco-board");
+  const thread = await piece(sharp, "payment", ".thread");
+  const status = await piece(sharp, "payment", ".status");
+  const waits = await piece(sharp, "payment", ".waits");
+  await sharp.close();
+  const page = await browser.newPage({ viewport: { width: 1280, height: 640 } });
+  await page.setContent(`<!doctype html><style>
+    body { margin: 0; width: 1280px; height: 640px; overflow: hidden; background: #fff; position: relative;
+      font-family: -apple-system, "Segoe UI", Inter, sans-serif; color: #1f2328; }
+    .side { position: absolute; inset: 0 0 96px 0; overflow: hidden; }
+    .left { clip-path: polygon(0 0, 800px 0, 560px 100%, 0 100%); }
+    .right { clip-path: polygon(808px 0, 100% 0, 100% 100%, 568px 100%); }
+    .left > img { position: absolute; left: 8px; top: 58px; height: 480px; }
+    .right img.flow { position: absolute; left: 690px; top: 48px; height: 500px; }
+    .right img.thread { position: absolute; right: 20px; top: 48px; width: 290px; border-radius: 8px;
+      box-shadow: 0 6px 24px rgba(31, 35, 40, 0.18); }
+    .status { position: absolute; left: 24px; top: 12px; display: flex; gap: 14px; align-items: center;
+      padding: 4px 14px; border-radius: 18px; background: #fff; box-shadow: 0 2px 10px rgba(31, 35, 40, 0.14); }
+    .status img { zoom: 0.6; }
+    .cut { position: absolute; inset: 0 0 96px 0; background: #1a6fae;
+      clip-path: polygon(800px 0, 808px 0, 568px 100%, 560px 100%); }
+    .band { position: absolute; left: 0; right: 0; bottom: 0; height: 96px; background: #1f2328; color: #fff;
+      display: flex; align-items: center; gap: 28px; padding: 0 48px; box-sizing: border-box; }
+    .band b { font-size: 40px; letter-spacing: -0.5px; }
+    .band span { font-size: 23px; line-height: 1.25; opacity: 0.92; }
+  </style>
+  <div class="side left"><img src="${storming}"><div class="status"><img src="${status}"><img src="${waits}"></div></div>
+  <div class="side right"><img class="flow" src="${flow}"><img class="thread" src="${thread}"></div>
+  <div class="cut"></div>
+  <div class="band"><b>Sideco</b><span>Turn your coding agent's walls of text into a conversation you can see and reshape.</span></div>`);
+  await page.screenshot({ path: join(OUT, "social-preview.png") });
+  console.log(join(OUT, "social-preview.png"));
+}
+
 try {
   const wide = await browser.newPage({ viewport: { width: 1440, height: 820 } });
   for (const board of BOARDS) await photo(wide, board.id, `sideco-${board.id}`, board.tab);
-  const social = await browser.newPage({ viewport: { width: 1280, height: 640 } });
-  await photo(social, "payment", "social-preview", "#tab-notes");
+  await socialPreview();
 } finally {
   await browser.close();
   running.stop();
