@@ -96,7 +96,7 @@ sideco wait
 | --- | --- | --- |
 | what happens in the domain, in what order | `event-storming` | `--col N` |
 | which path, where it branches | `flow` | `--from ID`, `--edge "oui"` |
-| where the work stands, what blocks it | `kanban` | `--lane todo`, `doing` or `done` |
+| where the work stands, what blocks it | `kanban` | `--lane todo`, `doing` or `done`; a `story` splits into `task`s: `add task "…" --from S1` |
 | which journey, what ships first | `story-map` | `--col N` |
 | what went well or not, what to keep, stop, try | `retro` | `--lane went-well`, `went-badly`, `keep`, `drop` or `try`; an action from a point: `add action "…" --from Q1` |
 | what to do first, for what it brings and costs | `impact-effort` | `--lane quick`, `bet`, `fill` or `avoid` |
@@ -113,7 +113,7 @@ sideco board new "Title" [--format F] [--id ID]   sideco board rm ID (removes th
 sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--from ID [--edge "label"]] [--detail "…"]
 sideco rename ID "Label"            sideco detail ID "Text"
 sideco move ID --col N | --lane L [--before ID]   # --before alone: before that card, in its cell
-sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)   sideco renumber ID [NEW] (a new id for a card, the next of its letter by default; its links and notes follow)   sideco renumber --all [--dry-run] (every card under a former letter, or whose id another board keeps)
+sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)   sideco renumber ID [NEW] (a new id for a card, the next of its letter by default; its links and notes follow)   sideco renumber --all [--dry-run] (every card under a former letter, or whose id another board keeps)   sideco retype ID TYPE [NEW] (a card takes another kind, and the next id of its letter)
 sideco lane L "Name" (names it here) · lane hint L "What it stands for" · purpose "Its own question?" · plan: axis x|y "Name" [Low] [High] ("" gives the workshop's back) · kanban, retro: lane add "Name" [--before L] · lane rm L · lane move L [--before L] · story map: slice add "Lot 1" [--before S] (a line under the stories) · slice rm S
 sideco done ID   sideco undone ID   sideco undo|redo [--dry-run] (your own last gesture, named; never the human's)
 sideco link SRC DST ["label"]       sideco unlink SRC DST   (link again: renames the link)

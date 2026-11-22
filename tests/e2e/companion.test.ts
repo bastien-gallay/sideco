@@ -1909,7 +1909,7 @@ describe("adding from the keyboard", () => {
   });
 
   test("the card just added has the keyboard, not the page", async () => {
-    first = mint(await workspace(), "T");
+    first = mint(await workspace(), "S");
     await page.keyboard.press("Enter");
     await typeInEditor("Premier");
     await card(first).waitFor();
@@ -1928,7 +1928,7 @@ describe("adding from the keyboard", () => {
     );
 
   test("Alt and an arrow add a card of its kind beside the focused one, and give it the keyboard", async () => {
-    const right = mint(await workspace(), "T");
+    const right = mint(await workspace(), "S");
     await card(first).focus();
     await page.keyboard.press("Alt+ArrowRight");
     await typeInEditor("À droite");
@@ -1936,7 +1936,7 @@ describe("adding from the keyboard", () => {
     await until("the keyboard is on the card added", async () => (await active()).id === right);
     expect(await lanes()).toEqual({ "To do": [first], Doing: [right] });
 
-    above = mint(await workspace(), "T");
+    above = mint(await workspace(), "S");
     await card(first).focus();
     await page.keyboard.press("Alt+ArrowUp");
     await typeInEditor("Au-dessus");

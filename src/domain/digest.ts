@@ -223,7 +223,7 @@ type Change =
   | { kind: "labeled"; id: string; label: string; on: boolean }
   | { kind: "marked"; id: string; done: boolean }
   | { kind: "removed"; id: string; type: string; label: string }
-  | { kind: "renumbered"; id: string; to: string }
+  | { kind: "renumbered"; id: string; to: string; type?: string }
   | { kind: "column-inserted"; at: number }
   | { kind: "column-removed"; at: number }
   | { kind: "column-moved"; from: number; to: number }
@@ -434,7 +434,7 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
           if (el) put("remove", e.id, { kind: "removed", id: e.id, type: el.type, label: el.label });
           break;
         case "ElementRenumbered":
-          put("renumber", e.id, { kind: "renumbered", id: e.id, to: e.to });
+          put("renumber", e.id, { kind: "renumbered", id: e.id, to: e.to, type: e.type });
           break;
         case "ElementRestored":
           // Removed and restored since the reader looked: no news. Otherwise it is back, and they are told where.
@@ -571,7 +571,7 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
     case "removed":
       return `− ${change.id} ${change.type} ${quote(change.label)} removed`;
     case "renumbered":
-      return `~ ${change.id} renumbered as ${change.to}`;
+      return `~ ${change.id} renumbered as ${change.to}${change.type ? `, a ${change.type}` : ""}`;
     case "column-inserted":
       return `+ empty column inserted at ${change.at} (columns from ${change.at} shifted right)`;
     case "column-removed":

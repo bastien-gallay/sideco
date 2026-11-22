@@ -28,6 +28,13 @@ All notable changes to Sideco are listed here. The format follows
   older journal gave on several boards stays on one, a kanban first since
   commits cite its ids, otherwise the board made first; the other holders take
   the next of their letter. `--dry-run` lists the plan and writes nothing.
+- A kanban holds stories (`S`) beside tasks (`T`) and blockers: a task stands
+  alone or splits a story, added from it and linked, and the page offers to
+  split a story into a task. A story wears the story map's yellow, a task its
+  green.
+- `sideco retype ID TYPE [NEW]` turns a card into another kind of its board: it
+  takes the next id of that kind's letter, or NEW, its ties follow, and it keeps
+  its old id, as with `renumber`. An undo gives back the kind and the id.
 
 ### Changed
 

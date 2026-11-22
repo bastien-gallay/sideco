@@ -142,7 +142,15 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
         ]
       );
     case "ElementRenumbered":
-      return [{ event: "ElementRenumbered", board: b, id: e.to, to: e.id }];
+      return [
+        {
+          event: "ElementRenumbered",
+          board: b,
+          id: e.to,
+          to: e.id,
+          ...(e.type && el ? { type: el.type } : {}),
+        },
+      ];
     case "ColumnInserted":
       return [{ event: "ColumnRemoved", board: b, at: e.at }];
     case "ColumnRemoved":
@@ -290,7 +298,7 @@ export function nameOf(board: Board, e: BoardEvent): string {
     case "ElementRemoved":
       return `rm ${e.id}`;
     case "ElementRenumbered":
-      return `renumber ${e.id} ${e.to}`;
+      return e.type ? `retype ${e.id} ${e.type} ${e.to}` : `renumber ${e.id} ${e.to}`;
     case "ColumnInserted":
       return `insert-col ${e.at}`;
     case "ColumnRemoved":

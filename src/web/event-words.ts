@@ -4,7 +4,7 @@
  * any other rule.
  */
 import type { Recorded } from "../domain/events.ts";
-import { findFormat, laneName } from "../domain/formats.ts";
+import { FORMATS, findFormat, laneName } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
 import { findSession, type Session, type Workspace } from "../domain/workspace.ts";
 
@@ -14,6 +14,12 @@ const MAX_LINE = 90;
  * One line of history, in the reader's language. With the workspace, a
  * hand-over says the session it went to.
  */
+/** A kind named in the reader's language, as its first format writes it: "story", "tâche". */
+function kindName(type: string, locale: Locale): string {
+  const kind = FORMATS.flatMap((f) => f.types).find((k) => k.id === type);
+  return kind ? kind.label[locale].toLowerCase() : type;
+}
+
 export function describeEvent(e: Recorded, locale: Locale = DEFAULT_LOCALE, ws?: Workspace): string {
   const session = e.event === "TurnPassed" && e.target && ws ? findSession(ws, e.target) : undefined;
   return clip(
@@ -125,6 +131,7 @@ function english(e: Recorded, to: string, lane: LaneCalled): string {
     case "ElementRemoved":
       return `${does("remove")} ${e.id}`;
     case "ElementRenumbered":
+      if (e.type) return `${does("turn")} ${e.id} into ${kindName(e.type, "en")} ${e.to}`;
       return `${does("renumber")} ${e.id} as ${e.to}`;
     case "ElementRestored":
       return `${does("restore")} ${e.id} “${e.label}”`;
@@ -244,6 +251,7 @@ function french(e: Recorded, to: string, lane: LaneCalled): string {
     case "ElementRemoved":
       return `${verb("supprimes", "supprime")} ${e.id}`;
     case "ElementRenumbered":
+      if (e.type) return `${verb("changes", "change")} ${e.id} en ${kindName(e.type, "fr")} ${e.to}`;
       return `${verb("renumérotes", "renumérote")} ${e.id} en ${e.to}`;
     case "ElementRestored":
       return `${verb("restaures", "restaure")} ${e.id} « ${e.label} »`;

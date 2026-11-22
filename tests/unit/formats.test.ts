@@ -77,7 +77,7 @@ const LETTERS: Record<string, Record<string, string>> = {
   flow: { step: "F", decision: "D", outcome: "O" },
   retro: { point: "Q", action: "T" },
   "story-map": { activity: "A", task: "T", story: "S" },
-  kanban: { task: "T", blocker: "B" },
+  kanban: { story: "S", task: "T", blocker: "B" },
   "impact-effort": { item: "I" },
 };
 

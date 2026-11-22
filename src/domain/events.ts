@@ -87,7 +87,8 @@ type BoardFact =
   | { event: "ElementMoved"; board: string; id: string; col: number; lane: string; before?: string }
   | { event: "ElementRemoved"; board: string; id: string }
   /** The element takes the id `to`; what points at it follows, and `id` is never given again. */
-  | { event: "ElementRenumbered"; board: string; id: string; to: string }
+  /** With `type`, the element changed kind with its id. */
+  | { event: "ElementRenumbered"; board: string; id: string; to: string; type?: string }
   /**
    * A removed element comes back under its id, the one case where an id returns.
    * The event carries the element whole: who added it, when, where it sat

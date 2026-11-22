@@ -4,14 +4,39 @@
  * gesture made before still takes back what it did. The old id is never given
  * again, and the element keeps it among its former ids, until an undo gives it back.
  */
+import { type Command, CommandError } from "./commands.ts";
 import type { BoardEvent, Recorded } from "./events.ts";
-import { remember } from "./minting.ts";
-import type { Board } from "./workspace.ts";
+import { type Format, findType } from "./formats.ts";
+import { requireElement } from "./guards.ts";
+import { claim, mint, remember } from "./minting.ts";
+import type { Board, Workspace } from "./workspace.ts";
 
 type Renumbered = Extract<Recorded, { event: "ElementRenumbered" }>;
 
 /** The fields of an event that name an element. */
 const NAMING = ["id", "src", "dst", "before", "target"] as const;
+
+/**
+ * The card takes `to`, or the next id of its letter; with `type`, it takes that
+ * kind too, and the letter that goes with it.
+ */
+export function renumbering(
+  ws: Workspace,
+  board: Board,
+  format: Format,
+  cmd: Extract<Command, { kind: "renumber" }>,
+): { events: BoardEvent[]; minted: string } {
+  const el = requireElement(board, cmd.id);
+  const kind = cmd.type ?? el.type;
+  const type = findType(format, kind);
+  if (!type) throw new CommandError(`${format.name.en} has no "${kind}"`);
+  const to = cmd.to === undefined ? mint(ws, type.prefix) : claim(ws, type, cmd.to, format);
+  const retyped = kind === el.type ? {} : { type: kind };
+  return {
+    events: [{ event: "ElementRenumbered", board: board.id, id: cmd.id, to, ...retyped }],
+    minted: to,
+  };
+}
 
 export function renumber(board: Board, e: Renumbered): void {
   const el = board.elements.find((x) => x.id === e.id);
@@ -22,6 +47,7 @@ export function renumber(board: Board, e: Renumbered): void {
     ? el.formerIds.filter((id) => id !== e.to)
     : [...(el.formerIds ?? []), e.id];
   el.id = e.to;
+  if (e.type) el.type = e.type;
   el.changedSeq = e.seq;
   if (former.length > 0) el.formerIds = former;
   else delete el.formerIds;

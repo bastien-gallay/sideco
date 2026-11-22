@@ -17,13 +17,26 @@ export const KANBAN: Format = {
   ],
   types: [
     {
-      id: "task",
-      label: t("Task", "Tâche"),
-      prefix: "T",
+      id: "story",
+      label: t("Story", "Story"),
+      prefix: "S",
+      leadsTo: { type: "task", label: t("Split into a task", "Découper en tâche") },
       fill: "#FCEFA1",
       ink: DARK,
       shape: "sticky",
-      hint: t("A piece of work", "Un lot de travail"),
+      hint: t("A need, told from the user's side", "Un besoin, dit du côté de l'utilisateur"),
+    },
+    {
+      id: "task",
+      label: t("Task", "Tâche"),
+      prefix: "T",
+      fill: "#6FCF97",
+      ink: DARK,
+      shape: "sticky",
+      hint: t(
+        "A piece of work, alone or splitting a story",
+        "Un lot de travail, seul ou découpant une story",
+      ),
     },
     {
       id: "blocker",

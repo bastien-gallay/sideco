@@ -67,7 +67,7 @@ describe("adding elements", () => {
 
   test("an unknown type names the types the workshop has", () => {
     expect(() => table(KANBAN).script('add event "x"')).toThrow(
-      'Kanban has no "event" (types: task, blocker)',
+      'Kanban has no "event" (types: story, task, blocker)',
     );
   });
 

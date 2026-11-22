@@ -56,7 +56,8 @@ export type Command =
   | { kind: "move"; board: string; id: string; col?: number; lane?: string; before?: string }
   | { kind: "remove"; board: string; id: string }
   /** The element takes the id `to`, else the next of its letter in the project. */
-  | { kind: "renumber"; board: string; id: string; to?: string }
+  /** With `type`, the card takes that kind too, and the letter that goes with it. */
+  | { kind: "renumber"; board: string; id: string; to?: string; type?: string }
   | { kind: "insert-column"; board: string; at: number }
   /** Removes an empty column of a timeline; refused while it holds cards. */
   | { kind: "remove-column"; board: string; at: number }
@@ -242,7 +243,13 @@ export function parseCommand(input: unknown): Command {
     case "remove":
       return { kind, board: boardId(f), id: idOrName(f, "id") };
     case "renumber":
-      return { kind, board: boardId(f), id: idOrName(f, "id"), to: optional(f, "to", elementId) };
+      return {
+        kind,
+        board: boardId(f),
+        id: idOrName(f, "id"),
+        to: optional(f, "to", elementId),
+        type: optional(f, "type", (x, k) => text(x, k, 40)),
+      };
     case "insert-column":
     case "remove-column":
       return { kind, board: boardId(f), at: column(f, "at") };

@@ -571,13 +571,15 @@ describe("addOffers: a + in the free room under the pointer, one per kind of car
     if (!room || !last) throw new Error("no room");
     const offers = addOffers(board, target);
     expect(offers.map((o) => `${o.type} ${o.text} ${o.label}`)).toEqual([
+      "story + S Add: Story",
       "task + T Add: Task",
       "blocker + B Add: Blocker",
     ]);
-    const [task, blocker] = offers;
-    if (!task || !blocker) throw new Error("no offers");
+    const [story, task, blocker] = offers;
+    if (!story || !task || !blocker) throw new Error("no offers");
+    expect(task.x).toBeGreaterThan(story.x + story.w);
     expect(blocker.x).toBeGreaterThan(task.x + task.w);
-    expect((task.x + blocker.x + blocker.w) / 2).toBe(room.x + room.w / 2);
+    expect((story.x + blocker.x + blocker.w) / 2).toBe(room.x + room.w / 2);
     expect(task.y).toBe(blocker.y);
     // Under the last card without touching it, and near it rather than at the foot of the lane.
     expect(task.y).toBeGreaterThan(last.y + last.h);

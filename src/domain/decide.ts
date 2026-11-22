@@ -27,6 +27,7 @@ import {
 } from "./guards.ts";
 import { hasLabel, normalLabel, sameLabel } from "./labels.ts";
 import { claim, mint } from "./minting.ts";
+import { renumbering } from "./renumber.ts";
 import { reverse } from "./reverse.ts";
 import { decideOnSession } from "./session-decide.ts";
 import {
@@ -236,13 +237,8 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
     case "remove":
       requireElement(board, cmd.id);
       return { events: [{ event: "ElementRemoved", board: b, id: cmd.id }] };
-    case "renumber": {
-      const el = requireElement(board, cmd.id);
-      const type = findType(format, el.type);
-      if (!type) throw new CommandError(`${format.name.en} has no "${el.type}"`);
-      const to = cmd.to === undefined ? mint(ws, type.prefix) : claim(ws, type, cmd.to, format);
-      return { events: [{ event: "ElementRenumbered", board: b, id: cmd.id, to }], minted: to };
-    }
+    case "renumber":
+      return renumbering(ws, board, format, cmd);
     case "insert-column":
       if (format.layout !== "timeline")
         throw new CommandError(`${format.name.en} boards have no columns to insert`);

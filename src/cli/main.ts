@@ -81,6 +81,7 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco renumber ID [NEW]            a card takes a new id, NEW or the next of its letter; its links, notes and
                                     focus follow, and show and find still name the old one
   sideco renumber --all [--dry-run]   so do the cards under a former letter, or whose id another board keeps
+  sideco retype ID TYPE [NEW]         a card takes another kind, and the next id of its letter, or NEW
   sideco lane LANE "Name"             call a lane of this board your own way
   sideco label ID type:bug @name ...  put labels on a card, shared by every board; unlabel ID LABEL... takes them off
   sideco labels [LABEL|KEY]           every label of the project and its cards, across boards (labels type: every type:…)
