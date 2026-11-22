@@ -38,10 +38,11 @@ import {
 } from "./boards.ts";
 import { clock, h, region } from "./dom.ts";
 import { describeEvent, sessionName } from "./event-words.ts";
+import { keysSheet, openKeys } from "./keys-sheet.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
 import { messageField, wordsField } from "./message-field.ts";
-import { type CardMark, MESSAGES, type SheetKind } from "./messages.ts";
+import { MESSAGES } from "./messages.ts";
 import { mountNotices, type Offer } from "./notices.ts";
 import { meetUpdates } from "./reload.ts";
 import {
@@ -585,73 +586,6 @@ function showFound(): void {
   if (hit?.here) view.reveal(hit.id);
 }
 
-/** The keys of the page, in one place: asked for with `?`, or from the palette. */
-const keysSheet = h("dialog", { class: "sheet keys" });
-
-/** How the board shown is laid out, as far as its keys and gestures go. */
-function sheetKind(): SheetKind {
-  const format = findFormat(currentBoard()?.format ?? "");
-  if (!format || format.layout === "timeline") return "timeline";
-  if (format.layout === "graph") return "graph";
-  if (format.grid) return "grid";
-  return format.ownLanes ? "kanban" : "lanes";
-}
-
-/** Each mark drawn as the card draws it, in a box of its own; the words beside it say what it means. */
-const MARK_DRAWN: Record<CardMark, string> = {
-  agent: '<path class="card-author" d="M0 -4l4 4l-4 4l-4-4z"/>',
-  human: '<circle class="card-author" r="3"/>',
-  detail: '<text class="card-detail" y="4" text-anchor="middle">≡</text>',
-  done: '<text class="card-done" y="4" text-anchor="middle">✓</text>',
-  notes: '<g class="card-notes"><circle r="8"/><text y="3.5">1</text></g>',
-  unread: '<g class="card-unread"><circle r="5"/></g>',
-  changed: '<g class="card-changed"><path d="M0 -6 L8 7 L-8 7 Z"/></g>',
-};
-
-function markLegend(): HTMLElement {
-  return h(
-    "dl",
-    { class: "key-list mark-list" },
-    ...(Object.keys(MARK_DRAWN) as CardMark[]).flatMap((mark) => {
-      const drawn = h("dt", {});
-      drawn.innerHTML = `<svg viewBox="-11 -11 22 22" width="22" height="22" aria-hidden="true">${MARK_DRAWN[mark]}</svg>`;
-      return [drawn, h("dd", {}, t.marks[mark])];
-    }),
-  );
-}
-
-function openKeys(): void {
-  const how = sheetKind();
-  /** Keys wear the look of keys; a gesture of the mouse is said in words. */
-  const list = (rows: [string, string][], keys: boolean) =>
-    h(
-      "dl",
-      { class: "key-list" },
-      ...rows.flatMap(([what, does]) => [h("dt", {}, keys ? h("kbd", {}, what) : what), h("dd", {}, does)]),
-    );
-  keysSheet.replaceChildren(
-    h("h2", {}, t.shortcuts),
-    list(
-      t.shortcutList(
-        how,
-        Boolean(findFormat(currentBoard()?.format ?? "")?.doneLast),
-        axesNamed(currentBoard()),
-      ),
-      true,
-    ),
-    h("h3", {}, t.withTheMouse),
-    list(t.mouseList(how), false),
-    h("h3", {}, t.onACard),
-    markLegend(),
-    h(
-      "div",
-      { class: "actions" },
-      h("button", { type: "button", class: "primary", onclick: () => keysSheet.close() }, t.close),
-    ),
-  );
-  keysSheet.showModal();
-}
-
 // ── Side panels, folded into rails ───────────────────────────────────────────
 
 type Side = "left" | "right";
@@ -1052,7 +986,11 @@ const paintPalette = region(palette, (m: PaletteModel) => {
     how && h("p", { class: "how" }, how),
     h(
       "button",
-      { type: "button", class: "quiet keys-open", onclick: () => openKeys() },
+      {
+        type: "button",
+        class: "quiet keys-open",
+        onclick: () => openKeys(currentBoard(), axesNamed(currentBoard())),
+      },
       t.withKey(t.shortcuts, "?"),
     ),
   ];
@@ -1906,7 +1844,7 @@ function typing(target: EventTarget | null): boolean {
 window.addEventListener("keydown", (event) => {
   if (event.ctrlKey || event.metaKey || event.altKey || typing(event.target)) return;
   if (event.key === "/" && shown().boards.length > 0) openFind();
-  else if (event.key === "?") openKeys();
+  else if (event.key === "?") openKeys(currentBoard(), axesNamed(currentBoard()));
   // < and > a key away on a French keyboard, [ and ] on an American one (T201).
   else if (event.key === "<" || event.key === "[") toggleFold("left");
   else if (event.key === ">" || event.key === "]") toggleFold("right");
