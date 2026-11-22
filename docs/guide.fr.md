@@ -1,6 +1,6 @@
 # Sideco · guide détaillé
 
-Ce guide détaille Sideco en français. L’accueil, en anglais, est dans le [README](../README.md).
+Ce guide détaille Sideco en français. L’accueil, en anglais, est dans le [README](../README.md). Un [guide plus court](guide.md) existe en anglais.
 
 Sideco est le compagnon visuel de Claude Code : une page web locale, ouverte à côté du terminal, où toi et ton agent construisez le même modèle (event storming, flux, kanban, story map, rétrospective, impact / effort) pendant que l'agent travaille.
 

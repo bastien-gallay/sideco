@@ -15,6 +15,10 @@ import { runHook } from "../src/cli/hook.ts";
 import { start } from "../src/server/start.ts";
 
 const OUT = process.argv[2] ?? "docs/img";
+/** Every picture is taken twice: GitHub shows the dark one to who reads in the dark. */
+const SCHEMES = ["light", "dark"] as const;
+type Scheme = (typeof SCHEMES)[number];
+const suffix = (scheme: Scheme) => (scheme === "dark" ? "-dark" : "");
 const SESSION = "readme";
 
 /**
@@ -29,6 +33,8 @@ interface Board {
   human?: string;
   late?: string;
   shot?: "page" | "board";
+  /** The window of a board photographed alone, when the usual one cuts it or leaves it half empty. */
+  size?: { width: number; height: number };
   tab?: string;
 }
 const BOARDS: Board[] = [
@@ -103,6 +109,28 @@ add task "Loyalty discounts" --lane todo`,
     human: `move T2 --lane done`,
     shot: "board",
   },
+  {
+    id: "next",
+    script: `board new "What next?" --format impact-effort --id next
+add item "One-click reorder" --lane quick
+add item "Saved cards" --lane quick
+add item "Marketplace" --lane bet
+add item "Order history export" --lane fill
+add item "Custom invoices" --lane avoid`,
+    human: `add item "Gift cards" --lane bet`,
+    shot: "board",
+    size: { width: 1090, height: 720 },
+  },
+  {
+    id: "shop",
+    script: `board new "The shop" --format c4-context --id shop
+add person "Customer" --alias customer
+add system "Online shop" --from @customer --edge "orders with" --alias shop
+add external "Bank" --from @shop --edge "charges through"
+add external "Warehouse" --from @shop --edge "reserves stock in"`,
+    shot: "board",
+    size: { width: 640, height: 500 },
+  },
 ];
 
 const root = initRoot(realpathSync(mkdtempSync(join(tmpdir(), "sideco-shots-"))));
@@ -146,9 +174,12 @@ async function photo(page: Page, board: Board): Promise<void> {
   await page.locator("g.card").first().waitFor();
   if (board.tab) await page.locator(board.tab).click();
   await Bun.sleep(800); // the cards glide to their place
-  const path = join(OUT, `sideco-${board.id}.png`);
-  await page.screenshot({ path });
-  console.log(path);
+  for (const scheme of SCHEMES) {
+    await page.emulateMedia({ colorScheme: scheme });
+    const path = join(OUT, `sideco-${board.id}${suffix(scheme)}.png`);
+    await page.screenshot({ path });
+    console.log(path);
+  }
 }
 
 /** One piece of the page, twice as sharp, as a data URL the composed picture can hold. */
@@ -167,8 +198,12 @@ async function piece(page: Page, board: string, selector: string): Promise<strin
  * 1280×640 with the name and the tagline under it. Each side is a piece of
  * the real page; only the layout is made here.
  */
-async function twoWorkshops(): Promise<void> {
-  const sharp = await browser.newPage({ viewport: { width: 2200, height: 1000 }, deviceScaleFactor: 2 });
+async function twoWorkshops(scheme: Scheme): Promise<void> {
+  const sharp = await browser.newPage({
+    viewport: { width: 2200, height: 1000 },
+    deviceScaleFactor: 2,
+    colorScheme: scheme,
+  });
   // What Claude just changed keeps its outline: the page fades it in 2.4 s, the photo holds its first instant.
   await sharp.addInitScript(() => {
     addEventListener("DOMContentLoaded", () => {
@@ -180,7 +215,8 @@ async function twoWorkshops(): Promise<void> {
   await sharp.goto(`${running.url}/#/b/ordering`);
   await sharp.locator("g.card").first().waitFor();
   await Bun.sleep(800);
-  await post("agent", `detail P1 "One reservation per order line."\ndetail E2 "Sent to billing."`, "ordering");
+  // Written anew for each picture: only what Claude just changed is outlined.
+  await post("agent", `detail P1 "One reservation per order line (${scheme})."\ndetail E2 "Sent to billing (${scheme})."`, "ordering");
   await sharp.locator("g.card.is-fresh").first().waitFor();
   const stormingPng = await sharp.locator("svg.sideco-board").first().screenshot();
   const storming = `data:image/png;base64,${stormingPng.toString("base64")}`;
@@ -188,10 +224,11 @@ async function twoWorkshops(): Promise<void> {
   const thread = await piece(sharp, "payment", ".thread");
   const status = await piece(sharp, "payment", ".status");
   const waits = await piece(sharp, "payment", ".waits");
+  const ground = await sharp.evaluate(() => getComputedStyle(document.body).backgroundColor);
   await sharp.close();
   const page = await browser.newPage({ viewport: { width: 1280, height: 640 } });
   await page.setContent(`<!doctype html><style>
-    body { margin: 0; width: 1280px; height: 640px; overflow: hidden; background: #fff; position: relative;
+    body { margin: 0; width: 1280px; height: 640px; overflow: hidden; background: ${ground}; position: relative;
       font-family: -apple-system, "Segoe UI", Inter, sans-serif; color: #1f2328; }
     .side { position: absolute; inset: 0 0 96px 0; overflow: hidden; }
     .left { clip-path: polygon(0 0, 800px 0, 560px 100%, 0 100%); }
@@ -201,7 +238,7 @@ async function twoWorkshops(): Promise<void> {
     .right img.thread { position: absolute; right: 20px; top: 48px; width: 290px; border-radius: 8px;
       box-shadow: 0 6px 24px rgba(31, 35, 40, 0.18); }
     .status { position: absolute; left: 24px; top: 12px; display: flex; gap: 14px; align-items: center;
-      padding: 4px 14px; border-radius: 18px; background: #fff; box-shadow: 0 2px 10px rgba(31, 35, 40, 0.14); }
+      padding: 4px 14px; border-radius: 18px; background: ${ground}; box-shadow: 0 2px 10px rgba(31, 35, 40, 0.14); }
     .status img { zoom: 0.6; }
     .cut { position: absolute; inset: 0 0 96px 0; background: #1a6fae;
       clip-path: polygon(800px 0, 808px 0, 568px 100%, 560px 100%); }
@@ -211,23 +248,45 @@ async function twoWorkshops(): Promise<void> {
     .band span { font-size: 23px; line-height: 1.25; opacity: 0.92; }
   </style>
   <div class="side left"><img src="${storming}"><div class="status"><img src="${status}"><img src="${waits}"></div></div>
-  <div class="side right"><img class="flow" src="${flow}"><img class="thread" src="${thread}"></div>
+  <div class="side right" id="right"><img class="flow" id="flow" src="${flow}"><img class="thread" src="${thread}"></div>
   <div class="cut"></div>
   <div class="band"><b>Sideco</b><span>Turn your coding agent's walls of text into a conversation you can see and reshape.</span></div>`);
-  await page.screenshot({ path: join(OUT, "social-preview.png") });
-  console.log(join(OUT, "social-preview.png"));
+  // The focus dims the flow's ground, which shows in the dark: its side takes the colour of its own corner.
+  await page.evaluate(async () => {
+    const flow = document.getElementById("flow") as HTMLImageElement;
+    await flow.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const pen = canvas.getContext("2d");
+    if (!pen) return;
+    pen.drawImage(flow, 4, 4, 1, 1, 0, 0, 1, 1);
+    const [r, g, b] = pen.getImageData(0, 0, 1, 1).data;
+    (document.getElementById("right") as HTMLElement).style.background = `rgb(${r}, ${g}, ${b})`;
+  });
+  // The social preview has one face, the light one.
+  if (scheme === "light") {
+    await page.screenshot({ path: join(OUT, "social-preview.png") });
+    console.log(join(OUT, "social-preview.png"));
+  }
   // The README says the tagline itself, just above: its picture goes without the band.
-  await page.screenshot({ path: join(OUT, "sideco-two-workshops.png"), clip: { x: 0, y: 0, width: 1280, height: 544 } });
-  console.log(join(OUT, "sideco-two-workshops.png"));
+  const path = join(OUT, `sideco-two-workshops${suffix(scheme)}.png`);
+  await page.screenshot({ path, clip: { x: 0, y: 0, width: 1280, height: 544 } });
+  console.log(path);
+  await page.close();
 }
 
 try {
   // Under 1100 px the page folds its two panels: the board alone, large enough to read in a README.
-  const narrow = await browser.newPage({ viewport: { width: 1090, height: 540 } });
-  for (const board of BOARDS) if (board.shot === "board") await photo(narrow, board);
+  const usual = { width: 1090, height: 540 };
+  const narrow = await browser.newPage({ viewport: usual });
+  for (const board of BOARDS) {
+    if (board.shot !== "board") continue;
+    await narrow.setViewportSize(board.size ?? usual);
+    await photo(narrow, board);
+  }
   await narrow.close();
   for (const board of BOARDS) if (board.shot === "page") await photo(wide, board);
-  await twoWorkshops();
+  for (const scheme of SCHEMES) await twoWorkshops(scheme);
 } finally {
   await browser.close();
   running.stop();
