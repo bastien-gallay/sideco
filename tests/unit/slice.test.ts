@@ -7,7 +7,7 @@ import { describeBoard, describeChanges } from "../../src/domain/digest.ts";
 import { fromModel, toModel } from "../../src/domain/export/model.ts";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
 import { bandMarkup } from "../../src/domain/render/svg.ts";
-import { describeEvent } from "../../src/web/view.ts";
+import { describeEvent } from "../../src/web/event-words.ts";
 import { KANBAN, type Table, table } from "../support.ts";
 
 const MAP = `

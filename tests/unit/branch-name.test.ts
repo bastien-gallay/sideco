@@ -3,7 +3,7 @@
  * the new name. The same name records nothing; undo gives the old one back.
  */
 import { describe, expect, test } from "bun:test";
-import { describeEvent } from "../../src/web/view.ts";
+import { describeEvent } from "../../src/web/event-words.ts";
 import { FLOW, type Table, table } from "../support.ts";
 
 const name = (t: Table, src: string, dst: string): string | undefined =>

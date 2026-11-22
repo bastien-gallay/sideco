@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { LOCALES } from "../../src/domain/i18n.ts";
 import { layoutBoard, vacancy } from "../../src/domain/layout/index.ts";
+import { describeEvent } from "../../src/web/event-words.ts";
 import { MESSAGES, pickLocale } from "../../src/web/messages.ts";
 import {
   addOffers,
   agentStatus,
   claudeWaits,
-  describeEvent,
   discussions,
   handOverHint,
   handOverNotice,

@@ -36,6 +36,7 @@ import {
   removeSheet,
 } from "./boards.ts";
 import { clock, h, region } from "./dom.ts";
+import { describeEvent, sessionName } from "./event-words.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
 import { messageField, wordsField } from "./message-field.ts";
@@ -68,7 +69,6 @@ import {
   agentStatus,
   claudeWaits,
   type Discussion,
-  describeEvent,
   discussions,
   type FindHit,
   findHits,
@@ -84,7 +84,6 @@ import {
   recentTurns,
   redoTarget,
   resolvedDiscussions,
-  sessionName,
   sinceLastVisit,
   tabTitle,
   undoTarget,

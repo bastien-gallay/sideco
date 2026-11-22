@@ -4,7 +4,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { describeChanges } from "../../src/domain/digest.ts";
-import { describeEvent } from "../../src/web/view.ts";
+import { describeEvent } from "../../src/web/event-words.ts";
 import { KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 /** Three steps: 1 holds X1 C1 E1, 2 holds P1 C2 E2 H1, 3 holds E3. */

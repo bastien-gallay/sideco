@@ -9,7 +9,7 @@ import { toMarkdown } from "../../src/domain/export/markdown.ts";
 import { toMermaid } from "../../src/domain/export/mermaid.ts";
 import { fromModel, toModel } from "../../src/domain/export/model.ts";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
-import { describeEvent } from "../../src/web/view.ts";
+import { describeEvent } from "../../src/web/event-words.ts";
 import { KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 const META = { exportedAt: "2026-11-18T10:00:00.000Z" };

@@ -5,7 +5,8 @@
 import { describe, expect, test } from "bun:test";
 import { describeChanges } from "../../src/domain/digest.ts";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
-import { addOffers, describeEvent } from "../../src/web/view.ts";
+import { describeEvent } from "../../src/web/event-words.ts";
+import { addOffers } from "../../src/web/view.ts";
 import { KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 /** Steps 1 and 2 hold cards, 3 is empty, 4 holds E3. */

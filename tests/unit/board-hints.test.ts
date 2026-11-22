@@ -9,7 +9,7 @@ import { boardAction } from "../../src/cli/argv.ts";
 import { describeBoard, describeChanges } from "../../src/domain/digest.ts";
 import { fromModel, toModel } from "../../src/domain/export/model.ts";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
-import { describeEvent } from "../../src/web/view.ts";
+import { describeEvent } from "../../src/web/event-words.ts";
 import { IMPACT_EFFORT, KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 const lane = (t: Table, id: string, locale: "en" | "fr" = "en") =>

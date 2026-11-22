@@ -8,7 +8,7 @@ import { boardAction } from "../../src/cli/argv.ts";
 import { describeSessions } from "../../src/domain/digest.ts";
 import { hasSpoken } from "../../src/domain/sessions.ts";
 import { isOpen, STALE_SESSION_MS, sessionLabel, shownSession } from "../../src/domain/workspace.ts";
-import { describeEvent } from "../../src/web/view.ts";
+import { describeEvent } from "../../src/web/event-words.ts";
 import { KANBAN, T0, table } from "../support.ts";
 
 const label = (t: { ws: { sessions: Parameters<typeof sessionLabel>[0][] } }): string | undefined => {

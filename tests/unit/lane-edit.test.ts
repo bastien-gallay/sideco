@@ -9,7 +9,8 @@ import { toMermaid } from "../../src/domain/export/mermaid.ts";
 import { fromModel, toModel } from "../../src/domain/export/model.ts";
 import { lanesOf } from "../../src/domain/formats.ts";
 import { laneDrop, layoutBoard, locate } from "../../src/domain/layout/index.ts";
-import { addOffers, describeEvent, keyAdd, keyMove, laneKeyMove } from "../../src/web/view.ts";
+import { describeEvent } from "../../src/web/event-words.ts";
+import { addOffers, keyAdd, keyMove, laneKeyMove } from "../../src/web/view.ts";
 import { IMPACT_EFFORT, KANBAN, ORDERING, type Table, table } from "../support.ts";
 
 const META = { exportedAt: "2026-11-18T10:00:00.000Z" };

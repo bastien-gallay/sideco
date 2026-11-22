@@ -8,7 +8,7 @@ import { fromModel, toModel } from "../../src/domain/export/model.ts";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
 import { cardMarkup } from "../../src/domain/render/svg.ts";
 import { findElement } from "../../src/domain/workspace.ts";
-import { describeEvent } from "../../src/web/view.ts";
+import { describeEvent } from "../../src/web/event-words.ts";
 import { KANBAN, type Table, table } from "../support.ts";
 
 /** On a kanban, done is the last lane (see kanban-done.test.ts); on a retro, it is a mark. */

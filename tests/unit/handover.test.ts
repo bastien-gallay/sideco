@@ -9,7 +9,7 @@ import { type Command, parseCommand } from "../../src/domain/commands.ts";
 import { addressee, findBoard } from "../../src/domain/workspace.ts";
 import { Hub } from "../../src/server/hub.ts";
 import { memoryJournal } from "../../src/server/journal.ts";
-import { describeEvent, sessionName } from "../../src/web/view.ts";
+import { describeEvent, sessionName } from "../../src/web/event-words.ts";
 import { ORDERING, T0 } from "../support.ts";
 
 const batch = (script: string, board = "commande"): Command[] => parseBatch(script, board).map(parseCommand);

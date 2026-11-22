@@ -8,9 +8,9 @@ import type { Locale } from "../domain/i18n.ts";
 import { type Gesture, goneFrom } from "../domain/undo.ts";
 import { findBoard } from "../domain/workspace.ts";
 import { h } from "./dom.ts";
+import { describeEvent } from "./event-words.ts";
 import { locale } from "./locale.ts";
 import { send, state } from "./store.ts";
-import { describeEvent } from "./view.ts";
 
 interface Words {
   question: string;

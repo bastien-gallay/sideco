@@ -9,7 +9,7 @@ import { toHtml } from "../../src/domain/export/html.ts";
 import { toMarkdown } from "../../src/domain/export/markdown.ts";
 import { fromModel, toModel } from "../../src/domain/export/model.ts";
 import { boardPurpose, findFormat } from "../../src/domain/formats.ts";
-import { describeEvent } from "../../src/web/view.ts";
+import { describeEvent } from "../../src/web/event-words.ts";
 import { IMPACT_EFFORT, table } from "../support.ts";
 
 const META = { exportedAt: "2026-11-20T10:00:00.000Z" };
