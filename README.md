@@ -6,9 +6,13 @@
 
 A live, structured board beside the terminal: the agent lays out a flow, a backlog or an event storming; you answer right on the card in question; one click hands the turn back, and the agent reads what you changed. Local and MIT. Claude Code today; MCP for other agents on the roadmap.
 
-![An event storming in Sideco: the palette on the left, the board in the middle, Claude's session on the right, the hand-over bar at the bottom](docs/img/sideco-event-storming.png)
+![A flow in Sideco: Claude has put the focus on a decision and asked how many attempts before blocking the card; your answer waits in the thread on the right, and the bar at the bottom hands the turn back](docs/img/sideco-payment.png)
 
-<sub>Captured by the end-to-end test `tests/e2e/companion.test.ts`. A diamond marks a card Claude placed, a dot one you placed; the blue outline shows what just changed.</sub>
+<sub>A diamond marks a card Claude placed, a dot one you touched. The pictures are taken by `bun scripts/screenshots.ts docs/img`, from the page as it is today.</sub>
+
+| Event storming | Story map | Kanban |
+| --- | --- | --- |
+| ![An event storming: the ordering domain, one card renamed by you](docs/img/sideco-ordering.png) | ![A story map: activities, tasks and stories above the first release line](docs/img/sideco-journey.png) | ![A kanban: a sprint with a blocker in Doing](docs/img/sideco-sprint.png) |
 
 ## Install
 

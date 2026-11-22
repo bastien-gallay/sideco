@@ -4,9 +4,9 @@ Ce guide détaille Sideco en français. L’accueil, en anglais, est dans le [RE
 
 Sideco est le compagnon visuel de Claude Code : une page web locale, ouverte à côté du terminal, où toi et ton agent construisez le même modèle (event storming, flux, kanban, story map, rétrospective, impact / effort) pendant que l'agent travaille.
 
-![Un event storming dans Sideco : la palette à gauche, le tableau au centre, la session de Claude à droite, le passage de main en bas](img/sideco-event-storming.png)
+![Un flow dans Sideco : Claude a mis le focus sur une décision et demande combien de tentatives avant de bloquer la carte ; ta réponse attend dans le fil à droite, et la barre du bas lui rend la main](img/sideco-payment.png)
 
-<sub>Source : capture du test de bout en bout `tests/e2e/companion.test.ts`, le 2026-11-18. Le losange en haut d'une carte marque une carte posée par Claude, le point une carte posée par toi ; le contour bleu signale ce qui vient de changer.</sub>
+<sub>Source : `bun scripts/screenshots.ts docs/img`, qui photographie la page actuelle. Le losange en haut d'une carte marque une carte posée par Claude, le point une carte touchée par toi.</sub>
 
 **Complète** le terminal, ne le remplace pas : la conversation reste dans Claude Code.
 
