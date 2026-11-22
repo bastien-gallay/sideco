@@ -5,6 +5,7 @@
  * journal already passed `decide`. `replay` is the pure entry point, and the only
  * way to get a workspace for a past moment.
  */
+import { columnAfterMove } from "./columns.ts";
 import type { Actor, Recorded, Todo } from "./events.ts";
 import { LANE_PREFIX, lanesOf, SLICE_PREFIX } from "./formats.ts";
 import { handledAll } from "./handled-all.ts";
@@ -231,19 +232,6 @@ export function addressee(ws: Workspace, board: string): Session | undefined {
   const session = writer ? findSession(ws, writer) : undefined;
   if (session && session.status !== "ended") return session;
   return latestSession(ws, (s) => s.status !== "ended" && concerns(ws, s.id, board));
-}
-
-/** The number a column carries once the column `from` has moved to `to`: the ones it passes close the gap. */
-export function columnAfterMove(col: number, from: number, to: number): number {
-  if (col === from) return to;
-  if (from < to && col > from && col <= to) return col - 1;
-  if (to < from && col >= to && col < from) return col + 1;
-  return col;
-}
-
-/** The highest column in use; 0 on an empty board, since columns are numbered from 1. */
-export function lastColumn(board: Board): number {
-  return board.elements.reduce((max, e) => Math.max(max, e.col), 0);
 }
 
 export function apply(ws: Workspace, e: Recorded): void {

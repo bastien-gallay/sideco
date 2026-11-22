@@ -4,6 +4,8 @@
  * event there.
  * No DOM here, so the wording is tested like any other rule.
  */
+
+import { lastColumn } from "../domain/columns.ts";
 import type { Command } from "../domain/commands.ts";
 import { type Changes, describeChanges } from "../domain/digest.ts";
 import type { Actor, Recorded } from "../domain/events.ts";
@@ -16,7 +18,6 @@ import {
   type Board,
   findBoard,
   findElement,
-  lastColumn,
   type Session,
   type SessionTurn,
   threads,

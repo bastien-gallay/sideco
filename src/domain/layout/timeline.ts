@@ -4,10 +4,10 @@
  * spare column stays open on the right so the timeline can always be extended.
  */
 
+import { lastColumn } from "../columns.ts";
 import type { Format } from "../formats.ts";
 import type { Locale } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
-import { lastColumn } from "../workspace.ts";
 import {
   type Band,
   CARD_W,
