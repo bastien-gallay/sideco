@@ -357,6 +357,13 @@ const SEND_TIMEOUT_MS = 8000;
 /** A save answered sooner says nothing: the board changing is answer enough. */
 const SLOW_MS = 300;
 let inFlight = 0;
+/** Waiting for every save under way to be answered. */
+const quiet: (() => void)[] = [];
+
+/** Resolves once no save is under way: what was sent is recorded, or refused. */
+export function settled(): Promise<void> {
+  return inFlight === 0 ? Promise.resolve() : new Promise((resolve) => quiet.push(resolve));
+}
 
 /**
  * Sends the human's commands. The board updates when the events come back on
@@ -377,6 +384,9 @@ export async function send(...commands: Command[]): Promise<(string | null)[] | 
   });
   inFlight--;
   if (inFlight === 0) state.saving = false;
+  queueMicrotask(() => {
+    if (inFlight === 0) for (const resolve of quiet.splice(0)) resolve();
+  });
   if (posted.ok) {
     state.error = null;
     state.gestures++;

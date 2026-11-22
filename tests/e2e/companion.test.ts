@@ -2049,6 +2049,24 @@ describe("a save the companion does not answer", () => {
   });
 });
 
+describe("a reply handed over in one chord (T208)", () => {
+  test("⌘↵ in a note's reply sends the reply, then hands the turn to Claude", async () => {
+    await agent(`board new "Accord" --id accord\nadd event "Livré" --col 1\nnote "Qui livre ?" --on E1`);
+    await page.locator(".board-picker select").selectOption("accord");
+    await page.locator("#tab-notes").click();
+    const reply = page.locator('.notes .thread[data-thread="N1"] .thread-reply [name^=reply-]');
+    await reply.fill("Le transporteur");
+    await reply.press("ControlOrMeta+Enter");
+    await until("the reply and the hand-over are both recorded", async () => {
+      const board = (await workspace()).boards.find((b) => b.id === "accord");
+      const replied = board?.notes.some((n) => n.text === "Le transporteur") ?? false;
+      return replied && board?.turn?.to === "agent";
+    });
+    expect(await reply.inputValue()).toBe("");
+    await agent("board rm accord");
+  });
+});
+
 describe("what the page said, kept in its tab (T89)", () => {
   const BOARD = "avis";
   const tab = () => page.locator("#tab-notices");

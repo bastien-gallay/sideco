@@ -23,10 +23,10 @@ import {
   shownSession,
 } from "../domain/workspace.ts";
 import { mountBoard } from "./board-view.ts";
-import { clock, h, type Props, region } from "./dom.ts";
+import { clock, h, region } from "./dom.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
-import { messageField } from "./message-field.ts";
+import { messageField, wordsField } from "./message-field.ts";
 import { type CardMark, MESSAGES, type SheetKind } from "./messages.ts";
 import { mountNotices, type Offer } from "./notices.ts";
 import { meetUpdates } from "./reload.ts";
@@ -43,6 +43,7 @@ import {
   markFresh,
   openBoard,
   send,
+  settled,
   showChosen,
   shown,
   start,
@@ -330,6 +331,11 @@ const passMessage = messageField(t.messagePlaceholder, t.messageForClaude);
 const passButton = h("button", { type: "submit", class: "primary" }, t.handOver);
 /** The board the turn is handed over on: the one on screen. */
 let passOn: string | undefined;
+/** ⌘↵ in a field of the Notes tab: once its words are saved, the turn goes to Claude with them (T208). */
+function handOverAfter(): void {
+  const before = state.gestures;
+  void settled().then(() => state.gestures > before && passButton.form?.requestSubmit(passButton));
+}
 const turnBar = h(
   "div",
   { class: "turn" },
@@ -1088,24 +1094,6 @@ interface NotesModel {
 /** The resolved discussions are open to read while the reader keeps them so: a repaint does not fold them back. */
 let resolvedOpen = false;
 
-/** A field for a few words that may run over several lines: Enter sends them, Shift+Enter breaks the line. */
-function wordsField(props: Props, words: string, oninput: (words: string) => void): HTMLTextAreaElement {
-  const field = h("textarea", {
-    class: "words",
-    rows: 1,
-    maxlength: 1000,
-    ...props,
-    oninput: () => oninput(field.value),
-  });
-  field.value = words;
-  field.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
-    event.preventDefault();
-    field.form?.requestSubmit();
-  });
-  return field;
-}
-
 /** Replies being typed, per discussion: they survive a repaint, such as Claude answering meanwhile. */
 const drafts = new Map<string, string>();
 const draftKey = (board: string, thread: string): string => `${board}/${thread}`;
@@ -1118,6 +1106,7 @@ const paintThreads = region(notes, (m: NotesModel) => {
     { name: "note", placeholder: t.notePlaceholder, "aria-label": t.newNote },
     drafts.get(key) ?? "",
     (words) => drafts.set(key, words),
+    handOverAfter,
   );
   const add = (event: Event): void => {
     event.preventDefault();
@@ -1166,6 +1155,7 @@ function threadItem(boardId: string, thread: Discussion, m: NotesModel, resolved
       drafts.set(key, words);
       offer();
     },
+    handOverAfter,
   );
   const closing = h("button", { type: "button", class: "quiet thread-resolve" });
   /** The closing button says what it will do with the words in the field. */
