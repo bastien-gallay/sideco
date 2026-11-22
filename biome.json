@@ -140,22 +140,6 @@
           }
         }
       }
-    },
-    {
-      "includes": ["src/domain/decide.ts"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noExcessiveLinesPerFile": {
-              "level": "error",
-              "options": {
-                "maxLines": 417,
-                "skipBlankLines": true
-              }
-            }
-          }
-        }
-      }
     }
   ]
 }

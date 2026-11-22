@@ -6,13 +6,13 @@
  * way to get a workspace for a past moment.
  */
 import { columnAfterMove } from "./columns.ts";
-import type { Actor, Recorded, Todo } from "./events.ts";
+import type { Actor, Recorded } from "./events.ts";
 import { LANE_PREFIX, lanesOf, SLICE_PREFIX } from "./formats.ts";
 import { handledAll } from "./handled-all.ts";
 import { hasLabel, sameLabel } from "./labels.ts";
 import { remember } from "./minting.ts";
 import { renumber } from "./renumber.ts";
-import { applyToSession, follow, hasSpoken, type Session, type SessionRecorded } from "./sessions.ts";
+import { applyToSession, follow, type Session, type SessionRecorded } from "./sessions.ts";
 import { threadOf } from "./threads.ts";
 import {
   invert,
