@@ -104,7 +104,7 @@ Avec un script à toi, elle n'y touche pas et imprime les deux lignes à lui ajo
 
 ```bash
 sideco_line=$(printf '%s' "$input" | ~/.claude/plugins/marketplaces/sideco/bin/sideco statusline 2>/dev/null)
-[ -n "$sideco_line" ] && printf "%s\n" "$sideco_line"
+[ -z "$sideco_line" ] || printf "%s\n" "$sideco_line"
 ```
 
 Si l'adresse s'affiche sans réagir au Cmd+clic, Claude Code n'a pas reconnu un terminal à liens : force-le dans ton shell, une fois pour toutes.

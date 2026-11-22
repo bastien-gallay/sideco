@@ -43,8 +43,29 @@ test("a status line of the user's own is never replaced: they get the two lines 
   expect(plan.command).toBe("~/.claude/statusline.sh");
   expect(plan.lines).toEqual([
     `sideco_line=$(printf '%s' "$input" | ${BIN} statusline 2>/dev/null)`,
-    `[ -n "$sideco_line" ] && printf "%s\\n" "$sideco_line"`,
+    `[ -z "$sideco_line" ] || printf "%s\\n" "$sideco_line"`,
   ]);
+});
+
+/** Runs the two lines as the tail of a status line script whose `sideco statusline` prints `printed`. */
+function runAppended(printed: string): { exitCode: number; stdout: string } {
+  const own = JSON.stringify({ statusLine: { type: "command", command: "own.sh" } });
+  const plan = planStatusLine(own, "sideco");
+  if (plan.kind !== "own") throw new Error(plan.kind);
+  const script = [`sideco() { printf '%s' '${printed}'; }`, "input='{}'", ...plan.lines].join("\n");
+  const run = Bun.spawnSync(["sh", "-c", script]);
+  return { exitCode: run.exitCode, stdout: run.stdout.toString() };
+}
+
+test("outside a Sideco project the two lines print nothing and leave the script's exit at 0", () => {
+  expect(runAppended("")).toEqual({ exitCode: 0, stdout: "" });
+});
+
+test("in a Sideco project the two lines print the address, on its own line", () => {
+  expect(runAppended("sideco · 127.0.0.1:4747")).toEqual({
+    exitCode: 0,
+    stdout: "sideco · 127.0.0.1:4747\n",
+  });
 });
 
 test("settings that are not a JSON object are not touched", () => {

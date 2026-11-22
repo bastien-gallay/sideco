@@ -28,9 +28,11 @@ export function planStatusLine(settings: string | undefined, bin: string): Plan 
     return {
       kind: "own",
       command: command ?? JSON.stringify(current),
+      // `||`, not `[ -n … ] &&`: as the script's last command, a false test would be its
+      // exit status, and Claude Code hides the whole status line of a script that fails.
       lines: [
         `sideco_line=$(printf '%s' "$input" | ${shellWord(bin)} statusline 2>/dev/null)`,
-        `[ -n "$sideco_line" ] && printf "%s\\n" "$sideco_line"`,
+        `[ -z "$sideco_line" ] || printf "%s\\n" "$sideco_line"`,
       ],
     };
   }

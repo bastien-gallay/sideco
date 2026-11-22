@@ -12,7 +12,9 @@ All notable changes to Sideco are listed here. The format follows
   `claude plugin marketplace add bastien-gallay/sideco && claude plugin install sideco@sideco`.
 - `sideco statusline --install` puts the companion's address in Claude Code's
   status line, keeping the rest of `settings.json`; a status line of your own is
-  left alone, and the command prints the two lines to append to it.
+  left alone, and the command prints the two lines to append to it. Outside a
+  Sideco project those lines leave the script's exit status at 0, so Claude Code
+  keeps showing the rest of the status line.
 - Without Bun, `sideco` says how to install it instead of `bun: not found`, and
   finds it in `~/.bun/bin` when a hook's shell does not have it in its `PATH`.
 
