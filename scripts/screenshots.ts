@@ -17,8 +17,21 @@ import { start } from "../src/server/start.ts";
 const OUT = process.argv[2] ?? "docs/img";
 const SESSION = "readme";
 
-/** One board per workshop, small enough to read on a README. */
-const BOARDS: { id: string; script: string; human?: string; tab?: string }[] = [
+/**
+ * One board per workshop, small enough to read on a README. `shot` says how it is
+ * photographed: the whole page, the board alone between its folded panels, or not
+ * at all when it only feeds the composed picture. `late` is written just before the
+ * photo: a hand-over shows in the header of every board, so it waits for its own.
+ */
+interface Board {
+  id: string;
+  script: string;
+  human?: string;
+  late?: string;
+  shot?: "page" | "board";
+  tab?: string;
+}
+const BOARDS: Board[] = [
   {
     id: "ordering",
     script: `board new "Placing an order" --format event-storming --id ordering
@@ -44,10 +57,23 @@ add outcome "Order confirmed" --from @bank --edge "yes"
 add step "Offer another method" --from @bank --edge "no" --alias other
 add outcome "Cart kept for 24 h" --from @other
 note "How many attempts before we block the card?" --on @bank
-focus @bank --why "The retry rule is not settled"
-pass "How many attempts before we block the card?"`,
+focus @bank --why "The retry rule is not settled"`,
+    late: `pass "How many attempts before we block the card?"`,
     human: `reply N1 "Three, then block it for an hour."`,
+    shot: "page",
     tab: "#tab-notes",
+  },
+  {
+    id: "retro",
+    script: `board new "Sprint 12 retro" --format retro --id retro
+add point "Pairing on the payment page" --lane went-well
+add point "Reviews waited two days" --lane went-badly
+add point "Bank API access came late" --lane went-badly
+add point "Daily at 9:30" --lane keep
+add point "Estimating in hours" --lane drop --alias hours
+add action "Size stories in points" --from @hours`,
+    human: `add point "Demo with real data" --lane went-well`,
+    shot: "board",
   },
   {
     id: "journey",
@@ -63,6 +89,7 @@ add story "Product page" --col 2
 add story "Card payment" --col 3
 add story "E-mail tracking" --col 4
 slice add "Release 1"`,
+    shot: "board",
   },
   {
     id: "sprint",
@@ -74,6 +101,7 @@ add blocker "Bank API access" --lane doing
 add task "Accounting export" --lane todo
 add task "Loyalty discounts" --lane todo`,
     human: `move T2 --lane done`,
+    shot: "board",
   },
 ];
 
@@ -93,7 +121,7 @@ const hook = (payload: Record<string, unknown>) =>
   runHook({ session_id: SESSION, cwd: root, ...payload }, {}, false);
 
 await hook({ hook_event_name: "SessionStart", source: "startup" });
-await hook({ hook_event_name: "UserPromptSubmit", prompt: "Model the ordering flow with me" });
+await hook({ hook_event_name: "UserPromptSubmit", prompt: "Model the shop with me: orders, payment, the sprint" });
 for (const board of BOARDS) await post("agent", board.script);
 await hook({ hook_event_name: "Stop" });
 
@@ -112,13 +140,15 @@ for (let attempt = 0; !(await waiting.isVisible()); attempt++) {
 }
 for (const board of BOARDS) if (board.human) await post("human", board.human, board.id);
 
-async function photo(page: Page, board: string, name: string, tab?: string): Promise<void> {
-  await page.goto(`${running.url}/#/b/${board}`);
+async function photo(page: Page, board: Board): Promise<void> {
+  if (board.late) await post("agent", board.late, board.id);
+  await page.goto(`${running.url}/#/b/${board.id}`);
   await page.locator("g.card").first().waitFor();
-  await page.locator(tab ?? "#tab-session").click();
+  if (board.tab) await page.locator(board.tab).click();
   await Bun.sleep(800); // the cards glide to their place
-  await page.screenshot({ path: join(OUT, `${name}.png`) });
-  console.log(join(OUT, `${name}.png`));
+  const path = join(OUT, `sideco-${board.id}.png`);
+  await page.screenshot({ path });
+  console.log(path);
 }
 
 /** One piece of the page, twice as sharp, as a data URL the composed picture can hold. */
@@ -192,7 +222,11 @@ async function twoWorkshops(): Promise<void> {
 }
 
 try {
-  for (const board of BOARDS) await photo(wide, board.id, `sideco-${board.id}`, board.tab);
+  // Under 1100 px the page folds its two panels: the board alone, large enough to read in a README.
+  const narrow = await browser.newPage({ viewport: { width: 1090, height: 540 } });
+  for (const board of BOARDS) if (board.shot === "board") await photo(narrow, board);
+  await narrow.close();
+  for (const board of BOARDS) if (board.shot === "page") await photo(wide, board);
   await twoWorkshops();
 } finally {
   await browser.close();
