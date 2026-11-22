@@ -96,10 +96,21 @@ await hook({ hook_event_name: "SessionStart", source: "startup" });
 await hook({ hook_event_name: "UserPromptSubmit", prompt: "Model the ordering flow with me" });
 for (const board of BOARDS) await post("agent", board.script);
 await hook({ hook_event_name: "Stop" });
-for (const board of BOARDS) if (board.human) await post("human", board.human, board.id);
 
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 mkdirSync(OUT, { recursive: true });
+const wide = await browser.newPage({ viewport: { width: 1440, height: 820 } });
+await wide.goto(running.url);
+// Claude parks at the end of its turn, as the plugin's second Stop hook does once a page is open:
+// the page then says it waits for the human to send. The hook gives up at once while the companion
+// has not seen the page yet, so it is sent again until it stays. Never awaited: it ends with this script.
+const waiting = wide.locator(".status-text", { hasText: "waiting" });
+for (let attempt = 0; !(await waiting.isVisible()); attempt++) {
+  if (attempt === 20) throw new Error("Claude never parked: the page does not say it waits");
+  void runHook({ session_id: SESSION, cwd: root, hook_event_name: "Stop" }, {}, true);
+  await waiting.waitFor({ timeout: 1000 }).catch(() => undefined);
+}
+for (const board of BOARDS) if (board.human) await post("human", board.human, board.id);
 
 async function photo(page: Page, board: string, name: string, tab?: string): Promise<void> {
   await page.goto(`${running.url}/#/b/${board}`);
@@ -121,11 +132,12 @@ async function piece(page: Page, board: string, selector: string): Promise<strin
 }
 
 /**
- * The social preview, 1280×640: two workshops cut by an oblique line, the
- * thread where the human answered, and the tagline. Each side is a piece of
+ * Two workshops cut by an oblique line, with the thread where the human
+ * answered: the README's first picture, 1280×544, and the social preview,
+ * 1280×640 with the name and the tagline under it. Each side is a piece of
  * the real page; only the layout is made here.
  */
-async function socialPreview(): Promise<void> {
+async function twoWorkshops(): Promise<void> {
   const sharp = await browser.newPage({ viewport: { width: 2200, height: 1000 }, deviceScaleFactor: 2 });
   // What Claude just changed keeps its outline: the page fades it in 2.4 s, the photo holds its first instant.
   await sharp.addInitScript(() => {
@@ -174,13 +186,16 @@ async function socialPreview(): Promise<void> {
   <div class="band"><b>Sideco</b><span>Turn your coding agent's walls of text into a conversation you can see and reshape.</span></div>`);
   await page.screenshot({ path: join(OUT, "social-preview.png") });
   console.log(join(OUT, "social-preview.png"));
+  // The README says the tagline itself, just above: its picture goes without the band.
+  await page.screenshot({ path: join(OUT, "sideco-two-workshops.png"), clip: { x: 0, y: 0, width: 1280, height: 544 } });
+  console.log(join(OUT, "sideco-two-workshops.png"));
 }
 
 try {
-  const wide = await browser.newPage({ viewport: { width: 1440, height: 820 } });
   for (const board of BOARDS) await photo(wide, board.id, `sideco-${board.id}`, board.tab);
-  await socialPreview();
+  await twoWorkshops();
 } finally {
   await browser.close();
   running.stop();
 }
+process.exit(0);
