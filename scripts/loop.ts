@@ -94,20 +94,33 @@ async function point(page: Page, target: Locator): Promise<void> {
  * The repository's social preview, 1280×640: the film's own picture at the moment you are about to send,
  * the name and the tagline under it. The terminal's ground runs on to the left, the page's to the right.
  */
-async function socialPreview(context: BrowserContext, still: Buffer): Promise<void> {
+async function socialPreview(context: BrowserContext, first: Buffer, second: Buffer): Promise<void> {
   const page = await context.newPage();
+  const data = (shot: Buffer) => `data:image/png;base64,${shot.toString("base64")}`;
+  // Both shots are the whole stage, 544 px high here: the first shows the terminal and the first board; the
+  // second lies under an oblique cut, slid so that only its board shows.
+  const scale = 544 / STAGE.height;
+  const cut = { top: 990, bottom: 962, gap: 6, board: 994 };
   await page.setViewportSize({ width: 1280, height: 640 });
   await page.setContent(`<!doctype html><style>
     body { margin: 0; width: 1280px; height: 640px; overflow: hidden; font-family: -apple-system, "Segoe UI", Inter, sans-serif;
-      background: linear-gradient(to right, #0d1117 50%, #fff 50%); }
-    img { display: block; height: 544px; margin: 0 auto; }
-    .band { height: 96px; background: #1f2328; color: #fff; display: flex; align-items: center; gap: 28px; padding: 0 48px;
-      box-sizing: border-box; }
+      background: #fff; position: relative; }
+    img { display: block; height: 544px; }
+    .first { position: absolute; left: 0; top: 0; }
+    .line, .second { position: absolute; left: 0; top: 0; width: 1280px; height: 544px; }
+    .line { background: #1f2328;
+      clip-path: polygon(${cut.top - cut.gap}px 0, ${cut.top}px 0, ${cut.bottom}px 100%, ${cut.bottom - cut.gap}px 100%); }
+    .second { background: #fff; clip-path: polygon(${cut.top}px 0, 100% 0, 100% 100%, ${cut.bottom}px 100%); }
+    .second div { position: absolute; left: ${cut.board}px; top: 0; right: 0; height: 544px; overflow: hidden; }
+    .second img { margin-left: ${-Math.round(TERMINAL * scale)}px; }
+    .band { position: absolute; left: 0; top: 544px; width: 1280px; height: 96px; background: #1f2328; color: #fff; display: flex;
+      align-items: center; gap: 28px; padding: 0 48px; box-sizing: border-box; }
     .band b { font-size: 40px; letter-spacing: -0.5px; }
     .band span { font-size: 23px; line-height: 1.25; opacity: 0.92; }
-  </style><img src="data:image/png;base64,${still.toString("base64")}">
+  </style><img class="first" src="${data(first)}">
+  <div class="second"><div><img src="${data(second)}"></div></div><div class="line"></div>
   <div class="band"><b>Sideco</b><span>Turn your coding agent's walls of text into a conversation you can see and reshape.</span></div>`);
-  await page.locator("img").evaluate((img: HTMLImageElement) => img.decode());
+  for (const img of await page.locator("img").all()) await img.evaluate((el: HTMLImageElement) => el.decode());
   mkdirSync(OUT, { recursive: true });
   await page.screenshot({ path: join(OUT, "social-preview.png") });
   console.log(join(OUT, "social-preview.png"));
@@ -260,7 +273,7 @@ add task "Out-of-stock notice" --lane todo`,
   await camera;
   const end = Date.now();
 
-  if (scheme === "light") await socialPreview(context, still);
+  if (scheme === "light") await socialPreview(context, still, await page.screenshot());
   await context.close();
   await browser.close();
   running.stop();
