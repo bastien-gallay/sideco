@@ -14,8 +14,10 @@ import {
   type Card,
   type Connector,
   cardName,
+  KIND_H,
   LINE_H,
   labelsHeight,
+  PERSON_HEAD,
   type Scene,
 } from "../layout/scene.ts";
 import { cardChipText, chipText, labelColours } from "./labels.ts";
@@ -51,6 +53,10 @@ export const SVG_STYLE = `
 .card-label-done { text-decoration: line-through; opacity: 0.65; }
 .card-notes circle { fill: #1A6FAE; stroke: var(--sideco-bg, #FFFFFF); stroke-width: 2; }
 .card-notes text { fill: #FFFFFF; font-size: 10px; font-weight: 700; text-anchor: middle; }
+.card-kind { font-size: 11px; text-anchor: middle; }
+.card-outline .card-shape { fill: var(--sideco-bg, #FFFFFF); fill-opacity: 1; stroke: light-dark(var(--tone-light), var(--tone-dark)); stroke-width: 2; }
+.card-outline > text, .card-outline .card-person, .card-outline .card-author { fill: light-dark(var(--tone-light), var(--tone-dark)); opacity: 1; }
+.card-outline .card-label { font-weight: 600; }
 `;
 
 const ID_STRIP = 14;
@@ -143,29 +149,14 @@ function connectorName(label: string, x: number, y: number): string {
   return `<text class="conn-label" x="${x}" y="${y}">${whole}${spans.join("")}</text>`;
 }
 
-/** A card drawn at the origin; the caller positions it. */
+/** A card drawn at the origin; the caller positions it. In outline, it wears the tones of its kind. */
 export function cardMarkup(c: Card): string {
-  // The name and the description under it are centred as one block, below the strip of the id.
-  const said = c.blurb ?? [];
-  const block = c.lines.length * LINE_H + blurbHeight(said.length);
-  // A row of labels takes the foot of the card: the words are centred in what is left above it.
-  const body = c.h - labelsHeight(c.labels);
-  const first = (body + ID_STRIP - block) / 2 + 12;
-  const lines = c.lines
-    .map((line, i) => `<tspan x="${c.w / 2}" y="${first + i * LINE_H}">${esc(line)}</tspan>`)
-    .join("");
-  // Its first line sits one line of description, and the gap, under the last line of the name.
-  const under = first + (c.lines.length - 1) * LINE_H + blurbHeight(1);
-  const blurb = said
-    .map((line, i) => `<tspan x="${c.w / 2}" y="${under + i * BLURB_H}">${esc(line)}</tspan>`)
-    .join("");
-  return [
+  const parts = [
     `<title>${esc(tooltip(c))}</title>`,
     shapeMarkup(c),
     `<text class="card-id" x="${8 + inset(c)}" y="14" fill="${esc(c.ink)}">${esc(c.id)}</text>`,
     authorMark(c),
-    `<text class="${c.done ? "card-label card-label-done" : "card-label"}" fill="${esc(c.ink)}">${lines}</text>`,
-    said.length > 0 ? `<text class="card-blurb" fill="${esc(c.ink)}">${blurb}</text>` : "",
+    wordsMarkup(c),
     labelsMarkup(c),
     c.done ? `<text class="card-done" x="${doneX(c)}" y="14" fill="${esc(c.ink)}">✓</text>` : "",
     // The glyph is small; the target around it is not: 22 by 24, under it, so a finger takes it too.
@@ -175,6 +166,30 @@ export function cardMarkup(c: Card): string {
     c.notes > 0
       ? `<g class="card-notes"><circle cx="${c.w - 3}" cy="3" r="9"/><text x="${c.w - 3}" y="6.5">${c.notes}</text></g>`
       : "",
+  ].join("");
+  if (!c.tone) return parts;
+  return `<g class="card-outline" style="--tone-light:${esc(c.tone.light)};--tone-dark:${esc(c.tone.dark)}">${parts}</g>`;
+}
+
+/** The name, what the card is, and the description under them: one block, centred below the strip of the id. */
+function wordsMarkup(c: Card): string {
+  const said = c.blurb ?? [];
+  const kindH = c.kind ? KIND_H : 0;
+  const block = c.lines.length * LINE_H + kindH + blurbHeight(said.length);
+  // A row of labels takes the foot of the card: the words are centred in what is left above it.
+  const body = c.h - labelsHeight(c.labels);
+  const strip = ID_STRIP + (c.shape === "person" ? PERSON_HEAD : 0);
+  const first = (body + strip - block) / 2 + 12;
+  const tspans = (lines: readonly string[], y: number, step: number): string =>
+    lines.map((line, i) => `<tspan x="${c.w / 2}" y="${y + i * step}">${esc(line)}</tspan>`).join("");
+  const last = first + (c.lines.length - 1) * LINE_H;
+  // The description's first line sits one line, and the gap, under what comes before it.
+  const under = last + kindH + blurbHeight(1);
+  const ink = `fill="${esc(c.ink)}"`;
+  return [
+    `<text class="${c.done ? "card-label card-label-done" : "card-label"}" ${ink}>${tspans(c.lines, first, LINE_H)}</text>`,
+    c.kind ? `<text class="card-kind" ${ink}>${tspans([c.kind], last + KIND_H, 0)}</text>` : "",
+    said.length > 0 ? `<text class="card-blurb" ${ink}>${tspans(said, under, BLURB_H)}</text>` : "",
   ].join("");
 }
 
@@ -251,12 +266,12 @@ function shapeMarkup(c: Card): string {
 }
 
 /**
- * C4's person, small, centred in the strip of the id: a head and shoulders.
+ * C4's person, centred above the name: a head and shoulders, 25 px tall.
  * Inside the card, so links still meet its edge and nothing overlaps the card above.
  */
 function personMark(c: Card): string {
   const x = c.w / 2;
-  return `<g class="card-person" fill="${esc(c.ink)}"><circle cx="${x}" cy="8" r="3.5"/><path d="M${x - 7.5} 19a7.5 6.5 0 0 1 15 0z"/></g>`;
+  return `<g class="card-person" fill="${esc(c.ink)}"><circle cx="${x}" cy="11" r="6"/><path d="M${x - 11} 30a11 9 0 0 1 22 0z"/></g>`;
 }
 
 /** Who put the card there: a diamond for the agent, a dot for the human. Shape, not colour. */

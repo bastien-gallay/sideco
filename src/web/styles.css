@@ -865,6 +865,13 @@ input[type="text"] {
   border-radius: 8px;
 }
 
+/* Drawn as the cards of its workshop are: an outline in its kind's colour, on the panel. */
+.swatch.is-outline {
+  background: var(--surface);
+  color: light-dark(var(--tone-light), var(--tone-dark));
+  border: 2px solid currentColor;
+}
+
 .swatch.shape-diamond {
   clip-path: polygon(18% 0, 82% 0, 100% 50%, 82% 100%, 18% 100%, 0 50%);
 }

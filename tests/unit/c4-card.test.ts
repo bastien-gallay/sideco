@@ -4,9 +4,11 @@
  * what the diagram says.
  */
 import { describe, expect, test } from "bun:test";
+import { PAGE_STYLE } from "../../src/domain/export/html.ts";
 import { findFormat } from "../../src/domain/formats.ts";
 import { NODE_H } from "../../src/domain/layout/graph.ts";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
+import { KIND_H, PERSON_HEAD } from "../../src/domain/layout/scene.ts";
 import { cardMarkup, SVG_STYLE } from "../../src/domain/render/svg.ts";
 import { table } from "../support.ts";
 
@@ -41,12 +43,21 @@ describe("a C4 person", () => {
 
 describe("a C4 card's description", () => {
   test("shows under the name, as plain words: the detail's marks are left out", () => {
-    expect(cardOf(SHOP, "P1").blurb).toEqual(["Achète en ligne, depuis", "le site"]);
+    expect(cardOf(SHOP, "P1").blurb).toEqual(["Achète en ligne, depuis le", "site"]);
   });
 
-  test("is cut to three lines, the last ending with …", () => {
-    const blurb = cardOf(SHOP, "S1").blurb ?? [];
-    expect(blurb).toHaveLength(3);
+  test("is shown whole when it holds in five lines, on a card wider than a sticky", () => {
+    const s1 = cardOf(SHOP, "S1");
+    expect(s1.w).toBe(200);
+    expect(s1.blurb?.join(" ")).toBe(
+      "Catalogue, panier, paiement, suivi des commandes et des retours, factures envoyées par mail",
+    );
+  });
+
+  test("is cut to five lines past that, the last ending with …", () => {
+    const long = "Encaisse les paiements par carte et rembourse. ".repeat(4);
+    const blurb = cardOf(`${SHOP}\ndetail X1 "${long}"`, "X1").blurb ?? [];
+    expect(blurb).toHaveLength(5);
     expect(blurb.at(-1)?.endsWith("…")).toBe(true);
   });
 
@@ -70,11 +81,11 @@ describe("a C4 card's description", () => {
     expect(blurb).toBeGreaterThan(name);
   });
 
-  test("leaves the nodes as they were when no element has one", () => {
+  test("adds nothing to the nodes when no element has one: they hold the name, the kind and the head", () => {
     const bare = SHOP.split("\n")
       .filter((line) => !line.startsWith("detail"))
       .join("\n");
-    expect(new Set(cards(bare).map((c) => c.h))).toEqual(new Set([NODE_H]));
+    expect(new Set(cards(bare).map((c) => c.h))).toEqual(new Set([NODE_H + KIND_H + PERSON_HEAD]));
   });
 
   test("stays off the cards of other workshops: a flow's detail is only marked", () => {
@@ -86,5 +97,80 @@ detail S1 "Par carte"`,
     );
     expect(flow.blurb).toBeUndefined();
     expect(flow.hasDetail).toBe(true);
+  });
+});
+
+describe("a C4 card is drawn as c4model draws it now (Q1)", () => {
+  const tone = "light-dark(var(--tone-light), var(--tone-dark))";
+
+  test("an outline in the colour of its kind, on the page, not a filled box", () => {
+    const svg = cardMarkup(cardOf(SHOP, "P1"));
+    expect(svg).toContain('<g class="card-outline" style="--tone-light:#08427B;--tone-dark:#8EC1F5">');
+    const rule = /\.card-outline \.card-shape \{[^}]*\}/.exec(SVG_STYLE)?.[0] ?? "";
+    expect(rule).toContain("fill: var(--sideco-bg, #FFFFFF)");
+    expect(rule).toContain(`stroke: ${tone}`);
+  });
+
+  test("its words in that colour too, its name in bold", () => {
+    const words = /\.card-outline > text[^{]*\{[^}]*\}/.exec(SVG_STYLE)?.[0] ?? "";
+    expect(words).toContain(`fill: ${tone}`);
+    expect(/\.card-outline \.card-label \{[^}]*\}/.exec(SVG_STYLE)?.[0]).toContain("font-weight: 600");
+  });
+
+  test("other workshops keep their stickies", () => {
+    const flow = cards(`board new "Parcours" --format flow --id parcours\nadd step "Payer"`)[0];
+    expect(flow && cardMarkup(flow)).not.toContain("card-outline");
+  });
+
+  test("the published page says it may be dark, so the outline takes its dark tone there", () => {
+    expect(PAGE_STYLE).toContain(":root { color-scheme: light dark;");
+  });
+
+  // WCAG 2.2 AA: 4.5:1 for words of 11 to 13 px, which share the outline's colour.
+  const luminance = (hex: string): number => {
+    const [r, g, b] = [1, 3, 5].map((i) => {
+      const v = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+  };
+  const contrast = (a: string, b: string): number => {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+  };
+  const kinds = findFormat("c4-context")?.types ?? [];
+
+  test.each(kinds.map((k) => [k.id, k.fill, k.dark ?? "#000000"]))(
+    "%s reads at 4.5:1 or more on white, and on the dark page and export (T219)",
+    (_, light, dark) => {
+      expect(contrast(light, "#FFFFFF")).toBeGreaterThanOrEqual(4.5);
+      for (const page of ["#17191D", "#15181C"]) expect(contrast(dark, page)).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+});
+
+describe("a C4 card says what it is", () => {
+  const yOf = (svg: string, cls: string): number =>
+    Number(new RegExp(`class="${cls}[^"]*"[^>]*><tspan x="[^"]+" y="([\\d.]+)"`).exec(svg)?.[1]);
+
+  test("its kind in brackets, between its name and its description, in the reader's language", () => {
+    const p1 = layoutBoard(table(SHOP).board(), "fr").cards.find((c) => c.id === "P1");
+    expect(p1?.kind).toBe("[Personne]");
+    const svg = p1 ? cardMarkup(p1) : "";
+    expect(svg).toContain(">[Personne]</tspan>");
+    expect(yOf(svg, "card-kind")).toBeGreaterThan(yOf(svg, "card-label"));
+    expect(yOf(svg, "card-blurb")).toBeGreaterThan(yOf(svg, "card-kind"));
+  });
+
+  test("a person's head and shoulders stand at least 24 px tall, above the name", () => {
+    const svg = cardMarkup(cardOf(SHOP, "P1"));
+    const mark =
+      /<g class="card-person"[^>]*><circle cx="[^"]+" cy="([\d.]+)" r="([\d.]+)"\/><path d="M[\d.]+ ([\d.]+)a/.exec(
+        svg,
+      );
+    const [cy, r, foot] = [Number(mark?.[1]), Number(mark?.[2]), Number(mark?.[3])];
+    expect(foot - (cy - r)).toBeGreaterThanOrEqual(24);
+    // The name's baseline, less the height of its letters, clears the shoulders.
+    expect(yOf(svg, "card-label") - 12).toBeGreaterThan(foot);
   });
 });

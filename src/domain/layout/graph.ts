@@ -9,10 +9,10 @@
 import type { Board, Element } from "../workspace.ts";
 import { nameWidth } from "./connector-labels.ts";
 import {
-  blurbHeight,
   CARD_W,
   type Card,
   type Connector,
+  cardHeight,
   labelsHeight,
   MARGIN,
   r,
@@ -105,14 +105,16 @@ export function layoutGraph(
   for (let level = 0; level <= depth; level++) layers.push(ids.filter((id) => rank.get(id) === level));
 
   const x = new Map<string, number>();
-  placeLayer(layers[0] ?? [], x, () => 0);
-  const centre = (id: string): number => (x.get(id) ?? 0) + CARD_W / 2;
+  // As wide as the format draws its cards: a C4 card is wider than a sticky.
+  const width = board.elements[0] ? card(board.elements[0], 0, 0).w : CARD_W;
+  placeLayer(layers[0] ?? [], x, () => 0, width);
+  const centre = (id: string): number => (x.get(id) ?? 0) + width / 2;
   // Each node under the mean of all its parents, those a few layers up included: a link from
   // far above then comes down on the side its parent stands, not across the other links.
   const wanted = (id: string): number => mean((parents.get(id) ?? []).map(centre));
   for (const layer of layers.slice(1)) {
     layer.sort((a, b) => wanted(a) - wanted(b));
-    placeLayer(layer, x, wanted);
+    placeLayer(layer, x, wanted, width);
   }
 
   const graph: Graph = { board, card, rank, back, layers, x, relations };
@@ -222,11 +224,18 @@ function draw(graph: Graph, bands: readonly Range[]): Scene {
   };
 }
 
-/** Every node is as tall as the one with the longest description, so the rows stay even. */
+/**
+ * Every node is as tall as the one that says the most under its name (its kind,
+ * its description) or above it (a person's head), so the rows stay even.
+ */
 function nodeHeight(board: Board, card: Graph["card"]): number {
+  const extra = (e: Element): number => {
+    const c = card(e, 0, 0);
+    return c.h - cardHeight(c.lines.length) - labelsHeight(e.labels);
+  };
   return (
     NODE_H +
-    Math.max(0, ...board.elements.map((e) => blurbHeight(card(e, 0, 0).blurb?.length ?? 0))) +
+    Math.max(0, ...board.elements.map(extra)) +
     Math.max(0, ...board.elements.map((e) => labelsHeight(e.labels)))
   );
 }
@@ -251,16 +260,21 @@ function across(edge: Board["edges"][number], s: Card, t: Card, gutter: number, 
 }
 
 /** Left to right at the wanted centres, pushed apart, then shifted back to the wanted mean. */
-function placeLayer(layer: readonly string[], x: Map<string, number>, want: (id: string) => number): void {
+function placeLayer(
+  layer: readonly string[],
+  x: Map<string, number>,
+  want: (id: string) => number,
+  width: number,
+): void {
   if (layer.length === 0) return;
   const lefts: number[] = [];
   let right = Number.NEGATIVE_INFINITY;
   for (const id of layer) {
-    const at = Math.max(want(id) - CARD_W / 2, right + GAP_X);
+    const at = Math.max(want(id) - width / 2, right + GAP_X);
     lefts.push(at);
-    right = at + CARD_W;
+    right = at + width;
   }
-  const shift = mean(layer.map((id, k) => want(id) - ((lefts[k] ?? 0) + CARD_W / 2)));
+  const shift = mean(layer.map((id, k) => want(id) - ((lefts[k] ?? 0) + width / 2)));
   layer.forEach((id, k) => {
     x.set(id, (lefts[k] ?? 0) + shift);
   });

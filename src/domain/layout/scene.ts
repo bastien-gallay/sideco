@@ -28,6 +28,10 @@ export interface Card {
   labels?: string[];
   /** The start of the detail, under the name, on a board whose workshop shows it (see `Format.describes`). */
   blurb?: string[];
+  /** Drawn in outline (see `Format.look`): the colour of its kind on a light page and on a dark one. */
+  tone?: { light: string; dark: string };
+  /** What it is, in brackets, under its name: [Person]. */
+  kind?: string;
   /** What the card stands for is done. */
   done: boolean;
   /** Open notes pinned to this card. */
@@ -118,6 +122,10 @@ export const BLURB_LINES = 3;
 export const BLURB_H = 13;
 /** Between the name and the description. */
 const BLURB_GAP = 4;
+/** The line that says what a card is, under its name. */
+export const KIND_H = 14;
+/** What a person's head and shoulders add above the name, over the strip of the id. */
+export const PERSON_HEAD = 18;
 
 /** What a description of this many lines adds to a card. */
 export function blurbHeight(lines: number): number {

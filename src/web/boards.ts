@@ -5,7 +5,7 @@
  * its ceiling.
  */
 import { slugify } from "../domain/commands.ts";
-import { FORMATS, findFormat } from "../domain/formats.ts";
+import { type ElementType, FORMATS, type Format, findFormat } from "../domain/formats.ts";
 import type { Locale } from "../domain/i18n.ts";
 import { isBoardId } from "../domain/ids.ts";
 import { boardLink, HOME_LINK } from "../domain/links.ts";
@@ -139,6 +139,17 @@ function boardTile(b: BoardTile): HTMLElement {
     h("span", { class: "board-counts" }, counts),
     b.waits && h("span", { class: "board-waits" }, words.waits),
   );
+}
+
+/** How the palette shows a kind: as its cards are drawn, a sticky, or an outline in the tone of the page's theme. */
+export function kindSwatch(format: Format, type: ElementType): { class: string; style: string } {
+  const shape = `swatch shape-${type.shape}`;
+  return format.look
+    ? {
+        class: `${shape} is-outline`,
+        style: `--tone-light:${type.fill};--tone-dark:${type.dark ?? type.fill}`,
+      }
+    : { class: shape, style: `background:${type.fill};color:${type.ink}` };
 }
 
 /** A workshop's colours: what tells an event storming from a kanban at a glance (T54). */

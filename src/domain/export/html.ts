@@ -11,7 +11,7 @@ import type { ExportMeta } from "./markdown.ts";
 import { labelSaid } from "./mermaid.ts";
 
 export const PAGE_STYLE = `
-:root { --sideco-bg: #FFFFFF; --sideco-ink: #1F2328; --sideco-muted: #59636E; --sideco-faint: #8C959F; --sideco-rule: #E3E6EA; --sideco-lane: #F3F4F6; --sideco-conn: #6E7781; }
+:root { color-scheme: light dark; --sideco-bg: #FFFFFF; --sideco-ink: #1F2328; --sideco-muted: #59636E; --sideco-faint: #8C959F; --sideco-rule: #E3E6EA; --sideco-lane: #F3F4F6; --sideco-conn: #6E7781; }
 @media (prefers-color-scheme: dark) {
   :root { --sideco-bg: #15181C; --sideco-ink: #E6EAEF; --sideco-muted: #A3ADB8; --sideco-faint: #7A8490; --sideco-rule: #2B3138; --sideco-lane: #1D2126; --sideco-conn: #8C959F; }
 }

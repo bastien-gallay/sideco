@@ -2,7 +2,7 @@
  * From a board to its scene. The format picks the layout; this module is the only
  * place that knows there are several.
  */
-import { type Format, findFormat, findType, wearsDone } from "../formats.ts";
+import { type ElementType, type Format, findFormat, findType, wearsDone } from "../formats.ts";
 import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
 import { type Board, type Element, threads } from "../workspace.ts";
 import {
@@ -24,7 +24,9 @@ import {
   cardHeight,
   charsFor,
   curve,
+  KIND_H,
   labelsHeight,
+  PERSON_HEAD,
   plainDetail,
   type Room,
   type Scene,
@@ -135,19 +137,26 @@ function cardMaker(
       openNotes.set(thread.target, (openNotes.get(thread.target) ?? 0) + 1);
   }
   const maxLines = format.layout === "graph" ? NODE_LINES : WRAP_LINES;
-  return (e, x, y, w = CARD_W) => {
+  return (e, x, y, w = format.look?.width ?? CARD_W) => {
     const type = findType(format, e.type);
     const lines = wrap(e.label, charsFor(w), maxLines);
-    const said = format.describes && e.detail ? plainDetail(e.detail) : "";
-    const blurb = said ? wrap(said, Math.floor((charsFor(w) * 13) / 11), BLURB_LINES) : undefined;
+    const blurb = blurbOf(format, e, w);
+    const look = lookOf(format, type, locale);
+    const head = type?.shape === "person" ? PERSON_HEAD : 0;
     return {
       id: e.id,
       x,
       y,
       w,
-      h: cardHeight(lines.length) + blurbHeight(blurb?.length ?? 0) + labelsHeight(e.labels),
+      h:
+        cardHeight(lines.length) +
+        head +
+        (look.kind ? KIND_H : 0) +
+        blurbHeight(blurb?.length ?? 0) +
+        labelsHeight(e.labels),
       lines,
       ...(blurb ? { blurb } : {}),
+      ...look,
       ...(e.labels && e.labels.length > 0 ? { labels: [...e.labels] } : {}),
       fill: type?.fill ?? "#E8EEF4",
       ink: type?.ink ?? "#1F2328",
@@ -161,6 +170,19 @@ function cardMaker(
       notes: openNotes.get(e.id) ?? 0,
     };
   };
+}
+
+/** The description a card shows under its name, on a format that shows one, cut to the lines it allows. */
+function blurbOf(format: Format, e: Element, w: number): string[] | undefined {
+  const said = format.describes && e.detail ? plainDetail(e.detail) : "";
+  if (!said) return undefined;
+  return wrap(said, Math.floor((charsFor(w) * 13) / 11), format.look?.blurbLines ?? BLURB_LINES);
+}
+
+/** What a card drawn in outline wears beyond a sticky: the tones of its kind, and its kind in words. */
+function lookOf(format: Format, type: ElementType | undefined, locale: Locale): Pick<Card, "tone" | "kind"> {
+  if (!format.look || !type) return {};
+  return { tone: { light: type.fill, dark: type.dark ?? type.fill }, kind: `[${type.label[locale]}]` };
 }
 
 /** A label on one line: the name a card is heard by. */

@@ -33,6 +33,19 @@ export interface ElementType {
   leadsTo?: { type: string; label: Text };
   /** A prefix the kind minted before: ids made then are still taken. */
   formerPrefix?: string;
+  /** On a format drawn in outline: this kind's colour on a dark page, as legible there as `fill` is on white. */
+  dark?: string;
+}
+
+/** How a graph's cards are drawn when they are not stickies: as c4model draws them now. */
+export interface Look {
+  /** An outline in the kind's colour on the page, the words in that colour too, the name in bold. */
+  outline: true;
+  /** The kind written under the name, in brackets: C4 asks every element to say what it is. */
+  kinds: true;
+  /** Wide enough, and lines enough, for the whole of a description. */
+  width: number;
+  blurbLines: number;
 }
 
 export interface Lane {
@@ -91,6 +104,8 @@ export interface Format {
    * along another is its answer, drawn beside it, not a loop round the board.
    */
   relations?: true;
+  /** Only for `graph` layouts: cards drawn other than as stickies. */
+  look?: Look;
 }
 
 export const t = (en: string, fr: string): Text => ({ en, fr });
