@@ -8,10 +8,10 @@ A live, structured board beside the terminal: the agent lays out a flow, a backl
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/sideco-loop-dark.gif">
-  <img alt="A terminal beside the board. Claude has written three cards of a flow; it adds a fourth, asks what to offer when the bank says no, and waits. In the page, one card is renamed and Send to Claude is clicked: the terminal shows the rename, and Claude adds the card that follows" src="docs/img/sideco-loop.gif">
+  <img alt="A terminal, with its prompt field, beside the board. Claude has written four cards of an event storming; it adds two, asks who reserves the stock, and waits. In the page, one card is renamed and Send to Claude is clicked: the terminal shows the rename, and Claude adds a hotspot. A second prompt, typed in the terminal, asks for the work as a kanban: Claude creates the board and fills its three columns" src="docs/img/sideco-loop.gif">
 </picture>
 
-<sub>One turn, filmed: the real page and the real commands, beside a terminal redrawn from what Claude receives.</sub>
+<sub>Filmed: you prompt in the terminal as before and answer on the board. The page and the commands are the real ones; the terminal is redrawn from what Claude receives.</sub>
 
 > [!NOTE]
 > Early: version 0.1.0, for one person and one active agent per workspace. [Tell me what breaks](https://github.com/bastien-gallay/sideco/issues).

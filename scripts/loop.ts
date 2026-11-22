@@ -1,5 +1,6 @@
 /**
- * The README's moving picture: one turn of the loop, the terminal beside the
+ * The README's moving picture: one turn of the loop on an event storming, then a
+ * second prompt typed in the terminal that opens a kanban, the terminal beside the
  * board. The board is the real page, driven by the real commands and hooks; the
  * terminal is drawn here, from what the session sends and what the hook answers.
  *
@@ -18,15 +19,20 @@ const OUT = process.argv[2] ?? "docs/img";
 const SESSION = "loop";
 const SCHEMES = ["light", "dark"] as const;
 type Scheme = (typeof SCHEMES)[number];
-const STAGE = { width: 1280, height: 720 };
+const STAGE = { width: 1370, height: 770 };
 const TERMINAL = 440;
-const PROMPT = "Model a declined payment on the Sideco board";
-const QUESTION = "What do we offer when the bank says no?";
+const PROMPT = "Model how an order is placed, on the Sideco board";
+const QUESTION = "Who reserves the stock: us or the warehouse?";
+const NEXT_PROMPT = "Now the work to do, as a kanban";
 
 const STAGE_HTML = (url: string) => `<!doctype html><style>
   body { margin: 0; width: ${STAGE.width}px; height: ${STAGE.height}px; overflow: hidden; display: flex; background: #0d1117; }
-  #terminal { width: ${TERMINAL}px; box-sizing: border-box; padding: 16px 18px; color: #d1d7e0; background: #0d1117;
-    font: 14px/1.55 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow: hidden; }
+  #side { width: ${TERMINAL}px; box-sizing: border-box; padding: 16px 18px; display: flex; flex-direction: column; color: #d1d7e0;
+    background: #0d1117; font: 14px/1.55 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; }
+  #terminal { flex: 1; overflow: hidden; }
+  #input { border: 1px solid #30363d; border-radius: 6px; padding: 8px 10px; min-height: 22px; color: #fff; }
+  #input::before { content: "> "; color: #7d8590; }
+  #input::after { content: "▏"; color: #7d8590; }
   #terminal .bar { color: #7d8590; margin-bottom: 12px; }
   #terminal .you { color: #fff; }
   #terminal .you::before { content: "> "; color: #7d8590; }
@@ -38,26 +44,29 @@ const STAGE_HTML = (url: string) => `<!doctype html><style>
     background: rgba(26, 111, 174, 0.35); border: 2px solid #1a6fae; opacity: 0;
     transition: left 0.6s ease-out, top 0.6s ease-out, opacity 0.2s; pointer-events: none; }
 </style>
-<div id="terminal"><div class="bar">claude · ~/shop</div></div>
-<iframe src="${url}/#/b/payment"></iframe><div id="pointer"></div>`;
+<div id="side"><div id="terminal"><div class="bar">claude · ~/shop</div></div>
+<div id="input"></div></div>
+<iframe src="${url}/#/b/ordering"></iframe><div id="pointer"></div>`;
 
 const pause = (ms: number) => Bun.sleep(ms);
 
-/** A line of the drawn terminal; a prompt is typed letter by letter. */
+/** A line of the drawn terminal; a prompt is typed letter by letter in the prompt field, then sent up. */
 async function line(page: Page, kind: "you" | "run" | "back" | "wait", text: string): Promise<void> {
   await page.evaluate(
     async ([kind, text]) => {
       const row = document.createElement("div");
       row.className = kind as string;
+      row.textContent = text as string;
+      if (kind === "you") {
+        const input = document.getElementById("input") as HTMLElement;
+        for (const letter of text as string) {
+          input.textContent += letter;
+          await new Promise((done) => setTimeout(done, 28));
+        }
+        await new Promise((done) => setTimeout(done, 450));
+        input.textContent = "";
+      }
       document.getElementById("terminal")?.append(row);
-      if (kind !== "you") {
-        row.textContent = text as string;
-        return;
-      }
-      for (const letter of text as string) {
-        row.textContent += letter;
-        await new Promise((done) => setTimeout(done, 22));
-      }
     },
     [kind, text],
   );
@@ -94,7 +103,7 @@ async function film(scheme: Scheme): Promise<void> {
     runHook({ session_id: SESSION, cwd: root, ...payload }, {}, rewake);
 
   await hook({ hook_event_name: "SessionStart", source: "startup" });
-  await post(`board new "Payment declined" --format flow --id payment`);
+  await post(`board new "Placing an order" --format event-storming --id ordering`);
 
   const frames = mkdtempSync(join(tmpdir(), "sideco-loop-frames-"));
   const browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -109,12 +118,15 @@ async function film(scheme: Scheme): Promise<void> {
   await line(page, "you", PROMPT);
   await hook({ hook_event_name: "UserPromptSubmit", prompt: PROMPT });
   await pause(500);
-  await line(page, "run", "sideco apply   3 cards");
+  await line(page, "run", "sideco apply   4 cards");
   await post(
-    `add step "Customer pays" --alias pays
-add decision "Bank agrees?" --from @pays --alias bank
-add outcome "Order confirmed" --from @bank --edge "yes"`,
-    "payment",
+    `add actor "Customer" --col 1
+add command "Place order" --col 1 --alias place
+add event "Order placed" --col 2 --alias placed
+add policy "Reserve the stock" --col 3 --alias reserve
+link @place @placed
+link @placed @reserve`,
+    "ordering",
   );
   await pause(1000); // the cards glide to their place
   // The film is a photo every tenth of a second, each kept with the time it stayed on screen.
@@ -130,13 +142,18 @@ add outcome "Order confirmed" --from @bank --edge "yes"`,
     }
   })();
 
-  // Claude's turn goes on: one more card, the question, then it parks.
-  await pause(1200);
-  await line(page, "run", "sideco apply   1 card");
-  await post(`add step "Offer another method" --from D1 --edge "no"`, "payment");
+  // Claude's turn goes on: two more cards, the question, then it parks.
+  await pause(1000);
+  await line(page, "run", "sideco apply   2 cards");
+  await post(
+    `add system "Warehouse" --col 3
+add event "Stock reserved" --col 4 --alias reserved
+link R1 @reserved`,
+    "ordering",
+  );
   await pause(1100);
   await line(page, "run", `sideco pass "${QUESTION}"`);
-  await post(`pass "${QUESTION}"`, "payment");
+  await post(`pass "${QUESTION}"`, "ordering");
   await hook({ hook_event_name: "Stop" });
   // The parked hook gives up at once while the companion has not seen the page: sent again until it stays.
   const waiting = board.locator(".status-text", { hasText: "waiting" });
@@ -150,16 +167,20 @@ add outcome "Order confirmed" --from @bank --edge "yes"`,
   await pause(700);
 
   // Your turn, in the page: rename a card, then hand the turn back.
-  const card = board.locator("g.card", { hasText: "Offer another method" });
+  const card = board.locator("g.card", { hasText: "Warehouse" });
   await point(page, card);
   await card.dblclick();
   await page.keyboard.press("ControlOrMeta+a");
-  await page.keyboard.type("Offer a bank transfer", { delay: 45 });
+  await page.keyboard.type("Partner warehouse", { delay: 45 });
   await pause(300);
   await page.keyboard.press("Enter");
   await pause(500);
   await page.keyboard.press("Escape"); // leaves the card: its detail folds away and the board takes its room back
-  await pause(500);
+  // Opening the card slid the board aside: you slide it back to see the whole of it.
+  await board.locator("body").evaluate((body) => {
+    for (const part of body.querySelectorAll("*")) if (part.scrollLeft > 0) part.scrollTo({ left: 0, behavior: "smooth" });
+  });
+  await pause(600);
   const send = board.locator("button.primary", { hasText: "Send to Claude" });
   await point(page, send);
   await send.click();
@@ -171,13 +192,43 @@ add outcome "Order confirmed" --from @bank --edge "yes"`,
     .map((row) => row.trim())
     .filter((row) => row.includes("renamed"));
   if (said.length === 0) throw new Error(`the hook said nothing of the rename: ${JSON.stringify(woke)}`);
-  const command = `sideco add outcome "Paid by transfer" --from F2`;
+  const command = `sideco add hotspot "What if stock runs out?" --col 3`;
   await hook({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command } });
   await line(page, "back", said[0] ?? "");
-  await pause(1100);
+  await pause(1000);
   await line(page, "run", command);
-  await post(command.replace("sideco ", ""), "payment");
-  await pause(2400);
+  await post(command.replace("sideco ", ""), "ordering");
+  await hook({ hook_event_name: "Stop" });
+  await pause(1500);
+
+  // The terminal is still yours: a second prompt, typed there, opens another workshop.
+  await page.evaluate(() => {
+    (document.getElementById("pointer") as HTMLElement).style.opacity = "0";
+  });
+  await line(page, "you", NEXT_PROMPT);
+  await hook({ hook_event_name: "UserPromptSubmit", prompt: NEXT_PROMPT });
+  await pause(400);
+  await line(page, "run", `sideco board new "Sprint 12" --format kanban`);
+  await post(`board new "Sprint 12" --format kanban --id sprint`);
+  await line(page, "run", "sideco apply   5 cards");
+  await post(
+    `add task "Payment page" --lane done
+add task "E-mail reminders" --lane doing
+add blocker "Warehouse API access" --lane doing
+add task "Stock reservation" --lane todo
+add task "Out-of-stock notice" --lane todo`,
+    "sprint",
+  );
+  await pause(600);
+  // The page stays on the board you are on and says Claude made another: you go to it.
+  const boards = board.locator("select").first();
+  await point(page, boards);
+  await boards.selectOption({ label: "Sprint 12" });
+  await board.locator("g.card", { hasText: "Stock reservation" }).waitFor();
+  await page.evaluate(() => {
+    (document.getElementById("pointer") as HTMLElement).style.opacity = "0";
+  });
+  await pause(2600);
   rolling = false;
   await camera;
   const end = Date.now();
