@@ -7,16 +7,14 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CommandError, slugify } from "../domain/commands.ts";
-import { decide } from "../domain/decide.ts";
 import { describeBoard, describeCard } from "../domain/digest.ts";
-import { ACTORS, type Actor } from "../domain/events.ts";
 import { toIndexHtml } from "../domain/export/html.ts";
 import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.ts";
 import { fromModel } from "../domain/export/model.ts";
 import { FORMATS } from "../domain/formats.ts";
 import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale, WORDS } from "../domain/i18n.ts";
 import { describeFind, describeLabels, describeSessions } from "../domain/project-digest.ts";
-import { type Board, findBoard, latestSession, type Workspace } from "../domain/workspace.ts";
+import { type Board, latestSession, type Workspace } from "../domain/workspace.ts";
 import { DEFAULT_PORT, dataDir, IDLE_GRACE_MS, readJournal, readWorkspace, start } from "../server/start.ts";
 import { addressOf } from "./address.ts";
 import {
@@ -48,6 +46,7 @@ import { hookFromStdin } from "./hook.ts";
 import { readSetting } from "./setting.ts";
 import { statusText, watchers } from "./status.ts";
 import { statusline } from "./statusline.ts";
+import { takeBack } from "./take-back.ts";
 
 const HELP = `sideco — a visual companion for Claude Code
 
@@ -344,44 +343,12 @@ async function run(verb: string, rest: string[]): Promise<number> {
   );
   const { kind, board } = action.command;
   if ((kind === "undo" || kind === "redo") && typeof board === "string")
-    return takeBack({ kind, board }, read(), asAuthor(actor), args.flags.has("dry-run"), (command) =>
+    return takeBack({ kind, board }, read(), actor, args.flags.has("dry-run"), (command) =>
       post(server, actor, session, [command]),
     );
   const done = await post(server, actor, session, [action.command]);
   console.log(outcome(action, done, server.url));
   return 0;
-}
-
-/**
- * Undo or redo, named: the gesture is said in the words of the CLI that did it.
- * With `--dry-run`, the same decision is made on the journal as read here, and
- * nothing is written.
- */
-async function takeBack(
-  command: { kind: "undo" | "redo"; board: string },
-  ws: Workspace,
-  actor: Actor,
-  dryRun: boolean,
-  send: (command: { kind: "undo" | "redo"; board: string }) => Promise<Posted>,
-): Promise<number> {
-  const kept = findBoard(ws, command.board) ?? ws.removed.find((b) => b.id === command.board);
-  const gesture = kept?.trails[actor]?.[command.kind].at(-1);
-  if (dryRun) {
-    const decision = decide(ws, command, { actor });
-    if (decision.refused) console.log(`would be refused: ${decision.refused.replace(/^refused: /, "")}`);
-    else console.log(`would ${command.kind} seq ${gesture?.seq}: ${gesture?.name}`);
-    return 0;
-  }
-  await send(command);
-  console.log(`${command.kind === "undo" ? "undid" : "redid"} seq ${gesture?.seq}: ${gesture?.name}`);
-  return 0;
-}
-
-/** `--as` names one of the authors; anything else is a mistake said in words. */
-function asAuthor(name: string): Actor {
-  const actor = ACTORS.find((a) => a === name);
-  if (!actor) throw new UsageError(`--as is one of: ${ACTORS.join(", ")}`);
-  return actor;
 }
 
 /** What one board command prints: the thing the caller needs next. */
