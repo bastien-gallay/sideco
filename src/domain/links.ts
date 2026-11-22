@@ -10,6 +10,9 @@ export interface Linked {
   card?: ElementId;
 }
 
+/** Every board at a glance: the home page (T90). */
+export const HOME_LINK = "#/boards";
+
 export const boardLink = (board: BoardId): string => `#/b/${board}`;
 
 export const cardLink = (board: BoardId, card: ElementId): string => `${boardLink(board)}/${card}`;

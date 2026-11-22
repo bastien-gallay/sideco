@@ -23,7 +23,18 @@ import {
   shownSession,
 } from "../domain/workspace.ts";
 import { mountBoard } from "./board-view.ts";
-import { boardPicker, empty, newBoardSheet, openNewBoard, paintBoardPicker, paintEmpty } from "./boards.ts";
+import {
+  askToRemove,
+  boardPicker,
+  boardTiles,
+  brand,
+  home,
+  newBoardSheet,
+  openNewBoard,
+  paintBoardPicker,
+  paintHome,
+  removeSheet,
+} from "./boards.ts";
 import { clock, h, region } from "./dom.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
@@ -373,17 +384,16 @@ const skip = h(
     href: "#board",
     onclick: (event: Event) => {
       event.preventDefault();
-      // No card yet: to what adds one — a kind of card on a board, a workshop on no board.
+      // No card yet: to what adds one, a kind of card on a board; on the home page, the first board, else a workshop.
       const to =
         canvas.querySelector<SVGGElement>('g.card[tabindex="0"]') ??
         palette.querySelector<HTMLButtonElement>("button.type:not(:disabled)") ??
-        empty.querySelector<HTMLButtonElement>("button.format:not(:disabled)");
+        home.querySelector<HTMLButtonElement>(".board-tile, button.format:not(:disabled)");
       to?.focus();
     },
   },
   t.skipToBoard,
 );
-const removal = h("dialog", { class: "sheet remove-board" });
 
 /** The reader's language: every language under its own name, so it is found whatever the page speaks. */
 const languagePicker = h(
@@ -718,7 +728,7 @@ app.append(
     "header",
     { class: "top" },
     // Three groups: the board, then what Claude is doing, then the view of it.
-    h("div", { class: "top-board" }, h("strong", { class: "brand" }, "Sideco"), boardPicker, boardMenu),
+    h("div", { class: "top-board" }, brand, boardPicker, boardMenu),
     h("div", { class: "top-claude" }, sessionPicker, statusPill, waitsPill),
     h(
       "div",
@@ -739,7 +749,7 @@ app.append(
     "main",
     { class: "work" },
     h("aside", { class: "left", id: "panel-left" }, folds.left, palette),
-    h("section", { class: "stage" }, visitBar, focusBar, findBar, canvas, empty),
+    h("section", { class: "stage" }, visitBar, focusBar, findBar, canvas, home),
     h(
       "aside",
       { class: "right", id: "panel-right" },
@@ -755,7 +765,7 @@ app.append(
   h("footer", { class: "bottom" }, turnBar),
   notices.bottom,
   newBoardSheet,
-  removal,
+  removeSheet,
   keysSheet,
   spoken,
 );
@@ -973,7 +983,7 @@ const paintBoardMenu = region(boardMenu, (m: BoardMenuModel) => [
           onclick: () => {
             const id = m.board?.id;
             boardMenu.open = false;
-            if (id) askToRemove(id);
+            if (id) askToRemove(id, (title) => say(t.boardRemoved(title), undoOffer()));
           },
         },
         t.removeBoardItem,
@@ -1923,33 +1933,6 @@ window.addEventListener("keydown", (event) => {
 /** Meets each build the companion serves: a reload when no words would be lost, else an offer. */
 const meet = meetUpdates(say, () => [...drafts.values()].some((text) => text !== ""));
 
-/**
- * Removing a board takes it from Claude too, so the page asks first, and the
- * answer that keeps the board has the focus. Once removed, undoing is offered at once.
- */
-function askToRemove(id: string): void {
-  const board = findBoard(state.live, id);
-  if (!board || !isLive()) return;
-  const keep = h("button", { type: "button", class: "quiet", onclick: () => removal.close() }, t.cancel);
-  const remove = async (): Promise<void> => {
-    const done = await send({ kind: "remove-board", board: id });
-    removal.close();
-    if (done) say(t.boardRemoved(board.title), undoOffer());
-  };
-  removal.replaceChildren(
-    h("h2", {}, t.removeBoardQuestion(board.title)),
-    h("p", {}, t.removeBoardConsequence(board.elements.length)),
-    h(
-      "div",
-      { class: "actions" },
-      keep,
-      h("button", { type: "button", class: "danger", onclick: () => void remove() }, t.remove),
-    ),
-  );
-  removal.showModal();
-  keep.focus();
-}
-
 // ── The paint ────────────────────────────────────────────────────────────────
 
 /**
@@ -2037,8 +2020,8 @@ function render(): void {
   if (board?.focus) paintFocus({ ids: board.focus.ids, reason: board.focus.reason, live, board: board.id });
 
   canvas.hidden = !board;
-  empty.hidden = Boolean(board);
-  if (!board) paintEmpty({ live });
+  home.hidden = Boolean(board);
+  if (!board) paintHome({ boards: boardTiles(ws, live ? claudeWaits(ws)?.board : undefined), live });
   // The board's visit: measured on arrival; the last look moves on while the board is on screen.
   const newest = state.live.seq;
   if (live && board && newest > 0 && caughtUpYet() && heldSince(readSeen()[board.id] ?? newest)) {

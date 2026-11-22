@@ -7,7 +7,7 @@ import type { Command } from "../domain/commands.ts";
 import type { Recorded } from "../domain/events.ts";
 import { handledAll } from "../domain/handled-all.ts";
 import { asBoardId, asElementId } from "../domain/ids.ts";
-import { boardLink, cardLink, readLink } from "../domain/links.ts";
+import { boardLink, cardLink, HOME_LINK, readLink } from "../domain/links.ts";
 import type { Opening } from "../domain/opening.ts";
 import type { Presence } from "../domain/presence.ts";
 import {
@@ -36,6 +36,8 @@ export interface State {
   cursor: number | null;
   past: Workspace | null;
   boardId: string | null;
+  /** Every board at a glance, rather than one of them (T90). */
+  home: boolean;
   /** The session the reader chose to watch; null lets the board in view decide (see `shownSession`). */
   sessionId: string | null;
   selected: string | null;
@@ -64,6 +66,7 @@ export const state: State = {
   cursor: null,
   past: null,
   boardId: null,
+  home: false,
   sessionId: null,
   selected: null,
   linking: null,
@@ -98,11 +101,13 @@ export function start(render: () => void): void {
   follow();
   window.addEventListener("hashchange", () => {
     state.boardId = boardFromHash();
+    state.home = location.hash === HOME_LINK;
     state.selected = null;
     state.linking = null;
     changed();
   });
   state.boardId = boardFromHash();
+  state.home = location.hash === HOME_LINK;
 }
 
 /** Follows the journal: its replay first, then each event as it is recorded. */
@@ -181,7 +186,7 @@ function leaveMissingBoard(): void {
  */
 function holdShownBoard(): void {
   const shown = state.live.boards.at(-1);
-  if (state.boardId !== null || !shown) return;
+  if (state.boardId !== null || state.home || !shown) return;
   history.replaceState(null, "", `${location.pathname}${location.search}#/b/${shown.id}`);
   state.boardId = shown.id;
 }
@@ -212,7 +217,7 @@ function announce(event: Recorded): void {
     return;
   }
   if (event.event !== "BoardCreated") return;
-  if (state.boardId === null) openBoard(event.board);
+  if (state.boardId === null && !state.home) openBoard(event.board);
   else if (event.actor === "agent" && event.board !== state.boardId)
     state.notice = t.agentCreatedBoard(event.title);
 }
@@ -276,6 +281,7 @@ export function shown(): Workspace {
 }
 
 export function currentBoard(): Board | undefined {
+  if (state.home) return undefined;
   const ws = shown();
   return (state.boardId ? findBoard(ws, state.boardId) : undefined) ?? ws.boards.at(-1);
 }

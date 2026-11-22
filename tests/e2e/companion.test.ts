@@ -143,9 +143,9 @@ afterAll(async () => {
 
 describe("first look", () => {
   test("an empty companion says what it is for and offers the workshops", async () => {
-    await page.locator(".empty h1").waitFor();
-    expect(await page.locator(".empty h1").textContent()).toBe("What do you want to model?");
-    expect(await page.locator(".empty .format-name").allTextContents()).toEqual([
+    await page.locator(".home h1").waitFor();
+    expect(await page.locator(".home h1").textContent()).toBe("What do you want to model?");
+    expect(await page.locator(".home .format-name").allTextContents()).toEqual([
       "Event Storming",
       "Flow",
       "Kanban",
@@ -630,7 +630,8 @@ describe("other workshops", () => {
     await letGo("the stage");
     // The bare header and footer.
     await choose();
-    await page.locator("header.top .brand").click();
+    // The brand is a link home now (T90): the header's bare corner.
+    await page.locator("header.top").click({ position: { x: 2, y: 2 } });
     await letGo("the header");
     await choose();
     await page.locator("footer.bottom").click({ position: { x: 4, y: 4 } });
@@ -2067,6 +2068,41 @@ describe("a reply handed over in one chord (T208)", () => {
   });
 });
 
+describe("every board at a glance (T90)", () => {
+  const tile = (title: string) =>
+    page.locator(".home .board-tile").filter({ has: page.getByText(title, { exact: true }) });
+
+  test("the home page shows each board with its workshop, its cards and its open notes, and opens one", async () => {
+    await agent(
+      `board new "Sprint du jeudi" --format kanban --id jeudi\nadd task "Livrer" --lane todo\nadd task "Tester" --lane todo`,
+    );
+    await agent(
+      `board new "Parcours client" --format flow --id parcours\nadd step "Commander" --id S1\nnote "Et le retour ?" --on S1`,
+    );
+    await page.locator(".brand").click();
+    await page.locator(".home .board-tile").first().waitFor();
+    expect(new URL(page.url()).hash).toBe("#/boards");
+    expect(await page.locator(".board-picker select").inputValue()).toBe("");
+    expect(await tile("Sprint du jeudi").locator(".board-format").textContent()).toBe("Kanban");
+    expect(await tile("Sprint du jeudi").locator(".board-counts").textContent()).toBe("2 cards");
+    expect(await tile("Parcours client").locator(".board-counts").textContent()).toBe("1 card · 1 open note");
+    expect(await page.locator(".home .formats .format").count()).toBeGreaterThan(0);
+
+    // Claude creating a board while the reader looks at them all does not take them away.
+    await agent(`board new "Rétro" --format retro --id retro-home`);
+    await tile("Rétro").waitFor();
+    expect(new URL(page.url()).hash).toBe("#/boards");
+
+    await tile("Sprint du jeudi").click();
+    await page.locator("g.card", { hasText: "Livrer" }).waitFor();
+    expect(new URL(page.url()).hash).toBe("#/b/jeudi");
+    expect(await page.locator(".board-picker select").inputValue()).toBe("jeudi");
+    await page.locator(".board-picker select").selectOption("");
+    await tile("Parcours client").waitFor();
+    await agent("board rm jeudi\nboard rm parcours\nboard rm retro-home");
+  });
+});
+
 describe("what the page said, kept in its tab (T89)", () => {
   const BOARD = "avis";
   const tab = () => page.locator("#tab-notices");
@@ -2547,7 +2583,8 @@ describe("tidying up", () => {
   const listed = (): Promise<string[]> =>
     page
       .locator(".board-picker option")
-      .evaluateAll((options) => options.map((o) => (o as HTMLOptionElement).value));
+      // The first option is every board, the home page (T90).
+      .evaluateAll((options) => options.map((o) => (o as HTMLOptionElement).value).filter(Boolean));
 
   /** Stops the companion and starts it again on the same port, as an update of Sideco does. */
   const restart = async (locale?: Locale): Promise<void> => {
@@ -2755,7 +2792,7 @@ describe("tidying up", () => {
 
   test("the last board removed brings back the first screen", async () => {
     await agent("board rm flux-sideco");
-    await page.locator(".empty h1").waitFor();
+    await page.locator(".home h1").waitFor();
     expect(await listed()).toEqual([]);
     expect(page.url()).not.toContain("#/b/");
     await agent(
