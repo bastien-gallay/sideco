@@ -373,14 +373,14 @@ function outcome(action: Action, done: Posted, url: string): string {
 
 const setting = (name: string): string | undefined => readSetting(name, process.env);
 
+/** The session a command speaks for: the one named, else the one the shell says. */
+const sessionGiven = (args: Args) => args.flags.get("session") ?? setting("SIDECO_SESSION");
+
 /**
  * The language of what a human will read (an export, the page a companion
  * opens in): `--lang`, else `$SIDECO_LANG`, else English. What the agent reads
  * on this terminal stays English.
  */
-/** The session a command speaks for: the one named, else the one the shell says. */
-const sessionGiven = (args: Args) => args.flags.get("session") ?? setting("SIDECO_SESSION");
-
 function language(args: Args): Locale {
   const asked = args.flags.get("lang");
   if (asked === undefined) return asLocale(setting("SIDECO_LANG")) ?? DEFAULT_LOCALE;

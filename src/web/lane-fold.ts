@@ -12,19 +12,19 @@ import { changed, state } from "./store.ts";
 
 const KEY = "sideco.lanes-folded";
 
-/** The lanes folded, by board. */
-let folds: Record<string, string[]> | undefined;
+/** What is kept where the browser keeps nothing: a private window, storage blocked. It lasts as long as the page. */
+let unkept: Record<string, string[]> | undefined;
 
+/** The lanes folded, by board, read anew each time: another tab of this browser may have folded one. */
 function read(): Record<string, string[]> {
-  if (folds) return folds;
+  if (unkept) return unkept;
   try {
     const kept: unknown = JSON.parse(localStorage.getItem(KEY) ?? "{}");
-    folds = typeof kept === "object" && kept !== null ? (kept as Record<string, string[]>) : {};
+    return typeof kept === "object" && kept !== null ? (kept as Record<string, string[]>) : {};
   } catch {
-    // A private window, or storage blocked: the fold lasts as long as the page.
-    folds = {};
+    unkept = {};
+    return unkept;
   }
-  return folds;
 }
 
 function keep(board: string, lanes: string[]): void {
@@ -32,9 +32,9 @@ function keep(board: string, lanes: string[]): void {
   if (lanes.length > 0) all[board] = lanes;
   else delete all[board];
   try {
-    localStorage.setItem(KEY, JSON.stringify(all));
+    if (!unkept) localStorage.setItem(KEY, JSON.stringify(all));
   } catch {
-    // Nowhere to remember it: it lasts as long as the page.
+    unkept = all;
   }
 }
 
@@ -45,15 +45,17 @@ const foldedOn = (board: string): string[] => {
 
 /**
  * What the page gives the layout of `board`: its width on screen and the lanes
- * folded. A card chosen in a folded column opens it: what the reader works on
- * is in sight.
+ * folded. A card chosen in a folded column opens it, and so does the card that
+ * holds the keyboard, moved there by its keys: what the reader works on is in
+ * sight.
  */
 export function seen(board: Board | undefined, span: number | undefined): View {
   if (!board) return { span };
   let lanes = foldedOn(board.id);
-  const lane = state.selected ? findElement(board, state.selected)?.lane : undefined;
-  if (lane !== undefined && lanes.includes(lane)) {
-    lanes = lanes.filter((other) => other !== lane);
+  const held = document.activeElement?.closest<SVGGElement>("g.card")?.dataset.id;
+  const open = [state.selected, held].map((id) => (id ? findElement(board, id)?.lane : undefined));
+  if (lanes.some((lane) => open.includes(lane))) {
+    lanes = lanes.filter((lane) => !open.includes(lane));
     keep(board.id, lanes);
   }
   return { span, folded: new Set(lanes) };
@@ -72,8 +74,9 @@ export function toggleLane(board: Board, lane: string): void {
 const TRAVEL = 4;
 
 /**
- * Answers the fold buttons drawn in `root`. `board` says the board on screen,
- * none while it cannot be changed by hand. The button redrawn keeps the keyboard.
+ * Answers the fold buttons drawn in `root`, for the board on screen: live or in
+ * the past, a fold changes what the reader sees, not the board. The button
+ * redrawn keeps the keyboard.
  */
 export function mountLaneFold(root: SVGSVGElement, board: () => Board | undefined): void {
   let pressed: { x: number; y: number } | undefined;
@@ -98,7 +101,10 @@ export function mountLaneFold(root: SVGSVGElement, board: () => Board | undefine
     "click",
     (event) => {
       const lane = laneOf(event);
-      const travelled = pressed ? Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) : 0;
+      // A click with no press of its own, as a reader's tool makes one, has travelled nowhere.
+      const from = event.detail === 0 ? undefined : pressed;
+      pressed = undefined;
+      const travelled = from ? Math.hypot(event.clientX - from.x, event.clientY - from.y) : 0;
       if (lane !== undefined && travelled <= TRAVEL) toggle(event, lane, false);
     },
     true,
@@ -108,6 +114,8 @@ export function mountLaneFold(root: SVGSVGElement, board: () => Board | undefine
     (event) => {
       const button = (event.target as Element | null)?.closest?.<SVGElement>(".lane-fold");
       const lane = button?.dataset.fold;
+      // ⌘↵ or Ctrl+Enter is the page's: it hands the turn over.
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (lane !== undefined && (event.key === "Enter" || event.key === " ")) toggle(event, lane, true);
     },
     true,

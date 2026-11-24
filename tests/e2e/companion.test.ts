@@ -2376,11 +2376,32 @@ describe("a column folded by its reader (S307)", () => {
     await until("the keyboard is still on the button", async () =>
       fold("doing").evaluate((b) => b === document.activeElement),
     );
+    // ⌘↵ on the button is the page's, not the column's: it stays folded.
+    await page.keyboard.press("Control+Enter");
+    await page.waitForTimeout(150);
+    expect(await card(second).count()).toBe(0);
     await page.keyboard.press("/");
     await page.keyboard.type("Contrat");
     await page.keyboard.press("Enter");
     await card(third).waitFor();
     expect(await foldedIn()).toBe("{}");
+
+    // Its name upright opens it too; and a card moved into a folded column by its keys opens it and keeps the keyboard.
+    await page.keyboard.press("Escape");
+    await page.locator(".layer-heads .lane-label", { hasText: /^Doing$/ }).hover();
+    await fold("doing").click();
+    await card(second).waitFor({ state: "detached" });
+    await page.locator(".layer-heads .lane-label.is-upright").click();
+    await card(second).waitFor();
+    await page.locator(".layer-heads .lane-label", { hasText: /^Doing$/ }).hover();
+    await fold("doing").click();
+    await card(second).waitFor({ state: "detached" });
+    await card(first).focus();
+    await page.keyboard.press("Shift+ArrowRight");
+    await card(second).waitFor();
+    await until("the card moved keeps the keyboard", async () =>
+      card(first).evaluate((g) => g === document.activeElement),
+    );
 
     await page.keyboard.press("Escape");
     await agent("board rm repli");

@@ -72,7 +72,19 @@ describe("a column folded by the reader (S307)", () => {
     // Its name stands upright, and the whole band opens it.
     expect(folded).toMatch(/<text class="lane-label is-upright"[^>]*transform="rotate\(90 /);
     expect(folded).toMatch(/<rect class="lane-bg" data-fold="doing"/);
+    expect(folded).toMatch(/<text class="lane-label is-upright"[^>]*data-fold="doing"/);
     const fr = layoutBoard(board(), "fr", { span: 1200, folded: new Set(["doing"]) });
     expect(bandMarkup(lane(fr, "doing"))).toContain('aria-label="Ouvrir la colonne En cours, 2 cartes"');
   });
+});
+
+test("a long name stands upright cut by whole characters, and its button says it whole", () => {
+  const t = table(SPRINT).script('lane doing "12345678901234567890😀 en cours de recette"');
+  const scene = layoutBoard(t.board(), "en", { span: 1200, folded: new Set(["doing"]) });
+  const markup = bandMarkup(lane(scene, "doing"));
+  expect(markup).toContain(">12345678901234567890😀…</text>");
+  expect(markup.isWellFormed()).toBe(true);
+  expect(markup).toContain(
+    'aria-label="Open the column 12345678901234567890😀 en cours de recette, 2 cards"',
+  );
 });

@@ -162,9 +162,11 @@ const UPRIGHT_CHARS = 22;
 /** Down a folded lane: its button, how many cards it keeps, then its name upright. */
 function foldedHeading(b: Band): string {
   const mid = b.x + b.w / 2;
-  const name = b.label.length > UPRIGHT_CHARS ? `${b.label.slice(0, UPRIGHT_CHARS - 1)}…` : b.label;
+  // By whole characters: a name is never cut through the middle of one.
+  const chars = [...b.label];
+  const name = chars.length > UPRIGHT_CHARS ? `${chars.slice(0, UPRIGHT_CHARS - 1).join("")}…` : b.label;
   const down = b.y + 64;
-  return `${foldButton(b, mid, b.y + 25)}<text class="lane-count is-folded" x="${mid}" y="${b.y + 46}">${b.count ?? 0}</text><text class="lane-label is-upright" x="${mid - 4}" y="${down}" transform="rotate(90 ${mid - 4} ${down})" data-lane="${esc(b.id)}">${esc(name)}</text>`;
+  return `${foldButton(b, mid, b.y + 25)}<text class="lane-count is-folded" x="${mid}" y="${b.y + 46}">${b.count ?? 0}</text><text class="lane-label is-upright" x="${mid - 4}" y="${down}" transform="rotate(90 ${mid - 4} ${down})" data-fold="${esc(b.id)}">${esc(name)}</text>`;
 }
 
 export function connectorMarkup(c: Connector): string {

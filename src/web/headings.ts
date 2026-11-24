@@ -50,8 +50,9 @@ function laneHead(band: Band, index: number, texts: Iterable<Element>, keyed: bo
     head.append(blank);
   }
   // On a kanban, a lane heading is a Tab stop: its keys rename, move, remove it, or add one beside it.
+  // Folded, its button is the one stop: it says the name whole and the count, and opens it.
   const label = head.querySelector<SVGTextElement>("text.lane-label");
-  if (label && keyed) {
+  if (label && keyed && !band.folded) {
     label.setAttribute("tabindex", "0");
     label.setAttribute("role", "button");
     label.setAttribute("aria-label", t.laneHeading(band.label, band.count ?? 0));

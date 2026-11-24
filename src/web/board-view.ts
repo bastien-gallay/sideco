@@ -541,7 +541,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     chosen: state.selected ?? undefined,
   }));
 
-  mountLaneFold(root, () => (isLive() ? board : undefined));
+  mountLaneFold(root, () => board);
 
   /** The handle of the card chosen, that pulls a link to another card (S326). */
   const paintHandle = linkHandle(root, {

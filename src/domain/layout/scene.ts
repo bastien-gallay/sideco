@@ -89,8 +89,6 @@ export interface Scene {
   backbone?: number;
 }
 
-/** Where a pointer position lands, in the board's own terms. */
-/** A free rectangle of the board, in scene coordinates. */
 /**
  * What the page gives a layout: the width the board has on screen, and the
  * lanes its reader folded (S307). The fold is the reader's own, as a panel's
@@ -104,6 +102,7 @@ export interface View {
 export type Seen = number | View | undefined;
 export const spanOf = (seen: Seen): number | undefined => (typeof seen === "object" ? seen.span : seen);
 
+/** A free rectangle of the board, in scene coordinates. */
 export interface Room {
   x: number;
   y: number;
@@ -111,6 +110,7 @@ export interface Room {
   h: number;
 }
 
+/** Where a pointer position lands, in the board's own terms. */
 export type Target =
   /** `before`: the card of the cell a drop would land before; none at the foot of its stack. */
   | { kind: "cell"; col: number; type: string; before?: string }
