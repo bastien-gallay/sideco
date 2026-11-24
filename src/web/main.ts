@@ -40,6 +40,7 @@ import { MESSAGES } from "./messages.ts";
 import { mountNotices, type Offer } from "./notices.ts";
 import { type PaletteModel, paletteContent } from "./palette.ts";
 import { meetUpdates } from "./reload.ts";
+import { paintSession, sessionPanel } from "./session-panel.ts";
 import {
   choosable,
   onSessionChosen,
@@ -138,13 +139,6 @@ const focusBar = h("div", { class: "focus-bar", hidden: true });
 /** What Claude changed on the board while the reader was away: said once, over the board, until they have seen it. */
 const visitBar = h("div", { class: "visit-bar", role: "status", hidden: true });
 const canvas = h("div", { class: "canvas" });
-/** What Claude's session does, under the card panel: it scrolls on its own, to its latest step. */
-const sessionPanel = h("section", {
-  class: "session",
-  id: "tab-session-panel",
-  role: "tabpanel",
-  "aria-labelledby": "tab-session",
-});
 /** The card chosen on the board, as it reads in full: shown while a card is chosen, folded on demand. */
 const cardPanel = h("section", {
   class: "card-panel",
@@ -1284,63 +1278,6 @@ async function saveDetail(): Promise<void> {
   closeDetail();
   speak(t.detailSaved(edit.id));
 }
-
-interface SessionModel {
-  status: Status;
-  todos: { text: string; status: string }[];
-  turns: {
-    at: string;
-    prompt: string;
-    hidden: number;
-    tools: { tool: string; summary: string; status: string }[];
-  }[];
-}
-
-const TOOL_MARK: Record<string, string> = { ok: "✓", failed: "✗", running: "…" };
-const TODO_MARK: Record<string, string> = { completed: "☑", in_progress: "◐", pending: "☐" };
-
-const paintSession = region(sessionPanel, (m: SessionModel) => [
-  h("p", { class: `session-status tone-${m.status.tone}`, title: m.status.title }, m.status.text),
-  m.todos.length > 0 &&
-    h(
-      "ul",
-      { class: "todos" },
-      ...m.todos.map((todo) =>
-        h(
-          "li",
-          { class: `todo-${todo.status}` },
-          h("span", { "aria-hidden": "true" }, TODO_MARK[todo.status] ?? "☐"),
-          ` ${todo.text}`,
-        ),
-      ),
-    ),
-  h(
-    "ol",
-    { class: "turns" },
-    ...m.turns.map((turn) =>
-      h(
-        "li",
-        {},
-        h("p", { class: "prompt" }, h("time", {}, turn.at), ` ${turn.prompt || t.turnInProgress}`),
-        h(
-          "ul",
-          { class: "tools" },
-          turn.hidden > 0 && h("li", { class: "more" }, t.earlierSteps(turn.hidden)),
-          ...turn.tools.map((tool) =>
-            h(
-              "li",
-              { class: `tool-${tool.status}` },
-              h("span", { class: "mark", "aria-label": tool.status }, TOOL_MARK[tool.status] ?? ""),
-              h("b", {}, tool.tool),
-              ` ${tool.summary}`,
-            ),
-          ),
-        ),
-      ),
-    ),
-  ),
-  m.turns.length === 0 && h("p", { class: "hint" }, t.sessionHint),
-]);
 
 interface TurnModel {
   board: string | undefined;
