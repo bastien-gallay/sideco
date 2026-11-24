@@ -23,6 +23,7 @@ import type { BoardHooks, BoardView } from "./board-api.ts";
 import * as links from "./board-links.ts";
 import { changedMark, ringMarkup, unreadMark } from "./card-marks.ts";
 import { h, svg } from "./dom.ts";
+import { showDrop } from "./drop-hint.ts";
 import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
 import { placeTools, type Rect } from "./tools-place.ts";
@@ -1176,51 +1177,6 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     });
   }
 
-  function showHint(target: Target): void {
-    const band =
-      target.kind === "cell"
-        ? scene.bands.find((b) => b.kind === "step" && b.id === String(target.col))
-        : target.kind === "slot"
-          ? scene.bands.find((b) => b.kind === "lane" && b.id === target.lane)
-          : undefined;
-    if (!band) {
-      hint.setAttribute("visibility", "hidden");
-      dropLine.setAttribute("visibility", "hidden");
-      return;
-    }
-    hint.setAttribute("x", String(band.x + 2));
-    hint.setAttribute("y", String(band.y + 2));
-    hint.setAttribute("width", String(band.w - 4));
-    hint.setAttribute("height", String(band.h - 4));
-    hint.setAttribute("visibility", "visible");
-    showDropLine(target);
-  }
-
-  /** Where in its cell or lane the card would land: a line between two cards, or under the last. */
-  function showDropLine(target: Target): void {
-    const moving = drag?.id;
-    const peers =
-      board && (target.kind === "cell" || target.kind === "slot")
-        ? board.elements.filter(
-            (e) =>
-              e.id !== moving &&
-              (target.kind === "cell"
-                ? e.col === target.col && e.type === target.type
-                : target.kind === "slot" && e.lane === target.lane),
-          )
-        : [];
-    const before = target.kind === "cell" || target.kind === "slot" ? target.before : undefined;
-    const at = scene.cards.find((c) => c.id === (before ?? peers.at(-1)?.id));
-    if (!at) {
-      dropLine.setAttribute("visibility", "hidden");
-      return;
-    }
-    dropLine.setAttribute("x", String(at.x));
-    dropLine.setAttribute("y", String(before ? at.y - 6 : at.y + at.h + 2));
-    dropLine.setAttribute("width", String(at.w));
-    dropLine.setAttribute("visibility", "visible");
-  }
-
   let drag:
     | { id: string; startX: number; startY: number; dx: number; dy: number; moving: boolean; target: Target }
     | undefined;
@@ -1295,7 +1251,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const g = nodes.get(drag.id)?.g;
     if (g) g.style.transform = `translate(${at.x - drag.dx}px, ${at.y - drag.dy}px)`;
     drag.target = locate(board, at.x, at.y, drag.id, span);
-    showHint(drag.target);
+    showDrop({ hint, line: dropLine }, scene, board, drag.target, drag.id);
   });
 
   root.addEventListener("pointermove", (event) => {
