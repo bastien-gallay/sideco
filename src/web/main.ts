@@ -20,6 +20,7 @@ import {
   TURNS_SHOWN,
 } from "../domain/sessions.ts";
 import { type Board, findBoard } from "../domain/workspace.ts";
+import { type Status, shownStatus } from "./agent-status.ts";
 import { mountBoard } from "./board-view.ts";
 import {
   askToRemove,
@@ -836,14 +837,10 @@ const paintUndo = region(undoGroup, (m: { undo: boolean; redo: boolean }) => [
   ),
 ]);
 
-const paintStatus = region(
-  statusPill,
-  (m: { tone: string; text: string; connected: boolean; saving: boolean }) => [
-    h("span", { class: `dot tone-${m.connected ? m.tone : "off"}`, "aria-hidden": "true" }),
-    // A save still waiting says so first: the human's words are on their way, not lost.
-    h("span", { class: "status-text" }, !m.connected ? t.disconnected : m.saving ? t.saving : m.text),
-  ],
-);
+const paintStatus = region(statusPill, (m: Status) => [
+  h("span", { class: `dot tone-${m.tone}`, "aria-hidden": "true" }),
+  h("span", { class: "status-text", title: m.title ?? m.text }, m.text),
+]);
 
 interface Waits {
   waiting: Waiting | undefined;
@@ -1344,7 +1341,7 @@ async function saveDetail(): Promise<void> {
 }
 
 interface SessionModel {
-  status: { tone: string; text: string };
+  status: Status;
   todos: { text: string; status: string }[];
   turns: {
     at: string;
@@ -1358,7 +1355,7 @@ const TOOL_MARK: Record<string, string> = { ok: "✓", failed: "✗", running: "
 const TODO_MARK: Record<string, string> = { completed: "☑", in_progress: "◐", pending: "☐" };
 
 const paintSession = region(sessionPanel, (m: SessionModel) => [
-  h("p", { class: `session-status tone-${m.status.tone}` }, m.status.text),
+  h("p", { class: `session-status tone-${m.status.tone}`, title: m.status.title }, m.status.text),
   m.todos.length > 0 &&
     h(
       "ul",
@@ -1784,11 +1781,7 @@ function render(): void {
     live,
   });
   paintSessionPicker(sessionChoices(ws.sessions, session));
-  paintStatus({
-    ...agentStatus(session, live ? state.listening : 0, locale),
-    connected: state.connected,
-    saving: state.saving,
-  });
+  paintStatus(shownStatus(agentStatus(session, live ? state.listening : 0, locale), state, locale));
   paintBoardMenu({ board: board && { id: board.id, title: board.title }, live });
   paintWaits({ waiting: live ? claudeWaits(ws) : undefined, current: board?.id, listening: state.listening });
   const mine = live ? (state.boardId ?? undefined) : undefined;

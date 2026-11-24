@@ -16,7 +16,7 @@ export interface Messages {
   idle: string;
   thinking: string;
   running: (what: string | undefined) => string;
-  waitingInTerminal: (why: string) => string;
+  waitingInTerminal: (tool?: string) => string;
   listening: string;
   disconnected: string;
   /** A save still waiting for the companion's answer. */
@@ -307,7 +307,7 @@ const en: Messages = {
   idle: "Claude is idle",
   thinking: "Claude is thinking",
   running: (what) => `Claude is running ${what ?? "a tool"}`,
-  waitingInTerminal: (why) => `Claude is waiting for you in the terminal: ${why}`.trim(),
+  waitingInTerminal: (tool) => `Claude is waiting for you in the terminal${tool ? ` to allow ${tool}` : ""}`,
   listening: "Claude is waiting for you to send",
   disconnected: "Companion disconnected, reconnecting…",
   saving: "Saving…",
@@ -630,7 +630,7 @@ const fr: Messages = {
   idle: "Claude est au repos",
   thinking: "Claude réfléchit",
   running: (what) => `Claude exécute ${what ?? "un outil"}`,
-  waitingInTerminal: (why) => `Claude t'attend dans le terminal : ${why}`.trim(),
+  waitingInTerminal: (tool) => `Claude t'attend dans le terminal${tool ? ` pour autoriser ${tool}` : ""}`,
   listening: "Claude attend ton envoi",
   disconnected: "Compagnon déconnecté, reconnexion…",
   saving: "Enregistrement…",

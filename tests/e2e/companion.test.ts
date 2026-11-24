@@ -260,6 +260,19 @@ describe("the session beside the board", () => {
     ]);
     await shot("03-session");
 
+    // Why Claude waits is said in the page's words; a reason it does not know stays in the tooltip (T221).
+    await hook({ hook_event_name: "Notification", message: "Claude needs your permission to use Bash" });
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".status-text")?.textContent ===
+        "Claude is waiting for you in the terminal to allow Bash",
+    );
+    await hook({ hook_event_name: "Notification", message: "Claude Code login expired" });
+    await page.waitForFunction(
+      () => document.querySelector(".status-text")?.getAttribute("title") === "Claude Code login expired",
+    );
+    expect(await status().textContent()).toBe("Claude is waiting for you in the terminal");
+
     await hook({ hook_event_name: "Stop", last_assistant_message: "Voilà le premier jet." });
     await page.waitForFunction(
       () => document.querySelector(".status-text")?.textContent === "Claude is idle",

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { LOCALES } from "../../src/domain/i18n.ts";
 import { layoutBoard, vacancy } from "../../src/domain/layout/index.ts";
+import { shownStatus } from "../../src/web/agent-status.ts";
 import { describeEvent } from "../../src/web/event-words.ts";
 import { MESSAGES, pickLocale } from "../../src/web/messages.ts";
 import {
@@ -47,7 +48,49 @@ describe("agentStatus says what Claude is doing, in words", () => {
     t.do({ kind: "notify", message: "Claude needs your permission to use Bash" }, "agent", "s1");
     expect(agentStatus(session(t), 0)).toEqual({
       tone: "waiting",
-      text: "Claude is waiting for you in the terminal: Claude needs your permission to use Bash",
+      text: "Claude is waiting for you in the terminal to allow Bash",
+    });
+  });
+
+  test("why Claude waits is said in the page's language, never pasted in English (T221)", () => {
+    const t = withSession();
+    t.do({ kind: "notify", message: "Claude needs your permission to use Bash" }, "agent", "s1");
+    expect(agentStatus(session(t), 0, "fr")).toEqual({
+      tone: "waiting",
+      text: "Claude t'attend dans le terminal pour autoriser Bash",
+    });
+    // Waiting for an input says nothing the sentence did not already say.
+    t.do({ kind: "notify", message: "Claude is waiting for your input" }, "agent", "s1");
+    expect(agentStatus(session(t), 0, "fr")).toEqual({
+      tone: "waiting",
+      text: "Claude t'attend dans le terminal",
+    });
+    expect(agentStatus(session(t), 0)).toEqual({
+      tone: "waiting",
+      text: "Claude is waiting for you in the terminal",
+    });
+  });
+
+  test("a reason the page does not know stays out of the sentence, whole in the tooltip (T221)", () => {
+    const t = withSession();
+    t.do({ kind: "notify", message: "Claude Code login expired" }, "agent", "s1");
+    expect(agentStatus(session(t), 0, "fr")).toEqual({
+      tone: "waiting",
+      text: "Claude t'attend dans le terminal",
+      title: "Claude Code login expired",
+    });
+  });
+
+  test("a lost link or a save under way is said first, and hides why Claude waits (T221)", () => {
+    const waits = { tone: "waiting" as const, text: "Claude is waiting", title: "why" };
+    expect(shownStatus(waits, { connected: true, saving: false })).toEqual(waits);
+    expect(shownStatus(waits, { connected: true, saving: true })).toEqual({
+      tone: "waiting",
+      text: "Saving…",
+    });
+    expect(shownStatus(waits, { connected: false, saving: true })).toEqual({
+      tone: "off",
+      text: "Companion disconnected, reconnecting…",
     });
   });
 
