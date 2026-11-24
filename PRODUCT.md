@@ -16,7 +16,7 @@ Réussir, c'est que modéliser avec l'agent devienne aussi direct qu'un atelier 
 
 ## Brand Personality
 
-Calme, précis, discret. Un instrument : le chrome s'efface, gris et sobre, un seul accent ; la couleur est réservée aux post-its. Le ton des libellés est direct et court, en anglais par défaut, en français au choix du lecteur.
+Calme, précis, discret. Un instrument : le chrome s'efface, gris et sobre, un seul accent ; la couleur est réservée aux cartes et aux états qui arrêtent le travail, toujours avec un signe. Le ton des libellés est direct et court, en anglais par défaut, en français au choix du lecteur.
 
 ## Anti-references
 
@@ -26,7 +26,7 @@ Calme, précis, discret. Un instrument : le chrome s'efface, gris et sobre, un s
 ## Design Principles
 
 1. **Le modèle d'abord** : le tableau occupe la place ; tout le reste (session, historique, notes) se replie à son service.
-2. **Qui a fait quoi, toujours visible** : l'auteur de chaque carte et le dernier changement se lisent sans chercher.
+2. **Qui a fait quoi, toujours visible** : l'auteur de chaque carte se lit au survol, et le dernier changement sans chercher.
 3. **Le tour de parole est explicite** : on sait à tout moment qui a la main, l'humain ou l'agent.
 4. **La couleur porte du sens, jamais seule** : un signe accompagne toujours la couleur.
 5. **Le déterministe dans la page, le flou à l'agent** : la page fait les opérations sûres, l'agent ce qui demande de modéliser.

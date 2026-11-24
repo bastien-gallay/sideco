@@ -151,22 +151,49 @@ flowchart LR
 
 ### Ubiquitous language
 
-The code uses the words of the page and of the workshops, and only them.
+One concept, one word, in the page, the CLI, the docs and the skill. The
+French column is the word of the French interface. Where the code still
+uses an older name, the last column says so: the code follows the word when
+a card touches it, never the other way round.
 
-| Word | Meaning |
-| --- | --- |
-| Board | One workshop's surface: a kanban, a flow, a story map… |
-| Format | The workshop a board follows; it sets the element types and the layout. |
-| Element | A card on a board; its type comes from the format. |
-| Lane, column, step | Where an element sits, by format. |
-| Edge | A link between two elements. |
-| Note, thread | A remark on a board or an element, and its replies. |
-| Gesture | What one command did; undo takes back a whole gesture. |
-| Session | An agent's conversation, known to the companion. |
-| Turn | A hand-over of the board between the user and an agent. |
-| Actor | Who did it: `human`, `agent` or `system`. |
+| Word | French | Meaning | Older name in the code |
+| --- | --- | --- | --- |
+| Board | Tableau | One surface that follows a workshop: a kanban, a flow, a story map… | |
+| Workshop | Atelier | The model a board follows, as a document follows a template: its card types, their letters, its layout. A board names its workshop; it neither is one nor extends one. | `format`, `board new --format` |
+| Grid | Grille | The family of workshops laid out in wide rows and columns that hold the cards: kanban, story map, retro, event storming, impact-effort. | layouts `columns`, `timeline` |
+| Diagram | Diagramme | The family of workshops whose cards are placed by their links: flow, C4. | layout `graph` |
+| Snap | Snap | The family, still to come, whose cards are placed freely and held by magnets, as in Figma: the future C4. The same word in both languages. | |
+| Card | Carte | What sits on a board; its type comes from the workshop. « Post-it » is an image in the guide, not a term. | `Element`, `ElementAdded` |
+| Title | Titre | The words a card shows. | `label` on `ElementAdded`, `ElementRenamed` |
+| Detail | Détail | The longer text of a card, under its title. | `ElementAnnotated` |
+| Label | Étiquette | A word shared by cards of a project, to sort and find them. | `ElementLabeled` |
+| Column | Colonne | Where a card sits in a kanban or a retro. | `lane` |
+| Step | Étape | Where a card sits in a timeline workshop. | `col` |
+| Link | Lien | A link between two cards; « Relier » is the verb. | `Edge`, `EdgeAdded` |
+| Note, thread | Note, fil | A remark on a board or a card, and its replies. | |
+| Task | Tâche | A kanban card for work to do. | type `task`, letter `T` |
+| User task | Tâche utilisateur | A story map card for what a user does, Jeff Patton's term. | type `task`, letter `T` |
+| Gesture | Geste | What someone does with the pointer or the keyboard. | |
+| Change | Changement | What one command did; Undo takes back a whole change. | `Gesture` in `undo.ts` |
+| Session | Session | An agent's conversation, known to the companion. | |
+| Turn | Tour | The board handed over between the user and an agent. The button says « Send to Claude / Envoyer à Claude »; it will name more than Claude when other agents come. | `TurnPassed`, `sideco pass` |
+| Author | Auteur | Who did it: `human`, `agent` or `system`. « Actor » is only the event storming card type. | `actor` |
+
+Words with two senses, kept apart on purpose: `export --format` is the
+format of an export, not a workshop; the letter `T` is shared by the kanban
+task, the story map user task and the retro action, a question left to the
+core workshops.
 
 A new concept gets its word here before it gets a type in the code.
+
+### Settled rules
+
+Where two sources disagreed, these won (Bastien, 2026-11-24).
+
+| Rule | What holds | Source |
+| --- | --- | --- |
+| Ids | An id is unique in the project, one letter per concept, and stable unless a renumbering is asked for (`sideco renumber`). | `tests/unit/formats.test.ts` |
+| Undo | A column inserted is undone like any other change. A change is never overwritten without saying so: only the human may force it, after a warning. | `src/domain/undo.ts` |
 
 ### Aggregates and contexts
 
