@@ -237,6 +237,17 @@ export function boardAction(tokens: readonly string[], board: string | undefined
       case "done":
       case "undone":
         return { command: { kind: "mark", board: target(), id: need(0, "an id"), done: verb === "done" } };
+      case "place":
+        return {
+          command: {
+            kind: "place",
+            board: target(),
+            cards: [{ id: need(0, "an id"), x: Number(need(1, "x")), y: Number(need(2, "y")) }],
+          },
+        };
+      case "placing":
+        if (at(0) !== "hand" && at(0) !== "auto") throw new UsageError("usage: placing hand|auto");
+        return { command: { kind: "placing", board: target(), byHand: at(0) === "hand" } };
       case "move":
         if (p.length < 2 && !["lane", "col", "before"].some((name) => flags.has(name)))
           throw new UsageError("`move` needs where to: --lane L, --col N or --before ID");
@@ -353,6 +364,8 @@ export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "undo",
   "redo",
   "move",
+  "place",
+  "placing",
   "rm",
   "renumber",
   "retype",

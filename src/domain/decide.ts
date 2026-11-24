@@ -3,6 +3,7 @@
  * never changes it; every rule about what a board may contain starts in this file,
  * and where a card goes is read from placement.ts.
  */
+import { place, placeAdded, placing } from "./by-hand.ts";
 import { columnAfterMove, lastColumn } from "./columns.ts";
 import { type Command, CommandError } from "./commands.ts";
 import type { Actor, BoardEvent, SidecoEvent } from "./events.ts";
@@ -216,6 +217,10 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       if ((el.done ?? false) === cmd.done) return unchanged();
       return { events: [{ event: "ElementMarked", board: b, id: cmd.id, done: cmd.done }] };
     }
+    case "place":
+      return { events: place(board, format, cmd) };
+    case "placing":
+      return { events: placing(board, format, cmd) };
     case "move": {
       const moved = move(board, format, cmd);
       return stays(board, format, moved) ? unchanged() : { events: [moved] };
@@ -338,5 +343,18 @@ function add(ws: Workspace, board: Board, format: Format, cmd: BoardCommand & { 
   if (anchor) events.push({ event: "ElementMoved", board: board.id, id, col, lane, before: anchor.id });
   if (cmd.from)
     events.push({ event: "EdgeAdded", board: board.id, src: cmd.from, dst: id, label: cmd.edgeLabel });
+  // By hand, the new card takes a place of its own: only its kind and its words, which size it, matter here.
+  const added = {
+    id,
+    type: type.id,
+    label: cmd.label,
+    col,
+    lane,
+    by: "agent",
+    addedSeq: 0,
+    changedSeq: 0,
+  } as const;
+  const placed = placeAdded(board, added, cmd.from);
+  if (placed) events.push(placed);
   return { events, minted: id };
 }

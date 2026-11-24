@@ -74,6 +74,9 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--id E1] [--from ID [--edge "label"]] [--detail "…"]
   sideco rename ID "Label"            sideco detail ID "Text"
   sideco move ID --col N | --lane L [--before ID]   (--before alone: before that card, in its cell)
+  sideco place ID X Y                 on a flow or a C4: the card goes to that point, and the whole diagram is
+                                    placed by hand, its other cards where they stand; links then move nothing
+  sideco placing hand|auto            a diagram placed by hand, or by its links again; the places are kept
   sideco done ID                      sideco undone ID
   sideco undo [--dry-run]             take back your own last gesture, named; sideco redo puts it back.
                                     Never the human's: one they changed since is refused, and says why

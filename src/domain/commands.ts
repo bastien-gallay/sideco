@@ -55,6 +55,10 @@ export type Command =
   | { kind: "mark"; board: string; id: string; done: boolean }
   | { kind: "move"; board: string; id: string; col?: number; lane?: string; before?: string }
   | { kind: "remove"; board: string; id: string }
+  /** Puts cards of a diagram where they are said to go, and the whole diagram by hand (S344). */
+  | { kind: "place"; board: string; cards: Spot[] }
+  /** A diagram placed by hand, or by its links again. */
+  | { kind: "placing"; board: string; byHand: boolean }
   /** The element takes the id `to`, else the next of its letter in the project. */
   /** With `type`, the card takes that kind too, and the letter that goes with it. */
   | { kind: "renumber"; board: string; id: string; to?: string; type?: string }
@@ -92,6 +96,13 @@ export type Command =
   | { kind: "turn-end" }
   | { kind: "session-end" }
   | { kind: "delivered"; upTo: number };
+
+/** A card and the point of the scene it goes to. */
+export interface Spot {
+  id: string;
+  x: number;
+  y: number;
+}
 
 export type CommandKind = Command["kind"];
 
@@ -231,6 +242,10 @@ export function parseCommand(input: unknown): Command {
       };
     case "mark":
       return { kind, board: boardId(f), id: idOrName(f, "id"), done: f.done === true };
+    case "place":
+      return { kind, board: boardId(f), cards: list(f, "cards").map(spot) };
+    case "placing":
+      return { kind, board: boardId(f), byHand: flag(f, "byHand") };
     case "move":
       return {
         kind,
@@ -426,6 +441,14 @@ function oneOf<T extends string>(f: Fields, key: string, allowed: readonly T[]):
 
 function optional<T>(f: Fields, key: string, read: (f: Fields, key: string) => T): T | undefined {
   return f[key] === undefined || f[key] === null ? undefined : read(f, key);
+}
+
+/** Where on the scene a card goes: whole units, from the top left corner. */
+function spot(input: unknown, index: number): Spot {
+  if (typeof input !== "object" || input === null)
+    throw new CommandError(`\`cards[${index}]\` must be an object`);
+  const f = input as Fields;
+  return { id: elementId(f, "id"), x: whole(f, "x", 0, 100_000), y: whole(f, "y", 0, 100_000) };
 }
 
 function todo(input: unknown, index: number): Todo {

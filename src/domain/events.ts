@@ -38,7 +38,16 @@ export interface KeptEdge {
   by: Actor;
 }
 
-/** What happened on a board. Positions are semantic (`col`, `lane`), never pixels. */
+/** A point of the scene, from its top left corner, in the units the layout draws in. */
+export interface Point {
+  x: number;
+  y: number;
+}
+
+/**
+ * What happened on a board. Positions are semantic (`col`, `lane`), except on a
+ * diagram placed by hand, where a card keeps the point it was put at (S344).
+ */
 export type BoardEvent = Lineage & BoardFact;
 
 type BoardFact =
@@ -86,6 +95,10 @@ type BoardFact =
   | { event: "ElementUnlabeled"; board: string; id: string; label: string }
   | { event: "ElementMoved"; board: string; id: string; col: number; lane: string; before?: string }
   | { event: "ElementRemoved"; board: string; id: string }
+  /** On a diagram, the card is put at this point of the scene; without one, it has no place of its own. */
+  | { event: "ElementPlaced"; board: string; id: string; at?: Point }
+  /** A diagram is placed by hand, or by its links again; the places made by hand are kept. */
+  | { event: "BoardPlacing"; board: string; byHand: boolean }
   /** The element takes the id `to`; what points at it follows, and `id` is never given again. */
   /** With `type`, the element changed kind with its id. */
   | { event: "ElementRenumbered"; board: string; id: string; to: string; type?: string }
@@ -106,6 +119,7 @@ type BoardFact =
       done?: boolean;
       labels?: string[];
       formerIds?: string[];
+      at?: Point;
       by: Actor;
       addedSeq: number;
       before?: string;
@@ -186,6 +200,8 @@ const BOARD_EVENTS: ReadonlySet<string> = new Set<BoardEvent["event"]>([
   "ElementUnlabeled",
   "ElementMoved",
   "ElementRemoved",
+  "ElementPlaced",
+  "BoardPlacing",
   "ElementRenumbered",
   "ElementRestored",
   "ColumnInserted",

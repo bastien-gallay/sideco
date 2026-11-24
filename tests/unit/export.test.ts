@@ -90,6 +90,16 @@ describe("model file", () => {
     expect(copy.board().title).toBe(original.board().title);
   });
 
+  test("a diagram placed by hand survives the round trip, and so do the places kept while it is by its links", () => {
+    const byHand = table(FLOW).script("place F3 600 40", "human");
+    const copy = reimport(JSON.parse(JSON.stringify(toModel(byHand.board()))));
+    expect(copy.board().byHand).toBe(true);
+    expect(copy.board().elements.map((e) => e.at)).toEqual(byHand.board().elements.map((e) => e.at));
+    const back = reimport(toModel(byHand.script("placing auto", "human").board()));
+    expect(back.board().byHand).toBeUndefined();
+    expect(back.board().elements.find((e) => e.id === "F3")?.at).toEqual({ x: 600, y: 40 });
+  });
+
   test("the order of cards in a lane survives the round trip: it is the priority", () => {
     const original = table(KANBAN).script(
       "move T4 --lane todo --before T3\nmove T1 --lane doing --before T2",

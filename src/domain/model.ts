@@ -2,7 +2,7 @@
  * The shape of a workspace: its boards, what they hold, and the sessions that
  * work on them. `workspace.ts` folds the journal into it.
  */
-import type { Actor } from "./events.ts";
+import type { Actor, Point } from "./events.ts";
 import type { Session } from "./sessions.ts";
 import type { Trails } from "./undo.ts";
 
@@ -19,6 +19,8 @@ export interface Element {
   formerIds?: string[];
   col: number;
   lane: string;
+  /** On a diagram placed by hand, where the card was put; absent while it has no place of its own. */
+  at?: Point;
   by: Actor;
   addedSeq: number;
   changedSeq: number;
@@ -88,6 +90,8 @@ export interface Board {
   laneOrder?: string[];
   /** The lines under the stories of a story map, top to bottom: what ships first is above. */
   slices?: Slice[];
+  /** A diagram whose cards stay where they are put, instead of following their links (S344). */
+  byHand?: true;
   /** In stacking order: within a cell, earlier elements sit first. */
   elements: Element[];
   edges: Edge[];

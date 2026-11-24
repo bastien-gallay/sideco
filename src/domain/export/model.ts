@@ -5,7 +5,7 @@
  * version is version 1 and still loads: `col` from 0, edges also as `[src, dst]`
  * pairs, and `external` read as `system`. Unknown fields are ignored on the way in.
  */
-import { type Command, CommandError } from "../commands.ts";
+import { type Command, CommandError, type Spot } from "../commands.ts";
 import { type Format, findFormat, findType, wearsDone } from "../formats.ts";
 import { isElementId } from "../ids.ts";
 import { heldBy, highestUsed, idNumber } from "../minting.ts";
@@ -20,6 +20,8 @@ export interface ModelElement {
   detail?: string;
   labels?: string[];
   done?: boolean;
+  /** On a diagram placed by hand, where the card stands. */
+  at?: { x: number; y: number };
 }
 
 /** The version of the file `toModel` writes. */
@@ -41,6 +43,8 @@ export interface Model {
   axes?: Partial<Record<"x" | "y", { label: string; low?: string; high?: string }>>;
   /** A story map's slices, top to bottom. */
   slices?: { id: string; label: string }[];
+  /** A diagram whose cards stay where they were put. */
+  byHand?: true;
   elements: ModelElement[];
   edges: { src: string; dst: string; label?: string }[];
 }
@@ -60,6 +64,7 @@ export function toModel(board: Board): Model {
     ...(board.hints && Object.keys(board.hints).length > 0 ? { hints: { ...board.hints } } : {}),
     ...(board.axes && Object.keys(board.axes).length > 0 ? { axes: structuredClone(board.axes) } : {}),
     ...(board.slices?.length ? { slices: board.slices.map((s) => ({ id: s.id, label: s.label })) } : {}),
+    ...(board.byHand ? { byHand: true as const } : {}),
     elements: board.elements.map((e) => ({
       id: e.id,
       type: e.type,
@@ -69,6 +74,7 @@ export function toModel(board: Board): Model {
       ...(e.detail ? { detail: e.detail } : {}),
       ...(wearsDone(board, e) ? { done: true } : {}),
       ...(e.labels?.length ? { labels: [...e.labels] } : {}),
+      ...(e.at ? { at: { ...e.at } } : {}),
     })),
     edges: board.edges.map((edge) => ({
       src: edge.src,
@@ -160,6 +166,7 @@ export function fromModel(input: unknown, board: string, ws?: Workspace): Comman
     !!e.id && e.id.charAt(0) === (format && findType(format, e.type)?.prefix) && !(ws && heldBy(ws, e.id));
   const idFor = idGiver(format, elements.filter(fits), ws);
   const renamed = new Map<string, string>();
+  const spots: Spot[] = [];
   for (const e of elements) {
     const id = (fits(e) ? e.id : undefined) ?? idFor(e.type);
     if (e.id && id && id !== e.id) renamed.set(e.id, id);
@@ -176,11 +183,15 @@ export function fromModel(input: unknown, board: string, ws?: Workspace): Comman
     // On a kanban, done is the lane the card is in: a mark would move it.
     if (e.done && id && !format?.doneLast) commands.push({ kind: "mark", board, id, done: true });
     if (e.labels?.length && id) commands.push({ kind: "label", board, id, labels: e.labels });
+    if (e.at && id && layout === "graph") spots.push({ id, ...e.at });
   }
   for (const edge of Array.isArray(model.edges) ? model.edges : []) {
     const [src, dst, label] = readEdge(edge, v1);
     commands.push({ kind: "link", board, src: renamed.get(src) ?? src, dst: renamed.get(dst) ?? dst, label });
   }
+  // Placed after the links, so that the cards with no place of their own take the one the links give them.
+  if (spots.length > 0) commands.push({ kind: "place", board, cards: spots });
+  if (spots.length > 0 && model.byHand !== true) commands.push({ kind: "placing", board, byHand: false });
   return commands;
 }
 
@@ -233,10 +244,18 @@ function readElement(input: unknown, index: number, v1: boolean): ModelElement {
     lane: typeof e.lane === "string" ? e.lane : undefined,
     detail: typeof e.detail === "string" && e.detail ? e.detail : undefined,
     done: e.done === true ? true : undefined,
+    at: readPoint(e.at),
     labels: Array.isArray(e.labels)
       ? e.labels.filter((label): label is string => typeof label === "string" && label.trim() !== "")
       : undefined,
   };
+}
+
+/** A point of the scene, in whole units from its top left corner; anything else is no place. */
+function readPoint(input: unknown): { x: number; y: number } | undefined {
+  const p = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
+  const whole = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0;
+  return whole(p.x) && whole(p.y) ? { x: p.x, y: p.y } : undefined;
 }
 
 /** A step: from 0 in a version 1 file, from 1 since. */

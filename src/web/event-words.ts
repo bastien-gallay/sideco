@@ -128,7 +128,10 @@ function english(e: Recorded, to: string, lane: LaneCalled): string {
     case "ElementUnlabeled":
       return `${does("take")} the label “${e.label}” off ${e.id}`;
     case "ElementMoved":
+    case "ElementPlaced":
       return `${does("move")} ${e.id}`;
+    case "BoardPlacing":
+      return `${does("place")} the cards ${e.byHand ? "by hand" : "by their links"}`;
     case "ElementRemoved":
       return `${does("remove")} ${e.id}`;
     case "ElementRenumbered":
@@ -248,7 +251,10 @@ function french(e: Recorded, to: string, lane: LaneCalled): string {
     case "ElementUnlabeled":
       return `${verb("retires", "retire")} à ${e.id} le label « ${e.label} »`;
     case "ElementMoved":
+    case "ElementPlaced":
       return `${verb("déplaces", "déplace")} ${e.id}`;
+    case "BoardPlacing":
+      return `${verb("places", "place")} les cartes ${e.byHand ? "à la main" : "par leurs liens"}`;
     case "ElementRemoved":
       return `${verb("supprimes", "supprime")} ${e.id}`;
     case "ElementRenumbered":

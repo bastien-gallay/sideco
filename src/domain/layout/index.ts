@@ -17,6 +17,7 @@ import {
 } from "./columns.ts";
 import { placeConnectorLabels } from "./connector-labels.ts";
 import { layoutGraph, NODE_LINES } from "./graph.ts";
+import { layoutByHand } from "./hand.ts";
 import {
   BLURB_LINES,
   blurbHeight,
@@ -57,6 +58,7 @@ export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE, span?
   const format = findFormat(board.format);
   if (!format) return EMPTY;
   const card = cardMaker(board, format, locale);
+  if (format.layout === "graph" && board.byHand) return placeConnectorLabels(layoutByHand(board, card));
   if (format.layout === "graph")
     return placeConnectorLabels(layoutGraph(board, card, span, format.relations === true));
 

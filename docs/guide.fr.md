@@ -187,6 +187,8 @@ Un atelier est une donnée (un fichier par atelier dans `src/domain/formats/`, l
 
 Un `flow` trop long pour tenir en hauteur se replie, si la fenêtre est assez large, en colonnes côte à côte : on lit la première de haut en bas, puis la flèche monte par l'allée et reprend en haut de la suivante. Le repli ne coupe qu'à un endroit où une seule flèche passe, jamais sous une boucle qui remonte, et suit la largeur de la fenêtre ; les exports gardent une seule colonne.
 
+Un `flow` ou un `c4-context` peut aussi être placé à la main. `sideco place ID X Y` pose la carte à ce point et fige le reste là où il se tient : un lien ajouté ensuite ne déplace plus aucune carte, et se trace en courbe. Une carte ajoutée se met sous celle d'où elle part, à la première place libre. `sideco placing auto` rend le placement aux liens, et `sideco placing hand` retrouve les places posées. Le glisser dans la page viendra ensuite.
+
 Sur un `c4-context`, le détail d'une carte est sa description : la carte en montre le début sous son nom, en plus petit, trois lignes au plus (`sideco detail Y1 "Catalogue, panier, paiement"`). Une personne porte une tête et des épaules au-dessus de son nom.
 
 Sur une `story-map`, quand le tableau défile vers le bas et que les activités passent sous les numéros d'étape, chaque numéro affiche dessous l'activité et la tâche de son étape ; l'activité court jusqu'à l'étape qui en a une autre.

@@ -220,6 +220,16 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
       if (el) restack(board, el, e.before);
       break;
     }
+    case "ElementPlaced":
+      touch(board, e.id, e.seq, (el) => {
+        if (e.at) el.at = { ...e.at };
+        else delete el.at;
+      });
+      break;
+    case "BoardPlacing":
+      if (e.byHand) board.byHand = true;
+      else delete board.byHand;
+      break;
     case "ElementRemoved":
       if (findElement(board, e.id)) board.retired.push(e.id);
       board.elements = board.elements.filter((el) => el.id !== e.id);
@@ -245,6 +255,7 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
         ...(e.formerIds?.length ? { formerIds: [...e.formerIds] } : {}),
         col: e.col,
         lane: e.lane,
+        ...(e.at ? { at: { ...e.at } } : {}),
         by: e.by,
         addedSeq: e.addedSeq,
         changedSeq: e.seq,

@@ -100,6 +100,10 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
       return el && [{ event: "ElementAnnotated", board: b, id: el.id, detail: el.detail ?? "" }];
     case "ElementMarked":
       return el && [{ event: "ElementMarked", board: b, id: el.id, done: el.done ?? false }];
+    case "ElementPlaced":
+      return el && [{ event: "ElementPlaced", board: b, id: el.id, ...(el.at ? { at: { ...el.at } } : {}) }];
+    case "BoardPlacing":
+      return [{ event: "BoardPlacing", board: b, byHand: board.byHand === true }];
     case "ElementLabeled":
       return el && [{ event: "ElementUnlabeled", board: b, id: el.id, label: e.label }];
     case "ElementUnlabeled":
@@ -132,6 +136,7 @@ export function invert(board: Board, e: Happened): BoardEvent[] | undefined {
             done: el.done,
             ...(el.labels?.length ? { labels: [...el.labels] } : {}),
             ...(el.formerIds?.length ? { formerIds: [...el.formerIds] } : {}),
+            ...(el.at ? { at: { ...el.at } } : {}),
             by: el.by,
             addedSeq: el.addedSeq,
             before: after(board, el),
@@ -297,6 +302,9 @@ export function nameOf(board: Board, e: BoardEvent): string {
         : `move ${e.id} --col ${e.col}`;
     case "ElementRemoved":
       return `rm ${e.id}`;
+    case "ElementPlaced":
+    case "BoardPlacing":
+      return placingName(e);
     case "ElementRenumbered":
       return e.type ? `retype ${e.id} ${e.type} ${e.to}` : `renumber ${e.id} ${e.to}`;
     case "ColumnInserted":
@@ -312,6 +320,12 @@ export function nameOf(board: Board, e: BoardEvent): string {
     default:
       return e.event;
   }
+}
+
+/** What placing by hand did, in the words of the CLI. */
+function placingName(e: Extract<BoardEvent, { event: "ElementPlaced" | "BoardPlacing" }>): string {
+  if (e.event === "BoardPlacing") return `placing ${e.byHand ? "hand" : "auto"}`;
+  return e.at ? `place ${e.id} ${e.at.x} ${e.at.y}` : `place ${e.id}`;
 }
 
 /** Columns renumbered, by an insertion or a move: the places the trails remember follow them. */
@@ -361,6 +375,10 @@ function writes(e: BoardEvent): string[] {
       return [`${e.id}.place`];
     case "ElementRemoved":
       return [`${e.id}.*`];
+    case "ElementPlaced":
+      return [`${e.id}.at`];
+    case "BoardPlacing":
+      return ["placing"];
     case "EdgeAdded":
     case "EdgeRemoved":
       return [`${e.src}>${e.dst}`];
