@@ -40,7 +40,8 @@ All notable changes to Sideco are listed here. The format follows
   many wear it. `@name` gives "my cards"; "Show all" gives every card back.
 - A C4 context leaves with its title and its key, as the notation asks: the
   `svg`, `md` and `html` exports are headed "System context: " and the board's
-  title, and name the three kinds of card, each drawn in its colour.
+  title, and name the three kinds of card: drawn in their colours in the svg and
+  the html, by their letters in the markdown.
 
 ### Changed
 

@@ -29,7 +29,12 @@ const TOOL_MARK: Record<string, string> = { ok: "✓", failed: "✗", running: "
 const TODO_MARK: Record<string, string> = { completed: "☑", in_progress: "◐", pending: "☐" };
 
 export const paintSession = region(sessionPanel, (m: SessionModel) => [
-  h("p", { class: `session-status tone-${m.status.tone}`, title: m.status.title }, m.status.text),
+  h(
+    "p",
+    { class: `session-status tone-${m.status.tone}`, title: m.status.title },
+    m.status.text,
+    m.status.title && h("span", { class: "said-only" }, ` ${m.status.title}`),
+  ),
   m.todos.length > 0 &&
     h(
       "ul",

@@ -778,7 +778,13 @@ const paintUndo = region(undoGroup, (m: { undo: boolean; redo: boolean }) => [
 
 const paintStatus = region(statusPill, (m: Status) => [
   h("span", { class: `dot tone-${m.tone}`, "aria-hidden": "true" }),
-  h("span", { class: "status-text", title: m.title ?? m.text }, m.text),
+  // What the words leave out is in the tooltip for a pointer, and said after them to who cannot rest one.
+  h(
+    "span",
+    { class: "status-text", title: m.title ?? m.text },
+    m.text,
+    m.title && h("span", { class: "said-only" }, ` ${m.title}`),
+  ),
 ]);
 
 interface Waits {

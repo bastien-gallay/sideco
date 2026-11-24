@@ -1420,8 +1420,9 @@ kbd {
   transform: none;
 }
 
-/* Said to a screen reader only: what the eye already sees on the board. */
-.spoken {
+/* Said to a screen reader only: what the eye already sees on the board, or reads in a tooltip. */
+.spoken,
+.said-only {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1506,8 +1507,12 @@ kbd {
   opacity: 0.16;
 }
 
-.card-label {
+.card-chip {
   cursor: pointer;
+}
+
+.is-linking .card-chip {
+  cursor: inherit;
 }
 
 .card-shape {

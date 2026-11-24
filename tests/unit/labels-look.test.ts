@@ -99,7 +99,7 @@ describe("a card with labels", () => {
     expect(svg).toContain(">@bastien</text>");
     expect(svg).toContain(">+3</text>");
     // Each chip says the label it stands for, whole, for the page to filter by it (S308); the count stands for none.
-    expect(svg).toContain('<g class="card-label" data-label="type:bug">');
+    expect(svg).toContain('<g class="card-chip" data-label="type:bug">');
     expect([...svg.matchAll(/data-label=/g)]).toHaveLength(2);
     expect(chipText("assignee:bastien")).toBe("@bastien");
     const ys = [...svg.matchAll(/<rect class="card-label-chip" x="[\d.]+" y="([\d.]+)"/g)].map((m) =>

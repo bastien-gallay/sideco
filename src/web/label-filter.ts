@@ -12,7 +12,7 @@ import { chipText, labelColours } from "../domain/render/labels.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h, region } from "./dom.ts";
 import { locale } from "./locale.ts";
-import { currentBoard } from "./store.ts";
+import { currentBoard, state } from "./store.ts";
 
 interface Words {
   filter: string;
@@ -48,7 +48,7 @@ let label: string | undefined;
 let hooks: { changed: () => void; speak: (words: string) => void } = { changed: () => {}, speak: () => {} };
 
 /** Over the board while a filter holds: the label, how many cards wear it, and the way back. */
-export const filterBar = h("div", { class: "filter-bar", role: "status", hidden: true });
+export const filterBar = h("div", { class: "filter-bar", hidden: true });
 
 /** The cards of a board that wear a label, among all of them. */
 export function wearing(board: Board, by: string): { shown: number; of: number } {
@@ -72,20 +72,33 @@ const count = (board: Board, by: string): string => {
   return w.count(shown, of);
 };
 
-/** A chip of a card is pressed where the pointer went down: a card carried by its chip is a move, not a filter. */
+/**
+ * A chip of a card is pressed where the pointer went down and stayed. A card
+ * carried by its chip is a move, wherever it is let go; a card pressed to end a
+ * link is the link's; the second press of a double click is the rename's.
+ */
 export function mountLabelFilter(canvas: HTMLElement, on: typeof hooks): void {
   hooks = on;
   let down: { x: number; y: number } | undefined;
+  const carried = (): boolean => canvas.querySelector("g.card.is-dragging") !== null;
   canvas.addEventListener("pointerdown", (event) => {
-    down = { x: event.clientX, y: event.clientY };
+    down = state.linking === null ? { x: event.clientX, y: event.clientY } : undefined;
+  });
+  canvas.addEventListener("pointermove", (event) => {
+    if (down && (carried() || Math.hypot(event.clientX - down.x, event.clientY - down.y) > PRESS_REACH))
+      down = undefined;
   });
   canvas.addEventListener("click", (event) => {
-    const from = down;
+    const pressed = down !== undefined && event.detail < 2;
     down = undefined;
-    if (!from || Math.hypot(event.clientX - from.x, event.clientY - from.y) > PRESS_REACH) return;
+    if (!pressed) return;
     // The board holds the pointer while a card is pressed: what is under it says which chip.
-    const chip = document.elementFromPoint(event.clientX, event.clientY)?.closest<SVGGElement>(".card-label");
+    const chip = document.elementFromPoint(event.clientX, event.clientY)?.closest<SVGGElement>(".card-chip");
     if (chip?.dataset.label) toggleLabelFilter(chip.dataset.label);
+  });
+  // The bar goes with the filter: the keyboard that pressed "Show all" goes back to the board, not nowhere.
+  filterBar.addEventListener("click", () => {
+    if (label === undefined) canvas.querySelector<SVGGElement>('g.card[tabindex="0"], g.card')?.focus();
   });
 }
 

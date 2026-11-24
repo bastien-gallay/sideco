@@ -271,7 +271,15 @@ describe("the session beside the board", () => {
     await page.waitForFunction(
       () => document.querySelector(".status-text")?.getAttribute("title") === "Claude Code login expired",
     );
-    expect(await status().textContent()).toBe("Claude is waiting for you in the terminal");
+    // The eye reads the sentence alone; who cannot rest a pointer on it hears the reason after it.
+    expect(await status().textContent()).toBe(
+      "Claude is waiting for you in the terminal Claude Code login expired",
+    );
+    expect(
+      await status()
+        .locator(".said-only")
+        .evaluate((el) => el.getBoundingClientRect().width),
+    ).toBe(1);
 
     await hook({ hook_event_name: "Stop", last_assistant_message: "Voilà le premier jet." });
     await page.waitForFunction(
@@ -3692,7 +3700,7 @@ describe("labels on a card, from the page", () => {
 
     // On the card: the chip is the filter. The cards without the label step back, none moves.
     const before = await settled(deliver);
-    await card(fix).locator('.card-label[data-label="type:bug"]').click();
+    await card(fix).locator('.card-chip[data-label="type:bug"]').click();
     await until("the card without the label steps back", () => faded(deliver));
     expect(await faded(fix)).toBe(false);
     expect(await faded(sort)).toBe(false);
@@ -3705,12 +3713,34 @@ describe("labels on a card, from the page", () => {
     );
     await shot("61-label-filter");
 
-    // The bar gives every card back.
+    // A card carried by its chip is a move: the filter stays as it was.
+    const chip = await card(sort).locator('.card-chip[data-label="type:bug"]').boundingBox();
+    if (!chip) throw new Error("the chip is drawn");
+    await page.mouse.move(chip.x + 4, chip.y + 4);
+    await page.mouse.down();
+    await page.mouse.move(chip.x + 60, chip.y + 40, { steps: 4 });
+    await page.mouse.move(chip.x + 5, chip.y + 5, { steps: 4 });
+    await page.mouse.up();
+    await settled(sort);
+    expect(await faded(deliver)).toBe(true);
+
+    // A label is the same on every board: the filter follows to another, and back.
+    await page.locator(".board-picker select").selectOption("etiquettes");
+    await until(
+      "the filter holds on the other board",
+      async () => (await bar.textContent())?.includes("type:bug") === true,
+    );
+    await page.locator(".board-picker select").selectOption("filtre-s308");
+    await until("and back", () => faded(deliver));
+
+    // The bar gives every card back, and the keyboard goes to the board.
     await bar.getByRole("button", { name: "Show all" }).click();
     await until("every card is back", async () => !(await faded(deliver)));
     expect(await bar.isHidden()).toBe(true);
+    expect(await page.evaluate(() => document.activeElement?.classList.contains("card"))).toBe(true);
 
     // In the Detail tab, by the keyboard: @name is "my cards". Pressed again, it lets go.
+    await card(fix).locator(".card-id").click();
     await page.getByRole("tab", { name: "Detail" }).click();
     const mine = page.getByRole("button", { name: "Show only the cards labelled @bastien" });
     await mine.focus();
