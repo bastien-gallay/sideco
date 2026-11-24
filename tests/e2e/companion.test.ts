@@ -2319,6 +2319,77 @@ describe("many tabs open on the companion", () => {
   });
 });
 
+describe("a column folded by its reader (S307)", () => {
+  const fold = (lane: string) => page.locator(`.layer-heads .lane-fold[data-fold="${lane}"]`);
+  const widthOf = async (lane: string) =>
+    (
+      await page
+        .locator(`.layer-bands rect.lane-bg >> nth=${lane === "todo" ? 0 : lane === "doing" ? 1 : 2}`)
+        .boundingBox()
+    )?.width ?? 0;
+  const foldedIn = () => page.evaluate(() => localStorage.getItem("sideco.lanes-folded"));
+
+  test("folds into a narrow band with its count, opens by a click, and is kept in this browser", async () => {
+    const [first, second, third] = await agent(
+      'board new "Repli" --format kanban --id repli\nadd task "Brancher" --lane todo\nadd task "Écran" --lane doing\nadd task "Contrat" --lane doing',
+    );
+    await page.locator(".board-picker select").selectOption("repli");
+    await card(third).waitFor();
+    const open = await widthOf("doing");
+
+    // Its button comes with the pointer on its heading; pressed, the column is a narrow band and its cards are put away.
+    await page.locator(".layer-heads .lane-label", { hasText: /^Doing$/ }).hover();
+    await fold("doing").click();
+    await card(second).waitFor({ state: "detached" });
+    expect(await card(third).count()).toBe(0);
+    expect(await card(first).count()).toBe(1);
+    expect(await widthOf("doing")).toBeLessThan(open / 3);
+    expect(await fold("doing").getAttribute("aria-expanded")).toBe("false");
+    expect(await fold("doing").getAttribute("aria-label")).toBe("Open the column Doing, 2 cards");
+    expect(await foldedIn()).toBe('{"repli":["doing"]}');
+    // The journal knows nothing of it: the fold is the reader's own.
+    expect((await workspace()).boards.find((b) => b.id === "repli")?.elements.length).toBe(3);
+    await page.waitForTimeout(300);
+    await shot("68-lane-folded");
+
+    // Kept through a reload of the page.
+    await page.reload();
+    await card(first).waitFor();
+    expect(await card(second).count()).toBe(0);
+
+    // A card Claude adds to it is counted, not shown.
+    const [fourth] = await agent('add task "Recette" --lane doing --board repli');
+    await until("the folded column counts four... three cards", async () =>
+      ((await fold("doing").getAttribute("aria-label")) ?? "").includes("3 cards"),
+    );
+    expect(await card(fourth).count()).toBe(0);
+
+    // A click anywhere on the band opens it again.
+    await page.locator(".layer-bands rect.lane-bg[data-fold=doing]").click({ position: { x: 20, y: 200 } });
+    await card(second).waitFor();
+    expect(await foldedIn()).toBe("{}");
+
+    // The keyboard folds it too, and stays on the button; a card chosen in a folded column opens it.
+    await fold("doing").focus();
+    await page.keyboard.press("Enter");
+    await card(second).waitFor({ state: "detached" });
+    await until("the keyboard is still on the button", async () =>
+      fold("doing").evaluate((b) => b === document.activeElement),
+    );
+    await page.keyboard.press("/");
+    await page.keyboard.type("Contrat");
+    await page.keyboard.press("Enter");
+    await card(third).waitFor();
+    expect(await foldedIn()).toBe("{}");
+
+    await page.keyboard.press("Escape");
+    await agent("board rm repli");
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== "repli";
+    });
+  });
+});
+
 describe("a kanban's own lanes, from the page", () => {
   const BOARD = "colonnes";
   const lanes = async (): Promise<string[]> =>

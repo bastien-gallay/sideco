@@ -54,6 +54,12 @@ export interface Band {
   count?: number;
   /** What a lane stands for, when its name alone does not say it. */
   hint?: string;
+  /**
+   * A lane the reader may fold: whether it is, and what its button says. Undefined
+   * where no reader folds: on paper, and in the cells of a plan.
+   */
+  folded?: boolean;
+  foldSaid?: string;
   /** A step of a story map: the activity and the task it belongs to, one line each. */
   caption?: string[];
   /** An axis: the words for where it starts and where it ends. */
@@ -85,6 +91,19 @@ export interface Scene {
 
 /** Where a pointer position lands, in the board's own terms. */
 /** A free rectangle of the board, in scene coordinates. */
+/**
+ * What the page gives a layout: the width the board has on screen, and the
+ * lanes its reader folded (S307). The fold is the reader's own, as a panel's
+ * is: the journal knows nothing of it.
+ */
+export interface View {
+  span?: number;
+  folded?: ReadonlySet<string>;
+}
+/** The width alone, or all the page gives. */
+export type Seen = number | View | undefined;
+export const spanOf = (seen: Seen): number | undefined => (typeof seen === "object" ? seen.span : seen);
+
 export interface Room {
   x: number;
   y: number;

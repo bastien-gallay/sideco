@@ -33,11 +33,13 @@ function laneHead(band: Band, index: number, texts: Iterable<Element>, keyed: bo
       width: band.w,
       height: band.hint ? LANE_HEAD_HINTED : LANE_HEAD,
       rx: 10,
+      // Folded, the whole band opens it, its heading too.
+      ...(band.folded ? { "data-fold": band.id } : {}),
     }),
     ...texts,
   );
   // Where a subtitle would go, offered under the pointer: a double-click writes one.
-  if (!band.hint) {
+  if (!band.hint && !band.folded) {
     const blank = svg("text", {
       class: "lane-hint-blank",
       x: band.x + 14,

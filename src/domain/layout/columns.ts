@@ -8,7 +8,7 @@
  */
 
 import { type Format, laneHint, laneName, lanesOf, planAxis } from "../formats.ts";
-import type { Locale } from "../i18n.ts";
+import { type Locale, WORDS } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
 import {
   type Band,
@@ -20,6 +20,8 @@ import {
   MARGIN,
   type Room,
   type Scene,
+  type Seen,
+  spanOf,
   type Target,
 } from "./scene.ts";
 
@@ -58,6 +60,8 @@ interface LanePlan {
   h: number;
   lines: Line[];
   count: number;
+  /** Folded by its reader: narrow, its cards put away. */
+  folded: boolean;
 }
 
 interface Plan {
@@ -66,32 +70,56 @@ interface Plan {
   abreast: number;
   /** The width of every card. */
   cardW: number;
+  /** A reader is there to fold the lanes. */
+  foldable: boolean;
   right: number;
   bottom: number;
 }
 
+/** A lane folded by its reader: wide enough for its button, its count and its name upright. */
+const FOLD_W = 44;
+
 /**
- * How wide a card is. Lanes side by side share out the `span` they are given,
- * within bounds; a plan keeps its cells, and without a span every card keeps
- * its own width.
+ * How wide a card is. The open lanes side by side share out the `span` they are
+ * given, less what the `folded` ones keep, within bounds; a plan keeps its
+ * cells, and without a span every card keeps its own width.
  */
-function cardWidth(format: Format, lanes: number, span: number | undefined): number {
-  if (span === undefined || format.grid || lanes === 0) return CARD_W;
-  const laneW = Math.floor((span - 2 * MARGIN - (lanes - 1) * LANE_GAP) / lanes);
+function cardWidth(format: Format, lanes: number, span: number | undefined, folded = 0): number {
+  const open = lanes - folded;
+  if (span === undefined || format.grid || open <= 0) return CARD_W;
+  const laneW = Math.floor((span - 2 * MARGIN - (lanes - 1) * LANE_GAP - folded * FOLD_W) / open);
   return Math.min(MAX_CARD_W, Math.max(MIN_CARD_W, laneW - 2 * LANE_SIDE));
+}
+
+/** The cards of a lane in rows, so many abreast, from `top` down; and how tall they stand. */
+function stackLines(stack: Element[], x: number, top: number, abreast: number, cardW: number) {
+  const chars = charsFor(cardW);
+  const lines: Line[] = [];
+  let y = top;
+  for (let at = 0; at < stack.length; at += abreast) {
+    const cards = stack
+      .slice(at, at + abreast)
+      .map((e, k) => ({ e, x: x + LANE_SIDE + k * (cardW + ABREAST_GAP) }));
+    const h = Math.max(...cards.map((c) => elementHeight(c.e, chars)));
+    lines.push({ y, h, cards });
+    y += h + STACK_GAP;
+  }
+  return { lines, stackH: y - top };
 }
 
 /**
  * Where every lane and every card goes. `without` is a card in the human's
- * hand: it takes no place. `span` is the width the board has on screen.
+ * hand: it takes no place. `seen` is what the page gives: the width the board
+ * has on screen, and the lanes its reader folded, which keep their count and
+ * lay no card.
  */
-function plan(board: Board, format: Format, without?: string, span?: number): Plan {
+function plan(board: Board, format: Format, without?: string, seen?: Seen): Plan {
   const grid = format.grid;
   const ids = lanesOf(board);
+  const shut = typeof seen === "object" && !grid ? seen.folded : undefined;
   const perRow = grid?.perRow ?? ids.length;
   const abreast = grid?.abreast ?? 1;
-  const cardW = cardWidth(format, ids.length, span);
-  const chars = charsFor(cardW);
+  const cardW = cardWidth(format, ids.length, spanOf(seen), ids.filter((id) => shut?.has(id)).length);
   const laneW = 2 * LANE_SIDE + abreast * cardW + (abreast - 1) * ABREAST_GAP;
   const left = MARGIN + (grid ? AXIS : 0);
   const minHeight = (grid ? MIN_SLOTS_IN_CELL : MIN_SLOTS) * SLOT_H;
@@ -99,36 +127,41 @@ function plan(board: Board, format: Format, without?: string, span?: number): Pl
   const lanes: LanePlan[] = [];
   let top = MARGIN;
   for (let start = 0; start < ids.length; start += perRow) {
-    const row = ids.slice(start, start + perRow).map((id, i) => {
-      const x = left + i * (laneW + LANE_GAP);
+    let x = left;
+    const row = ids.slice(start, start + perRow).map((id) => {
+      const folded = shut?.has(id) === true;
       const stack = board.elements.filter((e) => e.lane === id && e.id !== without);
-      const lines: Line[] = [];
-      let y = top + HEADER_H + LANE_PAD;
-      for (let at = 0; at < stack.length; at += abreast) {
-        const cards = stack
-          .slice(at, at + abreast)
-          .map((e, k) => ({ e, x: x + LANE_SIDE + k * (cardW + ABREAST_GAP) }));
-        const h = Math.max(...cards.map((c) => elementHeight(c.e, chars)));
-        lines.push({ y, h, cards });
-        y += h + STACK_GAP;
-      }
-      const stackH = y - (top + HEADER_H + LANE_PAD);
-      return { id, x, lines, count: stack.length, stackH };
+      const laid = stackLines(folded ? [] : stack, x, top + HEADER_H + LANE_PAD, abreast, cardW);
+      const lane = { id, x, w: folded ? FOLD_W : laneW, folded, count: stack.length, ...laid };
+      x += lane.w + LANE_GAP;
+      return lane;
     });
     // Lanes side by side are as tall as each other: the tallest stack, and one free slot to drop into.
     const tallest = Math.max(0, ...row.map((lane) => lane.stackH));
     const h = HEADER_H + LANE_PAD + Math.max(minHeight, tallest + SLOT_H);
-    for (const { id, x, lines, count } of row) lanes.push({ id, x, y: top, w: laneW, h, lines, count });
+    for (const { stackH: _, ...lane } of row) lanes.push({ ...lane, y: top, h });
     top += h + LANE_GAP;
   }
-  const columns = Math.min(perRow, ids.length);
   return {
     lanes,
     abreast,
     cardW,
-    right: left + columns * (laneW + LANE_GAP) - LANE_GAP,
+    foldable: shut !== undefined,
+    right: lanes.length > 0 ? Math.max(...lanes.map((lane) => lane.x + lane.w)) : left - LANE_GAP,
     bottom: top - LANE_GAP,
   };
+}
+
+/** What a lane's band says of its fold, where a reader is there to fold it. */
+function foldOf(
+  planned: Plan,
+  lane: LanePlan,
+  name: string,
+  locale: Locale,
+): Pick<Band, "folded" | "foldSaid"> {
+  if (!planned.foldable) return {};
+  const w = WORDS[locale];
+  return { folded: lane.folded, foldSaid: lane.folded ? w.openLane(name, lane.count) : w.foldLane(name) };
 }
 
 export function layoutColumns(
@@ -136,9 +169,9 @@ export function layoutColumns(
   format: Format,
   card: (e: Element, x: number, y: number, w: number) => Card,
   locale: Locale,
-  span?: number,
+  seen?: Seen,
 ): Scene {
-  const planned = plan(board, format, undefined, span);
+  const planned = plan(board, format, undefined, seen);
   const bands: Band[] = [];
   const cards: Card[] = [];
   for (const lane of planned.lanes) {
@@ -152,6 +185,7 @@ export function layoutColumns(
       w: lane.w,
       h: lane.h,
       count: lane.count,
+      ...foldOf(planned, lane, laneName(format, board, lane.id, locale), locale),
     });
     for (const line of lane.lines)
       for (const { e, x } of line.cards) cards.push(card(e, x, line.y, planned.cardW));
@@ -196,11 +230,13 @@ export function layoutColumns(
  * last card, or under the header of an empty lane; in a plan, beside the last
  * card while its row has room.
  */
-export function roomInColumns(board: Board, format: Format, lane: string, span?: number): Room | undefined {
-  const planned = plan(board, format, undefined, span);
+export function roomInColumns(board: Board, format: Format, lane: string, seen?: Seen): Room | undefined {
+  const planned = plan(board, format, undefined, seen);
   const cardW = planned.cardW;
   const found = planned.lanes.find((candidate) => candidate.id === lane);
   if (!found) return undefined;
+  // A folded lane has no room to offer: a card dropped on it goes to its end, and nothing is added in it.
+  if (found.folded) return undefined;
   const foot = found.y + found.h;
   const last = found.lines.at(-1);
   if (last && last.cards.length < planned.abreast) {
@@ -218,9 +254,9 @@ export function locateInColumns(
   x: number,
   y: number,
   moving?: string,
-  span?: number,
+  seen?: Seen,
 ): Target {
-  const planned = plan(board, format, moving, span);
+  const planned = plan(board, format, moving, seen);
   const edge = laneEdgeAt(planned, format, x, y);
   if (edge) return edge;
   // A lane goes on under its foot, as far as the pointer goes; a cell ends where the next one starts.
@@ -267,9 +303,9 @@ export function roomOnLaneEdge(
   board: Board,
   format: Format,
   before: string | undefined,
-  span?: number,
+  seen?: Seen,
 ): Room | undefined {
-  const planned = plan(board, format, undefined, span);
+  const planned = plan(board, format, undefined, seen);
   const first = planned.lanes[0];
   if (!first) return undefined;
   const next = before === undefined ? undefined : planned.lanes.find((lane) => lane.id === before);
@@ -279,8 +315,8 @@ export function roomOnLaneEdge(
 }
 
 /** The heading of a lane, where what is done to the whole lane is offered. */
-export function laneHeading(board: Board, format: Format, lane: string, span?: number): Room | undefined {
-  const found = plan(board, format, undefined, span).lanes.find((candidate) => candidate.id === lane);
+export function laneHeading(board: Board, format: Format, lane: string, seen?: Seen): Room | undefined {
+  const found = plan(board, format, undefined, seen).lanes.find((candidate) => candidate.id === lane);
   return found && { x: found.x, y: found.y, w: found.w, h: HEADER_H };
 }
 
@@ -294,9 +330,9 @@ export function dropLane(
   format: Format,
   x: number,
   moving: string,
-  span?: number,
+  seen?: Seen,
 ): { before?: string; x: number } | undefined {
-  const planned = plan(board, format, undefined, span);
+  const planned = plan(board, format, undefined, seen);
   const others = planned.lanes.filter((lane) => lane.id !== moving);
   const next = others.find((lane) => x < lane.x + lane.w / 2);
   const order = planned.lanes.map((lane) => lane.id);

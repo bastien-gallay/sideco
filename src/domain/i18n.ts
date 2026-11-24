@@ -28,6 +28,9 @@ export interface Words {
   /** A card that splits another, and a card split: how many of its parts are done (see kin.ts). */
   splits: (card: string, others?: number) => string;
   splitDone: (done: number, of: number) => string;
+  /** What the button of a column does: fold it, or open it folded, with how many cards it keeps (S307). */
+  foldLane: (name: string) => string;
+  openLane: (name: string, cards: number) => string;
   /** An author, in a table cell. */
   who: Record<Actor, string>;
   step: string;
@@ -65,6 +68,8 @@ export const WORDS: Record<Locale, Words> = {
     splits: (card, others = 0) =>
       `splits ${card}${others > 0 ? `, and ${others} ${others > 1 ? "others" : "other"}` : ""}`,
     splitDone: (done, of) => `${done} of ${of} task${of > 1 ? "s" : ""} done`,
+    foldLane: (name) => `Fold the column ${name}`,
+    openLane: (name, cards) => `Open the column ${name}, ${cards} card${cards > 1 ? "s" : ""}`,
     who: { human: "human", agent: "agent", system: "system" },
     step: "Step",
     column: "Column",
@@ -95,6 +100,8 @@ export const WORDS: Record<Locale, Words> = {
     splits: (card, others = 0) =>
       `découpe ${card}${others > 0 ? `, et ${others} ${others > 1 ? "autres" : "autre"}` : ""}`,
     splitDone: (done, of) => `${done} tâche${done > 1 ? "s" : ""} faite${done > 1 ? "s" : ""} sur ${of}`,
+    foldLane: (name) => `Replier la colonne ${name}`,
+    openLane: (name, cards) => `Ouvrir la colonne ${name}, ${cards} carte${cards > 1 ? "s" : ""}`,
     who: { human: "humain", agent: "agent", system: "système" },
     step: "Étape",
     column: "Colonne",

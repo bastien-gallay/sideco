@@ -26,6 +26,7 @@ import { changedMark, ringMarkup, unreadMark } from "./card-marks.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
 import { BACKBONE_H, liftHeadings } from "./headings.ts";
+import { mountLaneFold, seen } from "./lane-fold.ts";
 import { linkHandle } from "./link-handle.ts";
 import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
@@ -266,7 +267,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     }
     root.removeAttribute("visibility");
     root.setAttribute("aria-label", t.boardCards(board.title));
-    scene = layoutBoard(board, locale, span);
+    scene = layoutBoard(board, locale, seen(board, span));
     const w = Math.max(scene.width, 320);
     const hgt = Math.max(scene.height, 200);
     root.setAttribute("viewBox", `0 0 ${w} ${hgt}`);
@@ -422,7 +423,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       head.classList.toggle("is-dragging", held);
       head.setAttribute("transform", `translate(${held ? laneDrag?.dx : 0} ${headDrop(band)})`);
       // Its name and what it stands for follow a sideways scroll too, short of the count at its right end.
-      const words = [...head.querySelectorAll<SVGTextElement>("text.lane-label, text.lane-hint")];
+      const words = [
+        ...head.querySelectorAll<SVGTextElement>("text.lane-label:not(.is-upright), text.lane-hint"),
+      ];
       const room = Math.max(0, ...words.map((text) => text.getComputedTextLength())) + LANE_COUNT_ROOM;
       const slide = headingSlide(band, sx, room);
       for (const text of words) {
@@ -455,7 +458,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   /** What the pointer is on among the headings, as they are drawn after the scroll. */
   function inHeadings(x: number, y: number): Target | undefined {
     if (!board) return undefined;
-    const target = locate(board, x, y - headsDrop(), undefined, span);
+    const target = locate(board, x, y - headsDrop(), undefined, seen(board, span));
     return target.kind === "lane-edge" || target.kind === "boundary" || target.kind === "step-head"
       ? target
       : undefined;
@@ -473,7 +476,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       drag?.moving === true ||
       laneDrag?.moving === true ||
       stepDrag?.moving === true;
-    const offers = quiet || !board ? [] : addOffers(board, pointed, locale, span);
+    const offers = quiet || !board ? [] : addOffers(board, pointed, locale, seen(board, span));
     const drop = headsDrop();
     const signature = JSON.stringify({ offers, drop });
     if (signature === offered) return;
@@ -502,7 +505,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   /** Opens the editor for a new card of this kind where the pointer is: in its cell, or at the end of its lane. */
   function addHere(typeId: string): void {
-    const room = board ? vacancy(board, pointed, span) : undefined;
+    const room = board ? vacancy(board, pointed, seen(board, span)) : undefined;
     const matrix = root.getScreenCTM();
     if (!room || !matrix || pointed.kind === "none") return;
     const corner = new DOMPoint(room.x, room.y).matrixTransform(matrix);
@@ -537,6 +540,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     picked: pickedLink,
     chosen: state.selected ?? undefined,
   }));
+
+  mountLaneFold(root, () => (isLive() ? board : undefined));
 
   /** The handle of the card chosen, that pulls a link to another card (S326). */
   const paintHandle = linkHandle(root, {
@@ -1160,7 +1165,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (offerAt(event.target)) return;
     const at = toScene(event);
     // The headings come down with the scroll: what they offer is where they are drawn.
-    pointed = inHeadings(at.x, at.y) ?? locate(board, at.x, at.y, undefined, span);
+    pointed = inHeadings(at.x, at.y) ?? locate(board, at.x, at.y, undefined, seen(board, span));
     paintOffers();
   });
   root.addEventListener("pointerleave", () => {
@@ -1181,7 +1186,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (!drag.moving) return;
     const g = nodes.get(drag.id)?.g;
     if (g) g.style.transform = `translate(${at.x - drag.dx}px, ${at.y - drag.dy}px)`;
-    drag.target = locate(board, at.x, at.y, drag.id, span);
+    drag.target = locate(board, at.x, at.y, drag.id, seen(board, span));
     showDrop({ hint, line: dropLine }, scene, board, drag.target, drag.id);
   });
 
@@ -1197,7 +1202,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (!laneDrag.moving) return;
     laneDrag.dx = x - laneDrag.startX;
     holdHeadings();
-    laneDrag.drop = laneDrop(board, x, laneDrag.lane, span);
+    laneDrag.drop = laneDrop(board, x, laneDrag.lane, seen(board, span));
     const band = scene.bands.find((b) => b.kind === "lane" && b.id === laneDrag?.lane);
     if (!laneDrag.drop || !band) {
       hint.setAttribute("visibility", "hidden");
@@ -1374,7 +1379,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     }
     const f = format();
     const at = toScene(event);
-    const target = locate(board, at.x, at.y, undefined, span);
+    const target = locate(board, at.x, at.y, undefined, seen(board, span));
     const snap = { x: event.clientX - 76 * zoom, y: event.clientY - 44 * zoom };
     if (target.kind === "cell") beginAdd(target.type, { col: target.col, ...snap });
     else if (target.kind === "slot" && f?.types[0]) beginAdd(f.types[0].id, { lane: target.lane, ...snap });

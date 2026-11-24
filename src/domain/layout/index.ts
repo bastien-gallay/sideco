@@ -33,6 +33,8 @@ import {
   plainDetail,
   type Room,
   type Scene,
+  type Seen,
+  spanOf,
   type Target,
   WRAP_LINES,
   wrap,
@@ -55,18 +57,18 @@ const EMPTY: Scene = { width: 0, height: 0, bands: [], cards: [], connectors: []
  * it has one: lanes that can share it out do; without it, as on paper, every
  * lane keeps its own width.
  */
-export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE, span?: number): Scene {
+export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE, seen?: Seen): Scene {
   const format = findFormat(board.format);
   if (!format) return EMPTY;
   const card = cardMaker(board, format, locale);
   if (format.layout === "graph" && board.byHand) return placeConnectorLabels(layoutByHand(board, card));
   if (format.layout === "graph")
-    return placeConnectorLabels(layoutGraph(board, card, span, format.relations === true));
+    return placeConnectorLabels(layoutGraph(board, card, spanOf(seen), format.relations === true));
 
   const scene =
     format.layout === "timeline"
       ? layoutTimeline(board, format, card, locale)
-      : layoutColumns(board, format, card, locale, span);
+      : layoutColumns(board, format, card, locale, seen);
   const byId = new Map(scene.cards.map((c) => [c.id, c]));
   for (const edge of board.edges) {
     const a = byId.get(edge.src);
@@ -77,10 +79,10 @@ export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE, span?
 }
 
 /** What a point of the scene means on this board: a cell, a slot in a lane, or nothing. */
-export function locate(board: Board, x: number, y: number, moving?: string, span?: number): Target {
+export function locate(board: Board, x: number, y: number, moving?: string, seen?: Seen): Target {
   const format = findFormat(board.format);
   if (format?.layout === "timeline") return locateInTimeline(board, format, x, y, moving);
-  if (format?.layout === "columns") return locateInColumns(board, format, x, y, moving, span);
+  if (format?.layout === "columns") return locateInColumns(board, format, x, y, moving, seen);
   return { kind: "none" };
 }
 
@@ -90,16 +92,16 @@ export function locate(board: Board, x: number, y: number, moving?: string, span
  * Undefined where nothing is added by place: off the board, and on a flow,
  * whose elements are placed by their links.
  */
-export function vacancy(board: Board, target: Target, span?: number): Room | undefined {
+export function vacancy(board: Board, target: Target, seen?: Seen): Room | undefined {
   const format = findFormat(board.format);
   if (format?.layout === "timeline" && target.kind === "cell")
     return roomInTimeline(board, format, target.col, target.type);
   if (format?.layout === "timeline" && target.kind === "boundary") return roomOnBoundary(target.col);
   if (format?.layout === "timeline" && target.kind === "step-head") return stepHeading(target.col);
   if (format?.layout === "columns" && target.kind === "slot")
-    return roomInColumns(board, format, target.lane, span);
+    return roomInColumns(board, format, target.lane, seen);
   if (format?.layout === "columns" && target.kind === "lane-edge")
-    return roomOnLaneEdge(board, format, target.before, span);
+    return roomOnLaneEdge(board, format, target.before, seen);
   return undefined;
 }
 
@@ -113,10 +115,10 @@ export function laneDrop(
   board: Board,
   x: number,
   moving: string,
-  span?: number,
+  seen?: Seen,
 ): { before?: string; x: number } | undefined {
   const format = findFormat(board.format);
-  return format?.ownLanes && !format.grid ? dropLane(board, format, x, moving, span) : undefined;
+  return format?.ownLanes && !format.grid ? dropLane(board, format, x, moving, seen) : undefined;
 }
 
 /** The top of a step of a timeline: where what is done to the whole step is offered. */
@@ -125,9 +127,9 @@ export function stepOf(board: Board, col: number): Room | undefined {
 }
 
 /** The heading of a lane of a columns board: where what is done to the whole lane is offered. */
-export function headingOf(board: Board, lane: string, span?: number): Room | undefined {
+export function headingOf(board: Board, lane: string, seen?: Seen): Room | undefined {
   const format = findFormat(board.format);
-  return format?.layout === "columns" ? laneHeading(board, format, lane, span) : undefined;
+  return format?.layout === "columns" ? laneHeading(board, format, lane, seen) : undefined;
 }
 
 function cardMaker(
@@ -208,5 +210,5 @@ function lookOf(format: Format, type: ElementType | undefined, locale: Locale): 
 /** A label on one line: the name a card is heard by. */
 const oneLineOf = (label: string): string => label.replace(/\s+/g, " ").trim();
 
-export type { Band, Card, Connector, Room, Scene, Target } from "./scene.ts";
+export type { Band, Card, Connector, Room, Scene, Seen, Target, View } from "./scene.ts";
 export { headingSlide };

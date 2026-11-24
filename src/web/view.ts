@@ -12,7 +12,7 @@ import type { Actor, Recorded } from "../domain/events.ts";
 import { type Found, findInWorkspace, queryWords } from "../domain/find.ts";
 import { findFormat, findType, laneName, lanesOf } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
-import { type Band, headingOf, stepOf, type Target, vacancy } from "../domain/layout/index.ts";
+import { type Band, headingOf, type Seen, stepOf, type Target, vacancy } from "../domain/layout/index.ts";
 import type { Session, SessionTurn } from "../domain/sessions.ts";
 import { threads } from "../domain/threads.ts";
 import { type Board, findBoard, findElement, type Workspace } from "../domain/workspace.ts";
@@ -565,7 +565,7 @@ export function addOffers(
   board: Board,
   target: Target,
   locale: Locale = DEFAULT_LOCALE,
-  span?: number,
+  span?: Seen,
 ): Offer[] {
   const format = findFormat(board.format);
   const room = vacancy(board, target, span);
@@ -637,7 +637,7 @@ export function addOffers(
 }
 
 /** On a kanban, the "×" in the heading of an empty lane, unless it is the board's last. */
-function laneRemoval(board: Board, lane: string, locale: Locale, span?: number): Offer[] {
+function laneRemoval(board: Board, lane: string, locale: Locale, span?: Seen): Offer[] {
   const format = findFormat(board.format);
   const heading = headingOf(board, lane, span);
   if (!format?.ownLanes || !heading || lanesOf(board).length < 2) return [];

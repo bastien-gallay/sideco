@@ -36,6 +36,10 @@ export const SVG_STYLE = `
 .lane-bg { fill: var(--sideco-lane, #F3F4F6); }
 .lane-label { fill: var(--sideco-ink, #1F2328); font-size: 13px; font-weight: 600; }
 .lane-count { fill: var(--sideco-muted, #59636E); font-size: 12px; text-anchor: end; }
+.lane-count.is-folded { text-anchor: middle; }
+.lane-fold { fill: var(--sideco-muted, #59636E); font-size: 16px; text-anchor: end; cursor: pointer; }
+.lane-fold.is-shut { text-anchor: middle; }
+.is-folded .lane-bg { cursor: pointer; }
 .axis-bound { fill: var(--sideco-muted, #59636E); font-size: 11px; }
 .axis-bound.is-high { text-anchor: end; }
 .axis-label { fill: var(--sideco-muted, #59636E); font-size: 12px; font-weight: 600; text-anchor: middle; letter-spacing: 0.04em; }
@@ -130,8 +134,14 @@ export function bandMarkup(b: Band): string {
       // A line across the board, its name just under it: the stories above it ship first.
       return `<g class="band band-slice"><line class="slice-rule" x1="${b.x}" y1="${b.y}" x2="${b.x + b.w}" y2="${b.y}"/><text class="slice-label" x="12" y="${b.y + 18}">${esc(b.label)}</text></g>`;
     case "lane":
-      return `<g class="band band-lane"><rect class="lane-bg" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="10"/>${laneHeading(b)}</g>`;
+      // Folded, the whole band opens it: its background says so to the page.
+      return `<g class="band band-lane${b.folded ? " is-folded" : ""}"><rect class="lane-bg"${b.folded ? ` data-fold="${esc(b.id)}"` : ""} x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="10"/>${b.folded ? foldedHeading(b) : laneHeading(b)}</g>`;
   }
+}
+
+/** The button that folds a lane, or opens it folded: a chevron that says which way, reached by the keyboard. */
+function foldButton(b: Band, x: number, y: number): string {
+  return `<text class="lane-fold${b.folded ? " is-shut" : ""}" data-fold="${esc(b.id)}" role="button" tabindex="0" aria-expanded="${!b.folded}" aria-label="${esc(b.foldSaid ?? "")}" x="${x}" y="${y}">${b.folded ? "›" : "‹"}</text>`;
 }
 
 /** Across the top of a lane: its name, how many cards it holds, and what it stands for when it says so. */
@@ -141,7 +151,20 @@ function laneHeading(b: Band): string {
   const hint = b.hint
     ? `<text class="lane-hint" x="${b.x + 14}" y="${b.y + 37}" data-lane="${esc(b.id)}">${esc(b.hint)}</text>`
     : "";
-  return `<text class="lane-label" x="${b.x + 14}" y="${y}" data-lane="${esc(b.id)}">${esc(b.label)}</text><text class="lane-count" x="${b.x + b.w - 14}" y="${y}">${b.count ?? 0}</text>${hint}`;
+  // Where a reader may fold it, the count moves over for the button.
+  const fold = b.folded === undefined ? "" : foldButton(b, b.x + b.w - 14, y);
+  return `<text class="lane-label" x="${b.x + 14}" y="${y}" data-lane="${esc(b.id)}">${esc(b.label)}</text><text class="lane-count" x="${b.x + b.w - (fold ? 32 : 14)}" y="${y}">${b.count ?? 0}</text>${fold}${hint}`;
+}
+
+/** The most of a lane's name a folded band says upright; the button says it whole. */
+const UPRIGHT_CHARS = 22;
+
+/** Down a folded lane: its button, how many cards it keeps, then its name upright. */
+function foldedHeading(b: Band): string {
+  const mid = b.x + b.w / 2;
+  const name = b.label.length > UPRIGHT_CHARS ? `${b.label.slice(0, UPRIGHT_CHARS - 1)}…` : b.label;
+  const down = b.y + 64;
+  return `${foldButton(b, mid, b.y + 25)}<text class="lane-count is-folded" x="${mid}" y="${b.y + 46}">${b.count ?? 0}</text><text class="lane-label is-upright" x="${mid - 4}" y="${down}" transform="rotate(90 ${mid - 4} ${down})" data-lane="${esc(b.id)}">${esc(name)}</text>`;
 }
 
 export function connectorMarkup(c: Connector): string {

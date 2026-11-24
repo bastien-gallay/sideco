@@ -1464,6 +1464,46 @@ kbd {
   opacity: 0.85;
 }
 
+/*
+ * The button that folds a column (S307): out of the way until its heading is
+ * pointed at or it holds the keyboard; where no pointer hovers, and on a folded
+ * column, it stays in sight. A folded column opens by any point of its band.
+ */
+.layer-heads .lane-fold {
+  pointer-events: auto;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+
+@media (hover: hover) {
+  .layer-heads .lane-fold:not(.is-shut) {
+    opacity: 0;
+    transition: opacity 120ms;
+  }
+
+  .layer-heads .head:hover .lane-fold,
+  .layer-heads .lane-fold:focus-visible {
+    opacity: 1;
+  }
+}
+
+.layer-heads .lane-fold:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.layer-heads .heads-lane-strip[data-fold],
+.sideco-board .lane-bg[data-fold] {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.layer-heads .lane-label.is-upright {
+  cursor: pointer;
+}
+
 /* A kanban lane heading takes the keyboard: it says so as a card does. */
 .layer-heads .lane-label:focus-visible {
   outline: 2px solid var(--accent);
