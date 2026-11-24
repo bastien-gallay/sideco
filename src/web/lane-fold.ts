@@ -8,6 +8,7 @@
  */
 import type { View } from "../domain/layout/index.ts";
 import { type Board, findElement } from "../domain/workspace.ts";
+import { isCarry, stillFolded, toggled } from "./fold-rules.ts";
 import { changed, state } from "./store.ts";
 
 const KEY = "sideco.lanes-folded";
@@ -51,13 +52,10 @@ const foldedOn = (board: string): string[] => {
  */
 export function seen(board: Board | undefined, span: number | undefined): View {
   if (!board) return { span };
-  let lanes = foldedOn(board.id);
+  const folded = foldedOn(board.id);
   const held = document.activeElement?.closest<SVGGElement>("g.card")?.dataset.id;
-  const open = [state.selected, held].map((id) => (id ? findElement(board, id)?.lane : undefined));
-  if (lanes.some((lane) => open.includes(lane))) {
-    lanes = lanes.filter((lane) => !open.includes(lane));
-    keep(board.id, lanes);
-  }
+  const lanes = stillFolded(board, folded, [state.selected, held]);
+  if (lanes !== folded) keep(board.id, lanes);
   return { span, folded: new Set(lanes) };
 }
 
@@ -66,12 +64,9 @@ export function toggleLane(board: Board, lane: string): void {
   const lanes = foldedOn(board.id);
   const folding = !lanes.includes(lane);
   if (folding && state.selected && findElement(board, state.selected)?.lane === lane) state.selected = null;
-  keep(board.id, folding ? [...lanes, lane] : lanes.filter((other) => other !== lane));
+  keep(board.id, toggled(lanes, lane));
   changed();
 }
-
-/** A press that travels is a carry: of a lane by its heading, or of the board. It folds nothing. */
-const TRAVEL = 4;
 
 /**
  * Answers the fold buttons drawn in `root`, for the board on screen: live or in
@@ -105,7 +100,9 @@ export function mountLaneFold(root: SVGSVGElement, board: () => Board | undefine
       const from = event.detail === 0 ? undefined : pressed;
       pressed = undefined;
       const travelled = from ? Math.hypot(event.clientX - from.x, event.clientY - from.y) : 0;
-      if (lane !== undefined && travelled <= TRAVEL) toggle(event, lane, false);
+      // A press that travels is a carry, of a lane by its heading: it folds nothing. Counted as the board counts it.
+      const carried = isCarry(travelled, root.getScreenCTM()?.a ?? 1);
+      if (lane !== undefined && !carried) toggle(event, lane, false);
     },
     true,
   );
