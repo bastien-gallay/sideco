@@ -26,6 +26,7 @@ import {
   paintHome,
   removeSheet,
 } from "./boards.ts";
+import { cardFacts } from "./card-facts.ts";
 import { labelSection, projectLabels, refocusLabelField, refocusLabels, typingLabel } from "./card-labels.ts";
 import { linkSection } from "./card-links.ts";
 import { clock, h, region } from "./dom.ts";
@@ -1146,6 +1147,8 @@ interface CardPanelModel {
   former: string | undefined;
   label: string;
   type: string | undefined;
+  /** Who added it, who changed it last and when, and whether it is done (S311). */
+  facts: string;
   /** None while it is being written: the field holds the words then. */
   detail: string | undefined;
   live: boolean;
@@ -1196,6 +1199,7 @@ const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
   m.former && h("p", { class: "hint card-panel-former" }, m.former),
   h("p", { class: "card-panel-name" }, m.label),
   m.type !== undefined && h("p", { class: "hint" }, m.type),
+  m.facts && h("p", { class: "hint card-panel-facts" }, m.facts),
   m.notes > 0 &&
     h(
       "button",
@@ -1756,6 +1760,7 @@ function render(): void {
       former: formerly(chosen.formerIds, locale),
       label: chosen.label,
       type: format && findType(format, chosen.type)?.label[locale],
+      facts: cardFacts(board, chosen.id, state.events, locale),
       detail: editing ? undefined : chosen.detail,
       live,
       editing,

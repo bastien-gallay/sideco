@@ -1464,6 +1464,10 @@ describe("the chosen card, read in the right panel", () => {
     expect(await panel().locator(".card-panel-name").textContent()).toBe(
       (await elementOf("ajout-case", placed))?.label ?? null,
     );
+    // Under its name: who added it, and who changed it last, at what hour (S311).
+    expect(await panel().locator(".card-panel-facts").textContent()).toMatch(
+      /^Added by (you|Claude) · changed by Claude at \d\d:\d\d$/,
+    );
     // One paragraph, its two lines kept.
     expect(await panel().locator(".card-panel-detail p").count()).toBe(1);
     expect(await panel().locator(".card-panel-detail p br").count()).toBe(1);

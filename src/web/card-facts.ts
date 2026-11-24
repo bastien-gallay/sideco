@@ -1,0 +1,70 @@
+/**
+ * Who did what to a card, under its name in the Detail tab (S311): who added
+ * it, who changed it last and when, and whether it is done. The tooltip says
+ * who added it to a pointer; this line says it to everyone, with the last
+ * change, without a search in the history. Its words live here, in each
+ * language, as messages.ts is at its ceiling.
+ */
+import type { Actor, Recorded } from "../domain/events.ts";
+import { wearsDone } from "../domain/formats.ts";
+import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
+import { type Board, findElement } from "../domain/workspace.ts";
+
+interface Words {
+  added: Record<Actor, string>;
+  changed: Record<Actor, string>;
+  at: (hour: string) => string;
+  on: (day: string, hour: string) => string;
+  done: string;
+}
+
+const WORDS: Record<Locale, Words> = {
+  en: {
+    added: { agent: "Added by Claude", human: "Added by you", system: "Added by the system" },
+    changed: { agent: "changed by Claude", human: "changed by you", system: "changed by the system" },
+    at: (hour) => `at ${hour}`,
+    on: (day, hour) => `on ${day} at ${hour}`,
+    done: "done",
+  },
+  fr: {
+    added: { agent: "Ajoutée par Claude", human: "Ajoutée par toi", system: "Ajoutée par le système" },
+    changed: { agent: "changée par Claude", human: "changée par toi", system: "changée par le système" },
+    at: (hour) => `à ${hour}`,
+    on: (day, hour) => `le ${day} à ${hour}`,
+    done: "faite",
+  },
+};
+
+const two = (n: number): string => String(n).padStart(2, "0");
+
+/** The hour of a change made today, the day too for an older one: as the reader's own clock tells them. */
+function when(ts: string, now: Date, w: Words): string {
+  const at = new Date(ts);
+  if (Number.isNaN(at.getTime())) return "";
+  const hour = `${two(at.getHours())}:${two(at.getMinutes())}`;
+  return at.toDateString() === now.toDateString()
+    ? w.at(hour)
+    : w.on(`${two(at.getDate())}/${two(at.getMonth() + 1)}`, hour);
+}
+
+/** One line: who added the card, its last change when there was one since, and that it is done. Empty for no card. */
+export function cardFacts(
+  board: Board,
+  id: string,
+  events: readonly Recorded[],
+  locale: Locale = DEFAULT_LOCALE,
+  now: Date = new Date(),
+): string {
+  const el = findElement(board, id);
+  if (!el) return "";
+  const w = WORDS[locale];
+  const last = events.find((e) => e.seq === el.changedSeq);
+  const added = last?.event === "ElementAdded";
+  return [
+    w.added[el.by],
+    last && !added && `${w.changed[last.actor]} ${when(last.ts, now, w)}`.trim(),
+    wearsDone(board, el) && w.done,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}

@@ -35,6 +35,8 @@ All notable changes to Sideco are listed here. The format follows
 - `sideco retype ID TYPE [NEW]` turns a card into another kind of its board: it
   takes the next id of that kind's letter, or NEW, its ties follow, and it keeps
   its old id, as with `renumber`. An undo gives back the kind and the id.
+- The Detail tab says, under a card's name, who added it, who changed it last
+  and when, and that it is done.
 - A label's chip, pressed on a card or in the Detail tab, filters the board by
   that label: the cards without it step back where they are, and a bar says how
   many wear it. `@name` gives "my cards"; "Show all" gives every card back.
