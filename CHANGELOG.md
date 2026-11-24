@@ -35,6 +35,9 @@ All notable changes to Sideco are listed here. The format follows
 - `sideco retype ID TYPE [NEW]` turns a card into another kind of its board: it
   takes the next id of that kind's letter, or NEW, its ties follow, and it keeps
   its old id, as with `renumber`. An undo gives back the kind and the id.
+- The wire pulled from a card's handle ends on an arrow, as the link it lays
+  will, and held near an edge of the board it scrolls the board towards the
+  cards out of sight.
 - While a link is drawn from a card, the board says what comes next ("Choose
   the card to link to · Esc cancels"), and the bar of a link picked opens
   beside the line, off the cards around it.

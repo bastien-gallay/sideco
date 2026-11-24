@@ -2684,6 +2684,55 @@ describe("a link drawn from the handle of the card chosen (S326)", () => {
     if (release) await page.mouse.up();
   };
 
+  test("the wire ends on an arrow, and scrolls the board when held near its edge (T267, T268)", async () => {
+    const steps = Array.from(
+      { length: 9 },
+      (_, i) => `add step "Étape ${i + 2}" --from @s${i} --alias s${i + 1}`,
+    );
+    const [first] = await agent(
+      ['board new "Long fil" --format flow --id long-fil', 'add step "Étape 1" --alias s0', ...steps].join(
+        "\n",
+      ),
+    );
+    await page.locator(".board-picker select").selectOption("long-fil");
+    await card(first).waitFor();
+    const scroller = page.locator(".canvas-scroll");
+    const top = () => scroller.evaluate((el) => el.scrollTop);
+    // Drawn larger than the window, so that some of it is out of sight below.
+    let zoomed = 0;
+    while (zoomed < 3 && (await scroller.evaluate((el) => el.scrollHeight - el.clientHeight)) < 200) {
+      await page.getByRole("button", { name: "Zoom in" }).click();
+      zoomed++;
+    }
+    await card(first).click();
+    await handle().waitFor();
+    expect(await top()).toBe(0);
+    const from = await centre(handle());
+    const frame = await scroller.boundingBox();
+    if (!frame) throw new Error("the board is shown");
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + 60, from.y + 40, { steps: 4 });
+    // The arrow points where the wire goes: its tip is the end of the wire.
+    const head = page.locator("g.link-wire path.link-wire-head");
+    expect(await head.getAttribute("d")).toMatch(/^M[\d.-]+ [\d.-]+L[\d.-]+ [\d.-]+L[\d.-]+ [\d.-]+Z$/);
+    expect(await top()).toBe(0);
+    // Held near the foot of the board, the board comes up under the wire, with no move of the pointer.
+    await page.mouse.move(from.x + 60, frame.y + frame.height - 6, { steps: 4 });
+    await until("the board scrolls on its own", async () => (await top()) > 60);
+    await shot("66-wire-arrow-scroll");
+    await page.keyboard.press("Escape");
+    const stopped = await top();
+    await page.waitForTimeout(120);
+    expect(await top()).toBe(stopped);
+    await page.mouse.up();
+    for (; zoomed > 0; zoomed--) await page.getByRole("button", { name: "Zoom out" }).click();
+    await agent("board rm long-fil");
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== "long-fil";
+    });
+  });
+
   test("pulled onto another card, it links them; pulled again onto it, it unlinks them", async () => {
     const [, ship, order] = await agent(
       'board new "Poignée" --format flow --id poignee\nadd decision "En stock ?" --alias d\nadd step "Expédier" --from @d\nadd step "Commander"',

@@ -6,10 +6,13 @@
  * The card under the wire says which by its outline, solid to link, dashed red
  * to cut. Escape lets the wire go. The middle of a card is left to moving it.
  * Released where no card is, the wire goes back to the dot as it fades (T266).
+ * The wire ends on an arrow, as the link laid will (T268); held near an edge of
+ * the board, it scrolls the board towards the cards out of sight (T267).
  */
 import { RING } from "./card-marks.ts";
 import { svg } from "./dom.ts";
 import { t } from "./locale.ts";
+import { arrowHead, edgePull } from "./wire-shape.ts";
 
 interface Point {
   x: number;
@@ -33,6 +36,8 @@ interface Wire {
   at?: Point;
   g: SVGGElement;
   target?: string | undefined;
+  /** Where the pointer is on screen: the board scrolling under it moves the end of the wire. */
+  pointer?: { clientX: number; clientY: number };
 }
 
 /** How long the wire released in the void takes to go back to the dot. */
@@ -77,7 +82,7 @@ class Handle {
     event.stopPropagation();
     this.layer.setPointerCapture(event.pointerId);
     const g = this.layer.appendChild(svg("g", { class: "link-wire" }));
-    g.append(svg("path"));
+    g.append(svg("path"), svg("path", { class: "link-wire-head" }));
     this.wire = { src: card.id, from: { x: card.x + card.w + RING, y: card.y + card.h / 2 }, g };
     this.root.classList.add("is-wiring");
   }
@@ -85,11 +90,35 @@ class Handle {
   move(event: PointerEvent): void {
     const wire = this.wire;
     if (!wire) return;
-    const at = this.hooks.toScene(event);
+    const pulling = wire.pointer !== undefined;
+    wire.pointer = { clientX: event.clientX, clientY: event.clientY };
+    this.draw(wire);
+    if (!pulling) requestAnimationFrame(() => this.scroll(wire));
+  }
+
+  /** Lays the wire to where the pointer is, and says which card it would reach. */
+  private draw(wire: Wire): void {
+    if (!wire.pointer) return;
+    const at = this.hooks.toScene(wire.pointer);
     wire.at = at;
     wire.g.firstElementChild?.setAttribute("d", `M${wire.from.x} ${wire.from.y}L${at.x} ${at.y}`);
-    const id = cardUnder(event);
+    wire.g.lastElementChild?.setAttribute("d", arrowHead(wire.from, at));
+    const id = cardUnder(wire.pointer);
     this.aim(wire, id === wire.src ? undefined : id);
+  }
+
+  /** While the wire is held near an edge of the board, the board scrolls that way, frame after frame. */
+  private scroll(wire: Wire): void {
+    const scroller = this.root.closest<HTMLElement>(".canvas-scroll");
+    if (this.wire !== wire || !wire.pointer || !scroller) return;
+    const box = scroller.getBoundingClientRect();
+    const dx = edgePull(wire.pointer.clientX, box.left, box.right);
+    const dy = edgePull(wire.pointer.clientY, box.top, box.bottom);
+    if (dx !== 0 || dy !== 0) {
+      scroller.scrollBy(dx, dy);
+      this.draw(wire);
+    }
+    requestAnimationFrame(() => this.scroll(wire));
   }
 
   release(): void {
@@ -138,6 +167,7 @@ function fadeBack({ g, from, at }: Wire): void {
     return;
   }
   g.classList.add("is-missed");
+  g.lastElementChild?.setAttribute("d", "");
   const start = performance.now();
   const step = (now: number): void => {
     const done = Math.min(1, (now - start) / FADE_MS);

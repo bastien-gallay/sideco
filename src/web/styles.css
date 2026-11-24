@@ -1766,6 +1766,17 @@ kbd {
   stroke: var(--danger);
 }
 
+/* The wire ends as the link will: on an arrow, in the wire's own colour. */
+.link-wire path.link-wire-head {
+  fill: var(--accent-text);
+  stroke-width: 1;
+  stroke-dasharray: none;
+}
+
+.link-wire.is-cut path.link-wire-head {
+  fill: var(--danger);
+}
+
 /* While a wire is held, every card it could reach stays sharp. */
 .sideco-board.is-wiring .card {
   opacity: 1;
