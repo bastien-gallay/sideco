@@ -8,7 +8,7 @@ import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../do
 import { toMermaid } from "../domain/export/mermaid.ts";
 import { markWords, queryWords } from "../domain/find.ts";
 import { boardPurpose, findFormat, findType, planAxis } from "../domain/formats.ts";
-import { asLocale, formerly, LOCALES } from "../domain/i18n.ts";
+import { asLocale, formerly, LOCALES, WORDS } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import {
   hasSpoken,
@@ -35,9 +35,11 @@ import {
   removeSheet,
 } from "./boards.ts";
 import { labelSection, projectLabels, refocusLabelField, refocusLabels, typingLabel } from "./card-labels.ts";
+import { linkSection } from "./card-links.ts";
 import { clock, h, region } from "./dom.ts";
 import { describeEvent, sessionName } from "./event-words.ts";
 import { keysSheet, openKeys } from "./keys-sheet.ts";
+import { type LinkRow, linkRows } from "./link-rows.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
 import { messageField, wordsField } from "./message-field.ts";
@@ -1258,6 +1260,8 @@ interface CardPanelModel {
   /** Its labels, as kept, and those the project already uses, offered as it is typed. */
   labels: string[];
   known: string[];
+  /** Its links, each way, for the keyboard (S310). */
+  links: LinkRow[];
 }
 
 /** The detail being written in the panel: its card, and where the keyboard was when it was asked for. */
@@ -1330,6 +1334,7 @@ const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
             m.detail ? t.editDetail : t.addDetail,
           ),
       ]),
+  linkSection(m.links, m.live, WORDS[locale].links),
 ]);
 
 /** Opens the card's detail for writing, in the panel: the words from their first line, the keyboard in them. */
@@ -1921,6 +1926,7 @@ function render(): void {
       notes: discussions(board).filter((thread) => thread.on?.id === chosen.id).length,
       labels: chosen.labels ?? [],
       known: projectLabels(),
+      links: linkRows(board, chosen.id),
     });
     if (typing && document.activeElement !== detailField) detailField.focus();
     if (labelling) refocusLabelField();

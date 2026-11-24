@@ -2464,6 +2464,43 @@ legend {
   opacity: 1;
 }
 
+/* The chosen card's links (S310): one a line, the card at its other end, then Name and Remove. */
+.card-panel-links {
+  margin: 14px 0 4px;
+}
+
+.card-panel-links h3 {
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.link-rows {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link-rows > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+}
+
+.card-panel-links .link-end {
+  flex: 1 1 12ch;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.link-name-field {
+  flex: 1 1 14ch;
+}
+
 /* The chosen card's labels: chips as on the card, × to take one off, then a field that adds one. */
 .card-panel-labels {
   display: grid;

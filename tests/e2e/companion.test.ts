@@ -2684,6 +2684,62 @@ describe("a link drawn from the handle of the card chosen (S326)", () => {
   });
 });
 
+describe("the links of a card in its Detail tab, for the keyboard (S310)", () => {
+  const edgeOf = async (src: string, dst: string) =>
+    (await workspace()).boards
+      .find((b) => b.id === "liens")
+      ?.edges.find((e) => e.src === src && e.dst === dst);
+  const rows = () => page.locator(".card-panel-links li");
+
+  test("each link is listed with the card at its other end, and named or removed from there", async () => {
+    const [stock, ship, order] = await agent(
+      'board new "Liens" --format flow --id liens\nadd decision "En stock ?" --alias d\nadd step "Expédier" --from @d --edge oui\nadd step "Commander" --from @d',
+    );
+    await page.locator(".board-picker select").selectOption("liens");
+    await card(order).waitFor();
+    await card(stock).click();
+    await page.getByRole("tab", { name: "Detail" }).click();
+    await until("the two links in the Detail tab", async () => (await rows().count()) === 2);
+    expect(await rows().nth(0).textContent()).toContain(`${ship} Expédier`);
+    expect(await rows().nth(0).textContent()).toContain("oui");
+
+    // Named from the keyboard: Name opens a field in the row, Enter keeps the words.
+    await rows().nth(1).getByRole("button", { name: "Name" }).focus();
+    await page.keyboard.press("Enter");
+    const field = page.locator(".card-panel-links input");
+    await field.waitFor();
+    await page.keyboard.type("en rupture");
+    await page.keyboard.press("Enter");
+    await until("the link is named", async () => (await edgeOf(stock, order))?.label === "en rupture");
+    await until("the keyboard is back on Name", async () =>
+      rows()
+        .nth(1)
+        .getByRole("button", { name: "Name" })
+        .evaluate((b) => b === document.activeElement),
+    );
+    await shot("67-card-panel-links");
+
+    // Escape leaves the name as it was.
+    await page.keyboard.press("Enter");
+    await field.waitFor();
+    await page.keyboard.type("perdu");
+    await page.keyboard.press("Escape");
+    await field.waitFor({ state: "detached" });
+    expect((await edgeOf(stock, order))?.label).toBe("en rupture");
+
+    // Removed from there.
+    await rows().nth(0).getByRole("button", { name: "Remove the link" }).click();
+    await until("the link is removed", async () => (await edgeOf(stock, ship)) === undefined);
+    await until("one link left in the list", async () => (await rows().count()) === 1);
+
+    await page.keyboard.press("Escape");
+    await agent("board rm liens");
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== "liens";
+    });
+  });
+});
+
 describe("a flow's branches named from the page", () => {
   const conn = (src: string, dst: string) => page.locator(`g.conn[data-src="${src}"][data-dst="${dst}"]`);
   const named = (src: string, dst: string) => conn(src, dst).locator("text.conn-label");
