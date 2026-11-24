@@ -429,6 +429,15 @@ describe("the history stops at the events of one board, or at every event of the
     expect(historyBoard(t.events, null, undefined)).toBeUndefined();
   });
 
+  test("a diagram gone Snap by one drag stops twice: the switch, every card already in place, then the card dragged", () => {
+    const flow = table(FLOW);
+    const before = flow.seq;
+    flow.script("place F3 600 40", "human");
+    const stops = historyStops(flow.events, "livraison").filter((seq) => seq > before);
+    const told = stops.map((seq) => flow.events.find((e) => e.seq === seq)?.event);
+    expect(told).toEqual(["BoardPlacing", "ElementPlaced"]);
+  });
+
   test("live sits on the last stop: one step back shows the board before its latest event", () => {
     expect(historyStep(commande, null, -1)).toBe(7);
     expect(historyStep(journal, null, -1)).toBe(10);

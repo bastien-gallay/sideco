@@ -286,7 +286,8 @@ export interface Messages {
   /** The legend of the marks a card wears, in the sheet of keys. */
   onACard: string;
   marks: Record<CardMark, string>;
-  placedByLinks: (id: string) => string;
+  /** The switch of a diagram: its cards stay where they are put, or their links place them (S344). */
+  snap: { name: string; tip: string };
   close: string;
 }
 
@@ -530,18 +531,16 @@ const en: Messages = {
   shortcutList: (how, doneLast, axes) => [
     ["Tab", "Into the board, then out of it"],
     ["← → ↑ ↓", "From a card to the next one; a card chosen goes along"],
-    ...(how === "graph"
-      ? []
-      : ([
-          [
-            "Shift + ← → ↑ ↓",
-            how === "timeline"
-              ? "Move the card: ← → a step, ↑ ↓ its place in its cell"
-              : how === "grid"
-                ? `Move the card to the cell that way: ↑ ↓ ${axes?.y ?? "impact"}, ← → ${axes?.x ?? "effort"}`
-                : "Move the card: ← → a lane, ↑ ↓ its place in its lane",
-          ],
-        ] as [string, string][])),
+    [
+      "Shift + ← → ↑ ↓",
+      how === "graph"
+        ? "Move the card a little that way; the diagram goes Snap"
+        : how === "timeline"
+          ? "Move the card: ← → a step, ↑ ↓ its place in its cell"
+          : how === "grid"
+            ? `Move the card to the cell that way: ↑ ↓ ${axes?.y ?? "impact"}, ← → ${axes?.x ?? "effort"}`
+            : "Move the card: ← → a lane, ↑ ↓ its place in its lane",
+    ],
     how === "graph"
       ? ["Alt + → ↓", "Add the next step, linked from the card"]
       : ["Alt + ← → ↑ ↓", "Add a card of its kind beside it, there"],
@@ -576,9 +575,7 @@ const en: Messages = {
   mouseList: (how) => [
     [
       "Drag a card",
-      how === "graph"
-        ? "Nothing: a flow places its cards from their links"
-        : "Move it; a line shows where it lands",
+      how === "graph" ? "Put it there; the diagram goes Snap" : "Move it; a line shows where it lands",
     ],
     ...(how === "timeline"
       ? ([
@@ -621,7 +618,7 @@ const en: Messages = {
     unread: "Changed by you, not read by Claude yet",
     changed: "Changed by Claude since your last visit",
   },
-  placedByLinks: (id) => `${id} is placed by its links: link or unlink it to move it.`,
+  snap: { name: "Snap", tip: "Snap: the cards stay where you put them; off, their links place them" },
   close: "Close",
 };
 
@@ -860,18 +857,16 @@ const fr: Messages = {
   shortcutList: (how, doneLast, axes) => [
     ["Tab", "Entrer dans le tableau, puis en sortir"],
     ["← → ↑ ↓", "D'une carte à la suivante ; une carte choisie suit"],
-    ...(how === "graph"
-      ? []
-      : ([
-          [
-            "Maj + ← → ↑ ↓",
-            how === "timeline"
-              ? "Déplacer la carte : ← → une étape, ↑ ↓ sa place dans sa case"
-              : how === "grid"
-                ? `Déplacer la carte dans la case de ce côté : ↑ ↓ ${axes?.y ?? "l'impact"}, ← → ${axes?.x ?? "l'effort"}`
-                : "Déplacer la carte : ← → une colonne, ↑ ↓ sa place dans la colonne",
-          ],
-        ] as [string, string][])),
+    [
+      "Maj + ← → ↑ ↓",
+      how === "graph"
+        ? "Déplacer un peu la carte de ce côté ; le diagramme passe en Snap"
+        : how === "timeline"
+          ? "Déplacer la carte : ← → une étape, ↑ ↓ sa place dans sa case"
+          : how === "grid"
+            ? `Déplacer la carte dans la case de ce côté : ↑ ↓ ${axes?.y ?? "l'impact"}, ← → ${axes?.x ?? "l'effort"}`
+            : "Déplacer la carte : ← → une colonne, ↑ ↓ sa place dans la colonne",
+    ],
     how === "graph"
       ? ["Alt + → ↓", "Ajouter l'étape suivante, reliée depuis la carte"]
       : ["Alt + ← → ↑ ↓", "Ajouter une carte du même type à côté, de ce côté"],
@@ -907,7 +902,7 @@ const fr: Messages = {
     [
       "Glisser une carte",
       how === "graph"
-        ? "Rien : un flux place ses cartes d'après leurs liens"
+        ? "La poser là ; le diagramme passe en Snap"
         : "La déplacer ; une ligne montre où elle tombe",
     ],
     ...(how === "timeline"
@@ -951,7 +946,7 @@ const fr: Messages = {
     unread: "Changée par toi, pas encore lue par Claude",
     changed: "Changée par Claude depuis ta dernière visite",
   },
-  placedByLinks: (id) => `${id} est placé d'après ses liens : relie-le ou délie-le pour le déplacer.`,
+  snap: { name: "Snap", tip: "Snap : les cartes restent où tu les poses ; sinon, leurs liens les placent" },
   close: "Fermer",
 };
 

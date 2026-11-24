@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { describeChanges } from "../../src/domain/digest.ts";
+import { describeBoard, describeCard, describeChanges } from "../../src/domain/digest.ts";
 import { type Card, layoutBoard, type Scene } from "../../src/domain/layout/index.ts";
 import { FLOW, KANBAN, table } from "../support.ts";
 
@@ -103,6 +103,16 @@ describe("a diagram placed by hand (S344)", () => {
     expect(() => table(FLOW).script("place F3 -5 40")).toThrow();
   });
 
+  test("Claude reading a Snap diagram is told so, and where each card stands; not once it is back to its links", () => {
+    const t = table(FLOW).script("place F3 600 40", "human");
+    expect(describeBoard(t.board()).split("\n")[0]).toContain("(flow, Snap, seq");
+    expect(describeBoard(t.board())).toContain('F3 step "Commander au fournisseur" at 600,40');
+    expect(describeCard(t.board(), "F3")).toContain("at 600,40");
+    t.script("placing auto", "human");
+    expect(describeBoard(t.board())).not.toContain("Snap");
+    expect(describeBoard(t.board())).not.toContain("at 600,40");
+  });
+
   test("Claude reads the card placed and the board gone by hand, not every card that kept its place", () => {
     const t = table(FLOW);
     const mark = t.seq;
@@ -115,6 +125,17 @@ describe("a diagram placed by hand (S344)", () => {
     expect(describeChanges(t.events, later).text).toBe(
       'board livraison "Livraison"\n  → F3 placed at 640,40\n  ~ cards placed by their links',
     );
+  });
+
+  test("the Snap switch of the page says how wide the board is too: a folded flow stays folded", () => {
+    const steps = Array.from({ length: 11 }, (_, i) => `add step "Étape ${i + 2}" --from F${i + 1}`);
+    const t = table(
+      ['board new "Chaîne" --format flow --id chaine', 'add step "Étape 1"', ...steps].join("\n"),
+    );
+    const folded = layoutBoard(t.board(), "en", 1400);
+    t.do({ kind: "placing", board: "chaine", byHand: true, span: 1400 }, "human");
+    const scene = layoutBoard(t.board());
+    for (const c of folded.cards) expect(where(scene, c.id)).toEqual(where(folded, c.id));
   });
 
   test("the page says how wide the board is: the cards keep the place a folded flow gave them", () => {

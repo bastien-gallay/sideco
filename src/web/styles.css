@@ -931,6 +931,19 @@ input[type="text"] {
   background: var(--surface);
 }
 
+/* The Snap switch of a diagram (S344): pressed, its cards stay where they are put. */
+.palette button.snap {
+  justify-self: start;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.palette button.snap[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
 .keys-open {
   justify-self: start;
   margin-top: 6px;

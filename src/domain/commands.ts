@@ -60,8 +60,8 @@ export type Command =
    * `span`: the width the board has on the page, so that the other cards keep the places it shows.
    */
   | { kind: "place"; board: string; cards: Spot[]; span?: number }
-  /** A diagram placed by hand, or by its links again. */
-  | { kind: "placing"; board: string; byHand: boolean }
+  /** A diagram placed by hand (Snap), or by its links again; `span` as for `place`. */
+  | { kind: "placing"; board: string; byHand: boolean; span?: number }
   /** The element takes the id `to`, else the next of its letter in the project. */
   /** With `type`, the card takes that kind too, and the letter that goes with it. */
   | { kind: "renumber"; board: string; id: string; to?: string; type?: string }
@@ -248,7 +248,7 @@ export function parseCommand(input: unknown): Command {
     case "place":
       return { kind, board: boardId(f), cards: list(f, "cards").map(spot), span: optional(f, "span", scene) };
     case "placing":
-      return { kind, board: boardId(f), byHand: flag(f, "byHand") };
+      return { kind, board: boardId(f), byHand: flag(f, "byHand"), span: optional(f, "span", scene) };
     case "move":
       return {
         kind,

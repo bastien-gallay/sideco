@@ -948,6 +948,7 @@ const paintPalette = region(palette, (m: PaletteModel) =>
   paletteContent(m, {
     add: (type) => view.beginAdd(type),
     keys: () => openKeys(currentBoard(), axesNamed(currentBoard())),
+    snap: (on) => view.snap(on),
   }),
 );
 
@@ -1801,6 +1802,7 @@ function render(): void {
     axes: ownAxes(board),
     live,
     from: board && findFormat(board.format)?.layout === "graph" ? state.selected : null,
+    snap: board && findFormat(board.format)?.layout === "graph" ? board.byHand === true : undefined,
   });
   paintNotes({
     board: board?.id,

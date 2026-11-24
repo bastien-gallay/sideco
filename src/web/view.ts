@@ -147,11 +147,18 @@ export function historyBoard(
 /**
  * The journal positions the history stops at, oldest first. For one board, its
  * events, from its creation: no earlier moment would show it. For the whole
- * journal, every event, and 0, the moment before the first.
+ * journal, every event, and 0, the moment before the first. Neither stops at
+ * the cards a diagram keeps in place as it goes Snap.
  */
 export function historyStops(events: readonly Recorded[], board?: string): number[] {
-  if (board === undefined) return [0, ...events.map((e) => e.seq)];
-  return events.filter(onBoard(board)).map((e) => e.seq);
+  const stops = events.filter((e) => !drawn(e));
+  if (board === undefined) return [0, ...stops.map((e) => e.seq)];
+  return stops.filter(onBoard(board)).map((e) => e.seq);
+}
+
+/** A card kept where the links drew it, as a diagram goes Snap: nobody moved it, so the history does not stop there. */
+function drawn(e: Recorded): boolean {
+  return e.event === "ElementPlaced" && e.drawn === true;
 }
 
 /** The last stop is the present: being there is being live, which a null position says. */

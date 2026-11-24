@@ -21,7 +21,7 @@ import { arrowDefs, bandMarkup, cardMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import type { BoardHooks, BoardView } from "./board-api.ts";
 import * as links from "./board-links.ts";
-import { dropCommand } from "./card-drop.ts";
+import { dropCommand, keyCommand, snapCommand, whereTo } from "./card-drop.ts";
 import { changedMark, ringMarkup, unreadMark } from "./card-marks.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
@@ -36,7 +36,6 @@ import {
   type Direction,
   keptLines,
   keyAdd,
-  keyMove,
   laneKeyMove,
   neighbour,
   oneLine,
@@ -1501,18 +1500,10 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (!isLive()) return;
     if (direction && event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
       event.preventDefault();
-      // A flow places its cards from their links: the keys say so rather than doing nothing.
-      if (format()?.layout === "graph") {
-        hooks.notice(t.placedByLinks(id));
-        return;
-      }
-      const command = keyMove(board, id, direction);
-      if (command?.kind !== "move") return;
+      const command = keyCommand(board, scene, id, direction, span);
       // Where it goes, said once it got there: the eye sees the move, the ear hears it.
-      const place =
-        command.col !== undefined
-          ? t.step(command.col)
-          : scene.bands.find((band) => band.kind === "lane" && band.id === command.lane)?.label;
+      if (command?.kind !== "move" && command?.kind !== "place") return;
+      const place = whereTo(command, scene);
       void send(command).then((done) => {
         if (done === undefined) return;
         follow(id);
@@ -1654,6 +1645,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       nodes.get(id)?.g.scrollIntoView({ block: "nearest", inline: "nearest" });
     },
     focus: focusCard,
+    snap(on) {
+      if (board) void send(snapCommand(board, on, span));
+    },
     renamed(from, to) {
       if (current === from) current = to;
       if (editing?.from === from) editing.from = to;

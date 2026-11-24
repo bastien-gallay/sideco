@@ -1802,10 +1802,13 @@ describe("the board for who cannot see it", () => {
     expect(await card(stock).getAttribute("aria-description")).toBe(
       `leads to ${ship} Expédier (oui) · comes from ${receive} Recevoir`,
     );
-    // Shift and an arrow cannot move a card a flow places from its links: the page says so.
+    // Shift and an arrow move the card a little that way, and the flow goes Snap (S344); the ear hears where.
+    const before = await settled(stock);
     await card(stock).focus();
     await page.keyboard.press("Shift+ArrowRight");
-    await page.locator(".toast", { hasText: `${stock} is placed by its links` }).waitFor();
+    await page.locator(".spoken", { hasText: `${stock} moved to` }).waitFor({ state: "attached" });
+    expect((await settled(stock)).x).toBeGreaterThan(before.x + 8);
+    expect((await workspace()).boards.find((b) => b.id === FLOWING)?.byHand).toBe(true);
     await agent(`board rm ${FLOWING}\nboard rm ${BOARD}`);
     await until("the page has left the boards removed", async () => {
       const shown = await page.locator(".board-picker select").inputValue();
@@ -3850,6 +3853,24 @@ describe("a diagram placed by hand (S344)", () => {
     expect(told).toContain("~ cards placed by hand");
     expect(told).toContain(`→ ${order} placed at`);
     expect(told).not.toContain(`→ ${ship} placed`);
+  });
+
+  test("the Snap switch of the palette sets a flow by hand, where it stands, and gives it back to its links", async () => {
+    const [, ship] = await agent(
+      'board new "Switch" --format flow --id snap-s344\nadd decision "En stock ?" --alias d\nadd step "Expédier" --from @d',
+    );
+    await page.locator(".board-picker select").selectOption("snap-s344");
+    await card(ship).waitFor();
+    const snap = page.locator(".palette button.snap");
+    expect(await snap.getAttribute("aria-pressed")).toBe("false");
+    const before = await settled(ship);
+    await snap.click();
+    const snapped = async () => (await workspace()).boards.find((b) => b.id === "snap-s344")?.byHand === true;
+    await until("the flow is Snap", snapped);
+    await until("the switch says so", async () => (await snap.getAttribute("aria-pressed")) === "true");
+    expect(await settled(ship)).toEqual(before);
+    await snap.click();
+    await until("the flow is placed by its links again", async () => !(await snapped()));
   });
 });
 

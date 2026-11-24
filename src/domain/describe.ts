@@ -24,7 +24,8 @@ export interface Part {
 
 /** The first line of every reading: the board, and the part read when it is not all of it. */
 function heading(board: Board, part: string[]): string {
-  const whole = `# ${board.id} — ${board.title} (${board.format}, seq ${board.changedSeq})`;
+  const snap = board.byHand ? ", Snap" : "";
+  const whole = `# ${board.id} — ${board.title} (${board.format}${snap}, seq ${board.changedSeq})`;
   return part.length === 0 ? whole : `${whole} · part: ${part.join(", ")}`;
 }
 
@@ -32,7 +33,9 @@ function cardLine(board: Board, e: Element, brief = false): string {
   const detail = e.detail && !brief ? ` — ${under(e.detail)}` : "";
   const labels = e.labels?.length ? ` [${e.labels.join(", ")}]` : "";
   const former = e.formerIds?.length ? ` (formerly ${e.formerIds.join(", ")})` : "";
-  return `  ${e.id}${former} ${e.type} ${quote(e.label)}${wearsDone(board, e) ? " ✓ done" : ""}${labels}${detail}`;
+  // On a Snap diagram, where the card stands: what Claude needs to place one beside it.
+  const at = board.byHand && e.at ? ` at ${e.at.x},${e.at.y}` : "";
+  return `  ${e.id}${former} ${e.type} ${quote(e.label)}${at}${wearsDone(board, e) ? " ✓ done" : ""}${labels}${detail}`;
 }
 
 function linkLine(edge: { src: string; dst: string; label?: string }): string {

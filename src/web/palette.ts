@@ -16,12 +16,15 @@ export interface PaletteModel {
   axes: { x: string; y: string } | undefined;
   live: boolean;
   from: string | null;
+  /** On a diagram, whether it is Snap: its cards stay where they are put (S344). Undefined off a diagram. */
+  snap?: boolean;
 }
 
 /** What the palette does when used: add a card of a kind, open the keys. */
 export interface PaletteActs {
   add(type: string): void;
   keys(): void;
+  snap(on: boolean): void;
 }
 
 export function paletteContent(m: PaletteModel, acts: PaletteActs): Child[] {
@@ -56,6 +59,7 @@ export function paletteContent(m: PaletteModel, acts: PaletteActs): Child[] {
       ),
     ),
     how && h("p", { class: "how" }, how),
+    m.snap !== undefined && snapSwitch(m.snap, m.live, acts),
     h(
       "button",
       {
@@ -66,4 +70,20 @@ export function paletteContent(m: PaletteModel, acts: PaletteActs): Child[] {
       t.withKey(t.shortcuts, "?"),
     ),
   ];
+}
+
+/** The switch of a diagram between Snap, its cards where they are put, and placed by its links. */
+function snapSwitch(on: boolean, live: boolean, acts: PaletteActs): Child {
+  return h(
+    "button",
+    {
+      type: "button",
+      class: "snap",
+      "aria-pressed": String(on),
+      disabled: !live,
+      title: t.snap.tip,
+      onclick: () => acts.snap(!on),
+    },
+    t.snap.name,
+  );
 }

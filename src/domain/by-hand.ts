@@ -36,7 +36,7 @@ export function placing(
   requireDiagram(format);
   if ((board.byHand === true) === cmd.byHand) return [];
   return cmd.byHand
-    ? goingByHand(board, new Set())
+    ? goingByHand(board, new Set(), cmd.span)
     : [{ event: "BoardPlacing", board: board.id, byHand: false }];
 }
 
@@ -58,7 +58,8 @@ function goingByHand(board: Board, given: ReadonlySet<string>, span?: number): B
   const placed: Placed[] = drawn.cards
     .filter((c) => !given.has(c.id) && !board.elements.find((e) => e.id === c.id)?.at)
     .map((c) => ({ event: "ElementPlaced", board: board.id, id: c.id, at: whole(c), drawn: true }));
-  return [{ event: "BoardPlacing", board: board.id, byHand: true }, ...placed];
+  // Every card in place before the switch: a moment of the history between the two would show a Snap half placed.
+  return [...placed, { event: "BoardPlacing", board: board.id, byHand: true }];
 }
 
 const whole = (p: Point): Point => ({ x: Math.round(p.x), y: Math.round(p.y) });

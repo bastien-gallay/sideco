@@ -35,6 +35,8 @@ export interface BoardView {
   focus(id: string, centred?: boolean): void;
   /** Lets the card chosen go, as a click on the board beside it does; a drop that ended there is no such click. */
   letGo(): void;
+  /** A diagram goes Snap, its cards where they stand, or back to its links (S344). */
+  snap(on: boolean): void;
   /** A card was given a new id: the keyboard, and the words being written on it, go on with it. */
   renamed(from: string, to: string): void;
 }
