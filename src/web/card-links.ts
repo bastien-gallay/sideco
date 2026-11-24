@@ -70,6 +70,8 @@ function startNaming(r: LinkRow): void {
 /** The card's links, under a heading; none, nothing. */
 export function linkSection(rows: readonly LinkRow[], live: boolean, heading: string): HTMLElement | false {
   if (naming && !rows.some((r) => keyOf(r) === keyOf(naming as LinkRow))) naming = undefined;
+  // A reverse refused, or another card chosen before it came back: no row is waiting for the keyboard.
+  if (turned && !rows.some((r) => keyOf(r) === turned)) turned = undefined;
   if (rows.length === 0) return false;
   shown = { list: h("ul", { class: "link-rows" }), rows, live };
   redraw();

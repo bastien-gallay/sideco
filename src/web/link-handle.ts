@@ -38,6 +38,8 @@ interface Wire {
   target?: string | undefined;
   /** Where the pointer is on screen: the board scrolling under it moves the end of the wire. */
   pointer?: { clientX: number; clientY: number };
+  /** The pointer has been clear of the edges: a handle that sits near one does not scroll the board at once. */
+  armed?: boolean;
 }
 
 /** How long the wire released in the void takes to go back to the dot. */
@@ -114,7 +116,8 @@ class Handle {
     const box = scroller.getBoundingClientRect();
     const dx = edgePull(wire.pointer.clientX, box.left, box.right);
     const dy = edgePull(wire.pointer.clientY, box.top, box.bottom);
-    if (dx !== 0 || dy !== 0) {
+    if (dx === 0 && dy === 0) wire.armed = true;
+    else if (wire.armed) {
       scroller.scrollBy(dx, dy);
       this.draw(wire);
     }
@@ -189,6 +192,9 @@ export function linkHandle(root: SVGSVGElement, hooks: HandleHooks): () => void 
   handle.on.addEventListener("pointerdown", (event) => handle.press(event));
   handle.on.addEventListener("pointermove", (event) => handle.move(event));
   handle.on.addEventListener("pointerup", () => handle.release());
+  // A pointer taken away by the system ends the pull: nothing is linked, and the board stops scrolling.
+  for (const lost of ["pointercancel", "lostpointercapture"])
+    handle.on.addEventListener(lost, () => handle.letGo());
   // A pull ends in a click on the board's background, which would let the card chosen go.
   handle.on.addEventListener("click", (event) => event.stopPropagation());
   window.addEventListener("keydown", (event) => {

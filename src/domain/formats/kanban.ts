@@ -23,7 +23,7 @@ export const KANBAN: Format = {
       id: "story",
       label: t("Story", "Story"),
       prefix: "S",
-      leadsTo: { type: "task", label: t("Split into a task", "Découper en tâche") },
+      leadsTo: { type: "task", label: t("Split into a task", "Découper en tâche"), splits: true },
       fill: "#FCEFA1",
       ink: DARK,
       shape: "sticky",

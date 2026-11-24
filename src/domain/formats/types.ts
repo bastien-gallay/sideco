@@ -30,7 +30,12 @@ export interface ElementType {
   /** Only for `columns` layouts: the lane a card of this kind goes to when none is said, if the board has it. */
   home?: string;
   /** The kind a card of this one leads to: the page offers, by `label`, to make one from it, linked. */
-  leadsTo?: { type: string; label: Text };
+  leadsTo?: {
+    type: string;
+    label: Text;
+    /** The card made is a part of this one, counted done among its parts: a kanban's task of a story (S323). */
+    splits?: true;
+  };
   /**
    * The letters the kind minted before, oldest first: a card made then keeps its id
    * until `sideco renumber --all`, and one may still be chosen while no kind of the

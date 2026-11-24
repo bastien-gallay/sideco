@@ -67,6 +67,7 @@ export function cardFacts(
   const el = findElement(board, id);
   if (!el) return "";
   const w = WORDS[locale];
+  // The page opens with its recent events only: a change older than those is not said until the past is read.
   const last = events.find((e) => e.seq === el.changedSeq);
   const added = last?.event === "ElementAdded";
   return [

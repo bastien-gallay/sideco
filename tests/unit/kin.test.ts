@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { kinOf, kinSaid } from "../../src/domain/kin.ts";
+import { kinMark, kinOf, kinSaid } from "../../src/domain/kin.ts";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
 import { cardMarkup } from "../../src/domain/render/svg.ts";
 import { table } from "../support.ts";
@@ -24,7 +24,7 @@ test("a story knows its tasks and how many are done; a task knows its story (S32
   expect(kinOf(board, bank).parent).toBe(pay);
   expect(kinOf(board, screen).parent).toBe(pay);
   // A task on its own and a story not split yet have no kin: nothing is said of them.
-  expect(kinOf(board, alone)).toEqual({ parent: undefined, children: [], done: 0 });
+  expect(kinOf(board, alone)).toEqual({ parent: undefined, others: 0, children: [], done: 0 });
   expect(kinSaid(board, alone ?? "", "en")).toBeUndefined();
   expect(kinSaid(board, track ?? "", "en")).toBeUndefined();
 });
@@ -67,4 +67,24 @@ test("the card wears it beside its id, and its tooltip says it", () => {
   const alone = cards.find((c) => c.label === "Relire le contrat");
   expect(alone?.kin).toBeUndefined();
   expect(alone && cardMarkup(alone)).not.toContain("card-kin");
+});
+
+test("only a workshop that says its link is a split shows kin: a retro's action is not a task of its point", () => {
+  const board = table(
+    'board new "Rétro" --format retro --id retro\nadd point "Lent" --alias p\nadd action "Mesurer" --from @p',
+  ).board();
+  const [point, action] = board.elements.map((e) => e.id);
+  expect(kinOf(board, point ?? "")).toEqual({ parent: undefined, others: 0, children: [], done: 0 });
+  expect(kinSaid(board, action ?? "", "en")).toBeUndefined();
+});
+
+test("a task that splits two stories names the first and says there is another", () => {
+  const t = table(SPLIT);
+  const [pay, bank, , , track] = idsOf(t.board());
+  t.script(`link ${track} ${bank}`);
+  const kin = kinOf(t.board(), bank ?? "");
+  expect(kin).toMatchObject({ parent: pay, others: 1 });
+  expect(kinMark(kin)).toBe(`↳ ${pay} +1`);
+  expect(kinSaid(t.board(), bank ?? "", "en")).toBe(`splits ${pay} Payer en ligne, and 1 other`);
+  expect(kinSaid(t.board(), bank ?? "", "fr")).toBe(`découpe ${pay} Payer en ligne, et 1 autre`);
 });

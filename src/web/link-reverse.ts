@@ -30,6 +30,7 @@ export function reverseButton(
   done: () => void,
 ): HTMLButtonElement {
   const can = reversible(link);
+  const why = can ? undefined : WORDS[locale].refused(link.src, link.dst);
   const onclick = (): void => {
     const board = currentBoard();
     if (!board || !can) return;
@@ -41,9 +42,11 @@ export function reverseButton(
     {
       type: "button",
       ...attrs,
-      ...(can ? {} : { "aria-disabled": "true", title: WORDS[locale].refused(link.src, link.dst) }),
+      ...(why ? { "aria-disabled": "true", title: why } : {}),
       onclick,
     },
     WORDS[locale].reverse,
+    // A title is only for a pointer at rest: the reason is in the button's own name for who cannot rest one.
+    why !== undefined && h("span", { class: "said-only" }, `: ${why}`),
   );
 }

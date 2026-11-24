@@ -26,7 +26,7 @@ export interface Words {
   /** Before the ids a card went by, renumbered since. */
   formerly: string;
   /** A card that splits another, and a card split: how many of its parts are done (see kin.ts). */
-  splits: (card: string) => string;
+  splits: (card: string, others?: number) => string;
   splitDone: (done: number, of: number) => string;
   /** An author, in a table cell. */
   who: Record<Actor, string>;
@@ -62,7 +62,8 @@ export const WORDS: Record<Locale, Words> = {
     addedBy: { agent: "added by Claude", human: "added by you", system: "added by the system" },
     done: "done",
     formerly: "formerly",
-    splits: (card) => `splits ${card}`,
+    splits: (card, others = 0) =>
+      `splits ${card}${others > 0 ? `, and ${others} ${others > 1 ? "others" : "other"}` : ""}`,
     splitDone: (done, of) => `${done} of ${of} task${of > 1 ? "s" : ""} done`,
     who: { human: "human", agent: "agent", system: "system" },
     step: "Step",
@@ -91,7 +92,8 @@ export const WORDS: Record<Locale, Words> = {
     addedBy: { agent: "ajouté par Claude", human: "ajouté par toi", system: "ajouté par le système" },
     done: "fait",
     formerly: "anciennement",
-    splits: (card) => `découpe ${card}`,
+    splits: (card, others = 0) =>
+      `découpe ${card}${others > 0 ? `, et ${others} ${others > 1 ? "autres" : "autre"}` : ""}`,
     splitDone: (done, of) => `${done} tâche${done > 1 ? "s" : ""} faite${done > 1 ? "s" : ""} sur ${of}`,
     who: { human: "humain", agent: "agent", system: "système" },
     step: "Étape",
