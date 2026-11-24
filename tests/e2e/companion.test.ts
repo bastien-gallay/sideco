@@ -2615,6 +2615,75 @@ describe("the spotlight on links (S325)", () => {
   });
 });
 
+describe("a link drawn from the handle of the card chosen (S326)", () => {
+  const conn = (src: string, dst: string) => page.locator(`g.conn[data-src="${src}"][data-dst="${dst}"]`);
+  const handle = () => page.locator("g.link-handle circle.link-handle-dot");
+  const centre = async (l: Locator) => {
+    const box = await l.boundingBox();
+    if (!box) throw new Error("nothing to point at");
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
+  /** Pulls a wire from the handle to somewhere on the card, not its centre: it lands anywhere on it. */
+  const pull = async (to: string, release = true) => {
+    const from = await centre(handle());
+    const box = await card(to).boundingBox();
+    if (!box) throw new Error(`no card ${to}`);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 12, box.y + box.height - 10, { steps: 6 });
+    if (release) await page.mouse.up();
+  };
+
+  test("pulled onto another card, it links them; pulled again onto it, it unlinks them", async () => {
+    const [, ship, order] = await agent(
+      'board new "Poignée" --format flow --id poignee\nadd decision "En stock ?" --alias d\nadd step "Expédier" --from @d\nadd step "Commander"',
+    );
+    await page.locator(".board-picker select").selectOption("poignee");
+    await card(order).waitFor();
+    expect(await handle().count()).toBe(0);
+
+    // Only the card chosen wears the handle, on its right edge.
+    await card(ship).click();
+    await handle().waitFor();
+    const dot = await centre(handle());
+    const box = await card(ship).locator(".card-shape").first().boundingBox();
+    if (!box) throw new Error("no card");
+    expect(Math.abs(dot.x - (box.x + box.width))).toBeLessThan(4);
+
+    // While the wire is held, the card under it says what releasing would do.
+    await pull(order, false);
+    await until("the card under the wire is the target", async () =>
+      card(order).evaluate((g) => g.classList.contains("is-link-target")),
+    );
+    await shot("66-link-handle-pulled");
+    await page.mouse.up();
+    await conn(ship, order).waitFor({ state: "attached" });
+    expect(await page.locator("g.link-wire").count()).toBe(0);
+
+    // Pulled again onto a card it already points at, the wire cuts the link.
+    await card(ship).click();
+    await pull(order, false);
+    await until("the card under the wire is to be cut", async () =>
+      card(order).evaluate((g) => g.classList.contains("is-unlink-target")),
+    );
+    await page.mouse.up();
+    await conn(ship, order).waitFor({ state: "detached" });
+
+    // Escape lets the wire go: nothing is linked.
+    await card(ship).click();
+    await pull(order, false);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+    expect(await page.locator("g.link-wire").count()).toBe(0);
+    expect(await conn(ship, order).count()).toBe(0);
+
+    await agent("board rm poignee");
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== "poignee";
+    });
+  });
+});
+
 describe("a flow's branches named from the page", () => {
   const conn = (src: string, dst: string) => page.locator(`g.conn[data-src="${src}"][data-dst="${dst}"]`);
   const named = (src: string, dst: string) => conn(src, dst).locator("text.conn-label");

@@ -24,6 +24,7 @@ import * as links from "./board-links.ts";
 import { changedMark, ringMarkup, unreadMark } from "./card-marks.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
+import { linkHandle } from "./link-handle.ts";
 import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
 import { placeTools, type Rect } from "./tools-place.ts";
@@ -618,8 +619,20 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     chosen: state.selected ?? undefined,
   }));
 
+  /** The handle of the card chosen, that pulls a link to another card (S326). */
+  const paintHandle = linkHandle(root, {
+    chosen: () => (isLive() && !editing ? scene.cards.find((c) => c.id === state.selected) : undefined),
+    toScene,
+    linked: (src, dst) => board?.edges.some((e) => e.src === src && e.dst === dst) ?? false,
+    pulled: (src, dst, cut) => {
+      if (board) void send({ kind: cut ? "unlink" : "link", board: board.id, src, dst });
+    },
+    title: t.withKey(t.link, "L"),
+  });
+
   function paintTools(): void {
     light();
+    paintHandle();
     const id = state.selected;
     const node = id ? nodes.get(id) : undefined;
     const link = pickedLink;

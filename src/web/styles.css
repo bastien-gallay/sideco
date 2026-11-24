@@ -1632,6 +1632,51 @@ kbd {
   }
 }
 
+/* The handle of the card chosen (S326): pulled, it draws a link to another card. */
+.link-handle-dot {
+  fill: var(--accent-text);
+  stroke: var(--surface);
+  stroke-width: 2;
+  cursor: crosshair;
+}
+
+.sideco-board:has(.card.is-dragging) .link-handle {
+  display: none;
+}
+
+.link-wire path {
+  fill: none;
+  stroke: var(--accent-text);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.link-wire.is-cut path {
+  stroke: var(--danger);
+}
+
+.card.is-link-target .card-ring,
+.card.is-unlink-target .card-ring {
+  stroke: var(--accent-text);
+  stroke-width: 2.5;
+}
+
+.card.is-unlink-target .card-ring {
+  stroke: var(--danger);
+  stroke-dasharray: 6 4;
+}
+
+/* While a wire is held, every card it could reach stays sharp. */
+.sideco-board.is-wiring .card {
+  opacity: 1;
+}
+
+/* Nor does the toolbar of the card chosen hide the wire. */
+:has(> .canvas-scroll .is-wiring) > .card-tools {
+  visibility: hidden;
+}
+
 .card-tools {
   position: absolute;
   z-index: 5;
