@@ -8,7 +8,7 @@ import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../do
 import { toMermaid } from "../domain/export/mermaid.ts";
 import { markWords, queryWords } from "../domain/find.ts";
 import { findFormat, planAxis } from "../domain/formats.ts";
-import { asLocale, formerly, LOCALES, WORDS } from "../domain/i18n.ts";
+import { formerly, WORDS } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import { readerOf, shownSession, TURNS_SHOWN } from "../domain/sessions.ts";
 import { type Board, findBoard } from "../domain/workspace.ts";
@@ -34,10 +34,9 @@ import { describeEvent, sessionName } from "./event-words.ts";
 import { keysSheet, openKeys } from "./keys-sheet.ts";
 import { filterBar, mountLabelFilter, paintLabelFilter } from "./label-filter.ts";
 import { type LinkRow, linkRows } from "./link-rows.ts";
-import { chooseLocale, locale, t } from "./locale.ts";
+import { languagePicker, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
 import { messageField, wordsField } from "./message-field.ts";
-import { MESSAGES } from "./messages.ts";
 import { mountNotices, type Offer } from "./notices.ts";
 import { type PaletteModel, paletteContent } from "./palette.ts";
 import { meetUpdates } from "./reload.ts";
@@ -391,21 +390,6 @@ const skip = h(
     },
   },
   t.skipToBoard,
-);
-
-/** The reader's language: every language under its own name, so it is found whatever the page speaks. */
-const languagePicker = h(
-  "select",
-  {
-    class: "language",
-    name: "language",
-    "aria-label": t.language,
-    onchange: (event: Event) => {
-      const next = asLocale((event.target as HTMLSelectElement).value);
-      if (next) chooseLocale(next);
-    },
-  },
-  ...LOCALES.map((l) => h("option", { value: l, lang: l, selected: l === locale }, MESSAGES[l].languageName)),
 );
 
 const view = mountBoard(canvas, {
