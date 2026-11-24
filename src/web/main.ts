@@ -9,8 +9,6 @@ import { toMermaid } from "../domain/export/mermaid.ts";
 import { markWords, queryWords } from "../domain/find.ts";
 import { boardPurpose, findFormat, findType, planAxis } from "../domain/formats.ts";
 import { asLocale, formerly, LOCALES } from "../domain/i18n.ts";
-import { sameLabel } from "../domain/labels.ts";
-import { chipText, labelColours } from "../domain/render/labels.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import {
   hasSpoken,
@@ -36,6 +34,7 @@ import {
   paintHome,
   removeSheet,
 } from "./boards.ts";
+import { labelSection, projectLabels, refocusLabelField, refocusLabels, typingLabel } from "./card-labels.ts";
 import { clock, h, region } from "./dom.ts";
 import { describeEvent, sessionName } from "./event-words.ts";
 import { keysSheet, openKeys } from "./keys-sheet.ts";
@@ -1261,110 +1260,6 @@ interface CardPanelModel {
   known: string[];
 }
 
-/** Made once, like the detail's field: what is being typed keeps its place and the keyboard through every repaint. */
-const labelField = h("input", {
-  type: "text",
-  name: "label",
-  class: "label-field",
-  list: "known-labels",
-  autocomplete: "off",
-  placeholder: t.addLabel,
-  "aria-label": t.addLabel,
-});
-const knownLabels = h("datalist", { id: "known-labels" });
-labelField.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
-    labelField.value = "";
-    return;
-  }
-  if (event.key !== "Enter") return;
-  event.preventDefault();
-  // Several at once, by commas: "type:bug, @bastien".
-  const labels = labelField.value
-    .split(",")
-    .map((label) => label.trim())
-    .filter(Boolean);
-  const board = currentBoard();
-  const id = state.selected;
-  if (!board || !id || labels.length === 0 || !isLive()) return;
-  void send({ kind: "label", board: board.id, id, labels }).then((done) => {
-    if (done === undefined) return;
-    labelField.value = "";
-    speak(t.labelsAdded(labels.map(chipText).join(", ")));
-  });
-});
-
-/** A label taken off by its ×: once it is gone, the keyboard goes to the next ×, else the one before, else the field. */
-let unlabelled: { id: string; label: string; at: number } | undefined;
-
-function refocusLabels(id: string, labels: readonly string[]): void {
-  const was = unlabelled;
-  if (!was || was.id !== id || labels.some((label) => sameLabel(label, was.label))) return;
-  unlabelled = undefined;
-  const buttons = [...cardPanel.querySelectorAll<HTMLButtonElement>(".label-remove")];
-  (buttons[Math.min(was.at, buttons.length - 1)] ?? labelField).focus();
-}
-
-/** Every label the project's cards wear, once each whatever its case, in the order first met. */
-function projectLabels(): string[] {
-  const seen = new Map<string, string>();
-  for (const board of state.live.boards)
-    for (const e of board.elements) for (const label of e.labels ?? []) seen.set(label.toLowerCase(), label);
-  return [...seen.values()];
-}
-
-/** The labels of the chosen card: its chips, then, live, the field that adds one, offering the project's others. */
-function labelSection(m: CardPanelModel): HTMLElement | false {
-  if (m.labels.length === 0 && !m.live) return false;
-  knownLabels.replaceChildren(
-    ...m.known
-      .filter((k) => !m.labels.some((own) => sameLabel(own, k)))
-      .map((k) => h("option", { value: k })),
-  );
-  return h(
-    "section",
-    { class: "card-panel-labels", "aria-label": t.labelsHeading },
-    m.labels.length > 0 && labelChips(m),
-    m.live && labelField,
-    m.live && knownLabels,
-  );
-}
-
-/** The chosen card's labels: a chip each, its colour as on the card, and × to take it off. */
-function labelChips(m: CardPanelModel): HTMLElement {
-  const board = currentBoard();
-  return h(
-    "ul",
-    { class: "label-chips" },
-    ...m.labels.map((label, at) => {
-      const { fill, ink } = labelColours(label);
-      return h(
-        "li",
-        { class: "label-chip", style: `background:${fill};color:${ink}` },
-        chipText(label),
-        m.live &&
-          board &&
-          h(
-            "button",
-            {
-              type: "button",
-              class: "label-remove",
-              "aria-label": t.removeLabel(chipText(label)),
-              title: t.removeLabel(chipText(label)),
-              onclick: () => {
-                unlabelled = { id: m.id, label, at };
-                void send({ kind: "unlabel", board: board.id, id: m.id, labels: [label] }).then((done) => {
-                  if (done !== undefined) speak(t.labelRemoved(chipText(label)));
-                });
-              },
-            },
-            "×",
-          ),
-      );
-    }),
-  );
-}
-
 /** The detail being written in the panel: its card, and where the keyboard was when it was asked for. */
 let detailEdit: { id: string; from: "card" | "panel" } | undefined;
 // A card given a new id keeps the words being written on it, and the keyboard (T224).
@@ -1408,7 +1303,7 @@ const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
       tabIcon("notes"),
       t.cardNotes(m.notes),
     ),
-  labelSection(m),
+  labelSection(m, speak),
   ...(m.editing
     ? [
         detailField,
@@ -2013,7 +1908,7 @@ function render(): void {
   if (board && chosen) {
     const format = findFormat(board.format);
     const typing = document.activeElement === detailField;
-    const labelling = document.activeElement === labelField;
+    const labelling = typingLabel();
     paintCardPanel({
       id: chosen.id,
       former: formerly(chosen.formerIds, locale),
@@ -2028,8 +1923,8 @@ function render(): void {
       known: projectLabels(),
     });
     if (typing && document.activeElement !== detailField) detailField.focus();
-    if (labelling && document.activeElement !== labelField && labelField.isConnected) labelField.focus();
-    refocusLabels(chosen.id, chosen.labels ?? []);
+    if (labelling) refocusLabelField();
+    refocusLabels(cardPanel, chosen.id, chosen.labels ?? []);
   }
 
   paintTabs();
