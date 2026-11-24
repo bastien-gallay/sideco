@@ -13,47 +13,12 @@ import { type Found, findInWorkspace, queryWords } from "../domain/find.ts";
 import { findFormat, findType, laneName, lanesOf } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
 import { type Band, headingOf, stepOf, type Target, vacancy } from "../domain/layout/index.ts";
-import type { AgentStatus, Session, SessionTurn } from "../domain/sessions.ts";
+import type { Session, SessionTurn } from "../domain/sessions.ts";
 import { threads } from "../domain/threads.ts";
 import { type Board, findBoard, findElement, type Workspace } from "../domain/workspace.ts";
 import { MESSAGES } from "./messages.ts";
 
-export type Tone = "off" | "idle" | "busy" | "waiting" | "listening";
-
-export function agentStatus(
-  session: Session | undefined,
-  listening: number,
-  locale: Locale = DEFAULT_LOCALE,
-): { tone: Tone; text: string } {
-  const m = MESSAGES[locale];
-  if (listening > 0) return { tone: "listening", text: m.listening };
-  if (!session) return { tone: "off", text: m.noSession };
-  switch (session.status) {
-    case "ended":
-      return { tone: "off", text: m.noSession };
-    case "idle":
-      return { tone: "idle", text: m.idle };
-    case "thinking":
-      return { tone: "busy", text: m.thinking };
-    case "running":
-      return { tone: "busy", text: m.running(session.statusDetail) };
-    case "waiting":
-      return { tone: "waiting", text: m.waitingInTerminal(session.statusDetail ?? "") };
-  }
-}
-
-/** The honest answer to "when will Claude see what I just did?". */
-export function handOverHint(
-  status: AgentStatus | undefined,
-  listening: number,
-  locale: Locale = DEFAULT_LOCALE,
-): string {
-  const m = MESSAGES[locale];
-  if (listening > 0) return m.hintListening;
-  if (status === undefined || status === "ended") return m.hintNoSession;
-  if (status === "running" || status === "thinking") return m.hintWorking;
-  return m.hintIdle;
-}
+export { agentStatus, handOverHint, handOverNotice, type Tone } from "./agent-status.ts";
 
 /** What the agent would be told now: the same digest it will read. Without a session, nothing was read yet. */
 export function pendingChanges(events: readonly Recorded[], session: Session | undefined): Changes {
@@ -108,22 +73,6 @@ export function unreadOn(pending: Changes, boardId: string): Unread {
 
 export function recentTurns(session: Session | undefined, max: number): SessionTurn[] {
   return session ? session.turns.slice(-max) : [];
-}
-
-/**
- * What the page says right after a hand-over that Claude will not read at once:
- * the page cannot wake a terminal at rest, so it says what will.
- */
-export function handOverNotice(
-  status: AgentStatus | undefined,
-  listening: number,
-  locale: Locale = DEFAULT_LOCALE,
-): string | undefined {
-  const m = MESSAGES[locale];
-  if (listening > 0) return undefined;
-  if (status === undefined || status === "ended") return m.handedOverNoSession;
-  if (status === "running" || status === "thinking") return m.handedOverWorking;
-  return m.handedOverIdle;
 }
 
 const onBoard =
