@@ -39,6 +39,8 @@ export interface Words {
   to: string;
   openQuestions: string;
   resolvedNotes: string;
+  /** Over the kinds of a notation, each named beside its letter. */
+  key: string;
   /** `(on E1)`, after a note's id. */
   on: (target: string) => string;
   /** Between a note's author and its text: French puts a space before the colon. */
@@ -70,6 +72,7 @@ export const WORDS: Record<Locale, Words> = {
     to: "To",
     openQuestions: "Open questions",
     resolvedNotes: "Resolved notes",
+    key: "Key",
     on: (target) => `on ${target}`,
     colon: ":",
     source: (board, seq, day) => `Source: Sideco journal, board ${board}, seq ${seq}, exported on ${day}.`,
@@ -96,6 +99,7 @@ export const WORDS: Record<Locale, Words> = {
     to: "Vers",
     openQuestions: "Questions ouvertes",
     resolvedNotes: "Notes résolues",
+    key: "Légende",
     on: (target) => `sur ${target}`,
     colon: " :",
     source: (board, seq, day) => `Source : journal Sideco, tableau ${board}, seq ${seq}, exporté le ${day}.`,

@@ -35,6 +35,9 @@ All notable changes to Sideco are listed here. The format follows
 - `sideco retype ID TYPE [NEW]` turns a card into another kind of its board: it
   takes the next id of that kind's letter, or NEW, its ties follow, and it keeps
   its old id, as with `renumber`. An undo gives back the kind and the id.
+- A C4 context leaves with its title and its key, as the notation asks: the
+  `svg`, `md` and `html` exports are headed "System context: " and the board's
+  title, and name the three kinds of card, each drawn in its colour.
 
 ### Changed
 

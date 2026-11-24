@@ -322,3 +322,64 @@ describe("a card marked done", () => {
     expect(toMermaid(timeline)).toContain('"✓ Commande passée"');
   });
 });
+
+describe("a C4 leaves with its title and its key, as the notation asks (S309)", () => {
+  const C4 = `
+board new "Boutique" --format c4-context --id boutique
+add person "Client" --alias client
+add system "Boutique en ligne" --alias shop --from @client --edge "commande sur"
+add external "Banque" --from @shop --edge "paie via"
+`;
+  const fr = { ...META, locale: "fr" as const };
+
+  test("the svg is headed by what the diagram is and whose, and ends on the kinds in their colours", () => {
+    const board = table(C4).board();
+    const svg = exportBoard(board, "svg", fr);
+    expect(svg).toContain('<text class="frame-heading" x="24" y="22">Contexte du système : Boutique</text>');
+    expect(svg).toContain('aria-label="Contexte du système : Boutique"');
+    for (const [kind, light, dark] of [
+      ["Personne", "#08427B", "#8EC1F5"],
+      ["Système", "#1168BD", "#4EA0F2"],
+      ["Système externe", "#6B6B6B", "#A8A8A8"],
+    ])
+      expect(svg).toMatch(
+        new RegExp(
+          `<g class="frame-key card-outline" style="--tone-light:${light};--tone-dark:${dark}"[^>]*>.*>${kind}</text></g>`,
+        ),
+      );
+    expect(exportBoard(board, "svg", META)).toContain(">System context: Boutique</text>");
+    // The drawing is moved under its heading, not drawn over it.
+    expect(svg).toContain('<g transform="translate(0 32)">');
+    expect(svg).not.toMatch(/NaN|undefined|Infinity/);
+  });
+
+  test("the markdown is titled the same and names each kind with its letter", () => {
+    const md = toMarkdown(table(C4).board(), fr);
+    expect(md.split("\n")[0]).toBe("# Contexte du système : Boutique");
+    expect(md).toContain(
+      [
+        "## Légende",
+        "",
+        "- **P** Personne : Quelqu'un qui utilise le système",
+        "- **Y** Système : Le système logiciel qu'on construit",
+        "- **X** Système externe : Un système hors du nôtre, dont il dépend",
+      ].join("\n"),
+    );
+  });
+
+  test("the html is titled the same, its drawing keeps the key", () => {
+    const html = toHtml(table(C4).board(), fr);
+    expect(html).toContain("<h1>Contexte du système : Boutique</h1>");
+    expect(html).toContain("<title>Contexte du système : Boutique</title>");
+    expect(html).toContain('class="frame-key card-outline"');
+    // The page's own heading says it: the drawing does not say it twice.
+    expect(html).not.toContain('class="frame-heading"');
+  });
+
+  test("a workshop whose notation asks for neither leaves as before", () => {
+    const board = table(FLOW).board();
+    expect(exportBoard(board, "svg", fr)).not.toContain('class="frame-');
+    expect(toMarkdown(board, fr).split("\n")[0]).toBe(`# ${board.title}`);
+    expect(toMarkdown(board, fr)).not.toContain("Légende");
+  });
+});

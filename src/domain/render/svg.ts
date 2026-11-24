@@ -20,6 +20,7 @@ import {
   PERSON_HEAD,
   type Scene,
 } from "../layout/scene.ts";
+import { type Frame, frameMarkup, frameRoom } from "./frame.ts";
 import { cardChipText, chipText, labelColours } from "./labels.ts";
 
 export const SVG_STYLE = `
@@ -54,6 +55,8 @@ export const SVG_STYLE = `
 .card-notes circle { fill: #1A6FAE; stroke: var(--sideco-bg, #FFFFFF); stroke-width: 2; }
 .card-notes text { fill: #FFFFFF; font-size: 10px; font-weight: 700; text-anchor: middle; }
 .card-kind { font-size: 11px; text-anchor: middle; }
+.frame-heading { fill: var(--sideco-ink, #1F2328); font-size: 15px; font-weight: 700; }
+.frame-key text { fill: var(--sideco-ink, #1F2328); font-size: 12px; }
 .card-outline .card-shape { fill: var(--sideco-bg, #FFFFFF); fill-opacity: 1; stroke: light-dark(var(--tone-light), var(--tone-dark)); stroke-width: 2; }
 .card-outline > text, .card-outline .card-person { fill: light-dark(var(--tone-light), var(--tone-dark)); opacity: 1; }
 .card-outline .card-label { font-weight: 600; }
@@ -65,17 +68,23 @@ export function esc(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export function sceneToSvg(scene: Scene, title: string): string {
-  const w = Math.max(scene.width, 1);
-  const h = Math.max(scene.height, 1);
+/** A frame, when the notation asks for one, goes round the drawing: its heading over it, its key under it. */
+export function sceneToSvg(scene: Scene, title: string, frame?: Frame): string {
+  const room = frameRoom(frame);
+  const w = Math.max(scene.width, room.width, 1);
+  const h = Math.max(scene.height, 1) + room.top + room.bottom;
+  const drawing = [
+    ...scene.bands.map(bandMarkup),
+    ...scene.connectors.map(connectorMarkup),
+    ...scene.cards.map((c) => `<g transform="translate(${c.x} ${c.y})">${cardMarkup(c)}</g>`),
+  ];
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" class="sideco-board" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${esc(title)}">`,
     `<title>${esc(title)}</title>`,
     `<style>${SVG_STYLE}</style>`,
     arrowDefs(),
-    ...scene.bands.map(bandMarkup),
-    ...scene.connectors.map(connectorMarkup),
-    ...scene.cards.map((c) => `<g transform="translate(${c.x} ${c.y})">${cardMarkup(c)}</g>`),
+    ...(room.top > 0 ? [`<g transform="translate(0 ${room.top})">`, ...drawing, "</g>"] : drawing),
+    ...(frame ? frameMarkup(frame, room.top + Math.max(scene.height, 1)) : []),
     "</svg>",
   ].join("\n");
 }

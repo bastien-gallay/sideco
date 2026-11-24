@@ -183,13 +183,13 @@ Un atelier est une donnée (un fichier par atelier dans `src/domain/formats/`, l
 | `story-map` | Quel parcours, que livre-t-on d'abord ? | étapes | `activity` `A`, `task` `T`, `story` `S` |
 | `retro` | Que garde-t-on, qu'arrête-t-on, qu'essaie-t-on ? | colonnes | `point` `P`, `action` `A` |
 | `impact-effort` | Que fait-on d'abord, pour ce que ça rapporte et ce que ça coûte ? | colonnes, en plan 2 × 2 | `item` `I` |
-| `c4-context` | Qui utilise le système, et de quoi dépend-il ? (C4, niveau 1) | graphe | `person` `P`, `system` `S`, `external` `X` |
+| `c4-context` | Qui utilise le système, et de quoi dépend-il ? (C4, niveau 1) | graphe | `person` `P`, `system` `Y`, `external` `X` |
 
 Un `flow` trop long pour tenir en hauteur se replie, si la fenêtre est assez large, en colonnes côte à côte : on lit la première de haut en bas, puis la flèche monte par l'allée et reprend en haut de la suivante. Le repli ne coupe qu'à un endroit où une seule flèche passe, jamais sous une boucle qui remonte, et suit la largeur de la fenêtre ; les exports gardent une seule colonne.
 
 Un `flow` ou un `c4-context` peut aussi passer en **Snap** : ses cartes restent où tu les poses. Glisse une carte, pousse-la avec `Maj` et une flèche, presse le bouton Snap de la palette, ou dis `sideco place ID X Y` : tout le diagramme se fige là où il se tient, avec la hauteur que les liens donnaient aux cartes. Un lien ajouté ensuite ne déplace plus aucune carte, et se trace en courbe. Une carte ajoutée se met sous celle d'où elle part, à la première place libre. Claude apprend la carte posée et le passage en Snap, pas chaque carte restée en place, et `sideco show` lui dit où est chaque carte. Snap relâché, ou `sideco placing auto`, rend le placement aux liens ; les places posées reviennent avec Snap ou `sideco placing hand`.
 
-Sur un `c4-context`, le détail d'une carte est sa description : la carte en montre le début sous son nom, en plus petit, trois lignes au plus (`sideco detail Y1 "Catalogue, panier, paiement"`). Une personne porte une tête et des épaules au-dessus de son nom.
+Sur un `c4-context`, le détail d'une carte est sa description : la carte en montre le début sous son nom, en plus petit, trois lignes au plus (`sideco detail Y1 "Catalogue, panier, paiement"`). Une personne porte une tête et des épaules au-dessus de son nom. Exporté en `svg`, `md` ou `html`, un C4 part avec son titre (« Contexte du système : Boutique ») et sa légende, les trois sortes de cartes nommées, comme le demande la notation.
 
 Sur une `story-map`, quand le tableau défile vers le bas et que les activités passent sous les numéros d'étape, chaque numéro affiche dessous l'activité et la tâche de son étape ; l'activité court jusqu'à l'étape qui en a une autre.
 

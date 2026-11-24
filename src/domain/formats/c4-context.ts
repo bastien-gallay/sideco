@@ -22,6 +22,7 @@ export const C4_CONTEXT: Format = {
   describes: true,
   relations: true,
   look: { outline: true, kinds: true, width: 200, blurbLines: 5 },
+  framed: t("System context", "Contexte du système"),
   types: [
     {
       id: "person",

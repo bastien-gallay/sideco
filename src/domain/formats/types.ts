@@ -110,6 +110,11 @@ export interface Format {
   relations?: true;
   /** Only for `graph` layouts: cards drawn other than as stickies. */
   look?: Look;
+  /**
+   * The notation asks a diagram for a title and a key: what the diagram is, said
+   * before the board's title when it leaves the page, with its kinds named under it.
+   */
+  framed?: Text;
 }
 
 export const t = (en: string, fr: string): Text => ({ en, fr });

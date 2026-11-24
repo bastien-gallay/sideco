@@ -10,6 +10,7 @@ import { threads } from "../threads.ts";
 import type { Board } from "../workspace.ts";
 import type { ExportMeta } from "./markdown.ts";
 import { labelSaid } from "./mermaid.ts";
+import { diagramFrame, diagramTitle } from "./notation.ts";
 
 export const PAGE_STYLE = `
 :root { color-scheme: light dark; --sideco-bg: #FFFFFF; --sideco-ink: #1F2328; --sideco-muted: #59636E; --sideco-faint: #8C959F; --sideco-rule: #E3E6EA; --sideco-lane: #F3F4F6; --sideco-conn: #6E7781; }
@@ -39,6 +40,7 @@ export function toHtml(board: Board, meta: ExportMeta): string {
   const type = (id: string) => format?.types.find((t) => t.id === id);
   const locale = meta.locale ?? DEFAULT_LOCALE;
   const w = WORDS[locale];
+  const title = diagramTitle(board, locale);
   const lane = (id: string): string => laneName(format, board, id, locale);
   const where = layout === "timeline" ? w.step : layout === "columns" ? w.column : undefined;
 
@@ -80,15 +82,15 @@ export function toHtml(board: Board, meta: ExportMeta): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(board.title)}</title>
+<title>${esc(title)}</title>
 <style>${PAGE_STYLE}</style>
 </head>
 <body>
 <main>
-<h1>${esc(board.title)}</h1>
+<h1>${esc(title)}</h1>
 <p class="meta">${format ? `<strong>${esc(format.name[locale])}</strong> — ${esc(boardPurpose(format, board, locale))}` : esc(board.format)}</p>
 <div class="drawing">
-${sceneToSvg(layoutBoard(board, locale), board.title)}
+${sceneToSvg(layoutBoard(board, locale), title, diagramFrame(board, locale, false))}
 </div>
 <h2>${w.elements}</h2>
 ${

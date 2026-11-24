@@ -8,6 +8,7 @@ import { DEFAULT_LOCALE, type Locale, WORDS } from "../i18n.ts";
 import { threads } from "../threads.ts";
 import type { Board, Thread } from "../workspace.ts";
 import { labelSaid, toMermaid } from "./mermaid.ts";
+import { diagramTitle } from "./notation.ts";
 
 export interface ExportMeta {
   /** ISO date-time of the export. */
@@ -23,11 +24,18 @@ export function toMarkdown(board: Board, meta: ExportMeta): string {
   const w = WORDS[locale];
   const typeLabel = (id: string): string => format?.types.find((t) => t.id === id)?.label[locale] ?? id;
   const laneLabel = (id: string): string => laneName(format, board, id, locale);
-  const out: string[] = [`# ${board.title}`, ""];
+  const out: string[] = [`# ${diagramTitle(board, locale)}`, ""];
 
   if (format) out.push(`> **${format.name[locale]}** — ${boardPurpose(format, board, locale)}`, "");
   out.push("```mermaid", toMermaid(board, locale), "```", "");
   out.push(w.source(`\`${board.id}\``, board.changedSeq, meta.exportedAt.slice(0, 10)), "");
+
+  if (format?.framed) {
+    out.push(`## ${w.key}`, "");
+    for (const type of format.types)
+      out.push(`- **${type.prefix}** ${type.label[locale]}${w.colon} ${type.hint[locale]}`);
+    out.push("");
+  }
 
   out.push(`## ${w.elements}`, "");
   if (board.elements.length === 0) out.push(w.noElement, "");

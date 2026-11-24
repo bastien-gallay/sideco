@@ -6,6 +6,7 @@ import { toHtml } from "./html.ts";
 import { type ExportMeta, toMarkdown } from "./markdown.ts";
 import { toMermaid } from "./mermaid.ts";
 import { toModel } from "./model.ts";
+import { diagramFrame, diagramTitle } from "./notation.ts";
 
 export const EXPORT_FORMATS = ["md", "html", "svg", "mermaid", "json"] as const;
 export type ExportFormat = (typeof EXPORT_FORMATS)[number];
@@ -25,7 +26,7 @@ export function exportBoard(board: Board, format: ExportFormat, meta: ExportMeta
     case "html":
       return toHtml(board, meta);
     case "svg":
-      return `${sceneToSvg(layoutBoard(board, meta.locale), board.title)}\n`;
+      return `${sceneToSvg(layoutBoard(board, meta.locale), diagramTitle(board, meta.locale), diagramFrame(board, meta.locale, true))}\n`;
     case "mermaid":
       return `${toMermaid(board, meta.locale)}\n`;
     case "json":
