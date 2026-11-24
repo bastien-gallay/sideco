@@ -1645,11 +1645,31 @@ kbd {
 }
 
 /* The handle of the card chosen (S326): pulled, it draws a link to another card. */
+.link-handle {
+  touch-action: none;
+}
+
+.link-handle-hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
 .link-handle-dot {
   fill: var(--accent-text);
   stroke: var(--surface);
   stroke-width: 2;
-  cursor: crosshair;
+  pointer-events: none;
+}
+
+/* Under the pointer, the dot grows: it can be pulled. */
+.link-handle:hover .link-handle-dot {
+  r: 8;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .link-handle-dot {
+    transition: r 120ms cubic-bezier(0.25, 1, 0.5, 1);
+  }
 }
 
 .sideco-board:has(.card.is-dragging) .link-handle {

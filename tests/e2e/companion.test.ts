@@ -2652,6 +2652,14 @@ describe("a link drawn from the handle of the card chosen (S326)", () => {
     // The box takes in the frame's stroke, 2.5 px: its line runs half of it inside.
     expect(Math.abs(dot.x - (box.x + box.width - 1.25))).toBeLessThan(0.5);
     expect(Math.abs(dot.y - (box.y + box.height / 2))).toBeLessThan(1);
+    // A finger takes it as easily as a pointer (T266): a target of 24 px at least, that does not scroll the
+    // board, hidden from a screen reader, which has L and the Links section of the Detail tab.
+    const hit = await page.locator("g.link-handle circle.link-handle-hit").evaluate((c) => ({
+      r: Number(c.getAttribute("r")),
+      touch: getComputedStyle(c.parentElement as Element).touchAction,
+      hidden: c.parentElement?.getAttribute("aria-hidden"),
+    }));
+    expect(hit).toEqual({ r: 12, touch: "none", hidden: "true" });
 
     // While the wire is held, the card under it says what releasing would do.
     await pull(order, false);
@@ -2662,6 +2670,11 @@ describe("a link drawn from the handle of the card chosen (S326)", () => {
     await page.mouse.up();
     await conn(ship, order).waitFor({ state: "attached" });
     expect(await page.locator("g.link-wire").count()).toBe(0);
+    const spoken = page.locator(".spoken");
+    await until(
+      "the link made is said",
+      async () => (await spoken.textContent()) === `Link ${ship} → ${order} made`,
+    );
 
     // Pulled again onto a card it already points at, the wire cuts the link.
     await card(ship).click();
@@ -2671,6 +2684,32 @@ describe("a link drawn from the handle of the card chosen (S326)", () => {
     );
     await page.mouse.up();
     await conn(ship, order).waitFor({ state: "detached" });
+    await until(
+      "the link cut is said",
+      async () => (await spoken.textContent()) === `Link ${ship} → ${order} removed`,
+    );
+
+    // Released where no card is, the wire goes back to the dot as it fades, and says so: not a bug.
+    await card(ship).click();
+    const from = await centre(handle());
+    const empty = await page.evaluate(({ x, y }) => {
+      for (let dy = 60; dy < 600; dy += 20)
+        for (const sy of [1, -1]) {
+          const at = document.elementFromPoint(x, y + sy * dy);
+          if (at?.closest(".sideco-board") && !at.closest("g.card, g.conn")) return { x, y: y + sy * dy };
+        }
+      throw new Error("no empty spot");
+    }, from);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(empty.x, empty.y, { steps: 6 });
+    await page.mouse.up();
+    await until(
+      "a release in the void is said",
+      async () => (await spoken.textContent()) === "No card aimed at",
+    );
+    await page.locator("g.link-wire").waitFor({ state: "detached" });
+    expect(await conn(ship, order).count()).toBe(0);
 
     // Escape lets the wire go: nothing is linked.
     await card(ship).click();

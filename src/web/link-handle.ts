@@ -5,9 +5,11 @@
  * the two, or cuts the link when the card chosen already points at that one.
  * The card under the wire says which by its outline, solid to link, dashed red
  * to cut. Escape lets the wire go. The middle of a card is left to moving it.
+ * Released where no card is, the wire goes back to the dot as it fades (T266).
  */
 import { RING } from "./card-marks.ts";
 import { svg } from "./dom.ts";
+import { t } from "./locale.ts";
 
 interface Point {
   x: number;
@@ -19,18 +21,22 @@ export interface HandleHooks {
   chosen(): { id: string; x: number; y: number; w: number; h: number } | undefined;
   toScene(event: { clientX: number; clientY: number }): Point;
   linked(src: string, dst: string): boolean;
-  /** Links the two cards, or cuts the link between them. */
-  pulled(src: string, dst: string, cut: boolean): void;
-  /** What the handle says to a pointer resting on it. */
-  title: string;
+  /** Links the two cards, or cuts the link between them; answers whether it was saved. */
+  pulled(src: string, dst: string, cut: boolean): Promise<boolean>;
+  /** Says to a screen reader what releasing the wire did. */
+  say(words: string): void;
 }
 
 interface Wire {
   src: string;
   from: Point;
+  at?: Point;
   g: SVGGElement;
   target?: string | undefined;
 }
+
+/** How long the wire released in the void takes to go back to the dot. */
+const FADE_MS = 220;
 
 const cardUnder = (event: { clientX: number; clientY: number }): string | undefined =>
   document.elementFromPoint(event.clientX, event.clientY)?.closest<SVGGElement>("g.card")?.dataset.id;
@@ -44,7 +50,8 @@ class Handle {
     private readonly root: SVGSVGElement,
     private readonly hooks: HandleHooks,
   ) {
-    this.layer = root.appendChild(svg("g", { class: "link-handle" }));
+    // A screen reader links by L, or from the Links section of the Detail tab.
+    this.layer = root.appendChild(svg("g", { class: "link-handle", "aria-hidden": "true" }));
   }
 
   get on(): SVGGElement {
@@ -56,14 +63,11 @@ class Handle {
     this.layer.replaceChildren();
     const card = this.hooks.chosen();
     if (!card) return;
-    const dot = svg("circle", {
-      class: "link-handle-dot",
-      cx: card.x + card.w + RING,
-      cy: card.y + card.h / 2,
-      r: 6,
-    });
-    dot.append(Object.assign(svg("title"), { textContent: this.hooks.title }));
-    this.layer.append(dot);
+    const at = { cx: card.x + card.w + RING, cy: card.y + card.h / 2 };
+    // The dot is drawn small; a finger takes it by a circle of 24 px (WCAG 2.5.8).
+    const hit = svg("circle", { class: "link-handle-hit", ...at, r: 12 });
+    hit.append(Object.assign(svg("title"), { textContent: t.withKey(t.link, "L") }));
+    this.layer.append(hit, svg("circle", { class: "link-handle-dot", ...at, r: 6 }));
   }
 
   press(event: PointerEvent): void {
@@ -82,6 +86,7 @@ class Handle {
     const wire = this.wire;
     if (!wire) return;
     const at = this.hooks.toScene(event);
+    wire.at = at;
     wire.g.firstElementChild?.setAttribute("d", `M${wire.from.x} ${wire.from.y}L${at.x} ${at.y}`);
     const id = cardUnder(event);
     this.aim(wire, id === wire.src ? undefined : id);
@@ -91,14 +96,19 @@ class Handle {
     const held = this.wire;
     const target = held?.target;
     const cut = held && target ? this.hooks.linked(held.src, target) : false;
-    this.letGo();
-    if (held && target) this.hooks.pulled(held.src, target, cut);
+    this.letGo(held !== undefined && !target);
+    if (held && target) {
+      const said = t.wired(t.linkBetween(held.src, target), cut);
+      void this.hooks.pulled(held.src, target, cut).then((ok) => ok && this.hooks.say(said));
+    } else if (held) this.hooks.say(t.wired(undefined, false));
   }
 
-  letGo(): void {
+  /** Lets the wire go; `missed`, it goes back to the dot as it fades, so it does not look like a bug. */
+  letGo(missed = false): void {
     if (!this.wire) return;
     this.aim(this.wire, undefined);
-    this.wire.g.remove();
+    if (missed) fadeBack(this.wire);
+    else this.wire.g.remove();
     this.wire = undefined;
     this.root.classList.remove("is-wiring");
     this.paint();
@@ -118,6 +128,29 @@ class Handle {
     const g = id ? this.root.querySelector(`g.card[data-id="${CSS.escape(id)}"]`) : null;
     g?.classList.toggle(cut ? "is-unlink-target" : "is-link-target", on);
   }
+}
+
+/** Draws the wire shorter and fainter until it is back on the dot; at once when motion is reduced. */
+function fadeBack({ g, from, at }: Wire): void {
+  const path = g.firstElementChild;
+  if (!at || !path || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    g.remove();
+    return;
+  }
+  g.classList.add("is-missed");
+  const start = performance.now();
+  const step = (now: number): void => {
+    const done = Math.min(1, (now - start) / FADE_MS);
+    const left = (1 - done) ** 3;
+    path.setAttribute(
+      "d",
+      `M${from.x} ${from.y}L${from.x + (at.x - from.x) * left} ${from.y + (at.y - from.y) * left}`,
+    );
+    g.style.opacity = String(left);
+    if (done < 1) requestAnimationFrame(step);
+    else g.remove();
+  };
+  requestAnimationFrame(step);
 }
 
 /** Draws the handle on the board and follows its pulls; gives back what repaints it. */

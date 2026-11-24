@@ -215,6 +215,8 @@ export interface Messages {
   noteOnPlaceholder: (id: string) => string;
   linkBetween: (src: string, dst: string) => string;
   removeLink: string;
+  /** Said once the handle's wire is released: the link made or removed, or no card under it. */
+  wired: (link: string | undefined, cut: boolean) => string;
   nameLink: string;
   linkName: string;
   linkNameOf: (src: string, dst: string) => string;
@@ -483,6 +485,7 @@ const en: Messages = {
   noteOnPlaceholder: (id) => `Note for Claude on ${id}…`,
   linkBetween: (src, dst) => `Link ${src} → ${dst}`,
   removeLink: "Remove the link",
+  wired: (link, cut) => (link ? `${link} ${cut ? "removed" : "made"}` : "No card aimed at"),
   nameLink: "Name",
   linkName: "Name of the link, such as yes or no",
   linkNameOf: (src, dst) => `Name of the link ${src} → ${dst}`,
@@ -811,6 +814,7 @@ const fr: Messages = {
   noteOnPlaceholder: (id) => `Note pour Claude sur ${id}…`,
   linkBetween: (src, dst) => `Lien ${src} → ${dst}`,
   removeLink: "Supprimer le lien",
+  wired: (link, cut) => (link ? `${link} ${cut ? "retiré" : "posé"}` : "Aucune carte visée"),
   nameLink: "Nommer",
   linkName: "Nom du lien, comme oui ou non",
   linkNameOf: (src, dst) => `Nom du lien ${src} → ${dst}`,

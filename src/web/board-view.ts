@@ -624,10 +624,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     chosen: () => (isLive() && !editing ? scene.cards.find((c) => c.id === state.selected) : undefined),
     toScene,
     linked: (src, dst) => board?.edges.some((e) => e.src === src && e.dst === dst) ?? false,
-    pulled: (src, dst, cut) => {
-      if (board) void send({ kind: cut ? "unlink" : "link", board: board.id, src, dst });
-    },
-    title: t.withKey(t.link, "L"),
+    pulled: async (src, dst, cut) =>
+      !!board && saved(send({ kind: cut ? "unlink" : "link", board: board.id, src, dst })),
+    say: hooks.announce,
   });
 
   function paintTools(): void {
