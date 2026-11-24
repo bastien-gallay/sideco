@@ -1253,7 +1253,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   root.addEventListener("pointermove", (event) => {
     if (!drag || !board) return;
     const at = toScene(event);
-    const movable = isLive() && !state.linking && format()?.layout !== "graph";
+    const movable = isLive() && !state.linking;
     if (!drag.moving && movable && Math.hypot(at.x - drag.startX, at.y - drag.startY) > DRAG_THRESHOLD) {
       drag.moving = true;
       tools.hidden = true;
@@ -1365,7 +1365,12 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     nodes.get(done.id)?.g.classList.remove("is-dragging");
     if (done.moving) {
       dropped = true;
-      const command = dropCommand(board, done.id, done.target);
+      const at = toScene(event);
+      const command = dropCommand(board, done.id, done.target, {
+        x: at.x - done.dx,
+        y: at.y - done.dy,
+        span,
+      });
       if (command) void send(command);
       changed();
       return;

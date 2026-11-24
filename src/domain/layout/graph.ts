@@ -228,7 +228,7 @@ function draw(graph: Graph, bands: readonly Range[]): Scene {
  * Every node is as tall as the one that says the most under its name (its kind,
  * its description) or above it (a person's head), so the rows stay even.
  */
-function nodeHeight(board: Board, card: Graph["card"]): number {
+export function nodeHeight(board: Board, card: Graph["card"]): number {
   const extra = (e: Element): number => {
     const c = card(e, 0, 0);
     return c.h - cardHeight(c.lines.length) - labelsHeight(e.labels);

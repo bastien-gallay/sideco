@@ -95,8 +95,11 @@ type BoardFact =
   | { event: "ElementUnlabeled"; board: string; id: string; label: string }
   | { event: "ElementMoved"; board: string; id: string; col: number; lane: string; before?: string }
   | { event: "ElementRemoved"; board: string; id: string }
-  /** On a diagram, the card is put at this point of the scene; without one, it has no place of its own. */
-  | { event: "ElementPlaced"; board: string; id: string; at?: Point }
+  /**
+   * On a diagram, the card is put at this point of the scene; without one, it has no place of its own.
+   * `drawn`: the place the links gave it, kept as the diagram went by hand; nobody moved it.
+   */
+  | { event: "ElementPlaced"; board: string; id: string; at?: Point; drawn?: true }
   /** A diagram is placed by hand, or by its links again; the places made by hand are kept. */
   | { event: "BoardPlacing"; board: string; byHand: boolean }
   /** The element takes the id `to`; what points at it follows, and `id` is never given again. */

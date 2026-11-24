@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { describeChanges } from "../../src/domain/digest.ts";
 import { type Card, layoutBoard, type Scene } from "../../src/domain/layout/index.ts";
 import { FLOW, KANBAN, table } from "../support.ts";
 
@@ -21,6 +22,15 @@ describe("a diagram placed by hand (S344)", () => {
     expect(t.board().byHand).toBe(true);
     expect(where(after, "F3")).toEqual({ x: 600, y: 40 });
     for (const id of ["F1", "D1", "F2", "O1"]) expect(where(after, id)).toEqual(where(before, id));
+  });
+
+  test("by hand, a card keeps the size the links gave it: every node as tall as the others", () => {
+    const t = table(FLOW);
+    const auto = layoutBoard(t.board());
+    t.script("place F3 600 40", "human");
+    const hand = layoutBoard(t.board());
+    for (const c of auto.cards)
+      expect({ w: card(hand, c.id).w, h: card(hand, c.id).h }).toEqual({ w: c.w, h: c.h });
   });
 
   test("by hand, a link drawn moves no card, and every link is a curve from card to card", () => {
@@ -91,5 +101,33 @@ describe("a diagram placed by hand (S344)", () => {
 
   test("a place off the board is refused", () => {
     expect(() => table(FLOW).script("place F3 -5 40")).toThrow();
+  });
+
+  test("Claude reads the card placed and the board gone by hand, not every card that kept its place", () => {
+    const t = table(FLOW);
+    const mark = t.seq;
+    t.script("place F3 600 40", "human");
+    expect(describeChanges(t.events, mark).text).toBe(
+      'board livraison "Livraison"\n  ~ cards placed by hand\n  → F3 placed at 600,40',
+    );
+    const later = t.seq;
+    t.script("place F3 640 40\nplacing auto", "human");
+    expect(describeChanges(t.events, later).text).toBe(
+      'board livraison "Livraison"\n  → F3 placed at 640,40\n  ~ cards placed by their links',
+    );
+  });
+
+  test("the page says how wide the board is: the cards keep the place a folded flow gave them", () => {
+    const steps = Array.from({ length: 11 }, (_, i) => `add step "Étape ${i + 2}" --from F${i + 1}`);
+    const t = table(
+      ['board new "Chaîne" --format flow --id chaine', 'add step "Étape 1"', ...steps].join("\n"),
+    );
+    const folded = layoutBoard(t.board(), "en", 1400);
+    const whole = layoutBoard(t.board());
+    // Folded, some card stands elsewhere than in the one column drawn without a width.
+    expect(folded.cards.some((c) => c.x !== card(whole, c.id).x)).toBe(true);
+    t.do({ kind: "place", board: "chaine", cards: [{ id: "F1", x: 40, y: 40 }], span: 1400 }, "human");
+    const scene = layoutBoard(t.board());
+    for (const c of folded.cards) if (c.id !== "F1") expect(where(scene, c.id)).toEqual(where(folded, c.id));
   });
 });

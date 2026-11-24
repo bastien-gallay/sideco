@@ -5,6 +5,7 @@
  * the first free place, or under the lowest card when it comes from none.
  */
 import type { Board, Element } from "../workspace.ts";
+import { nodeHeight } from "./graph.ts";
 import { type Card, curve, MARGIN, type Scene } from "./scene.ts";
 
 const GAP_X = 32;
@@ -15,7 +16,10 @@ const PER_ROW = 20;
 
 type CardMaker = (e: Element, x: number, y: number) => Card;
 
-export function layoutByHand(board: Board, card: CardMaker): Scene {
+export function layoutByHand(board: Board, drawn: CardMaker): Scene {
+  // As tall as the links draw every node of the diagram, so that no card changes size going by hand.
+  const h = nodeHeight(board, drawn);
+  const card: CardMaker = (e, x, y) => ({ ...drawn(e, x, y), h });
   const placed: Card[] = [];
   for (const e of board.elements) if (e.at) placed.push(card(e, e.at.x, e.at.y));
   for (const e of board.elements) if (!e.at) placed.push(freePlace(board, e, placed, card));

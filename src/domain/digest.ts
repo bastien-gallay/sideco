@@ -13,7 +13,7 @@
 
 import { cancelledOut } from "./cancelled.ts";
 import { quote, under } from "./describe.ts";
-import type { Actor, Recorded } from "./events.ts";
+import type { Actor, Point, Recorded } from "./events.ts";
 import { findFormat, planAxis } from "./formats.ts";
 import {
   apply,
@@ -90,6 +90,8 @@ type Change =
   | { kind: "renamed"; id: string; from: string; to: string }
   /** Judged at the end, against the final board: a later change can put the card back. */
   | { kind: "moved"; id: string; from: Origin }
+  | { kind: "placed"; id: string; at: Point }
+  | { kind: "placing"; byHand: boolean }
   | { kind: "annotated"; id: string; detail: string }
   | { kind: "labeled"; id: string; label: string; on: boolean }
   | { kind: "marked"; id: string; done: boolean }
@@ -282,6 +284,13 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
             if (!entries.has(k("move", e.id))) put("move", e.id, { kind: "moved", id: e.id, from });
           }
           break;
+        case "ElementPlaced":
+          // Where the links drew a card, kept as the diagram went by hand: nobody moved it.
+          if (e.at && !e.drawn) put("place", e.id, { kind: "placed", id: e.id, at: e.at });
+          break;
+        case "BoardPlacing":
+          put("placing", "", { kind: "placing", byHand: e.byHand });
+          break;
         case "ElementAnnotated":
           put("detail", e.id, { kind: "annotated", id: e.id, detail: e.detail });
           break;
@@ -298,7 +307,8 @@ function netChanges(events: readonly Recorded[], after: number, by: Actor): Net 
           if (!entries.delete(k("done", e.id))) put("done", e.id, { kind: "marked", id: e.id, done: e.done });
           break;
         case "ElementRemoved":
-          for (const kind of ["add", "rename", "move", "detail", "done"]) entries.delete(k(kind, e.id));
+          for (const kind of ["add", "rename", "move", "place", "detail", "done"])
+            entries.delete(k(kind, e.id));
           for (const key of [...entries.keys()])
             if (key.startsWith(k("label", `${e.id}/`))) entries.delete(key);
           if (added.delete(k("el", e.id)) || entries.delete(k("restore", e.id))) break;
@@ -433,6 +443,10 @@ function word(ws: Workspace, boardId: string, change: Change): string | undefine
       return `~ ${change.id} renamed ${quote(change.from)} → ${quote(change.to)}`;
     case "moved":
       return movedLine(ws, boardId, change.id, change.from);
+    case "placed":
+      return `→ ${change.id} placed at ${change.at.x},${change.at.y}`;
+    case "placing":
+      return `~ cards placed ${change.byHand ? "by hand" : "by their links"}`;
     case "labeled":
       return `~ ${change.id} ${change.on ? "labeled" : "unlabeled"} ${change.label}`;
     case "annotated":
@@ -477,6 +491,7 @@ function named(change: Change): { elements: string[]; thread?: string } {
     case "added":
     case "renamed":
     case "moved":
+    case "placed":
     case "annotated":
     case "labeled":
     case "marked":
@@ -493,6 +508,7 @@ function named(change: Change): { elements: string[]; thread?: string } {
       return { elements: change.target ? [change.target] : [], thread: change.thread ?? change.id };
     case "resolved":
       return { elements: [], thread: change.id };
+    case "placing":
     case "board-created":
     case "board-retitled":
     case "board-purposed":

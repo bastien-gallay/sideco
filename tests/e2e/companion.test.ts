@@ -3823,6 +3823,36 @@ describe("search across the boards, from the page", () => {
   });
 });
 
+describe("a diagram placed by hand (S344)", () => {
+  test("a card of a flow dragged stays where it is let go; the others keep their place, and Claude is told", async () => {
+    const [decision, ship, order] = await agent(
+      'board new "À la main" --format flow --id main-s344\nadd decision "En stock ?" --alias d\nadd step "Expédier" --from @d\nadd step "Commander"',
+    );
+    await page.locator(".board-picker select").selectOption("main-s344");
+    await card(order).waitFor();
+    const before = {
+      decision: await settled(decision),
+      ship: await settled(ship),
+      order: await settled(order),
+    };
+    const from = await centre(order);
+    await dragTo(order, from.x + 240, from.y + 40);
+    await until(
+      "the board is placed by hand",
+      async () => (await elementOf("main-s344", order))?.at !== undefined,
+    );
+    const after = await settled(order);
+    expect(Math.abs(after.x - (before.order.x + 240))).toBeLessThan(3);
+    expect(Math.abs(after.y - (before.order.y + 40))).toBeLessThan(3);
+    expect(await settled(decision)).toEqual(before.decision);
+    expect(await settled(ship)).toEqual(before.ship);
+    const told = await pending();
+    expect(told).toContain("~ cards placed by hand");
+    expect(told).toContain(`→ ${order} placed at`);
+    expect(told).not.toContain(`→ ${ship} placed`);
+  });
+});
+
 describe("a card chosen stays in sight", () => {
   test("in a narrow window, the panel unfolding for a card leaves that card on screen", async () => {
     const cols = [1, 2, 3, 4, 5, 6, 7].map((n) => `add activity "Activité ${n}" --col ${n}`);

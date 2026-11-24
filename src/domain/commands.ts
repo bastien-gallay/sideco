@@ -55,8 +55,11 @@ export type Command =
   | { kind: "mark"; board: string; id: string; done: boolean }
   | { kind: "move"; board: string; id: string; col?: number; lane?: string; before?: string }
   | { kind: "remove"; board: string; id: string }
-  /** Puts cards of a diagram where they are said to go, and the whole diagram by hand (S344). */
-  | { kind: "place"; board: string; cards: Spot[] }
+  /**
+   * Puts cards of a diagram where they are said to go, and the whole diagram by hand (S344).
+   * `span`: the width the board has on the page, so that the other cards keep the places it shows.
+   */
+  | { kind: "place"; board: string; cards: Spot[]; span?: number }
   /** A diagram placed by hand, or by its links again. */
   | { kind: "placing"; board: string; byHand: boolean }
   /** The element takes the id `to`, else the next of its letter in the project. */
@@ -243,7 +246,7 @@ export function parseCommand(input: unknown): Command {
     case "mark":
       return { kind, board: boardId(f), id: idOrName(f, "id"), done: f.done === true };
     case "place":
-      return { kind, board: boardId(f), cards: list(f, "cards").map(spot) };
+      return { kind, board: boardId(f), cards: list(f, "cards").map(spot), span: optional(f, "span", scene) };
     case "placing":
       return { kind, board: boardId(f), byHand: flag(f, "byHand") };
     case "move":
@@ -448,8 +451,11 @@ function spot(input: unknown, index: number): Spot {
   if (typeof input !== "object" || input === null)
     throw new CommandError(`\`cards[${index}]\` must be an object`);
   const f = input as Fields;
-  return { id: elementId(f, "id"), x: whole(f, "x", 0, 100_000), y: whole(f, "y", 0, 100_000) };
+  return { id: elementId(f, "id"), x: scene(f, "x"), y: scene(f, "y") };
 }
+
+/** A length on the scene, in whole units. */
+const scene = (f: Fields, key: string): number => whole(f, key, 0, 100_000);
 
 function todo(input: unknown, index: number): Todo {
   if (typeof input !== "object" || input === null)
