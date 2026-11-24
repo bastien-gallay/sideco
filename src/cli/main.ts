@@ -269,14 +269,14 @@ async function run(verb: string, rest: string[]): Promise<number> {
       return 0;
     }
     case "sessions":
-      console.log(describeSessions(read(), args.flags.get("session") ?? setting("SIDECO_SESSION")));
+      console.log(describeSessions(read(), sessionGiven(args), Date.now()));
       return 0;
     case "show": {
       const { board, card } = named(read(), args);
       const server = card ? await findServer(root) : undefined;
       const [head, ...rest] = shown(board, card, args).split("\n");
       console.log([head, ...(server ? [`  ${addressOf(server.url, board, card)}`] : []), ...rest].join("\n"));
-      await followQuietly(root, args.flags.get("session") ?? setting("SIDECO_SESSION"), board.id);
+      await followQuietly(root, sessionGiven(args), board.id);
       return 0;
     }
     case "export":
@@ -287,7 +287,7 @@ async function run(verb: string, rest: string[]): Promise<number> {
 
   const server = await ensureServer(root);
   const actor = args.flags.get("as") ?? setting("SIDECO_ACTOR") ?? "agent";
-  const session = args.flags.get("session") ?? setting("SIDECO_SESSION") ?? latestSession(read())?.id;
+  const session = sessionGiven(args) ?? latestSession(read())?.id;
 
   switch (verb) {
     case "changes": {
@@ -371,15 +371,16 @@ function outcome(action: Action, done: Posted, url: string): string {
   return done.minted[0] ?? `ok (seq ${done.seq})`;
 }
 
-function setting(name: string): string | undefined {
-  return readSetting(name, process.env);
-}
+const setting = (name: string): string | undefined => readSetting(name, process.env);
 
 /**
  * The language of what a human will read (an export, the page a companion
  * opens in): `--lang`, else `$SIDECO_LANG`, else English. What the agent reads
  * on this terminal stays English.
  */
+/** The session a command speaks for: the one named, else the one the shell says. */
+const sessionGiven = (args: Args) => args.flags.get("session") ?? setting("SIDECO_SESSION");
+
 function language(args: Args): Locale {
   const asked = args.flags.get("lang");
   if (asked === undefined) return asLocale(setting("SIDECO_LANG")) ?? DEFAULT_LOCALE;
