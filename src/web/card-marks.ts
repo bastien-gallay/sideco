@@ -6,7 +6,7 @@ import { esc } from "../domain/render/svg.ts";
 import { t } from "./locale.ts";
 
 /** How far outside its card the ring of a focused or selected card is drawn: off the sticky's colour, always. */
-const RING = 5;
+export const RING = 5;
 
 /** The ring of a focused or selected card, drawn around it rather than on it: it reads on every sticky. */
 export const ringMarkup = (card: { w: number; h: number }): string =>

@@ -1,11 +1,12 @@
 /**
  * The handle that draws a link (S326), after faceto's connect handle: a dot on
- * the right edge of the card chosen, and of no other. Pulled, it lays a dashed
+ * the right edge of the frame of the card chosen, and of no other. Pulled, it lays a dashed
  * wire that follows the pointer; released anywhere on another card, it links
  * the two, or cuts the link when the card chosen already points at that one.
  * The card under the wire says which by its outline, solid to link, dashed red
  * to cut. Escape lets the wire go. The middle of a card is left to moving it.
  */
+import { RING } from "./card-marks.ts";
 import { svg } from "./dom.ts";
 
 interface Point {
@@ -57,7 +58,7 @@ class Handle {
     if (!card) return;
     const dot = svg("circle", {
       class: "link-handle-dot",
-      cx: card.x + card.w,
+      cx: card.x + card.w + RING,
       cy: card.y + card.h / 2,
       r: 6,
     });
@@ -73,7 +74,7 @@ class Handle {
     this.layer.setPointerCapture(event.pointerId);
     const g = this.layer.appendChild(svg("g", { class: "link-wire" }));
     g.append(svg("path"));
-    this.wire = { src: card.id, from: { x: card.x + card.w, y: card.y + card.h / 2 }, g };
+    this.wire = { src: card.id, from: { x: card.x + card.w + RING, y: card.y + card.h / 2 }, g };
     this.root.classList.add("is-wiring");
   }
 

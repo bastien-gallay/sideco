@@ -2642,13 +2642,16 @@ describe("a link drawn from the handle of the card chosen (S326)", () => {
     await card(order).waitFor();
     expect(await handle().count()).toBe(0);
 
-    // Only the card chosen wears the handle, on its right edge.
+    // Only the card chosen wears the handle, on the right edge of its frame.
     await card(ship).click();
     await handle().waitFor();
     const dot = await centre(handle());
-    const box = await card(ship).locator(".card-shape").first().boundingBox();
+    // Its centre sits on the selection's frame, not on the card's own edge.
+    const box = await card(ship).locator(".card-ring").boundingBox();
     if (!box) throw new Error("no card");
-    expect(Math.abs(dot.x - (box.x + box.width))).toBeLessThan(4);
+    // The box takes in the frame's stroke, 2.5 px: its line runs half of it inside.
+    expect(Math.abs(dot.x - (box.x + box.width - 1.25))).toBeLessThan(0.5);
+    expect(Math.abs(dot.y - (box.y + box.height / 2))).toBeLessThan(1);
 
     // While the wire is held, the card under it says what releasing would do.
     await pull(order, false);
