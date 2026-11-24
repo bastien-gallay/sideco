@@ -21,6 +21,7 @@ import { arrowDefs, bandMarkup, cardMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import type { BoardHooks, BoardView } from "./board-api.ts";
 import * as links from "./board-links.ts";
+import { dropCommand } from "./card-drop.ts";
 import { changedMark, ringMarkup, unreadMark } from "./card-marks.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
@@ -1364,25 +1365,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     nodes.get(done.id)?.g.classList.remove("is-dragging");
     if (done.moving) {
       dropped = true;
-      const element = board.elements.find((e) => e.id === done.id);
-      const target = done.target;
-      if (element && target.kind === "cell" && target.type === element.type) {
-        // Into another step, or to another place in its own cell; where it already is, nothing is sent.
-        const cell = board.elements.filter((e) => e.col === element.col && e.type === element.type);
-        const next = cell[cell.indexOf(element) + 1]?.id;
-        if (target.col !== element.col || target.before !== next)
-          void send({
-            kind: "move",
-            board: board.id,
-            id: done.id,
-            col: target.col,
-            ...(target.before ? { before: target.before } : {}),
-          });
-      } else if (element && target.kind === "cell" && target.col !== element.col) {
-        void send({ kind: "move", board: board.id, id: done.id, col: target.col });
-      } else if (element && target.kind === "slot") {
-        void send({ kind: "move", board: board.id, id: done.id, lane: target.lane, before: target.before });
-      }
+      const command = dropCommand(board, done.id, done.target);
+      if (command) void send(command);
       changed();
       return;
     }
