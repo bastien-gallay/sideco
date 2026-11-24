@@ -7,7 +7,7 @@ import type { Command } from "../domain/commands.ts";
 import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../domain/export/index.ts";
 import { toMermaid } from "../domain/export/mermaid.ts";
 import { markWords, queryWords } from "../domain/find.ts";
-import { boardPurpose, findFormat, findType, planAxis } from "../domain/formats.ts";
+import { findFormat, findType, planAxis } from "../domain/formats.ts";
 import { asLocale, formerly, LOCALES, WORDS } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import {
@@ -27,7 +27,6 @@ import {
   boardTiles,
   brand,
   home,
-  kindSwatch,
   newBoardSheet,
   openNewBoard,
   paintBoardPicker,
@@ -45,6 +44,7 @@ import { markdownNodes } from "./markdown.ts";
 import { messageField, wordsField } from "./message-field.ts";
 import { MESSAGES } from "./messages.ts";
 import { mountNotices, type Offer } from "./notices.ts";
+import { type PaletteModel, paletteContent } from "./palette.ts";
 import { meetUpdates } from "./reload.ts";
 import {
   caughtUpYet,
@@ -927,16 +927,6 @@ const paintBoardMenu = region(boardMenu, (m: BoardMenuModel) => [
   ),
 ]);
 
-interface PaletteModel {
-  format: string | undefined;
-  /** The question the board asks, where it asks its own. */
-  purpose: string | undefined;
-  /** A plan's axes, where the board names its own: the palette is called by them, not by the workshop. */
-  axes: { x: string; y: string } | undefined;
-  live: boolean;
-  from: string | null;
-}
-
 /** A plan's axes as the board shows them, renamed or the workshop's: the keys say them by these names. */
 function axesNamed(board: Board | undefined): { x: string; y: string } | undefined {
   const format = board ? findFormat(board.format) : undefined;
@@ -954,49 +944,12 @@ function ownAxes(board: Board | undefined): { x: string; y: string } | undefined
   return x && y ? { x: x.label, y: y.label } : undefined;
 }
 
-const paintPalette = region(palette, (m: PaletteModel) => {
-  const format = m.format ? findFormat(m.format) : undefined;
-  if (!format) return [];
-  // How to add and move is in the keys sheet; only a flow says what is not on screen: the card the next one links to.
-  const how = format.layout === "graph" && m.from ? t.howGraphFrom(m.from) : undefined;
-  return [
-    // A plan whose axes the board renamed is called by them: a SWOT is no longer an Impact / Effort.
-    h("h2", {}, m.axes ? `${m.axes.y} / ${m.axes.x}` : format.name[locale]),
-    h("p", { class: "purpose" }, boardPurpose(format, { purpose: m.purpose }, locale)),
-    h(
-      "ul",
-      { class: "types" },
-      ...format.types.map((type) =>
-        h(
-          "li",
-          {},
-          h(
-            "button",
-            {
-              type: "button",
-              class: "type",
-              disabled: !m.live,
-              title: `${t.add(type.label[locale])} · ${type.hint[locale]}`,
-              onclick: () => view.beginAdd(type.id),
-            },
-            h("span", kindSwatch(format, type), type.prefix),
-            h("span", { class: "type-text" }, h("span", { class: "type-label" }, type.label[locale])),
-          ),
-        ),
-      ),
-    ),
-    how && h("p", { class: "how" }, how),
-    h(
-      "button",
-      {
-        type: "button",
-        class: "quiet keys-open",
-        onclick: () => openKeys(currentBoard(), axesNamed(currentBoard())),
-      },
-      t.withKey(t.shortcuts, "?"),
-    ),
-  ];
-});
+const paintPalette = region(palette, (m: PaletteModel) =>
+  paletteContent(m, {
+    add: (type) => view.beginAdd(type),
+    keys: () => openKeys(currentBoard(), axesNamed(currentBoard())),
+  }),
+);
 
 interface NotesModel {
   board: string | undefined;

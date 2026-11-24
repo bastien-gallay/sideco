@@ -1,6 +1,6 @@
 /** The few DOM helpers the page needs; no framework. */
 
-type Child = Node | string | false | null | undefined;
+export type Child = Node | string | false | null | undefined;
 export type Props = Record<string, string | number | boolean | EventListener | undefined>;
 
 /** Creates an element. `on*` props are listeners, `class` and the rest are attributes. */
