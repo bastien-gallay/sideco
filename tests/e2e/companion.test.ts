@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Browser, chromium, type Page } from "playwright-core";
+import { type Browser, chromium, type Locator, type Page } from "playwright-core";
 import { parseBatch } from "../../src/cli/argv.ts";
 import { initRoot } from "../../src/cli/client.ts";
 import { runHook } from "../../src/cli/hook.ts";
@@ -2550,6 +2550,67 @@ describe("a story map cut into slices", () => {
     await agent("board rm lots");
     await until("the page has left the board removed", async () => {
       return (await page.locator(".board-picker select").inputValue()) !== "lots";
+    });
+  });
+});
+
+describe("the spotlight on links (S325)", () => {
+  const conn = (src: string, dst: string) => page.locator(`g.conn[data-src="${src}"][data-dst="${dst}"]`);
+  const lit = (l: Locator) => l.evaluate((g) => g.classList.contains("is-lit"));
+  const spotlit = () => page.locator("svg.sideco-board.is-spotlit").count();
+  /** A point on a link's line, near its end: its name may sit at its middle. */
+  const onLink = (src: string, dst: string) =>
+    conn(src, dst)
+      .locator("path:not(.conn-hit)")
+      .evaluate((path: SVGPathElement) => {
+        const at = path.getPointAtLength(path.getTotalLength() - 14);
+        const point = new DOMPoint(at.x, at.y).matrixTransform(path.getScreenCTM() ?? undefined);
+        return { x: point.x, y: point.y };
+      });
+
+  test("a link picked, or a card under the pointer, stays sharp while the rest recedes", async () => {
+    const [stock, ship, order, lone] = await agent(
+      'board new "Phare" --format flow --id phare\nadd decision "En stock ?" --alias d\nadd step "Expédier" --from @d\nadd step "Commander" --from @d\nadd step "Seul"',
+    );
+    await page.locator(".board-picker select").selectOption("phare");
+    await conn(stock, order).waitFor();
+    expect(await spotlit()).toBe(0);
+
+    // A link picked stands out, its two cards with it; the rest recedes.
+    const at = await onLink(stock, ship);
+    await page.mouse.click(at.x, at.y);
+    await until("the link picked is lit", async () => lit(conn(stock, ship)));
+    await page.waitForTimeout(400);
+    await shot("64-spotlight-link");
+    expect(await spotlit()).toBe(1);
+    expect(await lit(conn(stock, order))).toBe(false);
+    expect(await lit(card(ship))).toBe(true);
+    expect(await lit(card(order))).toBe(false);
+
+    // A card clicked then takes the toolbar from the link (F4).
+    await card(order).click();
+    await until("the card's toolbar replaces the link's", async () => {
+      const label = await page.locator(".card-tools .tools-label").count();
+      return label === 0 && !(await page.locator(".card-tools").isHidden());
+    });
+
+    // The card under the pointer owns the light; one with no link leaves it where it was.
+    await card(ship).hover();
+    await until("the card under the pointer is lit", async () => lit(conn(stock, ship)));
+    await page.waitForTimeout(400);
+    await shot("65-spotlight-card");
+    expect(await lit(conn(stock, order))).toBe(false);
+    await card(lone).hover();
+    await until("the light goes back to the card chosen", async () => lit(conn(stock, order)));
+
+    // Escape lets everything go: nothing is dimmed any more.
+    await page.mouse.move(2, 2);
+    await page.keyboard.press("Escape");
+    await until("the spotlight is out", async () => (await spotlit()) === 0);
+
+    await agent("board rm phare");
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== "phare";
     });
   });
 });

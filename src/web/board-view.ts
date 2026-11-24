@@ -20,7 +20,7 @@ import { chipText } from "../domain/render/labels.ts";
 import { arrowDefs, bandMarkup, cardMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import type { BoardHooks, BoardView } from "./board-api.ts";
-import { drawLinks, linkAt, nameSpot, type PickedLink, showLinkTools, stillLinked } from "./board-links.ts";
+import * as links from "./board-links.ts";
 import { changedMark, ringMarkup, unreadMark } from "./card-marks.ts";
 import { h, svg } from "./dom.ts";
 import { locale, t } from "./locale.ts";
@@ -172,7 +172,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   /** The axis word just written: the keyboard goes back to it once the axis is drawn again. */
   let axisArriving: { axis: string; bound: "low" | "high" | undefined } | undefined;
   /** The link the human clicked, and where, so its toolbar opens under the pointer. */
-  let pickedLink: PickedLink | undefined;
+  let pickedLink: links.PickedLink | undefined;
   /** The one card Tab stops at: the board is a single stop, and the arrows go from card to card inside it. */
   let current: string | undefined;
   /** The reader put the keyboard on `current`, or selected it: until then, Tab enters at the first card read. */
@@ -291,7 +291,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         laneArriving = undefined;
       }
     }
-    drawLinks(conns, scene);
+    links.drawLinks(conns, scene);
 
     const switched = paintedBoard !== board.id;
     paintedBoard = board.id;
@@ -610,15 +610,23 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     }, CARD_MOVE_MS);
   }
 
+  /** The spotlight (S325), out while a card is carried, written on or linked. */
+  const light = links.watchLight(root, conns, nodes, () => ({
+    edges: board && !editing && !drag?.moving && !state.linking ? board.edges : [],
+    picked: pickedLink,
+    chosen: state.selected ?? undefined,
+  }));
+
   function paintTools(): void {
+    light();
     const id = state.selected;
     const node = id ? nodes.get(id) : undefined;
     const link = pickedLink;
-    if (board && link && isLive() && !editing && stillLinked(board, link)) {
+    if (board && link && isLive() && !editing && links.stillLinked(board, link)) {
       const dropped = (): void => {
         pickedLink = undefined;
       };
-      showLinkTools(tools, board.id, link, { name: () => nameLink(link.src, link.dst), dropped });
+      links.showLinkTools(tools, board.id, link, { name: () => nameLink(link.src, link.dst), dropped });
       return;
     }
     pickedLink = undefined;
@@ -1047,7 +1055,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const edge = board?.edges.find((e) => e.src === src && e.dst === dst);
     if (!board || !edge || !isLive()) return;
     const boardId = board.id;
-    const spot = nameSpot(conns, host.getBoundingClientRect(), { src, dst }, pickedLink);
+    const spot = links.nameSpot(conns, host.getBoundingClientRect(), { src, dst }, pickedLink);
     pickedLink = undefined;
     openEditor(
       spot,
@@ -1415,6 +1423,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   function choose(id: string): void {
     if (!board) return;
+    pickedLink = undefined;
     if (state.linking && state.linking !== id) {
       void send({ kind: "link", board: board.id, src: state.linking, dst: id });
       state.linking = null;
@@ -1450,7 +1459,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       else if (board && isLive()) void send({ kind: "insert-column", board: board.id, at: Number(column) });
       return;
     }
-    pickedLink = isLive() ? linkAt(target, event, host.getBoundingClientRect()) : undefined;
+    pickedLink = isLive() ? links.linkAt(target, event, host.getBoundingClientRect()) : undefined;
     state.selected = null;
     state.linking = null;
     changed();
@@ -1652,12 +1661,10 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     // The toolbar closes under the keyboard: it goes back to its card, not to the top of the page.
     if (tools.contains(document.activeElement) && current)
       nodes.get(current)?.g.focus({ preventScroll: true });
-    tools.hidden = true;
-    if (state.selected || state.linking) {
-      state.selected = null;
-      state.linking = null;
-      changed();
-    }
+    // Repainted, the toolbar closes and the spotlight goes out.
+    state.selected = null;
+    state.linking = null;
+    changed();
   });
 
   // A chosen card that moved, by the keyboard or by Claude, has its toolbar put back once it landed.

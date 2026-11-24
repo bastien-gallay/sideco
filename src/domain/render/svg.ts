@@ -80,8 +80,12 @@ export function sceneToSvg(scene: Scene, title: string): string {
   ].join("\n");
 }
 
+/** The arrow of a link; the page also draws a lit one, and a dot where a lit link starts (S325). */
 export function arrowDefs(): string {
-  return `<defs><marker id="sideco-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sideco-arrow" d="M0 0L10 5L0 10z"/></marker></defs>`;
+  const arrow = (id: string): string =>
+    `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="${id}" d="M0 0L10 5L0 10z"/></marker>`;
+  const origin = `<marker id="sideco-origin" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5"><circle class="sideco-origin" cx="5" cy="5" r="4"/></marker>`;
+  return `<defs>${arrow("sideco-arrow")}${arrow("sideco-arrow-lit")}${origin}</defs>`;
 }
 
 export function bandMarkup(b: Band): string {

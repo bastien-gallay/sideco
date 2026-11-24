@@ -9,6 +9,7 @@ import { connectorMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h, svg } from "./dom.ts";
 import { t } from "./locale.ts";
+import { type Ends, type Lit, lightAt, linkKey } from "./spotlight.ts";
 import { send } from "./store.ts";
 
 /** A link the human clicked, and where in the board's frame: its toolbar opens there. */
@@ -76,4 +77,46 @@ export function nameSpot(
   const named = conn?.querySelector("text.conn-label")?.getBoundingClientRect();
   const at = named ?? new DOMRect(frame.left + (picked?.x ?? 0), frame.top + (picked?.y ?? 0), 0, 0);
   return new DOMRect(at.left - 6, at.top - 8, 180, 36);
+}
+
+/** Lights what the spotlight holds and lets the rest of the board recede; with no light, nothing recedes. */
+function paintLight(
+  root: SVGSVGElement,
+  layer: SVGGElement,
+  cards: Iterable<[string, { g: SVGGElement }]>,
+  lit: Lit | undefined,
+): void {
+  root.classList.toggle("is-spotlit", lit !== undefined);
+  for (const g of layer.querySelectorAll<SVGGElement>("g.conn"))
+    g.classList.toggle("is-lit", lit?.links.has(linkKey(g.dataset.src ?? "", g.dataset.dst ?? "")) ?? false);
+  for (const [id, node] of cards) node.g.classList.toggle("is-lit", lit?.cards.has(id) ?? false);
+}
+
+/**
+ * The spotlight of a board (S325): follows the pointer from card to card, and
+ * gives back what repaints it when the link picked or the card chosen changes.
+ * `at` says what may own it now: no links while nothing may, the board stays lit.
+ */
+export function watchLight(
+  root: SVGSVGElement,
+  layer: SVGGElement,
+  cards: ReadonlyMap<string, { g: SVGGElement }>,
+  at: () => { edges: readonly Ends[]; picked: Ends | undefined; chosen: string | undefined },
+): () => void {
+  let hovered: string | undefined;
+  const paint = (): void => {
+    const now = at();
+    paintLight(root, layer, cards, lightAt(now.edges, { hovered, picked: now.picked, chosen: now.chosen }));
+  };
+  root.addEventListener("pointerover", (event) => {
+    const id = (event.target as Element | null)?.closest?.<SVGGElement>("g.card")?.dataset.id;
+    if (id === hovered) return;
+    hovered = id;
+    paint();
+  });
+  root.addEventListener("pointerleave", () => {
+    hovered = undefined;
+    paint();
+  });
+  return paint;
 }
