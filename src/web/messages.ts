@@ -212,7 +212,6 @@ export interface Messages {
   /** The card toolbar's ⋯: the actions taken less often. */
   moreActions: string;
   remove: string;
-  detailPlaceholder: string;
   noteOnPlaceholder: (id: string) => string;
   linkBetween: (src: string, dst: string) => string;
   removeLink: string;
@@ -481,7 +480,6 @@ const en: Messages = {
   noteForClaude: "Note for Claude",
   moreActions: "More actions: link, done, remove",
   remove: "Remove",
-  detailPlaceholder: "Detail: rule, example, source…",
   noteOnPlaceholder: (id) => `Note for Claude on ${id}…`,
   linkBetween: (src, dst) => `Link ${src} → ${dst}`,
   removeLink: "Remove the link",
@@ -810,7 +808,6 @@ const fr: Messages = {
   noteForClaude: "Note pour Claude",
   moreActions: "Autres actions : lier, fait, retirer",
   remove: "Supprimer",
-  detailPlaceholder: "Détail : règle, exemple, source…",
   noteOnPlaceholder: (id) => `Note pour Claude sur ${id}…`,
   linkBetween: (src, dst) => `Lien ${src} → ${dst}`,
   removeLink: "Supprimer le lien",
