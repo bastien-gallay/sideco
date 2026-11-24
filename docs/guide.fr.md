@@ -262,6 +262,8 @@ La casse ne compte pas (`Type:Bug` est `type:bug`). `sideco show` met les labels
 
 Dans la page, une carte porte ses labels en puces à son pied, autant qu'il en tient, puis « +N » ; tous les labels d'une même clé ont la même couleur, et la puce n'en dit que la valeur (`bug` pour `type:bug`, `@bastien` pour `assignee:bastien`). L'infobulle, le nom lu et l'onglet `Detail` les disent en entier. L'onglet `Detail` de la carte choisie les montre tous : × en retire un, le champ « Add a label » en ajoute (plusieurs à la fois, séparés par des virgules ; Entrée valide) et propose ceux que le projet utilise déjà.
 
+Une puce pressée, sur la carte ou dans l'onglet `Detail`, filtre le tableau sur son label : les cartes qui ne le portent pas s'effacent sans bouger, et une barre posée sur le coin du tableau dit le label et combien de cartes le portent (« 2 cartes sur 3 »). `@bastien` donne ainsi « mes cartes ». La même puce pressée à nouveau, ou « Tout montrer », rend toutes les cartes. Le filtre suit d'un tableau à l'autre, et ne dure que le temps de la page.
+
 <sub>Source : `src/domain/workspace.ts` (`normalLabel`), `src/domain/digest.ts` (`describeLabels`) ; `tests/unit/labels.test.ts`.</sub>
 
 ### Retrouver une carte

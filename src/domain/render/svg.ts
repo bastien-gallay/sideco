@@ -224,7 +224,8 @@ const CHIP_H = 14;
 /**
  * The labels a card wears, as chips along its foot: as many as fit, the last
  * cut with … when it alone is too long, then "+N" for the ones left out. The
- * tooltip and the Detail tab name them all.
+ * tooltip and the Detail tab name them all. Each chip says the label it stands
+ * for, whole: the page filters by it when it is pressed.
  */
 function labelsMarkup(c: Card): string {
   const labels = c.labels ?? [];
@@ -249,7 +250,9 @@ function labelsMarkup(c: Card): string {
       const keep = Math.max(1, Math.floor((room - 2 * CHIP_PAD) / CHIP_CHAR_W) - 1);
       text = `${text.slice(0, keep)}…`;
     }
-    chips.push(chip(x, top, text, labelColours(label)));
+    chips.push(
+      `<g class="card-label" data-label="${esc(label)}">${chip(x, top, text, labelColours(label))}</g>`,
+    );
     x += width(text) + CHIP_GAP;
   }
   return `<g class="card-labels">${chips.join("")}</g>`;

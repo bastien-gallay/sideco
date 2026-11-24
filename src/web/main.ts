@@ -31,6 +31,7 @@ import { linkSection } from "./card-links.ts";
 import { clock, h, region } from "./dom.ts";
 import { describeEvent, sessionName } from "./event-words.ts";
 import { keysSheet, openKeys } from "./keys-sheet.ts";
+import { filterBar, mountLabelFilter, paintLabelFilter } from "./label-filter.ts";
 import { type LinkRow, linkRows } from "./link-rows.ts";
 import { chooseLocale, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
@@ -684,7 +685,7 @@ app.append(
     "main",
     { class: "work" },
     h("aside", { class: "left", id: "panel-left" }, folds.left, palette),
-    h("section", { class: "stage" }, visitBar, focusBar, findBar, canvas, home),
+    h("section", { class: "stage" }, visitBar, focusBar, filterBar, findBar, canvas, home),
     h(
       "aside",
       { class: "right", id: "panel-right" },
@@ -1768,6 +1769,7 @@ function render(): void {
   paintVisit({ count: away?.count ?? 0, cards: away?.cards.length ?? 0 });
   visitBar.hidden = !away?.count;
   view.paint(board, unread.cards, away?.cards ?? []);
+  paintLabelFilter(board, canvas);
   if (arriving && board?.id === arriving.board) {
     const { id } = arriving;
     arriving = undefined;
@@ -1931,5 +1933,6 @@ function render(): void {
 }
 
 onSessionChosen(render);
+mountLabelFilter(canvas, { changed: render, speak });
 start(render);
 render();

@@ -6,6 +6,7 @@
 import { sameLabel } from "../domain/labels.ts";
 import { chipText, labelColours } from "../domain/render/labels.ts";
 import { h } from "./dom.ts";
+import { filteredBy, filterName, toggleLabelFilter } from "./label-filter.ts";
 import { t } from "./locale.ts";
 import { currentBoard, isLive, send, state } from "./store.ts";
 
@@ -102,7 +103,19 @@ function labelChips(m: LabelsModel): HTMLElement {
       return h(
         "li",
         { class: "label-chip", style: `background:${fill};color:${ink}` },
-        chipText(label),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "label-filter-by",
+            "data-label": label,
+            "aria-label": filterName(label),
+            "aria-pressed": String(filteredBy(label)),
+            title: filterName(label),
+            onclick: () => toggleLabelFilter(label),
+          },
+          chipText(label),
+        ),
         m.live &&
           board &&
           h(

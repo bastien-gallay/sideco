@@ -98,6 +98,9 @@ describe("a card with labels", () => {
     // Five labels on a card 152 wide: the first two, then how many more; the tooltip and the Detail name them all.
     expect(svg).toContain(">@bastien</text>");
     expect(svg).toContain(">+3</text>");
+    // Each chip says the label it stands for, whole, for the page to filter by it (S308); the count stands for none.
+    expect(svg).toContain('<g class="card-label" data-label="type:bug">');
+    expect([...svg.matchAll(/data-label=/g)]).toHaveLength(2);
     expect(chipText("assignee:bastien")).toBe("@bastien");
     const ys = [...svg.matchAll(/<rect class="card-label-chip" x="[\d.]+" y="([\d.]+)"/g)].map((m) =>
       Number(m[1]),

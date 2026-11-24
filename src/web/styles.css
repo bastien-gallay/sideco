@@ -1329,6 +1329,35 @@ kbd {
   border-bottom: 1px solid var(--rule);
 }
 
+/* A filter by label: laid over a corner of the board while it holds, so no card moves when it comes or goes. */
+.filter-bar {
+  position: relative;
+  z-index: 19;
+  grid-row: 4;
+  grid-column: 1;
+  align-self: start;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 14px 0;
+  padding: 6px 8px 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.filter-what {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-count {
+  color: var(--muted);
+}
+
 .canvas {
   position: relative;
   grid-row: 4;
@@ -1470,6 +1499,15 @@ kbd {
 
 .card.is-dim {
   opacity: 0.32;
+}
+
+/* Without the label the reader filters by: still there, where it was, behind the cards that wear it. */
+.card.is-filtered-out {
+  opacity: 0.16;
+}
+
+.card-label {
+  cursor: pointer;
 }
 
 .card-shape {
@@ -2574,6 +2612,21 @@ legend {
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
+}
+
+/* The chip's own words are the button that filters by it: it looks like the chip it is. */
+.label-filter-by {
+  min-height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.label-filter-by[aria-pressed="true"] {
+  text-decoration: underline;
 }
 
 .label-remove:hover,

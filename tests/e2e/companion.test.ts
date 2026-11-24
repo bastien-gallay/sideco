@@ -3670,6 +3670,60 @@ describe("labels on a card, from the page", () => {
     await page.keyboard.press("Escape");
   });
 
+  test("a chip pressed keeps in view the cards that wear its label, on the card or in the Detail tab (S308)", async () => {
+    const [fix, deliver, sort] = await agent(
+      [
+        'board new "Filtre" --format kanban --id filtre-s308',
+        'add task "Corriger la connexion" --lane todo',
+        'add task "Livrer" --lane todo',
+        'add task "Trier les retours" --lane doing',
+      ].join("\n"),
+    );
+    await agent(
+      `label ${fix} type:bug @bastien\nlabel ${deliver} env:prod\nlabel ${sort} type:bug`,
+      "filtre-s308",
+    );
+    await page.locator(".board-picker select").selectOption("filtre-s308");
+    await card(sort).waitFor();
+    const faded = async (id: string) =>
+      ((await card(id).getAttribute("class")) ?? "").includes("is-filtered-out");
+    const bar = page.locator(".filter-bar");
+    expect(await bar.isHidden()).toBe(true);
+
+    // On the card: the chip is the filter. The cards without the label step back, none moves.
+    const before = await settled(deliver);
+    await card(fix).locator('.card-label[data-label="type:bug"]').click();
+    await until("the card without the label steps back", () => faded(deliver));
+    expect(await faded(fix)).toBe(false);
+    expect(await faded(sort)).toBe(false);
+    expect(await settled(deliver)).toEqual(before);
+    expect(await bar.textContent()).toContain("Filter");
+    expect(await bar.locator(".label-chip").textContent()).toBe("type:bug");
+    expect(await bar.locator(".filter-count").textContent()).toBe("2 of 3 cards");
+    await until("the filter is said", async () =>
+      ((await page.locator(".spoken").textContent()) ?? "").includes("type:bug: 2 of 3 cards"),
+    );
+    await shot("61-label-filter");
+
+    // The bar gives every card back.
+    await bar.getByRole("button", { name: "Show all" }).click();
+    await until("every card is back", async () => !(await faded(deliver)));
+    expect(await bar.isHidden()).toBe(true);
+
+    // In the Detail tab, by the keyboard: @name is "my cards". Pressed again, it lets go.
+    await page.getByRole("tab", { name: "Detail" }).click();
+    const mine = page.getByRole("button", { name: "Show only the cards labelled @bastien" });
+    await mine.focus();
+    await page.keyboard.press("Enter");
+    await until("only mine stay", async () => (await faded(sort)) && (await faded(deliver)));
+    expect(await faded(fix)).toBe(false);
+    expect(await bar.locator(".filter-count").textContent()).toBe("1 of 3 cards");
+    expect(await mine.getAttribute("aria-pressed")).toBe("true");
+    await page.keyboard.press("Enter");
+    await until("pressed again, it lets go", async () => !(await faded(sort)));
+    await page.keyboard.press("Escape");
+  });
+
   test("the keyboard stays in the labels: the field after Enter, the next × after one, and each change is said", async () => {
     const [sort] = await agent(
       ['board new "Clavier labels" --format kanban --id labels-t155', 'add task "Trier" --lane todo'].join(
