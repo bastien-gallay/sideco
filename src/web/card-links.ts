@@ -1,11 +1,12 @@
 /**
  * The links of the card chosen, in its Detail tab (S310): each one it leads by
- * or comes by, with the card at its other end, Name and Remove. The board
+ * or comes by, with the card at its other end, Name, Reverse and Remove. The board
  * offers a link to the pointer only; here the keyboard reaches it. Name opens a
  * field in the row: Enter keeps the words, emptied they come off, Escape leaves
  * the name as it was, and the keyboard goes back to Name.
  */
 import { h } from "./dom.ts";
+import { reverseButton } from "./link-reverse.ts";
 import type { LinkRow } from "./link-rows.ts";
 import { t } from "./locale.ts";
 import { currentBoard, send } from "./store.ts";
@@ -15,6 +16,8 @@ const keyOf = (r: { src: string; dst: string }): string => `${r.src}\u0000${r.ds
 /** The link being named, and the one whose Name takes the keyboard back. */
 let naming: LinkRow | undefined;
 let back: string | undefined;
+/** The link just turned round: its Reverse keeps the keyboard, on the row redrawn the other way. */
+let turned: string | undefined;
 /**
  * The list on screen: the panel repaints only when the card changes, so the
  * list redraws itself as a name is begun or left.
@@ -73,6 +76,18 @@ export function linkSection(rows: readonly LinkRow[], live: boolean, heading: st
   return h("section", { class: "card-panel-links", "aria-label": heading }, h("h3", {}, heading), shown.list);
 }
 
+/** Reverse, in a row: the row comes back the other way round, and the keyboard stays on its Reverse. */
+function reverseOf(r: LinkRow, id: string): HTMLButtonElement {
+  const button = reverseButton(r, { class: "quiet", "aria-describedby": id }, () => {
+    turned = keyOf({ src: r.dst, dst: r.src });
+  });
+  if (turned === keyOf(r)) {
+    turned = undefined;
+    queueMicrotask(() => button.focus());
+  }
+  return button;
+}
+
 /** One link: an arrow that says which way it goes, the card at its other end, its name, then what can be done. */
 function linkItem(r: LinkRow, id: string, live: boolean): HTMLElement {
   const words = h(
@@ -103,6 +118,7 @@ function linkItem(r: LinkRow, id: string, live: boolean): HTMLElement {
     {},
     words,
     live && name,
+    live && reverseOf(r, id),
     live &&
       h(
         "button",

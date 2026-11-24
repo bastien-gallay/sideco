@@ -82,6 +82,14 @@ describe("undo takes back the author's last gesture", () => {
     expect(has("E2", "R1")).toBe(false);
   });
 
+  test("a link reversed is one gesture, named as such: one undo turns it back (S349)", () => {
+    const t = table(ORDERING).script('link C1 E1 "produit"', "human").script("reverse C1 E1", "human");
+    expect(t.board().trails.human?.undo.at(-1)?.name).toBe("reverse C1 E1");
+    undo(t, "commande");
+    const between = t.board().edges.filter((e) => [e.src, e.dst].sort().join() === "C1,E1");
+    expect(between.map((e) => [e.src, e.dst, e.label])).toEqual([["C1", "E1", "produit"]]);
+  });
+
   test("an element added with its link is one gesture: one undo removes both", () => {
     const t = table(FLOW).script('add step "Emballer" --from F2', "human");
     expect(findElement(t.board(), "F4")).toBeDefined();

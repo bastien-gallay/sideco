@@ -266,6 +266,19 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
         throw new CommandError(`no link ${cmd.src} → ${cmd.dst} on "${b}"`);
       }
       return { events: [{ event: "EdgeRemoved", board: b, src: cmd.src, dst: cmd.dst }] };
+    case "reverse": {
+      const link = board.edges.find((e) => e.src === cmd.src && e.dst === cmd.dst);
+      if (!link) throw new CommandError(`no link ${cmd.src} → ${cmd.dst} on "${b}"`);
+      if (board.edges.some((e) => e.src === cmd.dst && e.dst === cmd.src))
+        throw new CommandError(`${cmd.dst} already links to ${cmd.src}`);
+      // Taken off, then laid the other way round: one gesture, one undo.
+      return {
+        events: [
+          { event: "EdgeRemoved", board: b, src: cmd.src, dst: cmd.dst },
+          { event: "EdgeAdded", board: b, src: cmd.dst, dst: cmd.src, label: link.label },
+        ],
+      };
+    }
     case "focus":
       for (const id of cmd.ids) requireElement(board, id);
       return {

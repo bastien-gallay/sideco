@@ -2663,6 +2663,30 @@ describe("the spotlight on links (S325)", () => {
       return (await page.locator(".board-picker select").inputValue()) !== "phare";
     });
   });
+
+  test("a link picked is reversed from its bar, and one Undo turns it back (S349)", async () => {
+    const [stock, ship] = await agent(
+      'board new "Sens" --format flow --id sens\nadd decision "En stock ?" --alias d\nadd step "Expédier" --from @d --edge oui',
+    );
+    await page.locator(".board-picker select").selectOption("sens");
+    await conn(stock, ship).waitFor();
+    const at = await onLink(stock, ship);
+    await page.mouse.click(at.x, at.y);
+    await page.locator(".card-tools button", { hasText: "Reverse" }).click();
+    await conn(ship, stock).waitFor();
+    expect(await conn(stock, ship).count()).toBe(0);
+    // Its name goes with it, and its bar is put away as the link it named is no more.
+    expect(await conn(ship, stock).locator("text.conn-label").textContent()).toBe("oui");
+    await page.locator(".card-tools").waitFor({ state: "hidden" });
+    await shot("65-link-reversed");
+    await page.getByRole("button", { name: "Undo" }).click();
+    await conn(stock, ship).waitFor();
+    expect(await conn(ship, stock).count()).toBe(0);
+    await agent("board rm sens");
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== "sens";
+    });
+  });
 });
 
 describe("a link drawn from the handle of the card chosen (S326)", () => {
@@ -2872,6 +2896,29 @@ describe("the links of a card in its Detail tab, for the keyboard (S310)", () =>
     await rows().nth(0).getByRole("button", { name: "Remove the link" }).click();
     await until("the link is removed", async () => (await edgeOf(stock, ship)) === undefined);
     await until("one link left in the list", async () => (await rows().count()) === 1);
+
+    // Reversed from there (S349): the link goes the other way, its name kept, and the keyboard stays on Reverse.
+    expect(await rows().nth(0).textContent()).toContain(`→ ${order}`);
+    await rows().nth(0).getByRole("button", { name: "Reverse" }).focus();
+    await page.keyboard.press("Enter");
+    await until("the link is turned round", async () => (await edgeOf(order, stock))?.label === "en rupture");
+    expect(await edgeOf(stock, order)).toBeUndefined();
+    await until("the row says the other way", async () =>
+      ((await rows().nth(0).textContent()) ?? "").includes(`← ${order}`),
+    );
+    await until("the keyboard is still on Reverse", async () =>
+      rows()
+        .nth(0)
+        .getByRole("button", { name: "Reverse" })
+        .evaluate((b) => b === document.activeElement),
+    );
+    // One Undo turns it back.
+    await page.getByRole("button", { name: "Undo" }).click();
+    await until(
+      "the link is back as it was",
+      async () => (await edgeOf(stock, order))?.label === "en rupture",
+    );
+    expect(await edgeOf(order, stock)).toBeUndefined();
 
     await page.keyboard.press("Escape");
     await agent("board rm liens");

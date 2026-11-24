@@ -155,6 +155,12 @@ button.danger {
   color: var(--danger);
 }
 
+/* Said why in its title, and still reached by the keyboard: a button that cannot act here. */
+button[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 input[type="text"] {
   background: var(--surface);
   border: 1px solid var(--rule);

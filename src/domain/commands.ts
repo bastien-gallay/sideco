@@ -95,6 +95,8 @@ export type Command =
   | { kind: "move-column"; board: string; from: number; to: number }
   | { kind: "link"; board: string; src: string; dst: string; label?: string }
   | { kind: "unlink"; board: string; src: string; dst: string }
+  /** Turns the link round: its source becomes its target, its name kept (S349). */
+  | { kind: "reverse"; board: string; src: string; dst: string }
   | { kind: "focus"; board: string; ids: string[]; reason?: string }
   | { kind: "note"; board: string; text: string; target?: string; alias?: string }
   /** Answers a note, in its thread. */
@@ -282,6 +284,7 @@ export function parseCommand(input: unknown): Command {
         label: optional(f, "label", (x, k) => text(x, k, LIMITS.label)),
       };
     case "unlink":
+    case "reverse":
       return { kind, board: boardId(f), src: idOrName(f, "src"), dst: idOrName(f, "dst") };
     case "focus":
       return {

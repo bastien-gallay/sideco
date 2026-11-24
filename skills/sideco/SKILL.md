@@ -116,7 +116,7 @@ sideco move ID --col N | --lane L [--before ID] (--before alone: before that car
 sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)   sideco renumber ID [NEW] (a new id for a card, the next of its letter by default; its links and notes follow)   sideco renumber --all [--dry-run] (every card under a former letter, or whose id another board keeps)   sideco retype ID TYPE [NEW] (a card takes another kind, and the next id of its letter)
 sideco lane L "Name" (names it here) · lane hint L "What it stands for" · purpose "Its own question?" · plan: axis x|y "Name" [Low] [High] ("" gives the workshop's back) · kanban, retro: lane add "Name" [--before L] · lane rm L · lane move L [--before L] · story map: slice add "Lot 1" [--before S] (a line under the stories) · slice rm S
 sideco done ID   sideco undone ID   sideco undo|redo [--dry-run] (your own last gesture, named; never the human's)
-sideco link SRC DST ["label"]       sideco unlink SRC DST   (link again: renames the link)
+sideco link SRC DST ["label"]       sideco unlink SRC DST   (link again: renames the link)   sideco reverse SRC DST (turns the link round, its name kept)
 sideco focus [ID…] [--why "…"]      (no id clears the focus)
 sideco note "Text" [--on ID] (opens a thread, on the board or one element) · reply N1 "Text" · resolve N1
 sideco apply [FILE]   (a batch of the lines above, stdin by default; add … --alias NAME, then @NAME below)

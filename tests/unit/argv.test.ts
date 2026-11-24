@@ -87,6 +87,7 @@ describe("boardAction", () => {
     ["move-col 3 1", { kind: "move-column", board: "b", from: 3, to: 1 }],
     ['link E1 P1 "déclenche"', { kind: "link", board: "b", src: "E1", dst: "P1", label: "déclenche" }],
     ["unlink E1 P1", { kind: "unlink", board: "b", src: "E1", dst: "P1" }],
+    ["reverse E1 P1", { kind: "reverse", board: "b", src: "E1", dst: "P1" }],
     ['focus E1 P1 --why "à revoir"', { kind: "focus", board: "b", ids: ["E1", "P1"], reason: "à revoir" }],
     ["focus", { kind: "focus", board: "b", ids: [] }],
     ['note "Qui ?" --on P1', { kind: "note", board: "b", text: "Qui ?", target: "P1" }],

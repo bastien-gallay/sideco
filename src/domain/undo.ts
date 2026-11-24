@@ -191,6 +191,9 @@ export function remember(board: Board, e: Happened, inverse: BoardEvent[]): void
   if (e.joined && open?.seq === e.seq - 1) {
     open.seq = e.seq;
     open.inverse.unshift(...inverse);
+    // A link taken off then laid the other way round is a link reversed.
+    if (e.event === "EdgeAdded" && open.name === `unlink ${e.dst} ${e.src}`)
+      open.name = `reverse ${e.dst} ${e.src}`;
     return;
   }
   // A gesture undone or redone keeps the name of what it first did.

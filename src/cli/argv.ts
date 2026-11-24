@@ -296,9 +296,10 @@ export function boardAction(tokens: readonly string[], board: string | undefined
           },
         };
       case "unlink":
+      case "reverse":
         return {
           command: {
-            kind: "unlink",
+            kind: verb,
             board: target(),
             src: need(0, "a source id"),
             dst: need(1, "a target id"),
@@ -374,6 +375,7 @@ export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "move-col",
   "link",
   "unlink",
+  "reverse",
   "focus",
   "note",
   "reply",

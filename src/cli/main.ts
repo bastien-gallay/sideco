@@ -98,6 +98,7 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco lane add "Name" [--before L] a kanban lane of this board's own; lane rm L (empty) · lane move L [--before L]
   sideco slice add "Name" [--before S] a story map's slice, a named line under its stories; slice rm S
   sideco link SRC DST ["label"]       sideco unlink SRC DST
+  sideco reverse SRC DST              turn the link round, its name kept
   sideco focus [ID…] [--why "…"]      no id clears the focus
   sideco note "Text" [--on ID]        open a discussion, on the board or on one element
   sideco reply N1 "Text"              answer in the thread of a note

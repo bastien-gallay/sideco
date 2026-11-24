@@ -166,6 +166,19 @@ describe("links, focus, notes, turn", () => {
     ]);
   });
 
+  test("reversing a link turns it round, its name kept (S349)", () => {
+    const t = table(ORDERING).script('link C1 E1 "produit"\nreverse C1 E1');
+    const between = t.board().edges.filter((e) => [e.src, e.dst].sort().join() === "C1,E1");
+    expect(between).toEqual([{ src: "E1", dst: "C1", label: "produit", by: "agent" }]);
+  });
+
+  test("reversing is refused where there is no link, or one already goes the other way", () => {
+    const t = table(ORDERING);
+    expect(() => t.script("reverse E1 C1")).toThrow("no link E1 → C1");
+    t.script("link E1 C1");
+    expect(() => t.script("reverse C1 E1")).toThrow("E1 already links to C1");
+  });
+
   test("unlinking a link that is not there is refused", () => {
     expect(() => table(ORDERING).script("unlink E1 C1")).toThrow("no link E1 → C1");
   });

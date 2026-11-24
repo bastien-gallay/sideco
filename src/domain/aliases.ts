@@ -11,18 +11,9 @@ import { type Command, CommandError, referredName } from "./commands.ts";
 /** The names given so far in a batch, each with what it stands for: an id, on the board that gave it. */
 export type Aliases = ReadonlyMap<string, { board: string; id: string }>;
 
-/**
- * The command as it is decided: every `@name` replaced by its id. Refuses a
- * name that no earlier command gave, and a new name that is already taken.
- */
-export function resolveAliases(command: Command, aliases: Aliases): Command {
-  const giving = nameGiven(command);
-  const taken = giving === undefined ? undefined : aliases.get(giving);
-  if (taken !== undefined) {
-    throw new CommandError(`@${giving} already names ${taken.id} in this batch; choose another name`);
-  }
-  const board = "board" in command ? command.board : undefined;
-  const id = (given: string): string => {
+/** What an id or a `@name` given on `board` stands for: the id itself, or the one the name was given. */
+function idOf(aliases: Aliases, board: string | undefined): (given: string) => string {
+  return (given) => {
     const name = referredName(given);
     if (name === undefined) return given;
     const found = aliases.get(name);
@@ -36,6 +27,19 @@ export function resolveAliases(command: Command, aliases: Aliases): Command {
     }
     return found.id;
   };
+}
+
+/**
+ * The command as it is decided: every `@name` replaced by its id. Refuses a
+ * name that no earlier command gave, and a new name that is already taken.
+ */
+export function resolveAliases(command: Command, aliases: Aliases): Command {
+  const giving = nameGiven(command);
+  const taken = giving === undefined ? undefined : aliases.get(giving);
+  if (taken !== undefined) {
+    throw new CommandError(`@${giving} already names ${taken.id} in this batch; choose another name`);
+  }
+  const id = idOf(aliases, "board" in command ? command.board : undefined);
   const optional = (given: string | undefined): string | undefined =>
     given === undefined ? undefined : id(given);
 
@@ -53,6 +57,7 @@ export function resolveAliases(command: Command, aliases: Aliases): Command {
       return { ...command, id: id(command.id), before: optional(command.before) };
     case "link":
     case "unlink":
+    case "reverse":
       return { ...command, src: id(command.src), dst: id(command.dst) };
     case "focus":
       return { ...command, ids: command.ids.map(id) };

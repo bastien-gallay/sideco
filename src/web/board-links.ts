@@ -8,6 +8,7 @@ import type { Scene } from "../domain/layout/index.ts";
 import { connectorMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h, svg } from "./dom.ts";
+import { reverseButton } from "./link-reverse.ts";
 import { t } from "./locale.ts";
 import { type Ends, type Lit, lightAt, linkKey } from "./spotlight.ts";
 import { send } from "./store.ts";
@@ -44,7 +45,7 @@ export function linkAt(
 export const stillLinked = (board: Board, link: PickedLink): boolean =>
   board.edges.some((e) => e.src === link.src && e.dst === link.dst);
 
-/** The toolbar of a picked link, under where it was clicked: what it joins, Name, Remove. */
+/** The toolbar of a picked link, beside where it was clicked: what it joins, Name, Reverse, Remove. */
 export function showLinkTools(
   tools: HTMLElement,
   board: string,
@@ -58,6 +59,7 @@ export function showLinkTools(
   tools.replaceChildren(
     h("span", { class: "tools-label" }, t.linkBetween(link.src, link.dst)),
     h("button", { type: "button", onclick: act.name }, t.nameLink),
+    reverseButton(link, {}, act.dropped),
     h("button", { type: "button", class: "danger", onclick: remove }, t.removeLink),
   );
   tools.hidden = false;

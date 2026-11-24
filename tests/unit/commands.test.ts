@@ -111,6 +111,7 @@ describe("names in a batch", () => {
       { kind: "remove", board: b, id: "@paid" },
       { kind: "link", board: b, src: "@paid", dst: "@paid" },
       { kind: "unlink", board: b, src: "@paid", dst: "@paid" },
+      { kind: "reverse", board: b, src: "@paid", dst: "@paid" },
       { kind: "focus", board: b, ids: ["E1", "@paid"] },
       { kind: "note", board: b, text: "x", target: "@paid" },
       { kind: "reply", board: b, to: "@paid", text: "x" },
