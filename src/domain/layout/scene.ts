@@ -34,6 +34,8 @@ export interface Card {
   kind?: string;
   /** What the card stands for is done. */
   done: boolean;
+  /** Its kin, beside its id: the card it splits, or how many of the cards that split it are done (see kin.ts). */
+  kin?: string;
   /** Open notes pinned to this card. */
   notes: number;
 }

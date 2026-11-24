@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { cardFacts } from "../../src/web/card-facts.ts";
+import { cardFacts, kindSaid } from "../../src/web/card-facts.ts";
 import { KANBAN, ORDERING, table } from "../support.ts";
 
 const NOW = new Date("2026-11-24T15:00:00");
@@ -44,4 +44,20 @@ test("a card done says so, where the board does not say it by its last lane", ()
 test("a card that is gone says nothing", () => {
   const t = table(ORDERING);
   expect(cardFacts(t.board(), "E99", t.events, "en", NOW)).toBe("");
+});
+
+test("under its name a card says its kind, then its kin when it has some (S323)", () => {
+  const t = table(
+    [
+      'board new "Sprint" --format kanban --id sprint',
+      'add story "Payer en ligne" --alias pay',
+      'add task "Brancher la banque" --from @pay --lane done',
+      'add task "Relire le contrat"',
+    ].join("\n"),
+  );
+  const [pay, bank, alone] = t.board().elements.map((e) => e.id) as [string, string, string];
+  expect(kindSaid(t.board(), pay, "en")).toBe("Story · 1 of 1 task done");
+  expect(kindSaid(t.board(), bank, "fr")).toBe(`Tâche · découpe ${pay} Payer en ligne`);
+  expect(kindSaid(t.board(), alone, "en")).toBe("Task");
+  expect(kindSaid(t.board(), "T99", "en")).toBeUndefined();
 });

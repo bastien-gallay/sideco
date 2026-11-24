@@ -48,6 +48,7 @@ export const SVG_STYLE = `
 .card-label { font-size: 13px; text-anchor: middle; }
 .card-detail { font-size: 11px; text-anchor: end; }
 .card-done { font-size: 11px; font-weight: 700; }
+.card-kin { font-size: 10px; opacity: 0.75; }
 .card-blurb { font-size: 11px; text-anchor: middle; }
 .card-label-chip { stroke: rgba(0, 0, 0, 0.15); stroke-width: 1; }
 .card-label-text { font-size: 10px; font-weight: 600; text-anchor: middle; }
@@ -171,6 +172,10 @@ export function cardMarkup(c: Card): string {
     wordsMarkup(c),
     labelsMarkup(c),
     c.done ? `<text class="card-done" x="${doneX(c)}" y="14" fill="${esc(c.ink)}">✓</text>` : "",
+    // Its kin follows the id, after the tick when it wears one.
+    c.kin
+      ? `<text class="card-kin" x="${doneX(c) + (c.done ? 14 : 0)}" y="14" fill="${esc(c.ink)}">${esc(c.kin)}</text>`
+      : "",
     // The glyph is small; the target around it is not: 22 by 24, under it, so a finger takes it too.
     c.hasDetail
       ? `<rect class="card-detail-hit" x="${detailX(c) - 15}" y="0" width="22" height="24" fill="transparent"/><text class="card-detail" x="${detailX(c)}" y="14" fill="${esc(c.ink)}">≡</text>`

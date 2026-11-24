@@ -7,7 +7,7 @@ import type { Command } from "../domain/commands.ts";
 import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../domain/export/index.ts";
 import { toMermaid } from "../domain/export/mermaid.ts";
 import { markWords, queryWords } from "../domain/find.ts";
-import { findFormat, findType, planAxis } from "../domain/formats.ts";
+import { findFormat, planAxis } from "../domain/formats.ts";
 import { asLocale, formerly, LOCALES, WORDS } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import { readerOf, shownSession, TURNS_SHOWN } from "../domain/sessions.ts";
@@ -26,7 +26,7 @@ import {
   paintHome,
   removeSheet,
 } from "./boards.ts";
-import { cardFacts } from "./card-facts.ts";
+import { cardFacts, kindSaid } from "./card-facts.ts";
 import { labelSection, projectLabels, refocusLabelField, refocusLabels, typingLabel } from "./card-labels.ts";
 import { linkSection } from "./card-links.ts";
 import { clock, h, region } from "./dom.ts";
@@ -1752,14 +1752,13 @@ function render(): void {
   else cardPanel.dataset.empty = "true";
   cardPanel.classList.toggle("is-editing", editing);
   if (board && chosen) {
-    const format = findFormat(board.format);
     const typing = document.activeElement === detailField;
     const labelling = typingLabel();
     paintCardPanel({
       id: chosen.id,
       former: formerly(chosen.formerIds, locale),
       label: chosen.label,
-      type: format && findType(format, chosen.type)?.label[locale],
+      type: kindSaid(board, chosen.id, locale),
       facts: cardFacts(board, chosen.id, state.events, locale),
       detail: editing ? undefined : chosen.detail,
       live,

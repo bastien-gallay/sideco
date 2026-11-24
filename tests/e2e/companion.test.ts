@@ -3634,6 +3634,42 @@ describe("a plan's axes, from the keyboard", () => {
   });
 });
 
+describe("a story and the tasks that split it (S323)", () => {
+  test("the story counts its tasks done, the task names its story, on the card and in the Detail tab", async () => {
+    const [pay, bank, screen] = await agent(
+      [
+        'board new "Découpe" --format kanban --id decoupe-s323',
+        'add story "Payer en ligne" --alias pay',
+        'add task "Brancher la banque" --from @pay --lane done',
+        'add task "Écran de paiement" --from @pay --lane doing',
+      ].join("\n"),
+    );
+    await page.locator(".board-picker select").selectOption("decoupe-s323");
+    await card(screen).waitFor();
+    expect(await card(pay).locator(".card-kin").textContent()).toBe("1/2");
+    expect(await card(bank).locator(".card-kin").textContent()).toBe(`↳ ${pay}`);
+
+    await card(bank).locator(".card-id").click();
+    await page.getByRole("tab", { name: "Detail" }).click();
+    const kind = page.locator(".card-panel .card-panel-name + .hint");
+    await until(
+      "the task names its story",
+      async () => (await kind.textContent()) === `Task · splits ${pay} Payer en ligne`,
+    );
+
+    // The other task done: the story's count follows, on the card and in the panel.
+    await agent(`move ${screen} --lane done`, "decoupe-s323");
+    await until(
+      "the count follows",
+      async () => (await card(pay).locator(".card-kin").textContent()) === "2/2",
+    );
+    await card(pay).locator(".card-id").click();
+    await until("the story counts", async () => (await kind.textContent()) === "Story · 2 of 2 tasks done");
+    await shot("62-kin");
+    await page.keyboard.press("Escape");
+  });
+});
+
 describe("labels on a card, from the page", () => {
   test("a card wears its labels as chips, says them, and the Detail tab adds and takes them off", async () => {
     const [fix, deliver] = await agent(

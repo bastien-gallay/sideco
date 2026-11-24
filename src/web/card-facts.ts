@@ -6,8 +6,9 @@
  * language, as messages.ts is at its ceiling.
  */
 import type { Actor, Recorded } from "../domain/events.ts";
-import { wearsDone } from "../domain/formats.ts";
+import { findFormat, findType, wearsDone } from "../domain/formats.ts";
 import { DEFAULT_LOCALE, type Locale } from "../domain/i18n.ts";
+import { kinSaid } from "../domain/kin.ts";
 import { type Board, findElement } from "../domain/workspace.ts";
 
 interface Words {
@@ -34,6 +35,14 @@ const WORDS: Record<Locale, Words> = {
     done: "faite",
   },
 };
+
+/** What the card is and, after it, its kin (S323): "Task · splits S3 Pay online", "Story · 1 of 2 tasks done". */
+export function kindSaid(board: Board, id: string, locale: Locale = DEFAULT_LOCALE): string | undefined {
+  const el = findElement(board, id);
+  const format = findFormat(board.format);
+  const kind = el && format && findType(format, el.type)?.label[locale];
+  return [kind, kinSaid(board, id, locale)].filter(Boolean).join(" · ") || undefined;
+}
 
 const two = (n: number): string => String(n).padStart(2, "0");
 

@@ -4,6 +4,7 @@
  */
 import { type ElementType, type Format, findFormat, findType, wearsDone } from "../formats.ts";
 import { DEFAULT_LOCALE, formerly, type Locale, WORDS } from "../i18n.ts";
+import { kinMark, kinOf, kinSaid } from "../kin.ts";
 import { threads } from "../threads.ts";
 import type { Board, Element } from "../workspace.ts";
 import {
@@ -146,6 +147,7 @@ function cardMaker(
     const blurb = blurbOf(format, e, w);
     const look = lookOf(format, type, locale);
     const head = type?.shape === "person" ? PERSON_HEAD : 0;
+    const kin = kinMark(kinOf(board, e.id));
     return {
       id: e.id,
       x,
@@ -165,14 +167,29 @@ function cardMaker(
       ink: type?.ink ?? "#1F2328",
       shape: type?.shape ?? "box",
       label: oneLineOf(e.label),
-      tip: `${[e.id, formerly(e.formerIds, locale)].filter(Boolean).join(" · ")} · ${type?.label[locale] ?? e.type} · ${WORDS[locale].addedBy[e.by]}${wearsDone(board, e) ? ` · ${WORDS[locale].done}` : ""}`,
+      tip: tipOf(board, e, type?.label[locale] ?? e.type, locale),
       by: e.by,
       hasDetail: Boolean(e.detail),
       ...(e.detail ? { detail: e.detail } : {}),
       done: wearsDone(board, e),
+      ...(kin ? { kin } : {}),
       notes: openNotes.get(e.id) ?? 0,
     };
   };
+}
+
+/** A card's tooltip: its ids, its kind, who added it, that it is done, and its kin. */
+function tipOf(board: Board, e: Element, kind: string, locale: Locale): string {
+  const w = WORDS[locale];
+  return [
+    [e.id, formerly(e.formerIds, locale)].filter(Boolean).join(" · "),
+    kind,
+    w.addedBy[e.by],
+    wearsDone(board, e) && w.done,
+    kinSaid(board, e.id, locale),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /** The description a card shows under its name, on a format that shows one, cut to the lines it allows. */

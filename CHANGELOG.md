@@ -35,6 +35,9 @@ All notable changes to Sideco are listed here. The format follows
 - `sideco retype ID TYPE [NEW]` turns a card into another kind of its board: it
   takes the next id of that kind's letter, or NEW, its ties follow, and it keeps
   its old id, as with `renumber`. An undo gives back the kind and the id.
+- On a kanban, a story wears the count of its tasks done (`1/2`) and a task the
+  id of the story it splits (`↳ S1`); the tooltip and the Detail tab say it in
+  words.
 - The Detail tab says, under a card's name, who added it, who changed it last
   and when, and that it is done.
 - A label's chip, pressed on a card or in the Detail tab, filters the board by
