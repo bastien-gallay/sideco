@@ -9,6 +9,7 @@ import { connectorMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h, svg } from "./dom.ts";
 import { t } from "./locale.ts";
+import { send } from "./store.ts";
 
 /** A link the human clicked, and where in the board's frame: its toolbar opens there. */
 export interface PickedLink {
@@ -44,13 +45,18 @@ export const stillLinked = (board: Board, link: PickedLink): boolean =>
 /** The toolbar of a picked link, under where it was clicked: what it joins, Name, Remove. */
 export function showLinkTools(
   tools: HTMLElement,
+  board: string,
   link: PickedLink,
-  act: { name: () => void; remove: () => void },
+  act: { name: () => void; dropped: () => void },
 ): void {
+  const remove = (): void => {
+    act.dropped();
+    void send({ kind: "unlink", board, src: link.src, dst: link.dst });
+  };
   tools.replaceChildren(
     h("span", { class: "tools-label" }, t.linkBetween(link.src, link.dst)),
     h("button", { type: "button", onclick: act.name }, t.nameLink),
-    h("button", { type: "button", class: "danger", onclick: act.remove }, t.removeLink),
+    h("button", { type: "button", class: "danger", onclick: remove }, t.removeLink),
   );
   tools.hidden = false;
   tools.style.left = `${Math.max(8, link.x)}px`;

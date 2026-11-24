@@ -17,10 +17,11 @@ import {
 } from "../domain/layout/index.ts";
 import { cardName } from "../domain/layout/scene.ts";
 import { chipText } from "../domain/render/labels.ts";
-import { arrowDefs, bandMarkup, cardMarkup, esc } from "../domain/render/svg.ts";
+import { arrowDefs, bandMarkup, cardMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import type { BoardHooks, BoardView } from "./board-api.ts";
 import { drawLinks, linkAt, nameSpot, type PickedLink, showLinkTools, stillLinked } from "./board-links.ts";
+import { changedMark, ringMarkup, unreadMark } from "./card-marks.ts";
 import { h, svg } from "./dom.ts";
 import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
@@ -56,8 +57,6 @@ const LANE_HEAD_HINTED = 44;
 const LANE_COUNT_ROOM = 56;
 /** What a story map's step numbers take more, once they say their activity and task. */
 const BACKBONE_H = 36;
-/** How far outside its card the ring of a focused or selected card is drawn: off the sticky's colour, always. */
-const RING = 5;
 const ARROWS: Record<string, Direction> = {
   ArrowUp: "up",
   ArrowDown: "down",
@@ -91,19 +90,6 @@ interface EditorKind {
   /** One word: the editor is one line tall. */
   short?: boolean;
 }
-
-/**
- * The mark of a card that carries a change Claude has not read: a dot on the
- * corner the note count leaves free, with its words for a pointer resting on it.
- */
-const UNREAD_MARK = `<g class="card-unread"><title>${esc(t.unread)}</title><circle cx="2" cy="2" r="5"/></g>`;
-
-/**
- * The mark of a card Claude changed while the reader was away: a triangle on
- * the bottom corner nothing else takes, a shape of its own beside the dot.
- */
-const changedMark = (height: number): string =>
-  `<g class="card-changed" transform="translate(0 ${height})"><title>${esc(t.changedSinceVisit)}</title><path d="M0 -8 L8 5 L-8 5 Z"/></g>`;
 
 export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   const root = svg("svg", { class: "sideco-board", role: "group" });
@@ -329,7 +315,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         node.g.innerHTML =
           ringMarkup(card) +
           cardMarkup(card) +
-          (isUnread ? UNREAD_MARK : "") +
+          (isUnread ? unreadMark() : "") +
           (isNew ? changedMark(card.h) : "");
         node.signature = signature;
       }
@@ -405,11 +391,6 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     host.classList.toggle("has-own-lanes", Boolean(format()?.ownLanes && !format()?.grid));
     paintTools();
     paintOffers();
-  }
-
-  /** The ring of a focused or selected card, drawn around it rather than on it: it reads on every sticky. */
-  function ringMarkup(card: { w: number; h: number }): string {
-    return `<rect class="card-ring" x="${-RING}" y="${-RING}" width="${card.w + 2 * RING}" height="${card.h + 2 * RING}" rx="${RING + 2}"/>`;
   }
 
   /**
@@ -634,12 +615,10 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const node = id ? nodes.get(id) : undefined;
     const link = pickedLink;
     if (board && link && isLive() && !editing && stillLinked(board, link)) {
-      const boardId = board.id;
-      const remove = (): void => {
+      const dropped = (): void => {
         pickedLink = undefined;
-        void send({ kind: "unlink", board: boardId, src: link.src, dst: link.dst });
       };
-      showLinkTools(tools, link, { name: () => nameLink(link.src, link.dst), remove });
+      showLinkTools(tools, board.id, link, { name: () => nameLink(link.src, link.dst), dropped });
       return;
     }
     pickedLink = undefined;
