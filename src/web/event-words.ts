@@ -128,8 +128,10 @@ function english(e: Recorded, to: string, lane: LaneCalled): string {
     case "ElementUnlabeled":
       return `${does("take")} the label “${e.label}” off ${e.id}`;
     case "ElementMoved":
-    case "ElementPlaced":
       return `${does("move")} ${e.id}`;
+    case "ElementPlaced":
+      // Kept where the links drew it as the diagram went Snap: nobody moved it.
+      return e.drawn ? `${e.id} stays in place` : `${does("move")} ${e.id}`;
     case "BoardPlacing":
       return `${does("place")} the cards ${e.byHand ? "by hand" : "by their links"}`;
     case "ElementRemoved":
@@ -251,8 +253,9 @@ function french(e: Recorded, to: string, lane: LaneCalled): string {
     case "ElementUnlabeled":
       return `${verb("retires", "retire")} à ${e.id} le label « ${e.label} »`;
     case "ElementMoved":
-    case "ElementPlaced":
       return `${verb("déplaces", "déplace")} ${e.id}`;
+    case "ElementPlaced":
+      return e.drawn ? `${e.id} reste en place` : `${verb("déplaces", "déplace")} ${e.id}`;
     case "BoardPlacing":
       return `${verb("places", "place")} les cartes ${e.byHand ? "à la main" : "par leurs liens"}`;
     case "ElementRemoved":

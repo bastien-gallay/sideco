@@ -438,6 +438,17 @@ describe("the history stops at the events of one board, or at every event of the
     expect(told).toEqual(["BoardPlacing", "ElementPlaced"]);
   });
 
+  test("a card a diagram keeps in place as it goes Snap is told kept, not moved: nobody moved it", () => {
+    const flow = table(FLOW);
+    flow.script("place F3 600 40", "human");
+    const kept = flow.events.find((e) => e.event === "ElementPlaced" && e.drawn === true);
+    const dragged = flow.events.at(-1);
+    if (kept?.event !== "ElementPlaced" || !dragged) throw new Error("no placing");
+    expect(describeEvent(kept, "en")).toBe(`${kept.id} stays in place`);
+    expect(describeEvent(kept, "fr")).toBe(`${kept.id} reste en place`);
+    expect(describeEvent(dragged, "en")).toBe("You move F3");
+  });
+
   test("live sits on the last stop: one step back shows the board before its latest event", () => {
     expect(historyStep(commande, null, -1)).toBe(7);
     expect(historyStep(journal, null, -1)).toBe(10);

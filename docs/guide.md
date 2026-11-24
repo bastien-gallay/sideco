@@ -60,7 +60,7 @@ What Claude receives is net of back-and-forth: a card added then renamed reads a
 | --- | --- |
 | Click a type in the palette | Adds a card of that type |
 | Double-click a card | Renames it |
-| Drag a card | Moves it to another step or column, or within its cell |
+| Drag a card | Moves it to another step or column, or within its cell. On a `flow` or a `c4-context`, puts it where it is let go, and the diagram goes Snap |
 | Select a card | Opens its action bar: rename, detail, link, note for Claude, remove |
 | Reply in the Notes tab | Answers Claude in the thread of the card; `⌘` / `Ctrl` + Enter sends the reply and hands the turn back |
 | Undo and Redo, or `⌘Z` / `Ctrl+Z` | Takes back your last gesture, never one of Claude's |
@@ -84,6 +84,8 @@ The name in the first column is the one the `sideco` command takes, as in `sidec
 | `retro` | What do we keep, stop and try? | Column |
 | `impact-effort` | What do we do first, for what it brings and what it costs? | Quadrant |
 | `c4-context` | Who uses the system, and what does it depend on? | Link from another card |
+
+A `flow` or a `c4-context` can also go **Snap**: its cards stay where you put them. Drag a card, nudge it with `Shift` and an arrow, press the Snap button of the palette, or have Claude run `sideco place ID X Y`: the whole diagram stays where it stands. A link added then moves no card and is drawn as a curve; a card added goes under the one it comes from. Releasing Snap, or `sideco placing auto`, gives the placing back to the links, and the places come back with Snap. The [guide détaillé](guide.fr.md#les-ateliers) says more.
 
 Event storming and flow are in the README's first picture; the others follow.
 

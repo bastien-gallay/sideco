@@ -59,8 +59,8 @@ sideco wait
   an id goes on the lines after it (`link @payee R1`, `detail @payee "…"`,
   `note "…" --on @payee`). A name is lowercase letters, digits and dashes.
   It lives for that one `sideco apply`: afterwards, use the id that was printed.
-- **Positions are semantic**, never pixels: a column (`--col N`), a lane
-  (`--lane doing`), or a link (`--from F1`). The layout is computed.
+- **Positions are semantic**: a column (`--col N`), a lane (`--lane doing`),
+  or a link (`--from F1`); the layout is computed. Only a Snap diagram takes a point.
 - **A batch is all or nothing.** One bad line and nothing is applied; the
   error names the line. A `@name` no earlier line gave is a bad line.
 - **The user's edits win.** Do not undo a rename, a move or a removal they
