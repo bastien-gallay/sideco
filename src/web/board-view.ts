@@ -25,6 +25,7 @@ import { dropCommand, keyCommand, snapCommand, whereTo } from "./card-drop.ts";
 import { changedMark, ringMarkup, unreadMark } from "./card-marks.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
+import { BACKBONE_H, liftHeadings } from "./headings.ts";
 import { linkHandle } from "./link-handle.ts";
 import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
@@ -53,12 +54,8 @@ const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5];
 const CARD_MOVE_MS = 300;
 /** The editor's least height: room for two lines of words. */
 const EDITOR_MIN_H = 72;
-const LANE_HEAD = 38;
-const LANE_HEAD_HINTED = 44;
 /** What a lane heading keeps beside its name: the inset on the left and the count on the right. */
 const LANE_COUNT_ROOM = 56;
-/** What a story map's step numbers take more, once they say their activity and task. */
-const BACKBONE_H = 36;
 const ARROWS: Record<string, Direction> = {
   ArrowUp: "up",
   ArrowDown: "down",
@@ -281,7 +278,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       paintedBands = banding;
       bands.innerHTML = banding;
       dressAxes();
-      liftHeadings();
+      frozen = liftHeadings(heads, bands, scene, !!format()?.ownLanes && !format()?.grid);
     }
     backToAxis();
     holdHeadings();
@@ -466,84 +463,6 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   /** How much of the top and of the left the frozen names cover, in scene units. */
   let frozen = { top: 0, left: 0 };
-
-  /**
-   * Takes the names out of the bands, behind the cards, up to the layer over
-   * them. On a timeline they sit on a strip of the board's own surface, the step
-   * numbers across the top and the row names down the left: the frozen panes of
-   * a sheet. A lane keeps its heading, ringed by the lane's own colour.
-   */
-  function liftHeadings(): void {
-    heads.replaceChildren();
-    const steps = svg("g", { class: "heads-steps" });
-    const rows = svg("g", { class: "heads-rows" });
-    const top = Math.min(...scene.bands.filter((b) => b.kind === "row").map((b) => b.y));
-    const left = Math.min(...scene.bands.filter((b) => b.kind === "step").map((b) => b.x));
-    if (Number.isFinite(top))
-      steps.append(svg("rect", { class: "heads-strip", width: scene.width, height: top }));
-    if (Number.isFinite(top) && scene.backbone !== undefined)
-      steps.append(
-        svg("rect", {
-          class: "heads-strip heads-backbone-strip",
-          width: scene.width,
-          height: top + BACKBONE_H,
-        }),
-      );
-    if (Number.isFinite(left))
-      rows.append(svg("rect", { class: "heads-strip", width: left, height: scene.height }));
-    let laneTop = 0;
-    bands.querySelectorAll(":scope > g.band").forEach((group, index) => {
-      const band = scene.bands[index];
-      const kind = band?.kind;
-      if (kind === "step") steps.append(...group.querySelectorAll("text"));
-      else if (kind === "row") rows.append(...group.querySelectorAll("rect, text"));
-      // A slice's name stays in the frozen margin, like a row's; its line runs on under the cards.
-      else if (kind === "slice") rows.append(...group.querySelectorAll("text"));
-      else if (band && kind === "lane") {
-        // The lane's name rides on a strip of the lane's own colour: what scrolls under it is hidden, not smeared.
-        const tall = band.hint ? LANE_HEAD_HINTED : LANE_HEAD;
-        laneTop = Math.max(laneTop, tall);
-        const head = svg("g", { class: "head band-lane", "data-band": index });
-        head.append(
-          svg("rect", {
-            class: "heads-lane-strip",
-            x: band.x,
-            y: band.y,
-            width: band.w,
-            height: tall,
-            rx: 10,
-          }),
-          ...group.querySelectorAll("text"),
-        );
-        // Where a subtitle would go, offered under the pointer: a double-click writes one.
-        if (!band.hint) {
-          const blank = svg("text", {
-            class: "lane-hint-blank",
-            x: band.x + 14,
-            y: band.y + 37,
-            "data-lane": band.id,
-          });
-          blank.textContent = t.addLaneHint;
-          head.append(blank);
-        }
-        heads.append(head);
-        // On a kanban, a lane heading is a Tab stop: its keys rename, move, remove it, or add one beside it.
-        const label = head.querySelector<SVGTextElement>("text.lane-label");
-        if (label && format()?.ownLanes && !format()?.grid) {
-          label.setAttribute("tabindex", "0");
-          label.setAttribute("role", "button");
-          label.setAttribute("aria-label", t.laneHeading(band.label, band.count ?? 0));
-          label.setAttribute("aria-description", t.laneKeys);
-        }
-      }
-    });
-    frozen = {
-      top: Number.isFinite(top) ? top : laneTop,
-      left: Number.isFinite(left) ? left : 0,
-    };
-    if (steps.childElementCount > 1) heads.append(steps);
-    if (rows.childElementCount > 1) heads.append(rows);
-  }
 
   /** Draws a "+" for each kind of card that can be added where the pointer is. */
   function paintOffers(): void {
