@@ -1501,6 +1501,18 @@ kbd {
   stroke-dasharray: 6 4;
 }
 
+/* The card under a wire pulled from the handle (S326): solid to link, dashed red to cut. */
+.card.is-link-target .card-ring,
+.card.is-unlink-target .card-ring {
+  stroke: var(--accent-text);
+  stroke-width: 2.5;
+}
+
+.card.is-unlink-target .card-ring {
+  stroke: var(--danger);
+  stroke-dasharray: 6 4;
+}
+
 /* Focused and selected at once: the ring thickens, so the keyboard still shows where it is. */
 .card.is-selected:focus-visible .card-ring {
   stroke-width: 4;
@@ -1656,25 +1668,9 @@ kbd {
   stroke: var(--danger);
 }
 
-.card.is-link-target .card-ring,
-.card.is-unlink-target .card-ring {
-  stroke: var(--accent-text);
-  stroke-width: 2.5;
-}
-
-.card.is-unlink-target .card-ring {
-  stroke: var(--danger);
-  stroke-dasharray: 6 4;
-}
-
 /* While a wire is held, every card it could reach stays sharp. */
 .sideco-board.is-wiring .card {
   opacity: 1;
-}
-
-/* Nor does the toolbar of the card chosen hide the wire. */
-:has(> .canvas-scroll .is-wiring) > .card-tools {
-  visibility: hidden;
 }
 
 .card-tools {
@@ -1689,6 +1685,11 @@ kbd {
   border-radius: 8px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
   white-space: nowrap;
+}
+
+/* Nor does the toolbar of the card chosen hide the wire. */
+:has(> .canvas-scroll .is-wiring) > .card-tools {
+  visibility: hidden;
 }
 
 .card-tools button {
