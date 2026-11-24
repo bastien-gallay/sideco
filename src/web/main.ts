@@ -10,15 +10,7 @@ import { markWords, queryWords } from "../domain/find.ts";
 import { findFormat, findType, planAxis } from "../domain/formats.ts";
 import { asLocale, formerly, LOCALES, WORDS } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
-import {
-  hasSpoken,
-  isOpen,
-  readerOf,
-  type Session,
-  sessionLabel,
-  shownSession,
-  TURNS_SHOWN,
-} from "../domain/sessions.ts";
+import { readerOf, shownSession, TURNS_SHOWN } from "../domain/sessions.ts";
 import { type Board, findBoard } from "../domain/workspace.ts";
 import { type Status, shownStatus } from "./agent-status.ts";
 import { mountBoard } from "./board-view.ts";
@@ -47,6 +39,13 @@ import { MESSAGES } from "./messages.ts";
 import { mountNotices, type Offer } from "./notices.ts";
 import { type PaletteModel, paletteContent } from "./palette.ts";
 import { meetUpdates } from "./reload.ts";
+import {
+  choosable,
+  onSessionChosen,
+  paintSessionPicker,
+  sessionChoices,
+  sessionPicker,
+} from "./session-picker.ts";
 import {
   caughtUpYet,
   changed,
@@ -113,7 +112,6 @@ document.head.prepend(h("style", {}, SVG_STYLE));
 // ── Shell, built once ────────────────────────────────────────────────────────
 
 const statusPill = h("div", { class: "status", role: "status", "aria-live": "polite" });
-const sessionPicker = h("div", { class: "session-picker" });
 /** Claude waits for the human: said just before the zoom, whatever board is on screen. */
 const waitsPill = h("div", { class: "waits", role: "status", "aria-live": "polite" });
 /** Says the zoom, and fits the whole board when pressed: on a large board, the way to see all of it. */
@@ -748,60 +746,6 @@ function fit(): void {
 }
 
 // ── Regions: each repaints only when its own model changes ───────────────────
-// ── The Claude Code session the page tells about ─────────────────────────────
-
-/** The session the reader chose, kept in this browser across reloads. */
-const CHOSEN_SESSION = "sideco.session";
-
-function readChosenSession(): string | null {
-  try {
-    return localStorage.getItem(CHOSEN_SESSION);
-  } catch {
-    return null;
-  }
-}
-
-function chooseSession(id: string): void {
-  state.sessionId = id;
-  try {
-    localStorage.setItem(CHOSEN_SESSION, id);
-  } catch {
-    // Without storage, the choice lasts as long as the page.
-  }
-  render();
-}
-
-state.sessionId = readChosenSession();
-
-interface SessionPickerModel {
-  sessions: { id: string; label: string }[];
-  current: string | undefined;
-}
-
-/** A session worth choosing: open, and spoken to; a claude started and left untouched is not (T195). */
-const choosable = (s: Session, now: number): boolean => isOpen(s, now) && hasSpoken(s);
-
-/** The sessions worth choosing between, and the one shown even once it ended. */
-function sessionChoices(sessions: readonly Session[], shown: Session | undefined): SessionPickerModel {
-  const now = Date.now();
-  const open = sessions.filter((s) => choosable(s, now) || s.id === shown?.id);
-  return { sessions: open.map((s) => ({ id: s.id, label: sessionLabel(s) })), current: shown?.id };
-}
-
-// One session alone needs no choosing: the picker shows from two on.
-const paintSessionPicker = region(sessionPicker, (m: SessionPickerModel) => [
-  m.sessions.length > 1 &&
-    h(
-      "select",
-      {
-        name: "session",
-        "aria-label": t.sessionShown,
-        title: t.sessionShown,
-        onchange: (event: Event) => chooseSession((event.target as HTMLSelectElement).value),
-      },
-      ...m.sessions.map((s) => h("option", { value: s.id, selected: s.id === m.current }, s.label)),
-    ),
-]);
 
 /** As the reader's keyboard writes them: ⌘ on a Mac, Ctrl elsewhere. */
 const SHORTCUTS = /Mac|iPhone|iPad/.test(navigator.platform)
@@ -1986,5 +1930,6 @@ function render(): void {
   );
 }
 
+onSessionChosen(render);
 start(render);
 render();
