@@ -11,6 +11,7 @@ import { h, svg } from "./dom.ts";
 import { t } from "./locale.ts";
 import { type Ends, type Lit, lightAt, linkKey } from "./spotlight.ts";
 import { send } from "./store.ts";
+import { placeNear } from "./tools-place.ts";
 
 /** A link the human clicked, and where in the board's frame: its toolbar opens there. */
 export interface PickedLink {
@@ -60,8 +61,20 @@ export function showLinkTools(
     h("button", { type: "button", class: "danger", onclick: remove }, t.removeLink),
   );
   tools.hidden = false;
-  tools.style.left = `${Math.max(8, link.x)}px`;
-  tools.style.top = `${Math.max(8, link.y + 12)}px`;
+  // Beside where the link was picked, on a side that hides no card: as a card's bar goes (T265).
+  const frame = (tools.offsetParent ?? tools).getBoundingClientRect();
+  const cards = [...(tools.offsetParent ?? tools).querySelectorAll("g.card")].map((g) => {
+    const r = g.getBoundingClientRect();
+    return {
+      left: r.left - frame.left,
+      top: r.top - frame.top,
+      right: r.right - frame.left,
+      bottom: r.bottom - frame.top,
+    };
+  });
+  const at = placeNear(link, cards, { w: tools.offsetWidth, h: tools.offsetHeight }, frame);
+  tools.style.left = `${at.left}px`;
+  tools.style.top = `${at.top}px`;
 }
 
 /** Where a link's name is edited: over its name when it has one, else where it was clicked. */

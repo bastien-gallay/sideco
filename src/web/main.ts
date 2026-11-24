@@ -33,6 +33,7 @@ import { clock, h, region } from "./dom.ts";
 import { describeEvent, sessionName } from "./event-words.ts";
 import { keysSheet, openKeys } from "./keys-sheet.ts";
 import { filterBar, mountLabelFilter, paintLabelFilter } from "./label-filter.ts";
+import { mountLinkHint } from "./link-hint.ts";
 import { type LinkRow, linkRows } from "./link-rows.ts";
 import { languagePicker, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
@@ -1865,5 +1866,6 @@ function render(): void {
 
 onSessionChosen(render);
 mountLabelFilter(canvas, { changed: render, speak });
+mountLinkHint(canvas, speak);
 start(render);
 render();

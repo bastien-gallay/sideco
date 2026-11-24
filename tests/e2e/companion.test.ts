@@ -342,9 +342,18 @@ describe("the human edits, the agent is told", () => {
 
   test("the keyboard does it too: select, link, delete", async () => {
     await card("H1").focus();
+    const hint = page.locator(".linking-hint");
+    expect(await hint.isVisible()).toBe(false);
     await page.keyboard.press("l");
+    // While a link is drawn, the board says what comes next, to the eye and to a screen reader (T265).
+    await hint.waitFor({ state: "visible" });
+    expect(await hint.textContent()).toBe("Choose the card to link to · Esc cancels");
+    await until("the hint is said", async () =>
+      ((await page.locator(".spoken").textContent()) ?? "").includes("Choose the card to link to"),
+    );
     await card("E2").click();
     await page.waitForFunction(() => document.querySelectorAll("g.conn").length === 5);
+    await hint.waitFor({ state: "hidden" });
     await card("H1").focus();
     await page.keyboard.press("Delete");
     await card("H1").waitFor({ state: "detached" });
@@ -2608,6 +2617,19 @@ describe("the spotlight on links (S325)", () => {
     const at = await onLink(stock, ship);
     await page.mouse.click(at.x, at.y);
     await until("the link picked is lit", async () => lit(conn(stock, ship)));
+    // Picked 14 px from the card it leads to: its bar goes to the free side of the line, off every card (T265).
+    const bar = await page.locator(".card-tools").boundingBox();
+    if (!bar) throw new Error("the link's bar is shown");
+    for (const id of [stock, ship, order, lone]) {
+      const box = await card(id).boundingBox();
+      if (!box) throw new Error(`card ${id} is drawn`);
+      const apart =
+        bar.x >= box.x + box.width ||
+        box.x >= bar.x + bar.width ||
+        bar.y >= box.y + box.height ||
+        box.y >= bar.y + bar.height;
+      expect(apart).toBe(true);
+    }
     await page.waitForTimeout(400);
     await shot("64-spotlight-link");
     expect(await spotlit()).toBe(1);

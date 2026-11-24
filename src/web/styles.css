@@ -1498,6 +1498,28 @@ kbd {
   cursor: crosshair;
 }
 
+/* While a link is drawn: what comes next, over the foot of the board, out of the way of the cards being aimed at. */
+.linking-hint {
+  display: none;
+  position: absolute;
+  z-index: 18;
+  left: 50%;
+  bottom: 14px;
+  margin: 0;
+  padding: 6px 12px;
+  translate: -50% 0;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.is-linking > .linking-hint {
+  display: block;
+}
+
 .card.is-dim {
   opacity: 0.32;
 }
