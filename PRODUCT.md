@@ -6,7 +6,7 @@ product
 
 ## Users
 
-Développeurs et équipes techniques qui pensent visuellement, en conception technique. Ils travaillent avec Claude Code dans un terminal ; Sideco est ouvert dans une fenêtre de navigateur à côté. Le travail à faire : construire un modèle (event storming, flux, kanban, story map, rétrospective, impact / effort) à deux avec l'agent, puis lui passer la main.
+Développeurs et équipes techniques qui pensent visuellement, en conception technique. Ils travaillent avec Claude Code dans un terminal ; Sideco est ouvert dans une fenêtre de navigateur à côté. Le travail à faire : construire un modèle (event storming, flux, kanban, story map, rétrospective, impact / effort, contexte C4) à deux avec l'agent, puis lui passer la main.
 
 ## Product Purpose
 

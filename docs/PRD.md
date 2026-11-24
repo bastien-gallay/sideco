@@ -2,6 +2,9 @@
 
 Sideco est une page web locale, ouverte à côté du terminal, où un développeur et son agent construisent ensemble un modèle visuel (event storming, flux, kanban…) pendant que l'agent travaille. Tout ce qui s'y passe est un événement dans un journal : le tableau, l'historique et les exports en sont des projections.
 
+> [!NOTE]
+> Figé le 2026-11-24 : ce PRD est l'historique des décisions prises du 2026-11-17 au 2026-11-24, et n'est plus mis à jour. Ce que fait Sideco aujourd'hui se lit dans [le guide](guide.md) ([en français](guide.fr.md)) ; les mots, dans le glossaire de [coding-standards.md](coding-standards.md#ubiquitous-language) ; les principes, dans [PRODUCT.md](../PRODUCT.md) ; la suite, sur le kanban `backlog` de Sideco.
+
 Rédigé le 2026-11-17. Niveau de preuve : ✅ lu sur une source primaire, ⚠️ source secondaire ou non testé, ❓ non vérifié.
 
 ## Décisions d'ensemble
@@ -250,10 +253,7 @@ Le même code de domaine tourne dans le serveur, la CLI et la page : les trois r
 
 Chaque ligne du journal porte `seq`, `ts`, `actor` (`human`, `agent`, `system`) et, si connue, `session`.
 
-| Flux | Événements |
-| --- | --- |
-| Tableau | `BoardCreated`, `BoardRetitled`, `LaneNamed`, `ElementAdded`, `ElementRenamed`, `ElementAnnotated`, `ElementMoved`, `ElementRemoved`, `ColumnInserted`, `ColumnMoved`, `EdgeAdded`, `EdgeRemoved`, `FocusSet`, `FocusCleared`, `NoteAdded`, `NoteResolved`, `TurnPassed` |
-| Session | `SessionStarted`, `BoardsFollowed`, `BoardsLeft`, `PromptSubmitted`, `ToolStarted`, `ToolFinished`, `TodosUpdated`, `AgentNotified`, `TurnEnded`, `ChangesDelivered` |
+La liste des événements, tableau et session, est celle de [`src/domain/events.ts`](../src/domain/events.ts) : elle seule fait foi.
 
 Une réponse est un `NoteAdded` qui porte `thread`, l'identifiant de la note qui a ouvert le fil ; sans ce champ, la note ouvre un fil. `NoteResolved` ferme le fil entier.
 
@@ -298,7 +298,7 @@ Source : code.claude.com/docs/en/hooks, lue le 2026-11-17 (limite de 10 000 cara
 | Colonnes | colonne nommée + rang | Kanban, Rétrospective, Impact / Effort |
 | Graphe | aucune : déduite des liens | Flux |
 
-Un atelier déclare ses types (libellé, préfixe d'identifiant, couleur, forme), sa mise en page et ses colonnes. L'ajouter ne demande aucun code de rendu.
+Les ateliers, leurs types et leurs lettres sont ceux de [`src/domain/formats/`](../src/domain/formats/), une lettre par concept dans tout le projet (`tests/unit/formats.test.ts`) ; le tableau ci-dessus est celui du 2026-11-17. Un atelier déclare ses types (libellé, préfixe d'identifiant, couleur, forme), sa mise en page et ses colonnes. L'ajouter ne demande aucun code de rendu.
 
 ## 7. Stack technique
 

@@ -14,7 +14,7 @@ A live, structured board beside the terminal: the agent lays out a flow, a backl
 <sub>Filmed: you prompt in the terminal as before and answer on the board. The page and the commands are the real ones; the terminal is redrawn from what Claude receives.</sub>
 
 > [!NOTE]
-> Early: version 0.1.0, for one person and one active agent per workspace. [Tell me what breaks](https://github.com/bastien-gallay/sideco/issues).
+> Early: version 0.1.0, for one person per workspace, with one or more Claude Code sessions. [Tell me what breaks](https://github.com/bastien-gallay/sideco/issues).
 
 ## Install
 
@@ -79,7 +79,7 @@ To show a board to your team, export it to Markdown, HTML, SVG, Mermaid or JSON,
 - **What is installed.** A skill, and hooks that run a local command on the events of a session: that is how the board shows what Claude does and how your edits reach it. Outside a Sideco workspace they exit at once.
 - **What keeps running.** A server on `127.0.0.1` only, which refuses requests from another origin and stops by itself 5 minutes after the last page and session leave. At the end of a turn one hook stays parked, for 12 hours at most, to wake Claude when you send.
 - **Where your data goes.** Sideco sends nothing anywhere and has no telemetry. What Claude reads of a board goes where the rest of your Claude Code session goes.
-- **Where it is kept.** Every change is an event in an append-only log, `.sideco/boards.jsonl`, in your project; undo, redo and the history slider come from it. Commit it and the board's history travels with the code. One writer at a time: two people who edit it each on their side get a merge conflict.
+- **Where it is kept.** Every change is an event in an append-only log, `.sideco/boards.jsonl`, in your project; undo, redo and the board's history come from it. Commit it and the board's history travels with the code. One writer at a time: two people who edit it each on their side get a merge conflict.
 
 ## If something goes wrong
 

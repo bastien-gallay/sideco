@@ -52,7 +52,7 @@ the school that serves it best:
 
 ### Make impossible states impossible
 
-- A value that has kinds is a **discriminated union** on `type` or `kind`,
+- A value that has kinds is a **discriminated union** on `type` or `kind`, or `event` for an event,
   never a bag of optional fields: an `ElementAdded` cannot lack its element.
 - A `switch` on a union handles every kind, so that a new kind breaks the
   build where it is not handled. When each case returns a value, the

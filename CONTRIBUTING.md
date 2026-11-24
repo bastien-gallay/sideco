@@ -62,8 +62,8 @@ flowchart TD
 7. **Simplify.** Read the diff: duplicates, names, and the
    [CUPID properties](docs/coding-standards.md#cupid).
 8. **Code review.** A second reader, human or agent, who did not write it.
-9. **Docs.** README, [PRD](docs/PRD.md) and the agent skill, when the change
-   shows there.
+9. **Docs.** README, the guides and the agent skill, when the change shows
+   there. The [PRD](docs/PRD.md) is a frozen history: it is not updated.
 10. **Commit.** Stage the paths one by one. The message says what changed for
     the user, in the present tense, its first line a sentence. Never commit
     the workspace (`.sideco/`).

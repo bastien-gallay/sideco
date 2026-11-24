@@ -149,7 +149,7 @@ The setting that avoids it, in Claude Code's `settings.json` (`~/.claude/setting
 
 ## Known limits
 
-- One person and one active agent per workspace. Two people who edit `.sideco/boards.jsonl` each on their side get a merge conflict.
+- One person per workspace. Several Claude Code sessions may share it, each following the boards it writes or reads. Two people who edit `.sideco/boards.jsonl` each on their side get a merge conflict.
 - The companion stops by itself 5 minutes after the last page and the last session left it; Claude starts it again at the next session.
 - A Claude that waited more than 12 hours is no longer woken by a send: the page says so, and it reads your changes at your next message in the terminal.
 - A session without an interface (`claude -p`) is never woken by a send.

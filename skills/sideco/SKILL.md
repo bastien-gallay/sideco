@@ -1,6 +1,6 @@
 ---
 name: sideco
-description: Model with the user on Sideco, the live visual board open in a browser window beside the terminal. Use it when the user wants to see, map, model or discuss something visually - an event storming, a flow with decisions, a kanban, a story map, a retrospective, a sort by impact and effort - or says "sideco", "le tableau", "montre-le sur le board", "modélisons", "on fait un atelier". Also use it when the session context says the user edited the Sideco board.
+description: Model with the user on Sideco, the live visual board open in a browser window beside the terminal. Use it when the user wants to see, map, model or discuss something visually - an event storming, a flow with decisions, a kanban, a story map, a retrospective, a sort by impact and effort, a C4 context - or says "sideco", "le tableau", "montre-le sur le board", "modélisons", "on fait un atelier". Also use it when the session context says the user edited the Sideco board.
 ---
 
 # Sideco

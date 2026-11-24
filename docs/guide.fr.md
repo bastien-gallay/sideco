@@ -278,7 +278,7 @@ Quand le mot n'est pas dans le nom, la ligne dit où il est : `[labels]`, `— d
 
 Dans la page, `/` ou `⌘K` (`Ctrl+K` hors Mac) ouvre la même recherche au-dessus du tableau. Les cartes trouvées se listent au fil de la frappe : celles du tableau affiché d'abord, la carte de cet id en tête, puis celles des autres tableaux, chacune avec le nom de son tableau et, si le mot n'est pas dans son nom, l'endroit où il est. Les flèches choisissent ; une carte du tableau affiché est pointée sur le tableau. Entrée, ou un clic, va à la carte : la page ouvre son tableau s'il le faut, et le clavier se pose sur elle. Échap referme.
 
-Chaque carte a son adresse, `#/b/TABLEAU/ID` (par exemple `http://127.0.0.1:4747/#/b/backlog/T182`) : l'adresse de la page suit la carte choisie, et l'ouvrir, collée ailleurs ou après un rechargement, ouvre son tableau, centre la carte, la choisit et la surligne un instant. `#/b/TABLEAU` seul ouvre le tableau. Un id n'est unique que dans son tableau : le lien porte toujours les deux.
+Chaque carte a son adresse, `#/b/TABLEAU/ID` (par exemple `http://127.0.0.1:4747/#/b/backlog/T182`) : l'adresse de la page suit la carte choisie, et l'ouvrir, collée ailleurs ou après un rechargement, ouvre son tableau, centre la carte, la choisit et la surligne un instant. `#/b/TABLEAU` seul ouvre le tableau. Un id est unique dans tout le projet ; le lien porte quand même le tableau, qu'il ouvre.
 
 <sub>Source : `src/domain/find.ts` (`findInWorkspace`), `src/domain/digest.ts` (`describeFind`), `src/web/view.ts` (`findHits`) ; `tests/unit/find.test.ts`, `tests/unit/find-hits.test.ts`.</sub>
 
@@ -293,7 +293,7 @@ flowchart LR
     V --> E[exports et site publié]
 ```
 
-<sub>Source : `src/domain/` (`replay.ts`, `layout/`, `render/svg.ts`). Le même peintre SVG sert la page et les exports.</sub>
+<sub>Source : `src/domain/` (`workspace.ts`, sa fonction `replay` ; `layout/`, `render/svg.ts`). Le même peintre SVG sert la page et les exports.</sub>
 
 | Fichier | Contenu | Git |
 | --- | --- | --- |
@@ -397,4 +397,4 @@ Le pourquoi des choix est dans [PRD.md](PRD.md).
 - Une session sans interface (`claude -p`) n'est jamais réveillée par un passage de main : elle doit pouvoir se terminer.
 - Claude au repos depuis plus de 12 h n'est plus réveillé par un passage de main : la page le dit, et il lit tes changements à ton prochain message dans le terminal.
 - La durée d'écoute se lit dans `hooks/hooks.json` au démarrage de la session : après une mise à jour du plugin, relance Claude Code. ⚠️ Une compaction de la conversation (`/compact`) ne relance pas l'écoute si elle était déjà close ; qu'elle la laisse ouverte reste à observer.
-- Un utilisateur, un agent actif par espace de travail.
+- Une personne par espace de travail. Plusieurs sessions de Claude Code peuvent s'y partager les tableaux : chacune suit ceux qu'elle écrit ou lit.
