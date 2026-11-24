@@ -1322,72 +1322,76 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     hint.setAttribute("visibility", "visible");
   });
 
-  root.addEventListener("pointerup", (event) => {
-    const step = stepDrag;
-    stepDrag = undefined;
-    if (step) {
-      root.classList.remove("is-grabbing");
-      hint.setAttribute("visibility", "hidden");
-      hint.classList.remove("is-lane-drop");
-      if (root.hasPointerCapture(event.pointerId)) root.releasePointerCapture(event.pointerId);
-      if (!step.moving || !board) return;
-      dropped = true;
-      holdHeadings();
-      if (step.to !== undefined)
-        void send({ kind: "move-column", board: board.id, from: step.from, to: step.to });
-      return;
-    }
-    const lane = laneDrag;
-    laneDrag = undefined;
-    if (lane) {
-      hint.setAttribute("visibility", "hidden");
-      hint.classList.remove("is-lane-drop");
-      if (root.hasPointerCapture(event.pointerId)) root.releasePointerCapture(event.pointerId);
-      if (!lane.moving || !board) return;
-      dropped = true;
-      holdHeadings();
-      if (lane.drop)
-        void send({
-          kind: "move-lane",
-          board: board.id,
-          lane: lane.lane,
-          ...(lane.drop.before ? { before: lane.drop.before } : {}),
-        });
-      return;
-    }
-    const done = drag;
-    drag = undefined;
+  /** Puts away the line a carry draws, and lets the pointer go. */
+  function letGo(event: PointerEvent): void {
     hint.setAttribute("visibility", "hidden");
-    dropLine.setAttribute("visibility", "hidden");
     if (root.hasPointerCapture(event.pointerId)) root.releasePointerCapture(event.pointerId);
+  }
+
+  /** The heading of a step let go: its column goes where the line said. */
+  function dropStep(step: NonNullable<typeof stepDrag>, event: PointerEvent): void {
+    root.classList.remove("is-grabbing");
+    hint.classList.remove("is-lane-drop");
+    letGo(event);
+    if (!step.moving || !board) return;
+    dropped = true;
+    holdHeadings();
+    if (step.to !== undefined)
+      void send({ kind: "move-column", board: board.id, from: step.from, to: step.to });
+  }
+
+  /** The heading of a lane let go: the lane goes before the one the line said. */
+  function dropLane(lane: NonNullable<typeof laneDrag>, event: PointerEvent): void {
+    hint.classList.remove("is-lane-drop");
+    letGo(event);
+    if (!lane.moving || !board) return;
+    dropped = true;
+    holdHeadings();
+    if (lane.drop)
+      void send({
+        kind: "move-lane",
+        board: board.id,
+        lane: lane.lane,
+        ...(lane.drop.before ? { before: lane.drop.before } : {}),
+      });
+  }
+
+  /** A card let go: put where it was carried, or chosen when it did not move. */
+  function dropCard(done: typeof drag, event: PointerEvent): void {
+    dropLine.setAttribute("visibility", "hidden");
+    letGo(event);
     if (!done || !board) return;
     nodes.get(done.id)?.g.classList.remove("is-dragging");
-    if (done.moving) {
-      dropped = true;
-      const at = toScene(event);
-      const command = dropCommand(board, done.id, done.target, {
-        x: at.x - done.dx,
-        y: at.y - done.dy,
-        span,
-      });
-      if (command) void send(command);
-      changed();
+    if (!done.moving) {
+      choose(done.id);
       return;
     }
-    choose(done.id);
+    dropped = true;
+    const at = toScene(event);
+    const command = dropCommand(board, done.id, done.target, { x: at.x - done.dx, y: at.y - done.dy, span });
+    if (command) void send(command);
+    changed();
+  }
+
+  // One carry at a time: the heading of a step, else that of a lane, else a card.
+  root.addEventListener("pointerup", (event) => {
+    const [step, lane] = [stepDrag, laneDrag];
+    stepDrag = undefined;
+    if (step) return dropStep(step, event);
+    laneDrag = undefined;
+    if (lane) return dropLane(lane, event);
+    const done = drag;
+    drag = undefined;
+    dropCard(done, event);
   });
 
   function choose(id: string): void {
     if (!board) return;
     pickedLink = undefined;
-    if (state.linking && state.linking !== id) {
+    if (state.linking && state.linking !== id)
       void send({ kind: "link", board: board.id, src: state.linking, dst: id });
-      state.linking = null;
-      state.selected = id;
-    } else {
-      state.linking = null;
-      state.selected = id;
-    }
+    state.linking = null;
+    state.selected = id;
     changed();
   }
 
