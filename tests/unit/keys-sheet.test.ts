@@ -26,6 +26,16 @@ describe("the sheet of keys", () => {
     );
   });
 
+  test("tells the keys that go along a column where the lanes are columns, after the arrows (T284)", () => {
+    const rows = MESSAGES.en.shortcutList("kanban", true);
+    const en = withMoreKeys(rows, "en", true).map(([keys]) => keys);
+    expect(en[en.indexOf("← → ↑ ↓") + 1]).toBe("Page ↑ ↓, Home, End");
+    expect(withMoreKeys(rows, "en").map(([keys]) => keys)).not.toContain("Page ↑ ↓, Home, End");
+    expect(says(withMoreKeys(MESSAGES.fr.shortcutList("kanban", true), "fr", true))).toContain(
+      "Page ↑ ↓, Début, Fin = Le long de la colonne",
+    );
+  });
+
   test("tells Redo beside Undo, with every key that does it", () => {
     expect(says(MESSAGES.en.shortcutList("kanban", true))).toContain(
       "⇧⌘Z / Ctrl+Shift+Z or Ctrl+Y = Redo the change undone",

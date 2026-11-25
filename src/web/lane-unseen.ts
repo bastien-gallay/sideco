@@ -1,14 +1,14 @@
 /**
  * The cards of a column that are out of view (S306): a column that scrolls
- * alone says, in its drawing, how many of its cards are above and below its
- * window. Here they are counted to the reader, under its heading and at its
- * foot; pressed, a count brings the next few into view.
+ * alone has cards above and below its window. Here they are counted to the
+ * reader, under its heading and at its foot; pressed, a count scrolls the
+ * column by most of a window.
  */
 import { findFormat, laneName } from "../domain/formats.ts";
 import type { Locale } from "../domain/i18n.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h } from "./dom.ts";
-import { scrollLane, settleWindow } from "./lane-scroll.ts";
+import { laneSeen, scrollLane, settleWindow } from "./lane-scroll.ts";
 import { locale } from "./locale.ts";
 
 const WORDS: Record<
@@ -28,8 +28,8 @@ const w = WORDS[locale];
 
 type Side = "above" | "below";
 
-/** How many cards a count pressed brings into view: a few, so the reader keeps their place in the column. */
-const FEW = 3;
+/** How much of its window a count pressed scrolls a column by: not all of it, so the reader keeps their place. */
+const MOST_OF = 0.8;
 
 const layer = h("div", { class: "unseen" });
 /** The counts drawn, by lane and side: kept from one drawing to the next, so the keyboard stays on the one pressed. */
@@ -42,7 +42,8 @@ let later: () => void = () => {};
 function chip(side: Side, column: SVGRectElement, name: string, canvas: DOMRect): string {
   const lane = column.dataset.laneBox ?? "";
   const key = `${lane}|${side}`;
-  const cards = Number(column.dataset[side] ?? 0);
+  const shows = laneSeen(lane);
+  const cards = shows?.[side] ?? 0;
   const box = column.getBoundingClientRect();
   const zoom = box.height / (Number(column.getAttribute("height")) || box.height);
   const button = chips.get(key) ?? h("button", { type: "button" });
@@ -58,7 +59,7 @@ function chip(side: Side, column: SVGRectElement, name: string, canvas: DOMRect)
   button.setAttribute("aria-label", said);
   button.title = said;
   button.textContent = `${side === "above" ? "↑" : "↓"} ${cards}`;
-  button.onclick = () => scrollLane(lane, Number(column.dataset.skip ?? 0), side === "above" ? -FEW : FEW);
+  button.onclick = () => scrollLane(lane, (side === "above" ? -MOST_OF : MOST_OF) * (shows?.room ?? 0));
   return key;
 }
 
@@ -71,7 +72,7 @@ function counts(canvas: HTMLElement, scroll: HTMLElement, board: Board): Set<str
   for (const column of scroll.querySelectorAll<SVGRectElement>("rect.lane-bg[data-lane-box]")) {
     const name = laneName(format, board, column.dataset.laneBox ?? "", locale);
     for (const side of ["above", "below"] as const)
-      if (Number(column.dataset[side]) > 0) kept.add(chip(side, column, name, box));
+      if ((laneSeen(column.dataset.laneBox ?? "")?.[side] ?? 0) > 0) kept.add(chip(side, column, name, box));
   }
   return kept;
 }

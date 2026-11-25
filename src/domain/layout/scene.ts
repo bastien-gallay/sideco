@@ -17,6 +17,8 @@ export interface Card {
   fill: string;
   ink: string;
   shape: Shape;
+  /** In a column that scrolls alone, how much of the card the edges of its window hide, at its head and at its foot (S354). */
+  cut?: { top: number; bottom: number };
   /** The whole label, on one line: what `lines` shows of it, uncut. */
   label: string;
   /** The tooltip: id, type and who added it, in the reader's language. */
@@ -61,10 +63,12 @@ export interface Band {
    * A lane the reader may fold: whether it is, and what its button says. Undefined
    * where no reader folds: on paper, and in the cells of a plan.
    */
-  /** In a column that scrolls alone (S306): its cards out of view above and below, and the lines scrolled past. */
+  /** In a column that scrolls alone (S306): its cards out of view above and below, how far it is scrolled of the most it can be, and the room its cards show in. */
   above?: number;
   below?: number;
   skip?: number;
+  most?: number;
+  room?: number;
   folded?: boolean;
   foldSaid?: string;
   /** A step of a story map: the activity and the task it belongs to, one line each. */
@@ -108,7 +112,7 @@ export interface View {
   colours?: Chosen;
   /** How tall a column may be on screen (S306): a taller one lays the cards that fit, and scrolls alone. */
   tall?: number;
-  /** Per lane, how many of its lines the reader scrolled past. */
+  /** Per lane, how far the reader scrolled it, in the board's own units. */
   skip?: ReadonlyMap<string, number>;
 }
 /** The width alone, or all the page gives. */

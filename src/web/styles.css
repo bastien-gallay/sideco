@@ -1500,7 +1500,26 @@ kbd {
   transition: none;
 }
 
+/*
+ * A column that scrolls (S354): its cards are where the scroll puts them, at
+ * once. Under the wheel, what passes under the pointer is not pointed at; the
+ * toolbar of a card and the "+" wait for the column to rest.
+ */
+.is-scrolling .card {
+  transition: none;
+}
+
+.is-wheeling .card {
+  pointer-events: none;
+}
+
+.is-wheeling .layer-adds {
+  visibility: hidden;
+}
+
 .card.is-dragging {
+  /* Taken at the edge of its column's window, it is carried whole. */
+  clip-path: none;
   cursor: grabbing;
   opacity: 0.85;
 }
@@ -1882,6 +1901,11 @@ kbd {
   border-radius: 8px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
   white-space: nowrap;
+}
+
+/* While a column scrolls (S354), the toolbar of a card waits. */
+.is-wheeling .card-tools {
+  visibility: hidden;
 }
 
 /* Nor does the toolbar of the card chosen hide the wire. */

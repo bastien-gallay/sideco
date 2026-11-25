@@ -5,8 +5,16 @@
 import type { Locale } from "../domain/i18n.ts";
 
 /** Each key with the key it follows on the sheet. */
-const MORE: Record<Locale, { after: string; row: [string, string] }[]> = {
+const MORE: Record<Locale, { after: string; row: [string, string]; columns?: true }[]> = {
   en: [
+    {
+      after: "← → ↑ ↓",
+      columns: true,
+      row: [
+        "Page ↑ ↓, Home, End",
+        "Along the column of the card: a window further, its first card, its last",
+      ],
+    },
     { after: "E", row: ["T", "Add a label to the card, in the panel on the right"] },
     {
       after: "E",
@@ -18,6 +26,14 @@ const MORE: Record<Locale, { after: string; row: [string, string] }[]> = {
     { after: "E", row: ["F", "Point at the card chosen as Claude does, or no longer: it joins the focus"] },
   ],
   fr: [
+    {
+      after: "← → ↑ ↓",
+      columns: true,
+      row: [
+        "Page ↑ ↓, Début, Fin",
+        "Le long de la colonne de la carte : une fenêtre plus loin, sa première carte, sa dernière",
+      ],
+    },
     { after: "E", row: ["T", "Ajouter un label à la carte, dans le panneau de droite"] },
     {
       after: "E",
@@ -33,10 +49,15 @@ const MORE: Record<Locale, { after: string; row: [string, string] }[]> = {
   ],
 };
 
-/** The rows of the sheet with the keys told here, each after the key it follows; left out where that key is not told. */
-export function withMoreKeys(rows: readonly [string, string][], locale: Locale): [string, string][] {
-  return rows.flatMap((row) => [
-    row,
-    ...MORE[locale].filter((more) => more.after === row[0]).map((m) => m.row),
-  ]);
+/**
+ * The rows of the sheet with the keys told here, each after the key it follows; left out where that key is not
+ * told. A key of the columns is told where the lanes are columns: a kanban, a retro.
+ */
+export function withMoreKeys(
+  rows: readonly [string, string][],
+  locale: Locale,
+  columns = false,
+): [string, string][] {
+  const told = MORE[locale].filter((more) => columns || !more.columns);
+  return rows.flatMap((row) => [row, ...told.filter((more) => more.after === row[0]).map((m) => m.row)]);
 }

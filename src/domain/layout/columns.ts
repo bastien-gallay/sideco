@@ -10,7 +10,7 @@
 import { type Format, laneHint, laneName, lanesOf, planAxis } from "../formats.ts";
 import { type Locale, WORDS } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
-import { CHIP_H, reveal, windowOf } from "./lane-window.ts";
+import { CHIP_H, cutOf, reveal, windowOf } from "./lane-window.ts";
 import {
   type Band,
   CARD_H,
@@ -52,6 +52,8 @@ interface Line {
   y: number;
   h: number;
   cards: { e: Element; x: number }[];
+  /** How much of it the edges of its column's window hide (S354). */
+  cut?: { top: number; bottom: number };
 }
 
 interface LanePlan {
@@ -64,10 +66,12 @@ interface LanePlan {
   count: number;
   /** Folded by its reader: narrow, its cards put away. */
   folded: boolean;
-  /** Scrolling alone (S306): its cards out of view above and below, the lines scrolled past; none without a window. */
+  /** Scrolling alone (S306): its cards out of view above and below, how far it is scrolled of the most it can be, and the room its cards show in; none without a window. */
   above?: number;
   below?: number;
   skip?: number;
+  most?: number;
+  room?: number;
   /** The first card under its window: a card dropped at its foot lands before it. */
   next?: string;
 }
@@ -139,14 +143,21 @@ function stackSeen(
     room,
     STACK_GAP,
   );
-  if (!cut) return { ...all, above: 0, below: 0, skip: 0 };
-  const laid = stackLines(stack.slice(cut.from * abreast, cut.to * abreast), x, top + CHIP_H, abreast, cardW);
+  if (!cut) return { ...all, above: 0, below: 0, skip: 0, most: 0 };
+  // The lines that show keep their place in the column, less what is scrolled past: the first and the last may be cut.
+  const lines = all.lines.slice(cut.from, cut.to).map((line) => ({
+    ...line,
+    y: line.y + CHIP_H - cut.at,
+    cut: cutOf(line.y - top, line.h, cut),
+  }));
   return {
-    lines: laid.lines,
-    stackH: laid.stackH + CHIP_H,
+    lines,
+    stackH: cut.room + CHIP_H,
     above: cut.from * abreast,
     below: Math.max(0, stack.length - cut.to * abreast),
-    skip: cut.from,
+    skip: cut.at,
+    most: cut.most,
+    room: cut.room,
     next: stack[cut.to * abreast]?.id,
   };
 }
@@ -240,10 +251,13 @@ export function layoutColumns(
       above: lane.above,
       below: lane.below,
       skip: lane.skip,
+      most: lane.most,
+      room: lane.room,
       ...foldOf(planned, lane, laneName(format, board, lane.id, locale), locale),
     });
     for (const line of lane.lines)
-      for (const { e, x } of line.cards) cards.push(card(e, x, line.y, planned.cardW));
+      for (const { e, x } of line.cards)
+        cards.push({ ...card(e, x, line.y, planned.cardW), ...(line.cut ? { cut: line.cut } : {}) });
   }
   let height = planned.bottom + MARGIN;
   const x = planAxis(format, board, "x", locale);
@@ -298,6 +312,11 @@ export function roomInColumns(board: Board, format: Format, lane: string, seen?:
     const x = found.x + LANE_SIDE + last.cards.length * (cardW + ABREAST_GAP);
     return { x, y: last.y, w: cardW, h: foot - last.y };
   }
+  // A column that scrolls alone keeps its free slot under its window, wherever its last card in view is cut.
+  if (found.room !== undefined) {
+    const under = found.y + HEADER_H + LANE_PAD + CHIP_H + found.room;
+    return { x: found.x + LANE_SIDE, y: under, w: cardW, h: foot - under };
+  }
   const y = last ? last.y + last.h : found.y + HEADER_H;
   return { x: found.x + LANE_SIDE, y, w: cardW, h: foot - y };
 }
@@ -338,7 +357,7 @@ export function locateInColumns(
   return { kind: "slot", lane: lane.id, before: before?.e.id ?? lane.next };
 }
 
-/** How many lines of its lane to scroll past so that the card is in its window (S306); undefined where none scrolls. */
+/** How far to scroll its lane so that the card shows whole in its window (S306); undefined where none scrolls. */
 export function skipToSee(
   board: Board,
   format: Format,
@@ -353,6 +372,24 @@ export function skipToSee(
   const at = Math.floor(stack.findIndex((e) => e.id === id) / planned.abreast);
   const room = seen.tall - HEADER_H - LANE_PAD - SLOT_H;
   return { lane, skip: reveal(heights, seen.skip?.get(lane) ?? 0, room, STACK_GAP, at) };
+}
+
+/** What a column that scrolls alone shows of its cards. */
+export interface LaneSeen {
+  above: number;
+  below: number;
+  skip: number;
+  most: number;
+  room: number;
+}
+
+/** The columns that scroll alone in what the page sees of the board (S306), and what each shows: the page counts and scrolls by it. */
+export function laneWindows(board: Board, format: Format, seen: View): Map<string, LaneSeen> {
+  const windows = new Map<string, LaneSeen>();
+  for (const { id, above = 0, below = 0, skip = 0, most = 0, room } of plan(board, format, undefined, seen)
+    .lanes)
+    if (room !== undefined) windows.set(id, { above, below, skip, most, room });
+  return windows;
 }
 
 /** How far into a lane heading its edge reaches, either side of the gap. */

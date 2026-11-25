@@ -358,31 +358,61 @@ describe("the agent writes, the page follows", () => {
     const first = page.locator("g.card", { hasText: "Carte 1" }).first();
     const box = await first.boundingBox();
     await page.mouse.move((box?.x ?? 0) + 40, (box?.y ?? 0) + 20);
+    // It scrolls as a page does, by the distance the wheel turned (S354): a card further down goes up by as much.
+    const third = page.locator("g.card", { hasText: "Carte 3" }).first();
+    const topOf = async () => Math.round((await third.boundingBox())?.y ?? 0);
+    const rest = await topOf();
     await page.mouse.wheel(0, 120);
-    await until(
-      "the wheel scrolled the column",
-      async () => (await above.count()) === 1 && (await count(above)) === 2,
-    );
+    await until("the wheel scrolled the column by its turn", async () => (await topOf()) === rest - 120);
+    // While it scrolls, its cards answer no pointer: what passes under it is not pointed at.
+    expect(await page.locator(".is-wheeling").count()).toBe(1);
     expect(await page.evaluate(() => document.querySelector(".canvas-scroll")?.scrollTop)).toBe(0);
+    await until(
+      "at rest, the cards answer again",
+      async () => (await page.locator(".is-wheeling").count()) === 0,
+    );
+    // The card at the head of the window is cut by it, not put away whole.
+    expect(await page.locator("g.card[data-cut]").count()).toBeGreaterThan(0);
     await page.mouse.wheel(0, -120);
-    await until("and back", async () => (await above.count()) === 0);
+    await until("and back", async () => (await above.count()) === 0 && (await topOf()) === rest);
     // By the keyboard, the arrow goes on under the last card in view: the column follows the card chosen.
+    // The cards drawn whole, from the top: one cut by the window is not wholly in view.
     const drawn = () =>
       page.locator("g.card").evaluateAll((all) =>
         all
-          .filter((g) => g.textContent?.includes("Carte"))
+          .filter((g) => g.textContent?.includes("Carte") && !g.hasAttribute("data-cut"))
           .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)
           .map((g) => g.getAttribute("data-id") ?? ""),
       );
+    const todo = async () =>
+      ((await workspace()).boards.find((b) => b.id === "longue")?.elements ?? [])
+        .filter((e) => e.lane === "todo")
+        .map((e) => e.id);
+    const holds = () =>
+      page.evaluate(() => {
+        const at = document.activeElement as HTMLElement | null;
+        return at?.dataset.cut === undefined ? at?.dataset.id : undefined;
+      });
     const last = (await drawn()).at(-1) ?? "";
     await card(last).click();
     await page.keyboard.press("ArrowDown");
-    await until("the next card is drawn and holds the keyboard", async () => {
-      const now = await drawn();
-      const held = await page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.id);
-      return now.at(-1) !== last && held === now.at(-1);
-    });
-    expect(await count(above)).toBe(1);
+    const order = await todo();
+    await until(
+      "the next card is drawn whole and holds the keyboard",
+      async () => (await holds()) === order[order.indexOf(last) + 1],
+    );
+    // A page further, then to the ends of the column (T284): the card reached is drawn whole, and holds the keyboard.
+    await page.keyboard.press("PageDown");
+    await until("a page further", async () => order.indexOf((await holds()) ?? "") > order.indexOf(last) + 2);
+    await page.keyboard.press("End");
+    await until("the last card of the column", async () => (await holds()) === order.at(-1));
+    expect(await below.count()).toBe(0);
+    await page.keyboard.press("Home");
+    await until("the first one", async () => (await holds()) === order[0]);
+    expect(await page.locator(".unseen-chip.is-above").count()).toBe(0);
+    await card(last).click();
+    await page.keyboard.press("ArrowDown");
+    await until("back under the window", async () => (await holds()) === order[order.indexOf(last) + 1]);
     await page.keyboard.press("Escape");
     // A card moved under the window by the keyboard stays in sight: its column follows it.
     const edge = (await drawn()).at(-1) ?? "";

@@ -55,7 +55,11 @@ export function openKeys(board: Board | undefined, axes: { x: string; y: string 
   keysSheet.replaceChildren(
     h("h2", {}, t.shortcuts),
     list(
-      withMoreKeys(t.shortcutList(how, Boolean(findFormat(board?.format ?? "")?.doneLast), axes), locale),
+      withMoreKeys(
+        t.shortcutList(how, Boolean(findFormat(board?.format ?? "")?.doneLast), axes),
+        locale,
+        how === "kanban",
+      ),
       true,
     ),
     h("h3", {}, t.withTheMouse),

@@ -32,7 +32,8 @@ export function newCardNode(id: string): CardNode {
 
 /** Draws the card in its node, when what it shows changed. Where it is drawn is not part of it. */
 export function drawCard(node: CardNode, card: Card, marks: Marks): void {
-  const { x: _x, y: _y, ...look } = card;
+  const { x: _x, y: _y, cut: _cut, ...look } = card;
+  cutCard(node.g, card);
   const signature = JSON.stringify({ ...look, ...marks });
   if (node.signature === signature) return;
   node.g.innerHTML =
@@ -41,6 +42,39 @@ export function drawCard(node: CardNode, card: Card, marks: Marks): void {
     (marks.isUnread ? unreadMark() : "") +
     (marks.isNew ? changedMark(card.h) : "");
   node.signature = signature;
+  cutCard(node.g, card);
+}
+
+/** Room around a card for what is drawn past its edges: its ring, its marks. */
+const AROUND = 40;
+
+/**
+ * In a column that scrolls alone (S354), a card at an edge of the window shows the part of it that is inside:
+ * the rest is clipped, and takes no pointer. The clip is the card's own, redrawn with it.
+ */
+function cutCard(g: SVGGElement, card: Card): void {
+  const id = `cut-${card.id}`;
+  let clip = g.querySelector<SVGClipPathElement>(":scope > clipPath");
+  if (!card.cut) {
+    clip?.remove();
+    g.removeAttribute("clip-path");
+    delete g.dataset.cut;
+    return;
+  }
+  if (!clip) {
+    clip = svg("clipPath", { id });
+    clip.append(svg("rect", {}));
+    g.append(clip);
+    g.setAttribute("clip-path", `url(#${id})`);
+    g.dataset.cut = "";
+  }
+  const top = card.cut.top > 0 ? card.cut.top : -AROUND;
+  const bottom = card.cut.bottom > 0 ? card.h - card.cut.bottom : card.h + AROUND;
+  const rect = clip.firstElementChild;
+  rect?.setAttribute("x", String(-AROUND));
+  rect?.setAttribute("y", String(top));
+  rect?.setAttribute("width", String(card.w + 2 * AROUND));
+  rect?.setAttribute("height", String(Math.max(0, bottom - top)));
 }
 
 /** A screen reader hears a card as one name: its words, where it is, then what its marks show. Its detail stays in the tooltip. */

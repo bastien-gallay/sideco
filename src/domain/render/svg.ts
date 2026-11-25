@@ -144,10 +144,10 @@ function foldButton(b: Band, x: number, y: number): string {
   return `<text class="lane-fold${b.folded ? " is-shut" : ""}" data-fold="${esc(b.id)}" role="button" tabindex="0" aria-expanded="${!b.folded}" aria-label="${esc(b.foldSaid ?? "")}" x="${x}" y="${y}">${b.folded ? "›" : "‹"}</text>`;
 }
 
-/** What a column that scrolls alone (S306) says to the page: its lane, its cards out of view, how far it is scrolled. */
+/** What a column that scrolls alone (S306) says to the page: its lane. How far it is scrolled is not drawn: the names stay in place while it scrolls. */
 function laneWindow(b: Band): string {
   if (b.above === undefined) return "";
-  return ` data-lane-box="${esc(b.id)}" data-above="${b.above}" data-below="${b.below ?? 0}" data-skip="${b.skip ?? 0}"`;
+  return ` data-lane-box="${esc(b.id)}"`;
 }
 
 /** Across the top of a lane: its name, how many cards it holds, and what it stands for when it says so. */
