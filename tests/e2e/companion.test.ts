@@ -2162,7 +2162,10 @@ describe("the chosen card, read in the right panel", () => {
     expect(await field.getAttribute("aria-label")).toBe(`Detail of ${placed}`);
     // The whole detail from its first line: the field grows with its words.
     expect(await field.evaluate((f: HTMLTextAreaElement) => f.scrollHeight <= f.clientHeight + 2)).toBe(true);
-    expect(await panel().locator(".card-panel-keys").textContent()).toContain("⌘/Ctrl+Enter saves");
+    const expectedSave = (await page.evaluate(() => /Mac|iPhone|iPad/.test(navigator.platform)))
+      ? "⌘↵ saves"
+      : "Ctrl + Enter saves";
+    expect(await panel().locator(".card-panel-keys").textContent()).toContain(expectedSave);
     await shot("58-card-panel-editing");
     const before = (await workspace()).seq;
     await field.press("End");

@@ -161,7 +161,7 @@ a card touches it, never the other way round.
 | Board | Tableau | One surface that follows a workshop: a kanban, a flow, a story map… | |
 | Workshop | Atelier | The model a board follows, as a document follows a template: its card types, their letters, its layout. A board names its workshop; it neither is one nor extends one. | `format`, `board new --format` |
 | Grid | Grille | The family of workshops laid out in wide rows and columns that hold the cards: kanban, story map, retro, event storming, impact-effort. | layouts `columns`, `timeline` |
-| Diagram | Diagramme | The family of workshops whose cards are placed by their links, until the diagram goes Snap: flow, C4. | layout `graph` |
+| Diagram | Diagramme | The family of workshops whose cards are placed by their links, until Snap keeps them where they are put: flow, C4. | layout `graph` |
 | Snap | Snap | The mode of a Diagram placed by hand: one card dragged, or `sideco place`, and the whole diagram keeps its cards where they are; a link drawn then moves no card. The same word in both languages. | `placing` `hand`, `byHand` |
 | Snap Canvas | Snap Canvas | The family, still to come, whose cards are placed freely and held by magnets, as in Figma: the future C4. The same words in both languages. | |
 | Card | Carte | What sits on a board; its type comes from the workshop. « Post-it » is an image in the guide, not a term. | `Element`, `ElementAdded` |

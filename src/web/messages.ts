@@ -145,8 +145,8 @@ export interface Messages {
   editDetail: string;
   addDetail: string;
   saveDetail: string;
-  /** Under the detail being written: its keys, and the little markdown it is read in. */
-  detailKeys: string;
+  /** Under the detail being written: its keys (as the reader's keyboard writes them), and its markdown. */
+  detailKeys: (key: string) => string;
   detailSaved: (id: string) => string;
 
   // The hand-over.
@@ -356,7 +356,7 @@ const en: Messages = {
   removeLane: (name) => `Remove the lane ${name}`,
   laneHeading: (name, count) => `Lane ${name}, ${count} card${count === 1 ? "" : "s"}`,
   laneKeys:
-    "Enter: rename · Shift+Enter: subtitle · Shift and an arrow: move · Delete: remove if empty · + or Alt and an arrow: add a lane",
+    "Enter: rename · Shift + Enter: subtitle · Shift and an arrow: move · Delete: remove if empty · + or Alt and an arrow: add a lane",
   laneMovedTo: (name, position, of) => `Lane ${name} moved: ${position} of ${of}.`,
   laneNotEmpty: (name) => `Lane ${name} still has cards: move or remove them first.`,
   laneRemoved: (name) => `Lane ${name} removed.`,
@@ -428,8 +428,8 @@ const en: Messages = {
   editDetail: "Edit the detail",
   addDetail: "Add a detail",
   saveDetail: "Save",
-  detailKeys:
-    "⌘/Ctrl+Enter saves, Esc cancels. Markdown: **bold**, *italic*, `code`, - lists, [words](https://…)",
+  detailKeys: (key) =>
+    `${key} saves, Esc cancels. Markdown: **bold**, *italic*, \`code\`, - lists, [words](https://…)`,
   detailSaved: (id) => `Detail of ${id} saved`,
 
   messageForClaude: "Message for Claude",
@@ -503,7 +503,7 @@ const en: Messages = {
 
   detailOf: (id) => `Detail of ${id}`,
   noteOn: (id) => `Note for Claude on ${id}`,
-  saveLines: "Enter saves, Shift+Enter starts a new line, Esc cancels",
+  saveLines: "Enter saves, Shift + Enter starts a new line, Esc cancels",
   withKey: (action, key) => `${action} (${key})`,
   cardRemoved: (id) => `${id} removed.`,
   boardCards: (title) => `Cards of “${title}”`,
@@ -666,7 +666,7 @@ const fr: Messages = {
   removeLane: (name) => `Supprimer la colonne ${name}`,
   laneHeading: (name, count) => `Colonne ${name}, ${count} carte${count > 1 ? "s" : ""}`,
   laneKeys:
-    "Entrée : renommer · Maj+Entrée : sous-titre · Maj et une flèche : déplacer · Suppr : supprimer si vide · + ou Alt et une flèche : ajouter une colonne",
+    "Entrée : renommer · Maj + Entrée : sous-titre · Maj et une flèche : déplacer · Suppr : supprimer si vide · + ou Alt et une flèche : ajouter une colonne",
   laneMovedTo: (name, position, of) => `Colonne ${name} déplacée : ${position} sur ${of}.`,
   laneNotEmpty: (name) => `La colonne ${name} a encore des cartes : déplace-les ou supprime-les d'abord.`,
   laneRemoved: (name) => `Colonne ${name} supprimée.`,
@@ -741,8 +741,8 @@ const fr: Messages = {
   editDetail: "Modifier le détail",
   addDetail: "Ajouter un détail",
   saveDetail: "Enregistrer",
-  detailKeys:
-    "⌘/Ctrl+Entrée enregistre, Échap annule. Markdown : **gras**, *italique*, `code`, - listes, [mots](https://…)",
+  detailKeys: (key) =>
+    `${key} enregistre, Échap annule. Markdown : **gras**, *italique*, \`code\`, - listes, [mots](https://…)`,
   detailSaved: (id) => `Détail de ${id} enregistré`,
 
   messageForClaude: "Message pour Claude",
@@ -816,7 +816,7 @@ const fr: Messages = {
 
   detailOf: (id) => `Détail de ${id}`,
   noteOn: (id) => `Note pour Claude sur ${id}`,
-  saveLines: "Entrée enregistre, Maj+Entrée va à la ligne, Échap annule",
+  saveLines: "Entrée enregistre, Maj + Entrée va à la ligne, Échap annule",
   withKey: (action, key) => `${action} (${key})`,
   cardRemoved: (id) => `${id} supprimée.`,
   boardCards: (title) => `Cartes de « ${title} »`,

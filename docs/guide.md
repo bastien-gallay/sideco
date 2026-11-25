@@ -61,7 +61,7 @@ What Claude receives is net of back-and-forth: a card added then renamed reads a
 | Click a type in the palette | Adds a card of that type |
 | Double-click a card | Renames it |
 | `⋯` menu, « Title and question… », or double-click the question in the palette | Changes the board's title and the question it asks; a question emptied gives the workshop's back |
-| Drag a card | Moves it to another step or column, or within its cell. On a `flow` or a `c4-context`, puts it where it is let go, and the diagram goes Snap |
+| Drag a card | Moves it to another step or column, or within its cell. On a `flow` or a `c4-context`, puts it where it is let go; Snap then keeps it there |
 | Select a card | Opens its action bar: rename, detail, a plus when the card leads to another, note for Claude; link, add a linked card, send to top or bottom, mark done and remove are under `⋯` |
 | `I` on a card | Reads its detail in the right panel, without opening it for writing |
 | `Shift` + `Home` or `End` on a card | Sends it to the top of its cell, or to its foot |

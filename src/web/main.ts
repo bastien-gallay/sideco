@@ -949,7 +949,7 @@ const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
   ...(m.editing
     ? [
         detailField,
-        h("p", { class: "hint card-panel-keys", id: "detail-keys" }, t.detailKeys),
+        h("p", { class: "hint card-panel-keys", id: "detail-keys" }, t.detailKeys(SHORTCUTS.send)),
         h(
           "div",
           { class: "card-panel-actions" },

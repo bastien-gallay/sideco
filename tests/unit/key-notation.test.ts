@@ -77,4 +77,42 @@ describe("the keys of a row, as the reader's keyboard writes them (T305)", () =>
     expect(keys("en")).toContain("PgUp, PgDn, Home, End");
     expect(keys("fr")).toContain("Pg préc., Pg suiv., Début, Fin");
   });
+
+  test("two ⌘ / Ctrl alternatives on one row keep each side to its own keyboard (T320)", () => {
+    expect(ownKeys("⌘Z / Ctrl+Z or ⇧⌘Z / Ctrl+Shift+Z", true)).toBe("⌘Z or ⇧⌘Z");
+    expect(ownKeys("⌘Z / Ctrl+Z or ⇧⌘Z / Ctrl+Shift+Z", false)).toBe("Ctrl + Z or Ctrl + Shift + Z");
+    expect(ownKeys("⌘[ / Ctrl+[, ⌘] / Ctrl+]", true)).toBe("⌘[, ⌘]");
+    expect(ownKeys("⌘[ / Ctrl+[, ⌘] / Ctrl+]", false)).toBe("Ctrl + [, Ctrl + ]");
+  });
+
+  test("a single key after a held comma does not break the held key apart (T320)", () => {
+    expect(pieces("Shift + Home, End, or Esc")).toEqual([
+      { key: "Shift + Home, End" },
+      { word: ", or " },
+      { key: "Esc" },
+    ]);
+    expect(pieces("Shift + Home, End or Esc")).toEqual([
+      { key: "Shift + Home, End" },
+      { word: " or " },
+      { key: "Esc" },
+    ]);
+    expect(pieces("Ctrl + Z, Ctrl + Y")).toEqual([{ key: "Ctrl + Z" }, { word: ", " }, { key: "Ctrl + Y" }]);
+  });
+
+  test("hints outside the sheet space their plus and name only the reader's keyboard (T320)", () => {
+    for (const locale of ["en", "fr"] as const) {
+      const messages = MESSAGES[locale];
+      for (const hint of [messages.laneKeys, messages.saveLines]) {
+        expect(hint).not.toMatch(/\S\+\S/);
+        expect(hint.includes("⌘") && hint.includes("Ctrl")).toBe(false);
+      }
+      const sendKeys = locale === "fr" ? ["⌘↵", "Ctrl + Entrée"] : ["⌘↵", "Ctrl + Enter"];
+      for (const key of sendKeys) {
+        const detail = messages.detailKeys(key);
+        expect(detail).toContain(key);
+        expect(detail).not.toMatch(/\S\+\S/);
+        expect(detail.includes("⌘") && detail.includes("Ctrl")).toBe(false);
+      }
+    }
+  });
 });
