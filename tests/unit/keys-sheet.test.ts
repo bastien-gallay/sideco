@@ -51,7 +51,7 @@ describe("the sheet of keys", () => {
       "A = Ajouter une carte liée à celle-ci",
     );
     // On a diagram Alt and an arrow say it already: A is the same. Where the card lands is not the sheet's to
-    // say: a story's task goes to the lane of tasks, not under the story.
+    // say: a story's task goes to the first lane, not under the story.
     const flow = says(withMoreKeys(MESSAGES.en.shortcutList("graph", true), "en", false, false));
     expect(flow).toContain("A = The same: the next step, linked");
     expect(says(withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en", true))).not.toContain(

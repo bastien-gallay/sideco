@@ -1,7 +1,8 @@
 /**
  * The sheet of keys in sections (T282): the keys that move the keyboard, those
- * that act on a card, those of the page, each under its name; and, where the
- * lanes are a board's own, what the heading of a lane takes, key by key. The
+ * that move a card or add one, those that change it (T304), those of the page,
+ * each under its name; then, where the lanes are a board's own, what the heading
+ * of a lane takes, key by key, and on a plan what an axis takes. The
  * words of the headings are here: messages.ts is at its ceiling.
  */
 import type { Locale } from "../domain/i18n.ts";
