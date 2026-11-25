@@ -150,3 +150,10 @@ export function standBy(
   tools.style.left = `${left}px`;
   tools.style.top = `${top}px`;
 }
+
+/** A card scrolled out of the board's window: its toolbar would stand alone at the edge, so it goes. */
+export function outOfSight(g: SVGGElement, scroll: HTMLElement): boolean {
+  const card = g.getBoundingClientRect();
+  const seen = scroll.getBoundingClientRect();
+  return card.right < seen.left || card.left > seen.right || card.bottom < seen.top || card.top > seen.bottom;
+}

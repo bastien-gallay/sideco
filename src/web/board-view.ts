@@ -24,7 +24,7 @@ import * as links from "./board-links.ts";
 import { dropCommand, keyCommand, snapCommand, whereTo } from "./card-drop.ts";
 import { mountEditor } from "./card-editor.ts";
 import { type CardNode, drawCard, dropNodes, keepKeyboard, newCardNode, sayCard } from "./card-node.ts";
-import { cardButtons, leadButton, type MoreMenu, standBy } from "./card-tools.ts";
+import { cardButtons, leadButton, type MoreMenu, outOfSight, standBy } from "./card-tools.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
 import { type Held, headingsDrop, holdInView, liftHeadings } from "./headings.ts";
@@ -365,15 +365,6 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     else if (pointed.kind === "slot") beginAdd(typeId, { lane: pointed.lane, ...place });
   }
 
-  /** A card scrolled out of the board's window: its toolbar would stand alone at the edge, so it goes. */
-  function outOfSight(g: SVGGElement): boolean {
-    const card = g.getBoundingClientRect();
-    const seen = scroll.getBoundingClientRect();
-    return (
-      card.right < seen.left || card.left > seen.right || card.bottom < seen.top || card.top > seen.bottom
-    );
-  }
-
   /**
    * A card the keyboard sent elsewhere: once it has landed, it is brought into
    * view, and its toolbar follows it there rather than stay where it was.
@@ -441,7 +432,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       state.linking ||
       editor.writing() ||
       keyboardAway() ||
-      outOfSight(node.g)
+      outOfSight(node.g, scroll)
     ) {
       tools.hidden = true;
       return;
