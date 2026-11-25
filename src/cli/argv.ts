@@ -97,22 +97,32 @@ export function boardAction(tokens: readonly string[], board: string | undefined
             },
           };
         if (at(0) === "rm")
-          return { command: { kind: "remove-lane", board: target(), lane: need(1, "a lane") } };
+          return { command: { kind: "remove-lane", board: target(), lane: need(1, "a column") } };
         if (at(0) === "move")
           return {
             command: {
               kind: "move-lane",
               board: target(),
-              lane: need(1, "a lane"),
+              lane: need(1, "a column"),
               before: flags.get("before"),
             },
           };
         if (at(0) === "hint")
           return {
-            command: { kind: "hint-lane", board: target(), lane: need(1, "a lane"), hint: said(2, "a hint") },
+            command: {
+              kind: "hint-lane",
+              board: target(),
+              lane: need(1, "a column"),
+              hint: said(2, "a hint"),
+            },
           };
         return {
-          command: { kind: "name-lane", board: target(), lane: need(0, "a lane"), label: need(1, "a name") },
+          command: {
+            kind: "name-lane",
+            board: target(),
+            lane: need(0, "a column"),
+            label: need(1, "a name"),
+          },
         };
       case "axis":
         return {
@@ -293,7 +303,7 @@ export function boardAction(tokens: readonly string[], board: string | undefined
   const extra = p[used];
   if (extra !== undefined) {
     const said = `\`${verb}\` takes ${used} argument${used === 1 ? "" : "s"}, not "${extra}"`;
-    throw new UsageError(verb === "move" ? `${said}: to choose the lane, --lane ${extra}` : said);
+    throw new UsageError(verb === "move" ? `${said}: to choose the column, --lane ${extra}` : said);
   }
   return action;
 }

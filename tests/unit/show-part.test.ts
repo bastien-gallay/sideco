@@ -57,9 +57,9 @@ describe("a part of a board", () => {
     const shown = describeBoard(kanban().board(), { lane: "doing", brief: true });
     expect(shown).toContain("· part: lane doing, brief");
     expect(shown).not.toContain("Stop, PreToolUse");
-    expect(() => describeBoard(kanban().board(), { lane: "nowhere" })).toThrow('no lane "nowhere"');
+    expect(() => describeBoard(kanban().board(), { lane: "nowhere" })).toThrow('no column "nowhere"');
     expect(() => describeBoard(kanban().board(), { col: 2 })).toThrow("Kanban boards have no columns");
-    expect(() => describeBoard(table(ORDERING).board(), { lane: "todo" })).toThrow("have no lanes");
+    expect(() => describeBoard(table(ORDERING).board(), { lane: "todo" })).toThrow("have no columns");
   });
 
   test("the whole board says no part", () => {

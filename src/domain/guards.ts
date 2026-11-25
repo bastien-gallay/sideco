@@ -48,11 +48,11 @@ export function requireSlice(board: Board, slice: string): string {
 export function requireLane(board: Board, format: Format, lane: string): string {
   const lanes = lanesOf(board);
   if (!lanes.includes(lane)) {
-    throw new CommandError(`${format.name.en} has no lane "${lane}" (lanes: ${lanes.join(", ")})`);
+    throw new CommandError(`${format.name.en} has no column "${lane}" (columns: ${lanes.join(", ")})`);
   }
   return lane;
 }
 export function requireOwnLanes(format: Format, verb: string): void {
   if (!format.ownLanes)
-    throw new CommandError(`${format.name.en} boards have no lanes to ${verb}: their workshop sets them`);
+    throw new CommandError(`${format.name.en} boards have no columns to ${verb}: their workshop sets them`);
 }

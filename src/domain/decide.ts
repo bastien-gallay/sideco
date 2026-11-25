@@ -98,13 +98,13 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       return { events: [{ event: "BoardRetitled", board: b, title: cmd.title }] };
     case "name-lane": {
       if (format.layout !== "columns")
-        throw new CommandError(`${format.name.en} boards have no lanes to name`);
+        throw new CommandError(`${format.name.en} boards have no columns to name`);
       const lane = requireLane(board, format, cmd.lane);
       if ((board.lanes[lane] ?? "") === cmd.label) return unchanged();
       return { events: [{ event: "LaneNamed", board: b, lane, label: cmd.label }] };
     }
     case "hint-lane": {
-      if (format.layout !== "columns") throw new CommandError(`${format.name.en} boards have no lanes`);
+      if (format.layout !== "columns") throw new CommandError(`${format.name.en} boards have no columns`);
       const lane = requireLane(board, format, cmd.lane);
       if ((board.hints?.[lane] ?? "") === cmd.hint) return unchanged();
       return { events: [{ event: "LaneHinted", board: b, lane, hint: cmd.hint }] };
@@ -133,7 +133,7 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       requireOwnLanes(format, "add");
       if (cmd.before !== undefined) requireLane(board, format, cmd.before);
       const lane = cmd.lane ?? `${LANE_PREFIX}${(board.minted[LANE_PREFIX] ?? 0) + 1}`;
-      if (lanesOf(board).includes(lane)) throw new CommandError(`lane ${lane} is already on "${b}"`);
+      if (lanesOf(board).includes(lane)) throw new CommandError(`column ${lane} is already on "${b}"`);
       return {
         events: [{ event: "LaneAdded", board: b, lane, label: cmd.label, before: cmd.before }],
         minted: lane,
@@ -161,10 +161,10 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       const inside = board.elements.filter((el) => el.lane === lane).map((el) => el.id);
       if (inside.length > 0)
         throw new CommandError(
-          `lane ${lane} still has ${inside.length} card${inside.length > 1 ? "s" : ""} (${inside.join(", ")}): move or remove them first`,
+          `column ${lane} still has ${inside.length} card${inside.length > 1 ? "s" : ""} (${inside.join(", ")}): move or remove them first`,
         );
       if (lanesOf(board).length === 1)
-        throw new CommandError(`a ${format.name.en.toLowerCase()} keeps at least one lane`);
+        throw new CommandError(`a ${format.name.en.toLowerCase()} keeps at least one column`);
       return { events: [{ event: "LaneRemoved", board: b, lane }] };
     }
     case "move-lane": {
@@ -172,7 +172,7 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
       const lane = requireLane(board, format, cmd.lane);
       if (cmd.before !== undefined) {
         requireLane(board, format, cmd.before);
-        if (cmd.before === lane) throw new CommandError(`lane ${lane} cannot be placed before itself`);
+        if (cmd.before === lane) throw new CommandError(`column ${lane} cannot be placed before itself`);
       }
       const order = lanesOf(board);
       const next = order[order.indexOf(lane) + 1];

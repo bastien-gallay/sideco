@@ -352,14 +352,14 @@ const en: Messages = {
   palette: "Elements to add",
   add: (type) => `Add: ${type}`,
   insertColumn: "Insert a column here",
-  addLane: "Add a lane here",
-  removeLane: (name) => `Remove the lane ${name}`,
-  laneHeading: (name, count) => `Lane ${name}, ${count} card${count === 1 ? "" : "s"}`,
+  addLane: "Add a column here",
+  removeLane: (name) => `Remove the column ${name}`,
+  laneHeading: (name, count) => `Column ${name}, ${count} card${count === 1 ? "" : "s"}`,
   laneKeys:
-    "Enter: rename · Shift + Enter: subtitle · Shift and an arrow: move · Delete: remove if empty · + or Alt and an arrow: add a lane",
-  laneMovedTo: (name, position, of) => `Lane ${name} moved: ${position} of ${of}.`,
-  laneNotEmpty: (name) => `Lane ${name} still has cards: move or remove them first.`,
-  laneRemoved: (name) => `Lane ${name} removed.`,
+    "Enter: rename · Shift + Enter: subtitle · Shift and an arrow: move · Delete: remove if empty · + or Alt and an arrow: add a column",
+  laneMovedTo: (name, position, of) => `Column ${name} moved: ${position} of ${of}.`,
+  laneNotEmpty: (name) => `Column ${name} still has cards: move or remove them first.`,
+  laneRemoved: (name) => `Column ${name} removed.`,
   removeStep: (col) => `Remove step ${col}`,
   stepRemoved: (col) => `Step ${col} removed.`,
   howGraphFrom: (id) => `The new element will be linked to ${id}.`,
@@ -539,14 +539,14 @@ const en: Messages = {
           ? "Move the card: ← → a step, ↑ ↓ its place in its cell"
           : how === "grid"
             ? `Move the card a cell: ↑ ↓ ${axes?.y ?? "impact"}, ← → ${axes?.x ?? "effort"}`
-            : "Move the card: ← → a lane, ↑ ↓ its place in its lane",
+            : "Move the card: ← → a column, ↑ ↓ its place in its column",
     ],
     how === "graph"
       ? ["Alt + → ↓", "Add the next step, linked from the card"]
       : ["Alt + ← → ↑ ↓", "Add a card of its kind on that side"],
     ["Enter or F2", "Rename the card"],
     ["Space", "Choose the card"],
-    ["D", doneLast ? "Move the card to the last lane, or out of it" : "Done, or not done"],
+    ["D", doneLast ? "Move the card to the last column, or out of it" : "Done, or not done"],
     ["L", "Link: then Space on the other card"],
     ["E", "Write its detail, in the right panel"],
     ["N", "Write a note for Claude on the card"],
@@ -573,18 +573,18 @@ const en: Messages = {
       : []),
     ...(how === "kanban"
       ? ([
-          ["+ between two lane headings", "Add a lane there"],
-          ["× in the heading of an empty lane", "Remove it (Undo brings it back)"],
-          ["Drag a lane heading", "Move the lane, its cards with it"],
+          ["+ between two column headings", "Add a column there"],
+          ["× in the heading of an empty column", "Remove it (Undo brings it back)"],
+          ["Drag a column heading", "Move the column, its cards with it"],
         ] as [string, string][])
       : []),
     ...(how === "graph" || how === "timeline"
       ? []
       : ([
-          ["Double-click a lane's name", "Rename it for this board"],
+          ["Double-click a column's name", "Rename it for this board"],
           [
-            "Double-click a lane's subtitle, or Add a subtitle under its name",
-            "Write what the lane stands for; emptied, the workshop's words come back",
+            "Double-click a column's subtitle, or Add a subtitle under its name",
+            "Write what the column stands for; emptied, the workshop's words come back",
           ],
         ] as [string, string][])),
     ...(how === "grid"

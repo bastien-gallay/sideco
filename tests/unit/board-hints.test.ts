@@ -29,8 +29,8 @@ describe("what a lane stands for, on one board", () => {
     const seq = t.seq;
     t.script('lane hint quick "Interne · positif"');
     expect(t.seq).toBe(seq);
-    expect(() => t.script('lane hint nowhere "X"')).toThrow('no lane "nowhere"');
-    expect(() => table(ORDERING).script('lane hint todo "X"')).toThrow("no lanes");
+    expect(() => t.script('lane hint nowhere "X"')).toThrow('no column "nowhere"');
+    expect(() => table(ORDERING).script('lane hint todo "X"')).toThrow("no columns");
   });
 
   test("an empty hint gives the workshop's back; a lane of the board's own takes one too", () => {
@@ -65,18 +65,18 @@ describe("what a lane stands for, on one board", () => {
   test("the history words it, and a model read back keeps it", () => {
     const t = table(IMPACT_EFFORT).script('lane hint quick "Interne · positif"', "human");
     expect(describeEvent(t.events.at(-1) as never)).toBe(
-      "You say what the lane quick stands for: “Interne · positif”",
+      "You say what the column quick stands for: “Interne · positif”",
     );
     expect(describeEvent(t.events.at(-1) as never, "fr")).toBe(
       "Tu dis ce que la colonne quick représente : « Interne · positif »",
     );
     // Told with the board at hand, the lane goes by its name, not by its id.
     expect(describeEvent(t.events.at(-1) as never, "en", t.ws)).toBe(
-      "You say what the lane “Quick wins” stands for: “Interne · positif”",
+      "You say what the column “Quick wins” stands for: “Interne · positif”",
     );
     t.script('lane quick "Strength"', "human");
     expect(describeEvent(t.events.at(-1) as never, "en", t.ws)).toBe(
-      "You name the lane “Quick wins” “Strength”",
+      "You name the column “Quick wins” “Strength”",
     );
     t.script('lane hint quick "Interne · utile"', "human");
     expect(describeEvent(t.events.at(-1) as never, "fr", t.ws)).toBe(

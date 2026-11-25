@@ -22,7 +22,7 @@ export function besideIn(
       if (anchor.col !== place.col) throw new CommandError(`${anchor.id} is not in column ${place.col}`);
       return;
     case "columns":
-      if (anchor.lane !== place.lane) throw new CommandError(`${anchor.id} is not in lane "${place.lane}"`);
+      if (anchor.lane !== place.lane) throw new CommandError(`${anchor.id} is not in column "${place.lane}"`);
       return;
     case "graph":
       throw new CommandError(
@@ -42,7 +42,7 @@ export function placeNew(
       refuse(cmd.lane, "lane", format, "elements are placed by column");
       return { col: cmd.col ?? lastColumn(board) + 1, lane: "" };
     case "columns":
-      refuse(cmd.col, "col", format, "elements are placed by lane");
+      refuse(cmd.col, "col", format, "elements are placed by column (--lane)");
       return { col: 1, lane: requireLane(board, format, cmd.lane ?? homeOf(board, type)) };
     case "graph":
       refuse(cmd.col, "col", format, "positions follow the links");
@@ -60,12 +60,12 @@ export function move(board: Board, format: Format, cmd: Extract<Command, { kind:
       refuse(cmd.lane, "lane", format, "elements move between columns");
       return moveInTimeline(board, el, cmd);
     case "columns": {
-      refuse(cmd.col, "col", format, "elements move between lanes");
+      refuse(cmd.col, "col", format, "elements move between columns (--lane)");
       const lane = requireLane(board, format, cmd.lane ?? el.lane);
       if (cmd.before !== undefined) {
         const anchor = requireElement(board, cmd.before);
         if (anchor.id === el.id) throw new CommandError(`${el.id} cannot be placed before itself`);
-        if (anchor.lane !== lane) throw new CommandError(`${anchor.id} is not in lane "${lane}"`);
+        if (anchor.lane !== lane) throw new CommandError(`${anchor.id} is not in column "${lane}"`);
       }
       return { event: "ElementMoved", board: board.id, id: el.id, col: el.col, lane, before: cmd.before };
     }

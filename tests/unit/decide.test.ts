@@ -93,7 +93,7 @@ describe("adding elements", () => {
     );
     expect(() => table(KANBAN).script('add task "x" --col 2')).toThrow("Kanban boards take no `col`");
     expect(() => table(KANBAN).script('add task "x" --lane later')).toThrow(
-      'Kanban has no lane "later" (lanes: todo, doing, done)',
+      'Kanban has no column "later" (columns: todo, doing, done)',
     );
     expect(() => table(FLOW).script('add step "x" --col 2')).toThrow("Flow boards take no `col`");
   });
@@ -141,7 +141,7 @@ describe("changing elements", () => {
       .map((e) => e.id);
     expect(doing).toEqual(["T4", "T2", "B1", "T3"]);
     expect(() => t.script("move T1 --lane doing --before T1")).toThrow("T1 cannot be placed before itself");
-    expect(() => t.script("move T2 --lane todo --before T1")).toThrow('T1 is not in lane "todo"');
+    expect(() => t.script("move T2 --lane todo --before T1")).toThrow('T1 is not in column "todo"');
   });
 
   test("a graph places its nodes itself", () => {

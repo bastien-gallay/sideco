@@ -3120,7 +3120,7 @@ describe("a kanban's own lanes, from the page", () => {
     await page.mouse.move(doing.x - 14 - 8, doing.y + doing.height / 2);
     const plus = page.locator('.sideco-board .add-here[data-type="lane"]');
     await plus.waitFor();
-    expect(await plus.getAttribute("aria-label")).toBe("Add a lane here");
+    expect(await plus.getAttribute("aria-label")).toBe("Add a column here");
     expect(await plus.getAttribute("data-before")).toBe("doing");
     await Bun.sleep(200);
     await shot("40-add-lane");
@@ -3138,15 +3138,17 @@ describe("a kanban's own lanes, from the page", () => {
     await page.keyboard.press("?");
     const sheet = page.locator("dialog.keys");
     await sheet.waitFor({ state: "visible" });
-    expect(await sheet.locator("dd", { hasText: "Move the card to the last lane" }).count()).toBe(1);
-    expect(await sheet.locator("dd", { hasText: "← → a lane, ↑ ↓ its place in its lane" }).count()).toBe(1);
+    expect(await sheet.locator("dd", { hasText: "Move the card to the last column" }).count()).toBe(1);
+    expect(await sheet.locator("dd", { hasText: "← → a column, ↑ ↓ its place in its column" }).count()).toBe(
+      1,
+    );
     // The keys are under five headings (T282, T304): what a lane heading takes is said key by key.
     expect(await sheet.locator("h3").allTextContents()).toEqual([
       "Moving about",
       "Moving a card, adding one",
       "Changing a card",
       "The page",
-      "A lane heading",
+      "A column heading",
       "With the mouse",
       "On a card",
     ]);
@@ -3165,7 +3167,7 @@ describe("a kanban's own lanes, from the page", () => {
     expect(drawn.some((key) => key.text === (mac ? "⇧⌘Z" : "Ctrl + Shift + Z"))).toBe(true);
     expect(drawn.some((key) => key.text === (mac ? "Ctrl + Y" : "⇧⌘Z"))).toBe(false);
     expect(await sheet.locator("h3", { hasText: "With the mouse" }).count()).toBe(1);
-    expect(await sheet.locator("dt", { hasText: "+ between two lane headings" }).count()).toBe(1);
+    expect(await sheet.locator("dt", { hasText: "+ between two column headings" }).count()).toBe(1);
     // What the marks of a card mean, each drawn as the card draws it.
     expect(await sheet.locator("h3", { hasText: "On a card" }).count()).toBe(1);
     const marks = sheet.locator(".mark-list");
@@ -3245,7 +3247,7 @@ describe("a kanban's own lanes, from the page", () => {
     await page.mouse.move(ready.x + 20, ready.y + 120);
     const cross = page.locator('.sideco-board .add-here[data-type="remove-lane"]');
     await cross.waitFor();
-    expect(await cross.getAttribute("aria-label")).toBe("Remove the lane Prêt");
+    expect(await cross.getAttribute("aria-label")).toBe("Remove the column Prêt");
     // A lane with cards offers no such thing.
     const doing = await heading("Doing");
     await page.mouse.move(doing.x + 20, doing.y + 160);
@@ -3256,7 +3258,7 @@ describe("a kanban's own lanes, from the page", () => {
     await shot("41-remove-lane");
     await cross.click();
     await until("the lane is gone", async () => !(await lanes()).includes("lane-1"));
-    await page.locator(".toast", { hasText: "Lane Prêt removed." }).getByRole("button").click();
+    await page.locator(".toast", { hasText: "Column Prêt removed." }).getByRole("button").click();
     await until("the lane is back", async () => (await lanes()).join() === "todo,lane-1,doing,done");
   });
 
@@ -3283,11 +3285,11 @@ describe("a kanban's own lanes, from the page", () => {
     const focused = () => page.evaluate(() => document.activeElement?.textContent ?? null);
     // Order now: En cours, To do, Prêt, Done.
     await label("To do").focus();
-    expect(await label("To do").getAttribute("aria-label")).toBe("Lane To do, 0 cards");
+    expect(await label("To do").getAttribute("aria-label")).toBe("Column To do, 0 cards");
     await page.keyboard.press("Shift+ArrowLeft");
     await until("To do is first", async () => (await lanes())[0] === "todo");
     await until("the keyboard is still on To do", async () => (await focused()) === "To do");
-    await page.locator(".spoken", { hasText: "Lane To do moved: 1 of 4." }).waitFor({ state: "attached" });
+    await page.locator(".spoken", { hasText: "Column To do moved: 1 of 4." }).waitFor({ state: "attached" });
 
     await page.keyboard.press("+");
     await typeInEditor("Revue");
@@ -3301,7 +3303,7 @@ describe("a kanban's own lanes, from the page", () => {
     await until("Revue is gone", async () => !(await lanes()).includes("lane-2"));
     await label("En cours").focus();
     await page.keyboard.press("Delete");
-    await page.locator(".toast", { hasText: "Lane En cours still has cards" }).waitFor();
+    await page.locator(".toast", { hasText: "Column En cours still has cards" }).waitFor();
     await page.keyboard.press("ArrowDown");
     expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe(there);
     await agent(`board rm ${BOARD}`);

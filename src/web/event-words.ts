@@ -89,24 +89,24 @@ function english(e: Recorded, to: string, lane: LaneCalled): string {
         : `${does("give")} the board its workshop's question back`;
     case "LaneNamed":
       return e.label
-        ? `${does("name")} the lane ${lane(e.lane, true)} “${e.label}”`
-        : `${does("give")} the lane ${lane(e.lane)} its workshop's name back`;
+        ? `${does("name")} the column ${lane(e.lane, true)} “${e.label}”`
+        : `${does("give")} the column ${lane(e.lane)} its workshop's name back`;
     case "LaneHinted":
       return e.hint
-        ? `${does("say")} what the lane ${lane(e.lane)} stands for: “${e.hint}”`
-        : `${does("give")} the lane ${lane(e.lane)} its workshop's hint back`;
+        ? `${does("say")} what the column ${lane(e.lane)} stands for: “${e.hint}”`
+        : `${does("give")} the column ${lane(e.lane)} its workshop's hint back`;
     case "AxisNamed":
       return e.label
         ? `${does("name")} the axis ${e.axis} “${e.label}”${e.low || e.high ? `, from “${e.low ?? "…"}” to “${e.high ?? "…"}”` : ""}`
         : `${does("give")} the axis ${e.axis} its workshop's name back`;
     case "LaneAdded":
       return e.label
-        ? `${does("add")} the lane “${e.label}”`
-        : `${does("put")} the lane ${lane(e.lane)} back`;
+        ? `${does("add")} the column “${e.label}”`
+        : `${does("put")} the column ${lane(e.lane)} back`;
     case "LaneRemoved":
-      return `${does("remove")} the lane ${lane(e.lane)}`;
+      return `${does("remove")} the column ${lane(e.lane)}`;
     case "LaneMoved":
-      return `${does("move")} the lane ${lane(e.lane)}`;
+      return `${does("move")} the column ${lane(e.lane)}`;
     case "SliceAdded":
       return `${does("add")} the slice “${e.label}”`;
     case "SliceRemoved":

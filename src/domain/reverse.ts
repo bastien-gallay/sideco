@@ -42,7 +42,7 @@ export function reverse(
     if (back.event !== "LaneRemoved") continue;
     if (board.elements.some((el) => el.lane === back.lane))
       throw new CommandError(
-        `nothing to ${cmd.kind} for now on "${board.id}": lane ${back.lane} has cards now`,
+        `nothing to ${cmd.kind} for now on "${board.id}": column ${back.lane} has cards now`,
       );
   }
   const answers = cmd.kind === "undo" ? { undoes: gesture.seq } : { redoes: gesture.seq };

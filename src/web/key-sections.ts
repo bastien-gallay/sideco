@@ -31,15 +31,15 @@ const WORDS: Record<Locale, Words> = {
     card: "Changing a card",
     page: "The page",
     lane: {
-      title: "A lane heading",
+      title: "A column heading",
       rows: [
         ["← →", "To the heading beside it"],
-        ["↓", "To the cards of the lane"],
-        ["Enter or F2", "Rename the lane"],
+        ["↓", "To the cards of the column"],
+        ["Enter or F2", "Rename the column"],
         ["Shift + Enter", "Write its subtitle"],
-        ["Shift + ← →", "Move the lane"],
-        ["+ or Alt + ← →", "Add a lane beside it"],
-        ["Delete", "Remove the lane, when it is empty"],
+        ["Shift + ← →", "Move the column"],
+        ["+ or Alt + ← →", "Add a column beside it"],
+        ["Delete", "Remove the column, when it is empty"],
       ],
     },
     axis: {

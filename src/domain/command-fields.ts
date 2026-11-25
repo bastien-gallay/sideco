@@ -71,7 +71,7 @@ export function idOrName(f: Fields, key: string, shown = key): string {
 export function laneId(f: Fields, key: string): string {
   const value = f[key];
   if (typeof value !== "string" || !/^[a-z][a-z0-9-]{0,39}$/.test(value)) {
-    throw new CommandError(`\`${key}\` must be a lane id like todo or lane-3`);
+    throw new CommandError(`\`${key}\` must be a column id like todo or lane-3`);
   }
   return value;
 }

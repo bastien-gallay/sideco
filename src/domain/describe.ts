@@ -56,10 +56,10 @@ export function describeBoard(board: Board, part: Part = {}): string {
   const format = findFormat(board.format);
   const name = format?.name.en ?? board.format;
   if (part.lane !== undefined) {
-    if (format?.layout !== "columns") throw new CommandError(`${name} boards have no lanes`);
+    if (format?.layout !== "columns") throw new CommandError(`${name} boards have no columns`);
     const lanes = lanesOf(board);
     if (!lanes.includes(part.lane))
-      throw new CommandError(`${name} has no lane "${part.lane}" (lanes: ${lanes.join(", ")})`);
+      throw new CommandError(`${name} has no column "${part.lane}" (columns: ${lanes.join(", ")})`);
   }
   if (part.col !== undefined && format?.layout !== "timeline")
     throw new CommandError(`${name} boards have no columns`);

@@ -62,7 +62,7 @@ describe("the sheet of keys", () => {
   test("says a row in the word of the board, and in one line (T304)", () => {
     // A kanban has lanes: the key that sends a card to an end says lane, as Shift and the arrows do.
     const kanban = says(withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en", true));
-    expect(kanban).toContain("Shift + Home, End = Send the card to the top of its lane, or to its foot");
+    expect(kanban).toContain("Shift + Home, End = Send the card to the top of its column, or to its foot");
     expect(says(withMoreKeys(MESSAGES.fr.shortcutList("kanban", true), "fr", true))).toContain(
       "Maj + Début, Fin = Envoyer la carte en haut de sa colonne, ou en bas",
     );
@@ -115,7 +115,7 @@ describe("the sheet of keys", () => {
 
   test("tells the double-clicks on a subtitle, and on an axis or its ends", () => {
     const kanban = says(MESSAGES.en.mouseList("kanban"));
-    expect(kanban).toContain("Double-click a lane's subtitle, or Add a subtitle under its name");
+    expect(kanban).toContain("Double-click a column's subtitle, or Add a subtitle under its name");
     expect(kanban).not.toContain("axis");
     const grid = says(MESSAGES.en.mouseList("grid"));
     expect(grid).toContain("Double-click an axis, or a word at one of its ends");

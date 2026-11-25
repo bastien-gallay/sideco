@@ -30,7 +30,7 @@ describe("`add … --before ID` places the new card before another one of its ce
     expect(() => t.script('add event "Ailleurs" --col 2 --before E1')).toThrow("E1 is not in column 2");
     expect(() => t.script('add command "Pas là" --before E1')).toThrow("E1 is a event, not a command");
     expect(() => table(KANBAN).script('add task "Pas là" --lane doing --before T3')).toThrow(
-      'T3 is not in lane "doing"',
+      'T3 is not in column "doing"',
     );
     expect(() => table(FLOW).script('add step "Où ?" --before F1')).toThrow("link or unlink instead");
   });

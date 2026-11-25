@@ -25,8 +25,8 @@ describe("naming a lane on one board", () => {
     const seq = t.seq;
     t.script('lane doing "À valider"');
     expect(t.seq).toBe(seq);
-    expect(() => t.script('lane nowhere "X"')).toThrow('no lane "nowhere"');
-    expect(() => table(ORDERING).script('lane todo "X"')).toThrow("no lanes to name");
+    expect(() => t.script('lane nowhere "X"')).toThrow('no column "nowhere"');
+    expect(() => table(ORDERING).script('lane todo "X"')).toThrow("no columns to name");
   });
 
   test("the name is the board's own, in every language, and in every export", () => {
@@ -56,7 +56,7 @@ describe("naming a lane on one board", () => {
 
   test("the history words it, and a model read back keeps the name", () => {
     const t = table(KANBAN).script('lane doing "À valider"', "human");
-    expect(describeEvent(t.events.at(-1) as never)).toBe("You name the lane doing “À valider”");
+    expect(describeEvent(t.events.at(-1) as never)).toBe("You name the column doing “À valider”");
     expect(describeEvent(t.events.at(-1) as never, "fr")).toBe("Tu nommes la colonne doing « À valider »");
     const back = table();
     for (const command of fromModel(JSON.parse(JSON.stringify(toModel(t.board()))), "copy")) back.do(command);

@@ -734,7 +734,7 @@ describe("reading a part of a board", () => {
     expect(card.out).toContain("  in col ");
     const refused = await sideco(["show", "passage-de-commande", "--lane", "todo"]);
     expect(refused.code).toBe(1);
-    expect(refused.err).toContain("have no lanes");
+    expect(refused.err).toContain("have no columns");
   });
 });
 

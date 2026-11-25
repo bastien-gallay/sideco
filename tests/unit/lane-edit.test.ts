@@ -42,9 +42,9 @@ describe("adding a lane to a kanban", () => {
 
   test("refused on a board whose workshop fixes its lanes, or before a lane it does not have", () => {
     expect(() => table(ORDERING).script('lane add "X"')).toThrow(
-      "Event Storming boards have no lanes to add",
+      "Event Storming boards have no columns to add",
     );
-    expect(() => table(KANBAN).script('lane add "X" --before nowhere')).toThrow('no lane "nowhere"');
+    expect(() => table(KANBAN).script('lane add "X" --before nowhere')).toThrow('no column "nowhere"');
   });
 
   test("an id is never given twice, even after its lane is removed", () => {
@@ -78,12 +78,12 @@ describe("removing a lane", () => {
   test("only an empty one, and never the last", () => {
     const t = table(KANBAN);
     expect(() => t.script("lane rm doing")).toThrow(
-      "lane doing still has 2 cards (T2, B1): move or remove them first",
+      "column doing still has 2 cards (T2, B1): move or remove them first",
     );
     t.script("rm T1\nlane rm done");
     expect(order(t)).toEqual(["todo", "doing"]);
     const lone = table('board new "Seul" --format kanban --id seul\nlane rm doing\nlane rm done');
-    expect(() => lone.script("lane rm todo")).toThrow("a kanban keeps at least one lane");
+    expect(() => lone.script("lane rm todo")).toThrow("a kanban keeps at least one column");
   });
 
   test("its name goes with it", () => {
@@ -122,7 +122,7 @@ describe("taking a lane gesture back", () => {
     const anyway = table(KANBAN).script('lane add "Revue"', "human");
     anyway.script('add task "Là" --lane lane-1', "agent");
     expect(() => anyway.do({ kind: "undo", board: "sprint", ifChanged: "overwrite" }, "human")).toThrow(
-      "lane lane-1 has cards now",
+      "column lane-1 has cards now",
     );
   });
 });
@@ -148,7 +148,7 @@ describe("the lanes, told and kept", () => {
   test("the history words it", () => {
     const t = table(KANBAN).script('lane add "Revue"\nlane move todo --before done\nlane rm lane-1', "human");
     const at = (i: number) => t.events.at(i) as never;
-    expect(describeEvent(at(-3))).toBe("You add the lane “Revue”");
+    expect(describeEvent(at(-3))).toBe("You add the column “Revue”");
     expect(describeEvent(at(-2), "fr")).toBe("Tu déplaces la colonne todo");
     expect(describeEvent(at(-1), "fr")).toBe("Tu supprimes la colonne lane-1");
   });
@@ -210,7 +210,7 @@ describe("the page offers to add and remove lanes", () => {
     const remove = (lane: string) =>
       addOffers(t.board(), { kind: "slot", lane }, "en").find((o) => o.type === "remove-lane");
     const offer = remove("lane-1");
-    expect(offer).toMatchObject({ lane: "lane-1", text: "×", label: "Remove the lane Revue" });
+    expect(offer).toMatchObject({ lane: "lane-1", text: "×", label: "Remove the column Revue" });
     const band = lanesDrawn(t).find((b) => b.id === "lane-1");
     if (!band || !offer) throw new Error("drawn");
     expect(offer.x + offer.w).toBeLessThanOrEqual(band.x + band.w);

@@ -20,7 +20,7 @@ describe("the keys of the sheet, in sections (T282)", () => {
       "Moving a card, adding one",
       "Changing a card",
       "The page",
-      "A lane heading",
+      "A column heading",
     ]);
     expect(keysOf(sections[0])).toEqual(["Tab", "← → ↑ ↓", "PgUp, PgDn, Home, End"]);
     // The keys of a card are two sections (T304): fifteen rows under one heading were a column by themselves.
@@ -46,7 +46,7 @@ describe("the keys of the sheet, in sections (T282)", () => {
   test("what a lane heading takes is said key by key, no longer on one line", () => {
     const lane = keySections(rows("en", "kanban"), "en", "kanban").at(-1);
     expect(lane?.rows).toContainEqual(["Shift + Enter", "Write its subtitle"]);
-    expect(lane?.rows).toContainEqual(["↓", "To the cards of the lane"]);
+    expect(lane?.rows).toContainEqual(["↓", "To the cards of the column"]);
     expect(lane?.rows.length).toBe(7);
     const fr = keySections(rows("fr", "kanban"), "fr", "kanban").at(-1);
     expect(fr?.title).toBe("Un en-tête de colonne");

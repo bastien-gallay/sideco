@@ -40,7 +40,7 @@ const MORE: Record<Locale, More[]> = {
       after: "Shift + ← → ↑ ↓",
       cells: true,
       row: ["Shift + Home, End", "Send the card to the top of its cell, or to its foot"],
-      kanban: ["Shift + Home, End", "Send the card to the top of its lane, or to its foot"],
+      kanban: ["Shift + Home, End", "Send the card to the top of its column, or to its foot"],
     },
     { after: "E", row: ["T", "Add a label, in the right panel"] },
     { after: "Space", row: ["X", "Keep it chosen, and choose more"] },

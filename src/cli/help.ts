@@ -37,7 +37,7 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
                                     focus follow, and show and find still name the old one
   sideco renumber --all [--dry-run]   so do the cards under a former letter, or whose id another board keeps
   sideco retype ID TYPE [NEW]         a card takes another kind, and the next id of its letter, or NEW
-  sideco lane LANE "Name"             call a lane of this board your own way
+  sideco lane LANE "Name"             call a column of this board your own way
   sideco label ID type:bug @name ...  put labels on a card, shared by every board; unlabel ID LABEL... takes them off
   sideco labels [LABEL|KEY]           every label of the project and its cards, across boards (labels type: every type:…)
   sideco relabel OLD NEW              a label renamed on every card, on every board (a name in use: the two
@@ -48,9 +48,9 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco sessions                     the sessions open on this project, and what each follows
   sideco session name "Name"          name this session, so the page can tell it from another
   sideco purpose "Question?"          ask this board its own question; "" gives the workshop's back
-  sideco lane hint LANE "What for"     say what a lane stands for on this board; "" gives the workshop's back
+  sideco lane hint LANE "What for"     say what a column stands for on this board; "" gives the workshop's back
   sideco axis x|y "Name" [Low] [High] name an axis of a plan and its ends (left/bottom, right/top); "" gives it back
-  sideco lane add "Name" [--before L] a kanban lane of this board's own; lane rm L (empty) · lane move L [--before L]
+  sideco lane add "Name" [--before L] a kanban column of this board's own; lane rm L (empty) · lane move L [--before L]
   sideco slice add "Name" [--before S] a story map's slice, a named line under its stories; slice rm S
   sideco link SRC DST ["label"]       sideco unlink SRC DST
   sideco reverse SRC DST              turn the link round, its name kept
