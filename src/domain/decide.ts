@@ -18,6 +18,7 @@ import {
   requireSlice,
   requireSliced,
 } from "./guards.ts";
+import { colourLabel } from "./label-colour.ts";
 import { hasLabel, normalLabel, sameLabel } from "./labels.ts";
 import { claim, mint } from "./minting.ts";
 import { besideIn, move, placeNew, stays } from "./placement.ts";
@@ -52,6 +53,7 @@ const unchanged = (): { events: never[] } => ({ events: [] });
 type BoardCommand = Extract<Command, { board: string }>;
 
 export function decide(ws: Workspace, cmd: Command, ctx: Context): Decision {
+  if (cmd.kind === "colour-label") return { events: colourLabel(ws, cmd) };
   if (!("board" in cmd)) return { events: decideOnSession(ws, cmd, ctx) };
   const decision = decideOnBoard(ws, cmd, ctx);
   // What one command does is one gesture: one undo takes all of it back.

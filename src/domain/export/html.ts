@@ -90,7 +90,7 @@ export function toHtml(board: Board, meta: ExportMeta): string {
 <h1>${esc(title)}</h1>
 <p class="meta">${format ? `<strong>${esc(format.name[locale])}</strong> — ${esc(boardPurpose(format, board, locale))}` : esc(board.format)}</p>
 <div class="drawing">
-${sceneToSvg(layoutBoard(board, locale), title, diagramFrame(board, locale, false))}
+${sceneToSvg(layoutBoard(board, locale, { colours: meta.colours }), title, diagramFrame(board, locale, false))}
 </div>
 <h2>${w.elements}</h2>
 ${

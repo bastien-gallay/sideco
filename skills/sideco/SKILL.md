@@ -121,7 +121,7 @@ sideco focus [ID…] [--why "…"]      (no id clears the focus)
 sideco note "Text" [--on ID] (opens a thread, on the board or one element) · reply N1 "Text" · resolve N1
 sideco apply [FILE]   (a batch of the lines above, stdin by default; add … --alias NAME, then @NAME below)
 sideco changes                      sideco pass ["question"]      sideco wait
-sideco label ID type:bug @name · unlabel ID L (labels shared by every board; `sideco labels [KEY]` lists them) · sideco find WORDS (cards holding every word, all boards) · sideco follow BOARD…                sideco unfollow BOARD…        (the boards whose changes you are told) · sideco sessions · sideco session name "Name" (with another session on the project, so the page tells you apart)
+sideco label ID type:bug @name · unlabel ID L (labels shared by every board; `sideco labels [KEY]` lists them) · sideco colour KEY blue|green|purple|orange|teal|pink|olive|grey|auto (the colour of every label of a key, on every board) · sideco find WORDS (cards holding every word, all boards) · sideco follow BOARD…                sideco unfollow BOARD…        (the boards whose changes you are told) · sideco sessions · sideco session name "Name" (with another session on the project, so the page tells you apart)
 sideco export [BOARD] --format md|html|svg|mermaid|json [-o FILE]
 sideco publish     sideco status     sideco url [BOARD | ID]   sideco open     sideco stop
 ```

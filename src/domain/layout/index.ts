@@ -5,6 +5,7 @@
 import { type ElementType, type Format, findFormat, findType, wearsDone } from "../formats.ts";
 import { DEFAULT_LOCALE, formerly, type Locale, WORDS } from "../i18n.ts";
 import { kinMark, kinOf, kinSaid } from "../kin.ts";
+import { type Chosen, labelKey } from "../render/labels.ts";
 import { threads } from "../threads.ts";
 import type { Board, Element } from "../workspace.ts";
 import {
@@ -60,7 +61,7 @@ const EMPTY: Scene = { width: 0, height: 0, bands: [], cards: [], connectors: []
 export function layoutBoard(board: Board, locale: Locale = DEFAULT_LOCALE, seen?: Seen): Scene {
   const format = findFormat(board.format);
   if (!format) return EMPTY;
-  const card = cardMaker(board, format, locale);
+  const card = cardMaker(board, format, locale, typeof seen === "object" ? seen.colours : undefined);
   if (format.layout === "graph" && board.byHand) return placeConnectorLabels(layoutByHand(board, card));
   if (format.layout === "graph")
     return placeConnectorLabels(layoutGraph(board, card, spanOf(seen), format.relations === true));
@@ -132,10 +133,18 @@ export function headingOf(board: Board, lane: string, seen?: Seen): Room | undef
   return format?.layout === "columns" ? laneHeading(board, format, lane, seen) : undefined;
 }
 
+/** Of the keys of these labels, those whose colour was chosen: a card says nothing of colours left to chance. */
+function tintsOf(labels: readonly string[] | undefined, colours: Chosen): { tints?: Record<string, string> } {
+  const chosen = (labels ?? []).map(labelKey).filter((key) => Object.hasOwn(colours, key));
+  if (chosen.length === 0) return {};
+  return { tints: Object.fromEntries(chosen.map((key) => [key, colours[key] ?? ""])) };
+}
+
 function cardMaker(
   board: Board,
   format: Format,
   locale: Locale,
+  colours: Chosen = {},
 ): (e: Element, x: number, y: number, w?: number) => Card {
   const openNotes = new Map<string, number>();
   for (const thread of threads(board)) {
@@ -165,6 +174,7 @@ function cardMaker(
       ...(blurb ? { blurb } : {}),
       ...look,
       ...(e.labels && e.labels.length > 0 ? { labels: [...e.labels] } : {}),
+      ...tintsOf(e.labels, colours),
       fill: type?.fill ?? "#E8EEF4",
       ink: type?.ink ?? "#1F2328",
       shape: type?.shape ?? "box",

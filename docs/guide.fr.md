@@ -260,11 +260,15 @@ sideco label T3 type:bug @bastien release:0.4   # @bastien vaut assignee:bastien
 sideco unlabel T3 release:0.4
 sideco labels                                    # chaque label et ses cartes, tous tableaux confondus
 sideco labels type                               # tous les type:…
+sideco colour type teal                          # tous les type:… en sarcelle, sur tous les tableaux
+sideco colour type auto                          # la couleur de type: rendue au hasard
 ```
 
 La casse ne compte pas (`Type:Bug` est `type:bug`). `sideco show` met les labels en fin de ligne de chaque carte. Ils s'annulent, reviennent avec une carte restaurée et se gardent à l'export du modèle.
 
 Dans la page, une carte porte ses labels en puces à son pied, autant qu'il en tient, puis « +N » ; tous les labels d'une même clé ont la même couleur, et la puce n'en dit que la valeur (`bug` pour `type:bug`, `@bastien` pour `assignee:bastien`). L'infobulle, le nom lu et l'onglet `Detail` les disent en entier. L'onglet `Detail` de la carte choisie les montre tous : × en retire un, le champ « Add a label » en ajoute (plusieurs à la fois, séparés par des virgules ; Entrée valide) et propose ceux que le projet utilise déjà. Depuis une carte, `T` y mène tout droit : la carte est choisie, son onglet `Detail` ouvert, le clavier dans le champ. Échap vide le champ ; vide, il rend le clavier à la carte. Échap sort aussi d'une note ou d'une réponse, en gardant les mots commencés : le clavier revient sur le tableau, à la carte choisie, sinon à la première. Du détail, Échap sort sans enregistrer et rend le clavier là d'où il venait, la carte ou le bouton du panneau.
+
+La couleur d'un label vient de sa clé, ce qui précède `:` (`type`, `epic`, `assignee` pour `@nom`), ou de ses mots quand il n'a pas de clé. Sans choix, le hasard la donne, et deux clés sans rapport peuvent tomber sur la même. Pour la choisir : dans l'onglet `Detail`, le point au début d'une puce ouvre les huit couleurs de sa clé (`blue`, `green`, `purple`, `orange`, `teal`, `pink`, `olive`, `grey`) et `Auto`, qui la rend au hasard ; Échap les range. Le choix vaut pour tous les labels de la clé, sur tous les tableaux du projet, dans la page comme dans les exports. Il est gardé dans `boards.jsonl` avec l'histoire des tableaux, et `sideco labels` le rappelle en dernière ligne. ⚠️ Il ne s'annule pas par `Undo` : il se rechoisit.
 
 Une puce pressée, sur la carte ou dans l'onglet `Detail`, filtre le tableau sur son label : les cartes qui ne le portent pas s'effacent sans bouger, et une barre posée sur le coin du tableau dit le label et combien de cartes le portent (« 2 cartes sur 3 »). `@bastien` donne ainsi « mes cartes ». La même puce pressée à nouveau, ou « Tout montrer », rend toutes les cartes. Le filtre suit d'un tableau à l'autre, et ne dure que le temps de la page.
 

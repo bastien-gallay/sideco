@@ -6,6 +6,7 @@
 import { sameLabel } from "../domain/labels.ts";
 import { chipText, labelColours } from "../domain/render/labels.ts";
 import { h } from "./dom.ts";
+import { colourDot, colourRow, keepDot } from "./label-colour.ts";
 import { filteredBy, filterName, toggleLabelFilter } from "./label-filter.ts";
 import { t } from "./locale.ts";
 import { currentBoard, isLive, send, state } from "./store.ts";
@@ -17,6 +18,8 @@ export interface LabelsModel {
   /** Its labels, as kept, and those the project already uses, offered as it is typed. */
   labels: string[];
   known: string[];
+  /** Per key of label, the colour chosen for it in the project. */
+  colours: Record<string, string>;
 }
 
 /** How the page speaks to a screen reader: set by the panel each time it paints. */
@@ -75,6 +78,7 @@ labelField.addEventListener("keydown", (event) => {
 let unlabelled: { id: string; label: string; at: number } | undefined;
 
 export function refocusLabels(panel: HTMLElement, id: string, labels: readonly string[]): void {
+  keepDot();
   const was = unlabelled;
   if (!was || was.id !== id || labels.some((label) => sameLabel(label, was.label))) return;
   unlabelled = undefined;
@@ -104,6 +108,7 @@ export function labelSection(m: LabelsModel, speaker: (words: string) => void): 
     "section",
     { class: "card-panel-labels", "aria-label": t.labelsHeading },
     m.labels.length > 0 && labelChips(m),
+    m.live && m.labels.length > 0 && colourRow,
     m.live && labelField,
     m.live && knownLabels,
   );
@@ -116,10 +121,11 @@ function labelChips(m: LabelsModel): HTMLElement {
     "ul",
     { class: "label-chips" },
     ...m.labels.map((label, at) => {
-      const { fill, ink } = labelColours(label);
+      const { fill, ink } = labelColours(label, m.colours);
       return h(
         "li",
         { class: "label-chip", style: `background:${fill};color:${ink}` },
+        m.live && colourDot(label, m.colours),
         h(
           "button",
           {

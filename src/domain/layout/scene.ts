@@ -5,6 +5,7 @@
  */
 import type { Actor } from "../events.ts";
 import type { Shape } from "../formats.ts";
+import type { Chosen } from "../render/labels.ts";
 
 export interface Card {
   id: string;
@@ -26,6 +27,8 @@ export interface Card {
   detail?: string;
   /** The labels it wears, as kept: drawn as chips at its foot. */
   labels?: string[];
+  /** Of the keys of its labels, those whose colour was chosen, and the colour by name. */
+  tints?: Record<string, string>;
   /** The start of the detail, under the name, on a board whose workshop shows it (see `Format.describes`). */
   blurb?: string[];
   /** Drawn in outline (see `Format.look`): the colour of its kind on a light page and on a dark one. */
@@ -97,6 +100,8 @@ export interface Scene {
 export interface View {
   span?: number;
   folded?: ReadonlySet<string>;
+  /** Per key of label, the colour chosen for it in the project. */
+  colours?: Chosen;
 }
 /** The width alone, or all the page gives. */
 export type Seen = number | View | undefined;

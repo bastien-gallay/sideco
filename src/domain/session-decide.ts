@@ -9,7 +9,7 @@ import type { SidecoEvent, Todo } from "./events.ts";
 import { noBoard } from "./guards.ts";
 import { findBoard, findSession, type Workspace } from "./workspace.ts";
 
-export type SessionCommand = Exclude<Command, { board: string }>;
+export type SessionCommand = Exclude<Command, { board: string } | { kind: "colour-label" }>;
 
 export function decideOnSession(ws: Workspace, cmd: SessionCommand, ctx: Context): SidecoEvent[] {
   if (!ctx.session) throw new CommandError(`\`${cmd.kind}\` needs a session`);

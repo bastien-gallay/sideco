@@ -4201,6 +4201,61 @@ describe("labels on a card, from the page", () => {
     await until("the keyboard back in the field", async () => (await active()) === "field");
     await page.keyboard.press("Escape");
   });
+
+  test("the colour of a label's key is chosen in the panel, for every card that wears it (S328)", async () => {
+    const [fix, feat] = await agent(
+      [
+        'board new "Couleurs" --format kanban --id couleurs',
+        'add task "Corriger" --lane todo',
+        'add task "Livrer" --lane todo',
+      ].join("\n"),
+    );
+    await agent(`label ${fix} type:bug --board couleurs\nlabel ${feat} type:feature --board couleurs`);
+    await page.locator(".board-picker select").selectOption("couleurs");
+    const chipFill = (id: string) =>
+      card(id)
+        .locator(".card-chip rect")
+        .first()
+        .evaluate((r) => r.getAttribute("fill"));
+    const TEAL = "#D6F2F0";
+    expect(await chipFill(fix)).not.toBe(TEAL);
+    await card(fix).click();
+    await page.getByRole("tab", { name: "Detail" }).click();
+    // The dot of a chip opens the eight colours of its key; none is pressed while chance decides.
+    const dot = page.getByRole("button", { name: "Colour of the “type” labels" });
+    await dot.click();
+    const row = page.getByRole("group", { name: "Colour of the “type” labels, on every board" });
+    await row.waitFor({ state: "visible" });
+    expect(await row.getByRole("button").count()).toBe(9);
+    expect(await row.locator('[aria-pressed="true"]').textContent()).toBe("Auto");
+    await row.getByRole("button", { name: "teal" }).click();
+    // Every card that wears the key takes the colour, the chip in the panel too; the row is put away.
+    await until(
+      "both cards in teal",
+      async () => (await chipFill(fix)) === TEAL && (await chipFill(feat)) === TEAL,
+    );
+    await row.waitFor({ state: "hidden" });
+    expect((await workspace()).colours).toEqual({ type: "teal" });
+    await until("the chip of the panel in teal", async () =>
+      ((await page.locator(".card-panel-labels .label-chip").first().getAttribute("style")) ?? "").includes(
+        TEAL,
+      ),
+    );
+    await until("the keyboard back on the dot", async () =>
+      page.evaluate(() => document.activeElement?.classList.contains("label-colour") ?? false),
+    );
+    // Opened again, the colour chosen is the one pressed; Escape puts the row away and keeps the card chosen.
+    await page.keyboard.press("Enter");
+    await row.waitFor({ state: "visible" });
+    expect(await row.locator('[aria-pressed="true"]').getAttribute("aria-label")).toBe("teal");
+    await shot("70-label-colours");
+    await page.keyboard.press("Escape");
+    await row.waitFor({ state: "hidden" });
+    expect(await card(fix).evaluate((g) => g.classList.contains("is-selected"))).toBe(true);
+    // Claude chooses from the terminal: the page follows. Auto gives the key back to chance.
+    await agent("colour type auto");
+    await until("chance again", async () => (await chipFill(fix)) !== TEAL);
+  });
 });
 
 describe("the card chosen, through a reload", () => {

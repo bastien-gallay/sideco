@@ -33,6 +33,8 @@ import {
 import type { Todo } from "./events.ts";
 import { type BoardId, isBoardId } from "./ids.ts";
 
+import { LABEL_COLOUR_NAMES, type LabelColourName } from "./render/labels.ts";
+
 export { CommandError, LIMITS, referredName };
 
 export type Command =
@@ -111,6 +113,8 @@ export type Command =
   | { kind: "undo"; board: string; ifChanged?: "overwrite" | "keep" }
   /** Puts back what the caller's last undo took. */
   | { kind: "redo"; board: string }
+  /** Every label of this key wears this colour, on every board; without one, the colour chance gave it. */
+  | { kind: "colour-label"; key: string; colour?: LabelColourName }
   | { kind: "session-start"; cwd?: string }
   | { kind: "name-session"; name: string }
   /** The session takes these boards, or lets go of them: it is told what the human changes on the boards it follows. */
@@ -332,6 +336,12 @@ export function parseCommand(input: unknown): Command {
       };
     case "redo":
       return { kind, board: boardId(f) };
+    case "colour-label":
+      return {
+        kind,
+        key: text(f, "key", LIMITS.label),
+        colour: optional(f, "colour", (x, k) => oneOf(x, k, LABEL_COLOUR_NAMES)),
+      };
     case "name-session":
       return { kind, name: text(f, "name", LIMITS.sessionName) };
     case "session-start":

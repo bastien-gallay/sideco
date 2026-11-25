@@ -120,5 +120,7 @@ export interface Workspace {
   follows: Record<string, string[]>;
   /** Per session, the boards it let go of: not for it, even when nobody else follows them. */
   left: Record<string, string[]>;
+  /** Per key of label, the colour chosen for it by name (S328); a key without one is coloured by chance. */
+  colours?: Record<string, string>;
   seq: number;
 }

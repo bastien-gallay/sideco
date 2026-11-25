@@ -3,7 +3,7 @@
  * thinking, running a tool, waiting, ended; and the boards each follows.
  * Folded by `apply` in workspace.ts, the one place a projection changes.
  */
-import type { Recorded, Todo } from "./events.ts";
+import type { ProjectEvent, Recorded, Todo } from "./events.ts";
 import { handledAll } from "./handled-all.ts";
 import { findBoard, findSession, type Workspace } from "./workspace.ts";
 
@@ -54,7 +54,7 @@ function without(list: readonly string[] | undefined, boards: readonly string[])
 }
 
 /** A session event, with the session it belongs to. */
-export type SessionRecorded = Exclude<Recorded, { board: string }> & { session: string };
+export type SessionRecorded = Exclude<Recorded, { board: string } | ProjectEvent> & { session: string };
 
 export function applyToSession(ws: Workspace, e: SessionRecorded): void {
   let session = ws.sessions.find((s) => s.id === e.session);

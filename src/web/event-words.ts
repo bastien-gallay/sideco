@@ -195,8 +195,24 @@ function english(e: Recorded, to: string, lane: LaneCalled): string {
       return "Session ended";
     case "ChangesDelivered":
       return "Claude read your changes";
+    case "LabelColoured":
+      return e.colour
+        ? `${does("colour")} the “${e.key}” labels ${e.colour}`
+        : `${does("give")} the “${e.key}” labels their own colour back`;
   }
 }
+
+/** The eight colours of a label, as French says them. */
+const COULEURS: Record<string, string> = {
+  blue: "bleu",
+  green: "vert",
+  purple: "violet",
+  orange: "orange",
+  teal: "sarcelle",
+  pink: "rose",
+  olive: "olive",
+  grey: "gris",
+};
 
 function french(e: Recorded, to: string, lane: LaneCalled): string {
   const you = e.actor === "human";
@@ -323,6 +339,10 @@ function french(e: Recorded, to: string, lane: LaneCalled): string {
       return "Session terminée";
     case "ChangesDelivered":
       return "Claude a lu tes changements";
+    case "LabelColoured":
+      return e.colour
+        ? `${verb("colores", "colore")} les labels « ${e.key} » en ${COULEURS[e.colour] ?? e.colour}`
+        : `${verb("rends", "rend")} leur couleur aux labels « ${e.key} »`;
   }
 }
 

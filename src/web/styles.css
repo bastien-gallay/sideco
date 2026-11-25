@@ -2715,6 +2715,54 @@ legend {
   cursor: pointer;
 }
 
+/* The dot before a chip's words opens the colours of its key; they stand under the chips, a round each. */
+.label-colour {
+  box-sizing: content-box;
+  width: 8px;
+  height: 8px;
+  margin: 0 2px 0 -2px;
+  padding: 0;
+  border: 7px solid transparent;
+  border-radius: 50%;
+  background-clip: content-box;
+  cursor: pointer;
+}
+
+.label-colour:hover,
+.label-colour:focus-visible,
+.label-colour[aria-expanded="true"] {
+  border-color: rgb(0 0 0 / 0.1);
+}
+
+.label-colours {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.label-swatch {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgb(0 0 0 / 0.15);
+  border-radius: 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.label-swatch-auto {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.label-swatch[aria-pressed="true"] {
+  outline: 2px solid currentcolor;
+  outline-offset: 1px;
+}
+
 /* The chip's own words are the button that filters by it: it looks like the chip it is. */
 .label-filter-by {
   min-height: 22px;

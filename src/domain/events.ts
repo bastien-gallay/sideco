@@ -167,7 +167,15 @@ export type SessionEvent =
   | { event: "SessionEnded" }
   | { event: "ChangesDelivered"; upTo: number };
 
-export type SidecoEvent = BoardEvent | SessionEvent;
+/** What is true of the whole project, on every board: kept with the boards' history, and names no board. */
+export type ProjectEvent = {
+  /** Every label of this key wears this colour, one of the eight by name; without one, chance again. */
+  event: "LabelColoured";
+  key: string;
+  colour?: string;
+};
+
+export type SidecoEvent = BoardEvent | SessionEvent | ProjectEvent;
 
 export type EventName = SidecoEvent["event"];
 
@@ -235,10 +243,20 @@ const SESSION_EVENTS: ReadonlySet<string> = new Set<SessionEvent["event"]>([
   "ChangesDelivered",
 ]);
 
+const PROJECT_EVENTS: ReadonlySet<string> = new Set<ProjectEvent["event"]>(["LabelColoured"]);
+
 export function isBoardEvent(e: SidecoEvent): e is BoardEvent {
   return BOARD_EVENTS.has(e.event);
 }
 
+/** The design history, meant to be committed: what happened on a board, and what is true of the project. */
+export function isDesignEvent(e: SidecoEvent): e is BoardEvent | ProjectEvent {
+  return BOARD_EVENTS.has(e.event) || PROJECT_EVENTS.has(e.event);
+}
+
 export function isKnownEvent(name: unknown): name is EventName {
-  return typeof name === "string" && (BOARD_EVENTS.has(name) || SESSION_EVENTS.has(name));
+  return (
+    typeof name === "string" &&
+    (BOARD_EVENTS.has(name) || SESSION_EVENTS.has(name) || PROJECT_EVENTS.has(name))
+  );
 }

@@ -273,10 +273,10 @@ async function run(verb: string, rest: string[]): Promise<number> {
     return 0;
   }
   if (!BOARD_VERBS.has(verb)) throw new UsageError(`unknown command "${verb}" (try \`sideco help\`)`);
-  // `board new` and `board rm` name their board themselves, and `session name` is on none: no default applies.
+  // `board new` and `board rm` name their board themselves; `session name` and `colour` are on none: no default applies.
   const action = boardAction(
     [verb, ...rest.filter((_token, i) => !isGlobalFlag(rest, i))],
-    verb === "board" || verb === "session" ? undefined : defaultBoard(read(), args, true),
+    BOARDLESS.has(verb) ? undefined : defaultBoard(read(), args, true),
   );
   const { kind, board } = action.command;
   if ((kind === "undo" || kind === "redo") && typeof board === "string")
@@ -287,6 +287,9 @@ async function run(verb: string, rest: string[]): Promise<number> {
   console.log(outcome(action, done, server.url));
   return 0;
 }
+
+/** The verbs sent as a board's are, that are of no board, or name theirs themselves. */
+const BOARDLESS: ReadonlySet<string> = new Set(["board", "session", "colour"]);
 
 /** What one board command prints: the thing the caller needs next. */
 function outcome(action: Action, done: Posted, url: string): string {

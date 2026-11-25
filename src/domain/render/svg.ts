@@ -281,7 +281,7 @@ function labelsMarkup(c: Card): string {
       text = `${text.slice(0, keep)}…`;
     }
     chips.push(
-      `<g class="card-chip" data-label="${esc(label)}">${chip(x, top, text, labelColours(label))}</g>`,
+      `<g class="card-chip" data-label="${esc(label)}">${chip(x, top, text, labelColours(label, c.tints))}</g>`,
     );
     x += width(text) + CHIP_GAP;
   }

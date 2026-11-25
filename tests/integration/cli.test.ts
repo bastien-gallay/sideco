@@ -367,6 +367,27 @@ describe("Claude Code hooks, through stdin as Claude Code calls them", () => {
     expect((await sideco(["status"])).out).toContain("session    atelier is");
   });
 
+  test("the colour of a label's key is chosen from the terminal, with no board to name (S328)", async () => {
+    // With several boards, the colour of a key needs none of them: it is the project's.
+    await sideco(["board", "new", "Second tableau", "--format", "kanban", "--id", "second"]);
+    const coloured = await sideco(["colour", "type", "teal"]);
+    expect(coloured.err).toBe("");
+    expect(coloured.code).toBe(0);
+    // On a board of its own: writing on the other would make this shell the one its hand-overs are for.
+    const task = (
+      await sideco(["add", "task", "Corriger", "--lane", "todo", "--board", "second"])
+    ).out.trim();
+    await sideco(["label", task, "type:bug", "--board", "second"]);
+    expect((await sideco(["labels"])).out.trim().split("\n").at(-1)).toBe("colours  type teal");
+    expect((await sideco(["export", "second", "--format", "svg"])).out).toContain('fill="#D6F2F0"');
+    const refused = await sideco(["colour", "type", "red"]);
+    expect(refused.code).not.toBe(0);
+    expect(refused.err).toContain("must be one of: blue, green");
+    await sideco(["colour", "type", "auto"]);
+    expect((await sideco(["labels"])).out).not.toContain("colours");
+    await sideco(["board", "rm", "second"]);
+  });
+
   test("tool calls and the end of the turn land in the session, visible in status", async () => {
     await hook({
       hook_event_name: "PreToolUse",

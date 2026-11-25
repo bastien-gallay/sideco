@@ -4,11 +4,12 @@
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { isBoardEvent, isKnownEvent, type Recorded } from "../domain/events.ts";
+import { isDesignEvent, isKnownEvent, type Recorded } from "../domain/events.ts";
 import type { Journal } from "./hub.ts";
 
 /**
- * Two files, one order. Board events go to `boards.jsonl`, which is meant to be
+ * Two files, one order. Board events, and what is true of the whole project (the
+ * colour of a label's key), go to `boards.jsonl`, which is meant to be
  * committed: it is the design history. Session events (prompts, commands run) go
  * to `sessions.jsonl`, which stays on this machine. `seq` orders them together.
  */
@@ -22,10 +23,10 @@ export function openJournal(dir: string): Journal {
     append(events) {
       if (events.length === 0) return;
       mkdirSync(dir, { recursive: true });
-      write(boards, events.filter(isBoardEvent));
+      write(boards, events.filter(isDesignEvent));
       write(
         sessions,
-        events.filter((e) => !isBoardEvent(e)),
+        events.filter((e) => !isDesignEvent(e)),
       );
     },
   };

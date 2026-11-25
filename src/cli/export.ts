@@ -18,7 +18,11 @@ export function exportOne(ws: Workspace, args: Args, locale: Locale): number {
   const board = chooseBoard(ws, args.positional[0] ?? args.flags.get("board"));
   const format = EXPORT_FORMATS.find((f) => f === (args.flags.get("format") ?? "md"));
   if (!format) throw new UsageError(`--format is one of: ${EXPORT_FORMATS.join(", ")}`);
-  const text = exportBoard(board, format, { exportedAt: new Date().toISOString(), locale });
+  const text = exportBoard(board, format, {
+    exportedAt: new Date().toISOString(),
+    locale,
+    colours: ws.colours,
+  });
   const out = args.flags.get("out");
   if (out) {
     writeFileSync(out, text);
@@ -32,7 +36,7 @@ export function exportOne(ws: Workspace, args: Args, locale: Locale): number {
 /** Writes every board as a static site, and says where. */
 export async function publish(root: string, ws: Workspace, args: Args, locale: Locale): Promise<number> {
   const out = resolve(args.flags.get("out") ?? join(dataDir(root), "site"));
-  const meta = { exportedAt: new Date().toISOString(), locale };
+  const meta = { exportedAt: new Date().toISOString(), locale, colours: ws.colours };
   mkdirSync(out, { recursive: true });
   for (const board of ws.boards) {
     for (const format of EXPORT_FORMATS) {

@@ -29,10 +29,15 @@ export function describeLabels(ws: Workspace, only?: string): string {
         found.set(label.toLowerCase(), entry);
       }
   if (found.size === 0) return only === undefined ? "no label yet" : `no label ${only}`;
-  return [...found.values()]
+  const listed = [...found.values()]
     .sort((a, b) => a.label.localeCompare(b.label))
-    .map(({ label, cards }) => `${label}  ${cards.length}  ${cards.join(" · ")}`)
-    .join("\n");
+    .map(({ label, cards }) => `${label}  ${cards.length}  ${cards.join(" · ")}`);
+  // The keys given a colour (S328), last: those left to chance are not said.
+  const coloured = Object.entries(ws.colours ?? {})
+    .filter(([key]) => fits(key))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, colour]) => `${key} ${colour}`);
+  return [...listed, ...(coloured.length > 0 ? [`colours  ${coloured.join(" · ")}`] : [])].join("\n");
 }
 
 /** One line per card found, its board and id first, then where the words were when not in its name. */

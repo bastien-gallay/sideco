@@ -9,6 +9,7 @@ import { columnAfterMove } from "./columns.ts";
 import type { Recorded } from "./events.ts";
 import { LANE_PREFIX, lanesOf, SLICE_PREFIX } from "./formats.ts";
 import { handledAll } from "./handled-all.ts";
+import { applyToProject } from "./label-colour.ts";
 import { hasLabel, sameLabel } from "./labels.ts";
 import { remember } from "./minting.ts";
 import type { Board, Element, Workspace } from "./model.ts";
@@ -47,7 +48,8 @@ export function apply(ws: Workspace, e: Recorded): void {
     applyToBoard(ws, e);
     // Writing on a board is following it.
     if (e.session && e.actor === "agent") follow(ws, e.session, [e.board]);
-  } else if (e.session) applyToSession(ws, e as SessionRecorded);
+  } else if (e.event === "LabelColoured") applyToProject(ws, e);
+  else if (e.session) applyToSession(ws, e as SessionRecorded);
 }
 
 function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): void {

@@ -51,12 +51,13 @@ const foldedOn = (board: string): string[] => {
  * sight.
  */
 export function seen(board: Board | undefined, span: number | undefined): View {
-  if (!board) return { span };
+  const colours = state.live.colours;
+  if (!board) return { span, colours };
   const folded = foldedOn(board.id);
   const held = document.activeElement?.closest<SVGGElement>("g.card")?.dataset.id;
   const lanes = stillFolded(board, folded, [state.selected, held]);
   if (lanes !== folded) keep(board.id, lanes);
-  return { span, folded: new Set(lanes) };
+  return { span, folded: new Set(lanes), colours };
 }
 
 /** Folds the lane, or opens it folded. Folding the column of the card chosen lets the card go: it is put away. */

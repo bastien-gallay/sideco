@@ -8,7 +8,7 @@
  */
 import type { Locale } from "../domain/i18n.ts";
 import { hasLabel, sameLabel } from "../domain/labels.ts";
-import { chipText, labelColours } from "../domain/render/labels.ts";
+import { type Chosen, chipText, labelColours } from "../domain/render/labels.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h, region } from "./dom.ts";
 import { locale } from "./locale.ts";
@@ -102,8 +102,8 @@ export function mountLabelFilter(canvas: HTMLElement, on: typeof hooks): void {
   });
 }
 
-const paintBar = region(filterBar, (m: { label: string; count: string }) => {
-  const { fill, ink } = labelColours(m.label);
+const paintBar = region(filterBar, (m: { label: string; count: string; colours?: Chosen }) => {
+  const { fill, ink } = labelColours(m.label, m.colours);
   return [
     h(
       "span",
@@ -124,7 +124,8 @@ const paintBar = region(filterBar, (m: { label: string; count: string }) => {
 export function paintLabelFilter(board: Board | undefined, canvas: HTMLElement): void {
   const by = board ? label : undefined;
   filterBar.hidden = by === undefined;
-  if (board && by !== undefined) paintBar({ label: by, count: count(board, by) });
+  if (board && by !== undefined)
+    paintBar({ label: by, count: count(board, by), colours: state.live.colours });
   const worn = new Set(
     board && by !== undefined ? board.elements.filter((e) => hasLabel(e, by)).map((e) => e.id) : [],
   );

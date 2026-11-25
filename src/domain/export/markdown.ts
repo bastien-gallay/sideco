@@ -15,6 +15,8 @@ export interface ExportMeta {
   exportedAt: string;
   /** The language of the document; English when absent. */
   locale?: Locale;
+  /** Per key of label, the colour chosen for it in the project: the drawing wears it. */
+  colours?: Readonly<Record<string, string>>;
 }
 
 export function toMarkdown(board: Board, meta: ExportMeta): string {
