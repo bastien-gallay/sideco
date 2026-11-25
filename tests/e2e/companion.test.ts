@@ -2308,6 +2308,29 @@ describe("the chosen card, read in the right panel", () => {
     await until("wide again, the panel is open", async () => !(await foldedRight()));
   });
 
+  test("in a narrow window, stepping down in History with a card chosen keeps the panel open and the keyboard in it (T294)", async () => {
+    await page.locator("#tab-session").click();
+    await page.setViewportSize({ width: 1024, height: 800 });
+    try {
+      await until("the narrow window folds the panel", foldedRight);
+      await card(placed).click();
+      await until("the panel unfolds for the card", async () => !(await foldedRight()));
+      await page.locator("#tab-history").click();
+      const firstMoment = page.locator(".history-list button").first();
+      await firstMoment.waitFor({ state: "visible" });
+      await firstMoment.focus();
+      await page.keyboard.press("ArrowDown");
+      await until("the history stepped to the past", () => page.locator(".banner").isVisible());
+      expect(await foldedRight()).toBe(false);
+      expect(await page.evaluate(() => document.activeElement?.closest(".history-list") !== null)).toBe(true);
+    } finally {
+      const back = page.locator(".banner button");
+      if (await back.isVisible()) await back.click();
+      await page.setViewportSize({ width: 1440, height: 900 });
+    }
+    await until("wide again, the panel is open", async () => !(await foldedRight()));
+  });
+
   test("a card chosen from Notes or History leaves the reader there; from Session it opens Detail, then gives Session back", async () => {
     const on = async (id: string) =>
       (await page.locator(`#tab-${id}`).getAttribute("aria-selected")) === "true";

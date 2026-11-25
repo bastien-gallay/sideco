@@ -193,6 +193,8 @@ function chooseTab(id: Tab, focus = false): void {
   if (tabButtons[id].getAttribute("aria-disabled") === "true") return;
   tab = id;
   tabBack = undefined;
+  // The reader chose a tab of their own: leaving a card later must not fold the panel under them (T294).
+  unfoldedForCard = false;
   if (isFolded("right")) toggleFold("right");
   paintTabs();
   if (focus) tabButtons[id].focus();
@@ -298,8 +300,8 @@ let historyShown = HISTORY_PAGE;
 historyList.addEventListener("keydown", (event) => {
   if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
   event.preventDefault();
-  step(event.key === "ArrowUp" ? 1 : -1);
   keepHistoryFocus = true;
+  step(event.key === "ArrowUp" ? 1 : -1);
 });
 /** The list is repainted under the keyboard: it goes back to the moment shown. */
 let keepHistoryFocus = false;
@@ -1190,8 +1192,7 @@ const paintVisit = region(visitBar, (m: { count: number; cards: number }) =>
               type: "button",
               class: "quiet",
               onclick: () => {
-                tab = "history";
-                if (isFolded("right")) toggleFold("right");
+                chooseTab("history");
                 render();
               },
             },
@@ -1412,7 +1413,7 @@ function render(): void {
       paintFolds();
     }
   }
-  if (!chosen && unfoldedForCard && narrowFolds) {
+  if (!chosen && tab === "detail" && unfoldedForCard && narrowFolds) {
     narrowFolds.right = true;
     unfoldedForCard = false;
     paintFolds();
