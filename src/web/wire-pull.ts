@@ -155,7 +155,10 @@ class Pull {
     const held = this.wire;
     if (!held) return;
     const { grip, target } = held;
+    const pulled = held.pointer !== undefined;
     this.letGo(!target);
+    // A dot pressed and not pulled asked for nothing: nothing is said.
+    if (!pulled) return;
     const said = grip.said(target);
     if (target) void grip.pulled(target).then((ok) => ok && this.hooks.say(said));
     else this.hooks.say(said);

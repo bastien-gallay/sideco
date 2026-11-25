@@ -47,6 +47,14 @@ test("on a card, each letter has its gesture, in either case", () => {
   expect(cardKey(key("x"))).toBeUndefined();
 });
 
+test("on a card, a letter held with Ctrl, ⌘ or Alt is the browser's: its bookmark, its address bar, its new tab", () => {
+  for (const letter of ["d", "l", "n", "e", "t"]) {
+    expect(cardKey(key(letter, { ctrlKey: true }))).toBeUndefined();
+    expect(cardKey(key(letter, { metaKey: true }))).toBeUndefined();
+    expect(cardKey(key(letter, { altKey: true }))).toBeUndefined();
+  }
+});
+
 test("on a card, a key with a name is read as the keyboard spells it", () => {
   expect(cardKey(key("f2"))).toBeUndefined();
   expect(cardKey(key("delete"))).toBeUndefined();

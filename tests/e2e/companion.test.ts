@@ -2802,6 +2802,8 @@ describe("the spotlight on links (S325)", () => {
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await page.mouse.down();
       await page.mouse.move(to.x, to.y, { steps: 6 });
+      // The wire is laid: what follows is said of a pull under way, not of a press that did nothing.
+      await page.locator("g.link-ends g.link-wire path[d]").first().waitFor({ state: "attached" });
     };
     const inside = async (id: string) => {
       const box = await card(id).boundingBox();
@@ -3137,8 +3139,13 @@ describe("a flow's branches named from the page", () => {
         const point = new DOMPoint(at.x, at.y).matrixTransform(path.getScreenCTM() ?? undefined);
         return { x: point.x, y: point.y };
       });
-    // Near its arrow too, where the first click lays the end of the link picked under the second (S350).
-    await page.mouse.dblclick(middle.x, middle.y);
+    // Near its arrow too, where the first click lays the end of the link picked under the second (S350),
+    // and by a hand that trembles: two pixels between press and release are not a pull.
+    await page.mouse.click(middle.x, middle.y);
+    await page.mouse.move(middle.x, middle.y);
+    await page.mouse.down({ clickCount: 2 });
+    await page.mouse.move(middle.x + 2, middle.y + 1);
+    await page.mouse.up({ clickCount: 2 });
     await typeInEditor("en rupture");
     await named(stock, order).waitFor();
     expect(await named(stock, order).textContent()).toBe("en rupture");

@@ -22,6 +22,9 @@ export interface LabelsModel {
 /** How the page speaks to a screen reader: set by the panel each time it paints. */
 let speak: (words: string) => void = () => {};
 
+/** The card whose labels the panel shows: what the field adds goes to that one. */
+let shownFor: string | undefined;
+
 /** What the page does when the keyboard leaves the field by Escape: set by main.ts, which knows the board. */
 let left: () => void = () => {};
 export function onLabelsLeft(then: () => void): void {
@@ -57,7 +60,8 @@ labelField.addEventListener("keydown", (event) => {
     .map((label) => label.trim())
     .filter(Boolean);
   const board = currentBoard();
-  const id = state.selected;
+  // The card the panel shows, not the one chosen: while a detail is written, they may differ.
+  const id = shownFor;
   if (!board || !id || labels.length === 0 || !isLive()) return;
   void send({ kind: "label", board: board.id, id, labels }).then((done) => {
     if (done === undefined) return;
@@ -88,6 +92,7 @@ export function projectLabels(): string[] {
 /** The labels of the chosen card: its chips, then, live, the field that adds one, offering the project's others. */
 export function labelSection(m: LabelsModel, speaker: (words: string) => void): HTMLElement | false {
   speak = speaker;
+  shownFor = m.id;
   if (m.labels.length === 0 && !m.live) return false;
   knownLabels.replaceChildren(
     ...m.known

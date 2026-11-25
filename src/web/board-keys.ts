@@ -38,7 +38,7 @@ function held(e: Keyed): "none" | "shift" | "alt" | undefined {
   return e.shiftKey ? "shift" : e.altKey ? "alt" : "none";
 }
 
-/** The gestures a card has on one key, whatever is held with it; a letter in either case. */
+/** The gestures a card has on one key: a named key whatever is held with it, a letter in either case. */
 const CARD: Record<string, CardKey> = {
   F2: { ask: "rename" },
   " ": { ask: "choose" },
@@ -51,6 +51,15 @@ const CARD: Record<string, CardKey> = {
   t: { ask: "label" },
 };
 
+/** The gesture of a card on this key, if it has one. */
+function gesture(e: Keyed): CardKey | undefined {
+  const letter = e.key.length === 1 && e.key !== " ";
+  // A letter held with Ctrl, ⌘ or Alt is a chord of the browser, not a gesture of the card.
+  if (letter && (e.ctrlKey || e.metaKey || e.altKey)) return undefined;
+  const key = letter ? e.key.toLowerCase() : e.key;
+  return Object.hasOwn(CARD, key) ? CARD[key] : undefined;
+}
+
 /** What a key asks with the keyboard on a card; undefined for a key that is not the board's. */
 export function cardKey(e: Keyed): CardKey | undefined {
   const direction = ARROWS[e.key];
@@ -61,8 +70,7 @@ export function cardKey(e: Keyed): CardKey | undefined {
   if (direction && chord === "alt") return { ask: "beside", direction };
   // ⌘↵ or Ctrl+Enter is the page's: it sends to Claude, whatever holds the keyboard.
   if (e.key === "Enter") return e.metaKey || e.ctrlKey ? undefined : { ask: "rename" };
-  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-  return Object.hasOwn(CARD, key) ? CARD[key] : undefined;
+  return gesture(e);
 }
 
 function laneArrow(direction: Direction, e: Keyed): LaneKey | undefined {
