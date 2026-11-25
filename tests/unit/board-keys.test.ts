@@ -45,6 +45,12 @@ test("on a card, each letter has its gesture, in either case", () => {
   expect(cardKey(key("x"))).toBeUndefined();
 });
 
+test("on a card, a key with a name is read as the keyboard spells it", () => {
+  expect(cardKey(key("f2"))).toBeUndefined();
+  expect(cardKey(key("delete"))).toBeUndefined();
+  expect(cardKey(key("BACKSPACE"))).toBeUndefined();
+});
+
 test("on a lane's name, the arrows alone read: to the next name, or down to its cards", () => {
   expect(laneKey(key("ArrowRight"))).toEqual({ ask: "to-lane", by: 1, reads: true });
   expect(laneKey(key("ArrowLeft"))).toEqual({ ask: "to-lane", by: -1, reads: true });

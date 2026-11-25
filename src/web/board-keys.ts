@@ -38,12 +38,12 @@ function held(e: Keyed): "none" | "shift" | "alt" | undefined {
   return e.shiftKey ? "shift" : e.altKey ? "alt" : "none";
 }
 
-/** The gestures a card has on one key, whatever is held with it. */
+/** The gestures a card has on one key, whatever is held with it; a letter in either case. */
 const CARD: Record<string, CardKey> = {
-  f2: { ask: "rename" },
+  F2: { ask: "rename" },
   " ": { ask: "choose" },
-  delete: { ask: "remove" },
-  backspace: { ask: "remove" },
+  Delete: { ask: "remove" },
+  Backspace: { ask: "remove" },
   d: { ask: "done" },
   l: { ask: "link" },
   n: { ask: "note" },
@@ -60,7 +60,7 @@ export function cardKey(e: Keyed): CardKey | undefined {
   if (direction && chord === "alt") return { ask: "beside", direction };
   // ⌘↵ or Ctrl+Enter is the page's: it sends to Claude, whatever holds the keyboard.
   if (e.key === "Enter") return e.metaKey || e.ctrlKey ? undefined : { ask: "rename" };
-  const key = e.key.toLowerCase();
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   return Object.hasOwn(CARD, key) ? CARD[key] : undefined;
 }
 
