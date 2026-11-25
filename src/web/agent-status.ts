@@ -49,7 +49,7 @@ export function agentStatus(
   }
 }
 
-/** The status the header shows. A save still waiting says so first: the human's words are on their way, not lost. */
+/** The status the foot of the page shows. A save still waiting says so first: the human's words are on their way, not lost. */
 export function shownStatus(
   status: Status,
   link: { connected: boolean; saving: boolean },

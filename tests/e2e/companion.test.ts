@@ -2250,6 +2250,21 @@ describe("Claude waits for the human", () => {
     expect(await pill().evaluate((button) => button.closest("footer .bottom-claude") !== null)).toBe(true);
     expect(await page.locator("footer .bottom-claude .status").count()).toBe(1);
     expect(await page.locator("header .status, header .waits, header .session-picker").count()).toBe(0);
+    // In a window of middling width, what Claude does shortens: Send to Claude stays whole and in the window.
+    await page.setViewportSize({ width: 1100, height: 800 });
+    try {
+      const fits = await page.evaluate(() => {
+        const send = document.querySelector(".pass button")?.getBoundingClientRect();
+        const group = document.querySelector(".bottom-claude")?.getBoundingClientRect();
+        const foot = document.querySelector("footer.bottom")?.getBoundingClientRect();
+        return (
+          !!send && !!group && !!foot && send.right <= window.innerWidth && group.width <= foot.width * 0.41
+        );
+      });
+      expect(fits).toBe(true);
+    } finally {
+      await page.setViewportSize({ width: 1440, height: 900 });
+    }
     await shot("22-claude-waits");
 
     await pill().click();

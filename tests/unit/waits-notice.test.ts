@@ -1,5 +1,5 @@
 /**
- * What the header and the tab of the browser say while Claude waits: a hand-over
+ * What the foot of the page and the tab of the browser say while Claude waits: a hand-over
  * the human answers when they wish, or Claude blocked, listening for the answer.
  */
 import { describe, expect, test } from "bun:test";

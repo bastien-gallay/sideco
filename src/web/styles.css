@@ -236,11 +236,6 @@ input[type="text"] {
   min-width: 0;
 }
 
-/* No session yet, and none to choose: the group takes no room. */
-.bottom-claude:not(:has(> :not(:empty))) {
-  display: none;
-}
-
 .brand {
   font-size: 15px;
   font-weight: 600;
@@ -356,7 +351,7 @@ input[type="text"] {
   }
 }
 
-/* Claude waits for you: said beside the zoom, on whatever board you are. Empty, it takes no room. */
+/* Claude waits for you: said beside what Claude does, on whatever board you are. Empty, it takes no room. */
 .waits {
   flex: none;
 }
@@ -2261,7 +2256,8 @@ legend {
 .bottom {
   grid-row: 4;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  /* What Claude does takes two fifths at most, and shortens: what is said to Claude keeps its room. */
+  grid-template-columns: fit-content(40%) minmax(0, 1fr);
   align-items: center;
   gap: 24px;
   padding: 8px 14px;
@@ -2573,10 +2569,6 @@ legend {
     --left: 196px;
   }
 
-  /*
-   * The session panel is gone: the status at the foot is all that says what Claude does.
-   * It gets a row of its own, over what is said to Claude, rather than the room that leaves it.
-   */
   .top {
     flex-wrap: wrap;
     row-gap: 6px;
@@ -2597,9 +2589,18 @@ legend {
     min-width: 44px;
   }
 
+  /*
+   * The session panel is gone: the status at the foot is all that says what Claude does.
+   * It gets a row of its own, over what is said to Claude, rather than the room that leaves it.
+   */
   .bottom {
     grid-template-columns: minmax(0, 1fr);
     gap: 8px;
+  }
+
+  /* The foot is taller by the row of the status: what the page says stays over it. */
+  .notices-bottom {
+    bottom: 132px;
   }
 
   .turn {

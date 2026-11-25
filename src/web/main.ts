@@ -333,7 +333,7 @@ const turnBar = h(
       onsubmit: (event: Event) => {
         event.preventDefault();
         if (!passOn) return;
-        // The turn goes to the session the page tells about: the one chosen at the top, else the board's.
+        // The turn goes to the session the page tells about: the one chosen at the foot, else the board's.
         const to = shownSession(state.live, passOn, state.sessionId ?? undefined);
         void send({
           kind: "pass",
