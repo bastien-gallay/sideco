@@ -56,6 +56,8 @@ export function mountPageKeys(on: PageKeys): void {
     if (event.altKey || typing(event.target)) return;
     const held = event.ctrlKey || event.metaKey;
     const act = held ? chord(event.key.toLowerCase(), event.shiftKey, on) : plain(event.key, on);
+    // A key held down points once: each repeat would put the card in and out again.
+    if (event.repeat && act === on.focus) return void event.preventDefault();
     if (act && act() !== false) event.preventDefault();
   });
 }

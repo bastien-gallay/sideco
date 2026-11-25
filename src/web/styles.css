@@ -1867,7 +1867,7 @@ kbd {
 }
 
 /* Each action in view is a drawing (S329): a square of 28 px, its word kept for a screen reader. */
-.card-tools > button {
+.card-tools > button:has(> .tools-icon) {
   display: inline-grid;
   place-items: center;
   min-width: 28px;
@@ -1888,9 +1888,14 @@ kbd {
   white-space: nowrap;
 }
 
-/* The card has a detail: the page is drawn in the accent, as a tab chosen is. */
+/* The card has a detail: its page is filled, and in the accent, so the colour is not alone to say it. */
 .card-tools > button.has-detail {
-  color: var(--accent);
+  color: var(--accent-text);
+}
+
+.card-tools > button.has-detail rect {
+  fill: currentcolor;
+  fill-opacity: 0.22;
 }
 
 /* Its ⋯: a quiet summary in the bar, its list under it, or above it low on the board. */

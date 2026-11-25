@@ -259,6 +259,10 @@ describe("the agent writes, the page follows", () => {
     await detail.getByRole("button", { name: "Take out of the focus (F)" }).click();
     await until("one card in focus again", async () => (await focus())?.ids.join() === a);
     await detail.getByRole("button", { name: "Put in the focus (F)" }).waitFor();
+    // Pressed, the button is drawn again with its other word, and the keyboard is still on it.
+    await until("the keyboard on the button", () =>
+      page.evaluate(() => document.activeElement?.classList.contains("focus-toggle") ?? false),
+    );
     // The link of the focus: the card pointed at, when it is one.
     await page.evaluate(() => {
       Object.defineProperty(navigator, "clipboard", {
@@ -275,6 +279,8 @@ describe("the agent writes, the page follows", () => {
     await bar.locator("button", { hasText: "Put aside" }).click();
     await until("nothing dimmed", async () => !(await has(c, "is-dim")) && !(await has(a, "is-focus")));
     expect(await bar.textContent()).toContain("Focus put aside: 1 card");
+    // The button pressed is gone: the keyboard is on the one that took its place.
+    expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Show it");
     expect((await focus())?.ids).toEqual([a]);
     await shot("71-focus-aside");
     await bar.locator("button", { hasText: "Show it" }).click();
@@ -283,6 +289,20 @@ describe("the agent writes, the page follows", () => {
     await bar.locator("button", { hasText: "Put aside" }).click();
     await agent(`focus ${b} --why "Autre" --board viser`);
     await until("the new focus shown", async () => has(b, "is-focus"));
+    // A focus put aside, lifted, then set again just the same, is shown: it is a new one.
+    await bar.locator("button", { hasText: "Put aside" }).click();
+    await agent("focus --board viser");
+    await bar.waitFor({ state: "hidden" });
+    await agent(`focus ${b} --why "Autre" --board viser`);
+    await until("the same focus shown again", async () => has(b, "is-focus"));
+    // With no card chosen, F takes the card the keyboard is on, as the other keys of a card do.
+    await page.keyboard.press("Escape");
+    await card(c).focus();
+    await page.keyboard.press("f");
+    await until(
+      "the card under the keyboard in focus",
+      async () => (await focus())?.ids.join() === `${b},${c}`,
+    );
     await agent("focus --board viser");
     await bar.waitFor({ state: "hidden" });
     // Back where the tests that follow are.

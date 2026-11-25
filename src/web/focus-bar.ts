@@ -26,6 +26,8 @@ const WORDS: Record<
     show: string;
     into: string;
     out: string;
+    isIn: (id: string) => string;
+    isOut: (id: string) => string;
   }
 > = {
   en: {
@@ -38,6 +40,8 @@ const WORDS: Record<
     show: "Show it",
     into: "Put in the focus",
     out: "Take out of the focus",
+    isIn: (id) => `${id} is in the focus`,
+    isOut: (id) => `${id} is out of the focus`,
   },
   fr: {
     copy: "Copier le lien",
@@ -49,6 +53,8 @@ const WORDS: Record<
     show: "Le montrer",
     into: "Mettre au focus",
     out: "Sortir du focus",
+    isIn: (id) => `${id} est au focus`,
+    isOut: (id) => `${id} est sorti du focus`,
   },
 };
 const w = WORDS[locale];
@@ -89,13 +95,21 @@ interface BarModel {
 
 let speak: (words: string) => void = () => {};
 
+/** A button of the bar was pressed and the bar is to be drawn again: the keyboard follows. */
+let moved = false;
+
 const paintFocus = region(focusBar, (m: BarModel) => {
+  if (moved) queueMicrotask(() => focusBar.querySelector("button")?.focus());
+  moved = false;
   const board = currentBoard();
   const button = (words: string, onclick: () => void, title?: string): HTMLElement =>
     h("button", { type: "button", class: "quiet", title, onclick }, words);
   const setAside = (now: boolean): void => {
     aside = now && board ? signed(board) : undefined;
+    // The button pressed goes with the repaint: the keyboard is given to the one that takes its place.
+    moved = true;
     changed();
+    speak(now ? w.put(m.ids.length) : t.focus(m.ids.join(", ")));
   };
   if (m.aside) return [h("span", {}, w.put(m.ids.length)), button(w.show, () => setAside(false))];
   return [
@@ -114,6 +128,8 @@ const paintFocus = region(focusBar, (m: BarModel) => {
 export function paintFocusBar(board: Board | undefined, live: boolean, say: (words: string) => void): void {
   speak = say;
   focusBar.hidden = !board?.focus;
+  // A focus lifted takes what was put aside with it: the same one, set again, is shown.
+  if (board && !board.focus && aside?.startsWith(`${board.id} `)) aside = undefined;
   if (!board?.focus) return;
   const { ids, reason } = board.focus;
   paintFocus({ board: board.id, ids, reason, live, aside: isAside(board) });
@@ -125,6 +141,7 @@ export function toggleFocus(board: Board, id: string): void {
   const next = ids.includes(id) ? ids.filter((other) => other !== id) : [...ids, id];
   // Pointing shows the focus again: what was put aside is no longer the one there.
   aside = undefined;
+  speak(ids.includes(id) ? w.isOut(id) : w.isIn(id));
   void send({
     kind: "focus",
     board: board.id,
@@ -133,20 +150,34 @@ export function toggleFocus(board: Board, id: string): void {
   });
 }
 
-/** F: the card chosen is pointed at, or no longer. False with no card chosen, or on a board that cannot be written. */
+/**
+ * F: the card under the keyboard, as the other keys of a card take it, else the
+ * card chosen, is pointed at, or no longer. False with neither, or on a board
+ * that cannot be written: the key is then the browser's.
+ */
 export function pointAtChosen(): boolean {
   const board = currentBoard();
-  if (!board || !state.selected || !isLive()) return false;
-  toggleFocus(board, state.selected);
+  const under = document.activeElement?.closest<SVGGElement>("g.card")?.dataset.id;
+  const id = under ?? state.selected;
+  if (!board || !id || !isLive()) return false;
+  toggleFocus(board, id);
   return true;
 }
+
+let held = false;
 
 /** The button of the Detail tab that does what F does, for who has no keyboard at hand. */
 export function focusButton(id: string, inFocus: boolean): HTMLElement {
   const words = t.withKey(inFocus ? w.out : w.into, "F");
   const press = (): void => {
     const board = currentBoard();
-    if (board) toggleFocus(board, id);
+    if (!board) return;
+    held = true;
+    toggleFocus(board, id);
   };
-  return h("button", { type: "button", class: "quiet focus-toggle", onclick: press }, words);
+  const button = h("button", { type: "button", class: "quiet focus-toggle", onclick: press }, words);
+  // Pressed, the button is drawn again with its other word: the keyboard stays on it.
+  if (held) queueMicrotask(() => button.isConnected && button.focus());
+  held = false;
+  return button;
 }

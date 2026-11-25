@@ -124,7 +124,9 @@ const SAID: { [K in Change["kind"]]: Said<K> } = {
   },
   linked: (c) => `+ link ${c.src} -> ${c.dst}${c.label ? ` ${quote(c.label)}` : ""}`,
   unlinked: (c) => `− link ${c.src} -> ${c.dst}`,
-  focused: (c) => `focus on ${c.ids.join(", ")}${c.reason ? `: ${c.reason}` : ""}`,
+  // No card: the focus that was there is lifted.
+  focused: (c) =>
+    c.ids.length === 0 ? "focus lifted" : `focus on ${c.ids.join(", ")}${c.reason ? `: ${c.reason}` : ""}`,
   noted: (c) => {
     const on = c.target ? ` on ${c.target}` : "";
     return c.thread ? `reply ${c.id} to ${c.thread}${on}: ${c.text}` : `note ${c.id}${on}: ${c.text}`;

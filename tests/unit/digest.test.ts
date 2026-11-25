@@ -179,6 +179,22 @@ describe("describeChanges", () => {
     ]);
   });
 
+  test("a focus the human lifts is told, when it was set before (S334)", () => {
+    const t = table(ORDERING);
+    t.do({ kind: "focus", board: "commande", ids: ["H1"], reason: "à trancher" }, "agent");
+    const mark = t.seq;
+    t.do({ kind: "focus", board: "commande", ids: [] }, "human");
+    expect(describeChanges(t.events, mark).text.split("\n")).toEqual([
+      'board commande "Passage de commande"',
+      "  focus lifted",
+    ]);
+    // Set and lifted within what is told: nothing remains to tell.
+    const later = t.seq;
+    t.do({ kind: "focus", board: "commande", ids: ["H1"] }, "human");
+    t.do({ kind: "focus", board: "commande", ids: [] }, "human");
+    expect(describeChanges(t.events, later).text).toBe("");
+  });
+
   test("a reply names the note it answers and the card the thread is on", () => {
     const t = table(ORDERING).script('note "Qui réserve ?" --on R1\nnote "Et le reste ?"');
     const mark = t.seq;

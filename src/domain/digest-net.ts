@@ -273,8 +273,9 @@ const TELL: { [K in Recorded["event"]]?: On<K> } = {
       c.put("unlink", `${e.src}>${e.dst}`, { kind: "unlinked", src: e.src, dst: e.dst });
   },
   FocusSet: (c, e) => c.put("focus", "", { kind: "focused", ids: e.ids, reason: e.reason }),
+  // A focus set and lifted within what is told leaves nothing to tell; one set before is told as lifted.
   FocusCleared: (c) => {
-    c.entries.delete(c.k("focus", ""));
+    if (!c.entries.delete(c.k("focus", ""))) c.put("focus", "", { kind: "focused", ids: [] });
   },
   NoteAdded: (c, e) => {
     c.put("note", e.id, { kind: "noted", id: e.id, text: e.text, target: e.target, thread: e.thread });

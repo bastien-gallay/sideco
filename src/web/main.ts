@@ -1024,7 +1024,7 @@ const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
       t.cardNotes(m.notes),
     ),
   labelSection(m, speak),
-  m.live && focusButton(m.id, m.inFocus),
+  m.live && !m.editing && focusButton(m.id, m.inFocus),
   ...(m.editing
     ? [
         detailField,
