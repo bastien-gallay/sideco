@@ -109,21 +109,21 @@ sideco wait
 ```text
 sideco boards      sideco show [BOARD] [--lane L | --col N] [--brief] [--notes]   (a part: its first line says so)
 sideco show ID                      (one card: where it is, its links, its threads)
-sideco board new "Title" [--format F] [--id ID]   sideco board rm ID (removes the board; its history stays)
+sideco board new "Title" [--format F] [--id ID]   sideco board rm ID (removes the board; its history stays)   sideco retitle "Title" (its id stays)
 sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--from ID [--edge "label"]] [--detail "…"]
 sideco rename ID "Label"            sideco detail ID "Text"
 sideco move ID --col N | --lane L [--before ID] (--before alone: before that card, in its cell)   sideco place ID X Y   sideco placing hand|auto   # flow, C4: the card at that point, the whole diagram Snap (by hand, links move nothing); auto gives it back to its links, places kept
-sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)   sideco renumber ID [NEW] (a new id for a card, the next of its letter by default; its links and notes follow)   sideco renumber --all [--dry-run] (every card under a former letter, or whose id another board keeps)   sideco retype ID TYPE [NEW] (a card takes another kind, and the next id of its letter)
+sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)   sideco renumber ID [NEW] (a new id for a card, the next of its letter by default; its links and notes follow)   sideco renumber --all [--dry-run] (every card under a former letter, or whose id another board keeps)   sideco retype ID TYPE [NEW] (a card takes another kind, and the next id of its letter) · renumber and retype are yours: the page has no gesture for them
 sideco lane L "Name" (names it here) · lane hint L "What it stands for" · purpose "Its own question?" · plan: axis x|y "Name" [Low] [High] ("" gives the workshop's back) · kanban, retro: lane add "Name" [--before L] · lane rm L · lane move L [--before L] · story map: slice add "Lot 1" [--before S] (a line under the stories) · slice rm S
 sideco done ID   sideco undone ID   sideco undo|redo [--dry-run] (your own last gesture, named; never the human's)
 sideco link SRC DST ["label"]       sideco unlink SRC DST   (link again: renames the link)   sideco reverse SRC DST (turns the link round, its name kept)   sideco relink SRC DST --from ID | --to ID (moves one end of the link to another card, its name kept)
 sideco focus [ID…] [--why "…"]      (no id clears the focus) · the user points too, by F in the page: `sideco changes` tells you `focus on E3: …`, or `focus lifted`
 sideco note "Text" [--on ID] (opens a thread, on the board or one element) · reply N1 "Text" · resolve N1
 sideco apply [FILE]   (a batch of the lines above, stdin by default; add … --alias NAME, then @NAME below)
-sideco changes                      sideco pass ["question"]      sideco wait
+sideco changes                      sideco pass ["question"] [--to agent [--for SESSION]] (to another session)      sideco wait [--timeout SECONDS]
 sideco label ID type:bug @name · unlabel ID L (labels shared by every board; `sideco labels [KEY]` lists them) · sideco relabel OLD NEW (a label renamed on every card of every board) · sideco colour KEY blue|green|purple|orange|teal|pink|olive|grey|auto (the colour of every label of a key, on every board) · sideco find WORDS (cards holding every word, all boards) · sideco follow BOARD…                sideco unfollow BOARD…        (the boards whose changes you are told) · sideco sessions · sideco session name "Name" (with another session on the project, so the page tells you apart)
-sideco export [BOARD] --format md|html|svg|mermaid|json [-o FILE]
-sideco publish     sideco status     sideco url [BOARD | ID]   sideco open     sideco stop
+sideco export [BOARD] --format md|html|svg|mermaid|json [-o FILE] [--lang L]   sideco import FILE [--id ID] (a model.json, as export --format json writes it)
+sideco publish [--out DIR] [--lang L]     sideco status     sideco url [BOARD | ID]   sideco open     sideco stop   sideco statusline [--install] (its address in Claude Code's status line)
 ```
 
 With several boards, add `--board ID` to a command, or start a batch with

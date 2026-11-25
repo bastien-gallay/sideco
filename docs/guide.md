@@ -60,6 +60,7 @@ What Claude receives is net of back-and-forth: a card added then renamed reads a
 | --- | --- |
 | Click a type in the palette | Adds a card of that type |
 | Double-click a card | Renames it |
+| `⋯` menu, « Title and question… », or double-click the question in the palette | Changes the board's title and the question it asks; a question emptied gives the workshop's back |
 | Drag a card | Moves it to another step or column, or within its cell. On a `flow` or a `c4-context`, puts it where it is let go, and the diagram goes Snap |
 | Select a card | Opens its action bar: rename, detail, link, note for Claude, remove |
 | Reply in the Notes tab | Answers Claude in the thread of the card; `⌘` / `Ctrl` + Enter sends the reply and hands the turn back |
@@ -127,11 +128,13 @@ Claude runs `sideco` for you: in a session, the plugin puts it on the path of th
 | `sideco stop` | Stops the server; the log stays, and the next command starts it again |
 | `sideco export BOARD --format md` | Writes one board as Markdown; also `html`, `svg`, `mermaid`, `json`, and `-o FILE` |
 | `sideco publish` | Writes every board as a static site under `.sideco/site` |
+| `sideco retitle "Title"`, `sideco purpose "Question?"` | Give the board another title, or its own question; the page does both from the `⋯` menu |
+| `sideco renumber ID`, `sideco retype ID TYPE` | Give a card another id, or another type; Claude only, the page has no gesture for them |
 | `sideco help` | Lists every command, those Claude uses to write a board included |
 
 To type them in your own terminal, work from a clone and link its launcher: `ln -s ~/sideco/bin/sideco ~/.local/bin/sideco`. The [guide détaillé](guide.fr.md#la-ligne-de-commande), in French, describes the whole command line.
 
-<sub>Source: `sideco help`, read on 2026-11-22.</sub>
+<sub>Source: `sideco help`, read on 2026-11-22 and on 2026-11-25.</sub>
 
 ## With Claude Code's sandbox
 

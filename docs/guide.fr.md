@@ -132,6 +132,7 @@ Le résumé est net des allers-retours : un post-it ajouté puis renommé se lit
 | Survoler une case ou une colonne, cliquer le « + » | Ajoute un post-it à cet endroit : du type de la rangée dans une frise, du type choisi (un « + » par type) dans une colonne. Double-cliquer une zone vide fait de même |
 | Dans une frise, survoler entre deux numéros d'étape, cliquer le « + » | Insère une colonne à cet endroit : les étapes suivantes se décalent d'un cran ; Undo la retire. Une étape vide se retire par le « × » qui apparaît en haut de l'étape quand on la survole, ou par `sideco rm-col N` ; Undo la remet. Glisser l'en-tête d'une étape, n'importe où sauf tout près d'un bord où s'offre l'insertion, la déplace, ses cartes avec elle (`sideco move-col DE VERS`). ⚠️ Aucun raccourci clavier |
 | Double-cliquer une carte | La renomme |
+| Menu `⋯`, « Titre et question… », ou double-cliquer la question dans la palette | Change le titre du tableau et la question qu'il pose, ensemble ; une question vidée rend celle de l'atelier. Claude : `sideco retitle "Titre"`, `sideco purpose "Question ?"` |
 | Kanban et rétro : survoler l'espace entre deux en-têtes, cliquer le « + » | Ajoute une colonne à cet endroit, à nommer. Une colonne vide offre un « × » dans son en-tête ; glisser un en-tête déplace la colonne avec ses cartes. Au clavier, chaque en-tête est un arrêt de Tab : Entrée renomme, `Maj` + `←` `→` déplace, `Suppr` supprime si vide, `+` ou `Alt` + `←` `→` ajoute une colonne, `↓` va aux cartes. Claude : `sideco lane add "Nom" [--before L]`, `lane rm L`, `lane move L [--before L]`. Tout s'annule |
 | Rétro : sélectionner un constat, « En faire une action » | Ouvre la saisie d'une action dans Try, reliée au constat. Une action ajoutée sans colonne va aussi dans Try. Claude : `sideco add action "…" --from Q1` |
 | Pointer l'en-tête d'une colonne (kanban, rétro), puis son chevron `‹` ; au clavier, `Tab` jusqu'au chevron puis `Entrée` ou `Espace` | Replie la colonne en une bande étroite : son compte, son nom debout, ses cartes rangées. Un clic n'importe où sur la bande, ou son chevron `›`, la rouvre. Le repli est le tien : gardé dans ce navigateur, tableau par tableau, il n'est ni dans le journal ni dit à Claude, et un export dessine toutes les colonnes ouvertes. Une carte choisie dans une colonne repliée (recherche, déplacement au clavier) la rouvre ; une carte lâchée sur la bande va à la fin de la colonne. Les cases d'un plan Impact / Effort ne se replient pas |
@@ -257,6 +258,22 @@ Sideco attribue les identifiants (`C1`, `E1`) en appliquant le lot : une ligne n
 Un nom ne vit que le temps de son lot : le journal ne garde que les identifiants.
 
 <sub>Source : `src/domain/aliases.ts` ; `tests/unit/aliases.test.ts`, `tests/unit/hub.test.ts`, `tests/integration/cli.test.ts`.</sub>
+
+### Changer un tableau, ses colonnes et ses cartes
+
+| Commande | Effet | Dans la page |
+| --- | --- | --- |
+| `sideco retitle "Titre"` | Donne au tableau un autre titre ; son identifiant reste | Menu `⋯`, « Titre et question… » |
+| `sideco purpose "Question ?"` | Donne au tableau sa propre question ; `""` rend celle de l'atelier | Double-cliquer la question dans la palette |
+| `sideco insert-col N`, `rm-col N`, `move-col DE VERS` | Insère une colonne, retire une colonne vide, déplace une colonne avec ses cartes | « + » entre deux étapes, « × » d'une étape vide, glisser un en-tête d'étape |
+| `sideco renumber ID [NOUVEAU]` | Donne à une carte un autre identifiant, `NOUVEAU` ou le suivant de sa lettre ; ses liens, ses notes et le focus suivent | ⛔ Aucun geste : Claude seul |
+| `sideco renumber --all [--dry-run]` | Fait de même pour toutes les cartes sous une ancienne lettre, ou dont un autre tableau garde l'identifiant | ⛔ Claude seul |
+| `sideco retype ID TYPE [NOUVEAU]` | Change le type d'une carte, qui prend l'identifiant suivant de sa nouvelle lettre, ou `NOUVEAU` | ⛔ Claude seul |
+| `sideco follow TABLEAU…`, `sideco unfollow TABLEAU…` | Prend ou lâche des tableaux : Claude apprend ce que tu changes sur ceux qu'il suit (ceux où il a écrit, ou qu'il a lus par `sideco show`) | Sans objet : c'est le suivi de Claude |
+
+`@NOM` vaut un identifiant dans un lot partout où la commande en attend un, `label`, `unlabel` et `place` compris.
+
+<sub>Source : `sideco help` sur main le 2026-11-25 ; `src/web/board-sheet.ts` ; `tests/unit/aliases.test.ts`.</sub>
 
 ### Les labels
 
