@@ -8,7 +8,9 @@ export const HELP = `sideco — a visual companion for Claude Code
   sideco serve [--port N] [--lang L]  run it in the foreground
   sideco stop                         stop the companion; the journal stays. It also stops by itself
                                       5 min after the last page and session leave ($SIDECO_IDLE_MS, or off)
-  sideco init                         create a workspace (.sideco/) here
+  sideco init                         create a workspace here: its boards go under ~/.sideco ($SIDECO_HOME),
+                                    or in the project's .sideco/ when it has one
+  sideco data                         the projects whose boards are under ~/.sideco, their weight, a folder gone
   sideco status                       boards, sessions, server
 
 Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)

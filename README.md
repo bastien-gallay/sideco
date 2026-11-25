@@ -34,7 +34,7 @@ In any project, start Claude Code and ask:
 Let's model the checkout flow on the Sideco board
 ```
 
-Claude creates the workspace (a `.sideco/` folder in the project), starts a local server and opens the board in your browser, at `http://127.0.0.1:4747`. The cards appear as Claude writes them. There is nothing else to launch. Claude runs the `sideco` commands this page names; ask for one in plain words, or [type it yourself](docs/guide.md#the-commands).
+Claude creates the workspace (its folder under `~/.sideco`, nothing in the project), starts a local server and opens the board in your browser, at `http://127.0.0.1:4747`. The cards appear as Claude writes them. There is nothing else to launch. Claude runs the `sideco` commands this page names; ask for one in plain words, or [type it yourself](docs/guide.md#the-commands).
 
 ## One turn of the loop
 
@@ -79,7 +79,7 @@ To show a board to your team, export it to Markdown, HTML, SVG, Mermaid or JSON,
 - **What is installed.** A skill, and hooks that run a local command on the events of a session: that is how the board shows what Claude does and how your edits reach it. Outside a Sideco workspace they exit at once.
 - **What keeps running.** A server on `127.0.0.1` only, which refuses requests from another origin and stops by itself 5 minutes after the last page and session leave. At the end of a turn one hook stays parked, for 12 hours at most, to wake Claude when you send.
 - **Where your data goes.** Sideco sends nothing anywhere and has no telemetry. What Claude reads of a board goes where the rest of your Claude Code session goes.
-- **Where it is kept.** Every change is an event in an append-only log, `.sideco/boards.jsonl`, in your project; undo, redo and the board's history come from it. Commit it and the board's history travels with the code. One writer at a time: two people who edit it each on their side get a merge conflict. A git worktree of the project shares its boards, wherever it is placed.
+- **Where it is kept.** Every change is an event in an append-only log, `boards.jsonl`, kept under `~/.sideco` in a folder of the project's own (`sideco data` lists them); undo, redo and the board's history come from it. To commit it with the code, make a `.sideco/` folder in the project before its first board: a project that has one keeps its log there. One writer at a time: two people who edit it each on their side get a merge conflict. A git worktree of the project shares its boards, wherever it is placed.
 
 ## If something goes wrong
 
@@ -92,7 +92,7 @@ Ask Claude in plain words, or name the command.
 | Claude reports `this shell may not connect to the companion` | Claude Code's sandbox blocks local connections: let Claude run the command outside it, or [allow them once](docs/guide.md#with-claude-codes-sandbox) |
 | `sideco: Sideco runs on Bun 1.4 or later, not found` | Install [Bun](https://bun.sh), then start Claude Code again. An older Bun is not detected: check with `bun --version` |
 | The board is stuck or out of date | Ask Claude to run `sideco stop`, then `sideco url`: the server starts again from the same log |
-| You want it gone | `claude plugin uninstall sideco@sideco`; the `.sideco/` folder of each project is yours to keep or delete |
+| You want it gone | `claude plugin uninstall sideco@sideco`; `~/.sideco`, and the `.sideco/` folder of a project that has one, are yours to keep or delete |
 
 Anything else: [open an issue](https://github.com/bastien-gallay/sideco/issues), with the output of `sideco status`.
 

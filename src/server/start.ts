@@ -8,13 +8,16 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locale } from "../domain/i18n.ts";
 import { replay, type Workspace } from "../domain/workspace.ts";
+import { homeData } from "./home.ts";
 import { serve } from "./http.ts";
 import { Hub } from "./hub.ts";
 import { IDLE_CHECK_MS, IdleWatch, STALE_SESSION_MS } from "./idle.ts";
 import { journalBytes, openJournal } from "./journal.ts";
 import { buildPage } from "./page.ts";
 
+export { homeDir, register, workspaces } from "./home.ts";
 export { IDLE_GRACE_MS } from "./idle.ts";
+export { journalBytes } from "./journal.ts";
 
 export const DEFAULT_PORT = 4747;
 const PORT_TRIES = 20;
@@ -27,13 +30,17 @@ export interface Running {
 }
 
 /**
- * Where a workspace keeps its boards: `.sideco/`, or the `.vico/` of a
- * workspace made before the rename, until it is moved.
+ * Where a workspace keeps its boards: its own `.sideco/`, or the `.vico/` of a
+ * workspace made before the rename, until it is moved; else its folder under
+ * the home of Sideco once it is registered there. A root neither holds names
+ * the `.sideco/` it would have.
  */
 export function dataDir(root: string): string {
   const current = join(root, ".sideco");
+  if (existsSync(current)) return current;
   const legacy = join(root, ".vico");
-  return !existsSync(current) && existsSync(legacy) ? legacy : current;
+  if (existsSync(legacy)) return legacy;
+  return homeData(root) ?? current;
 }
 
 /** The workspace as the journal of `root` holds it, read without a server. */

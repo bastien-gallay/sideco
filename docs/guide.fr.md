@@ -37,7 +37,7 @@ Demande ensuite, dans le terminal : « modélisons le passage de commande sur le
 
 | Étape | Qui | Comment |
 | --- | --- | --- |
-| Créer l'espace de travail `.sideco/` | Claude | `sideco open`, première étape du skill |
+| Créer l'espace de travail | Claude | `sideco open`, première étape du skill |
 | Démarrer le compagnon | Claude, ou le plugin au début de chaque session suivante | `sideco open`, hook `SessionStart` |
 | Ouvrir la page dans ton navigateur | Claude | `sideco open` ; une page déjà ouverte est laissée telle quelle, y compris après un redémarrage du compagnon : la commande attend jusqu'à 8 s que l'onglet resté ouvert se reconnecte avant d'en ouvrir un autre |
 | Poser les premiers post-its | Claude | `sideco apply` |
@@ -233,7 +233,7 @@ sideco export --format md -o docs/design/commande.md
 sideco export --format md --lang fr   # le même, en français
 sideco export --format json -o commande.json   # le modèle, version 2 ; sideco import commande.json le refait (un fichier sans version se lit en version 1)
 sideco board rm brouillon         # supprime un tableau ; son histoire reste dans le journal
-sideco publish                    # tous les tableaux en site statique, sous .sideco/site
+sideco publish                    # tous les tableaux en site statique, sous le dossier site/ de l'espace
 sideco stop                       # arrête le compagnon ; le journal reste (il s'arrête aussi seul, 5 min après la dernière page et la dernière session)
 ```
 
@@ -333,12 +333,14 @@ flowchart LR
 
 <sub>Source : `src/domain/` (`workspace.ts`, sa fonction `replay` ; `layout/`, `render/svg.ts`). Le même peintre SVG sert la page et les exports.</sub>
 
-| Fichier | Contenu | Git |
+Les fichiers d'un projet sont rangés dans `~/.sideco/<id>/` (`$SIDECO_HOME` pour un autre dossier), sous un id que le registre `~/.sideco/workspaces.json` donne au projet ; tous les worktrees d'un clone partagent le sien. `sideco data` liste les projets, leur poids et ceux dont le dossier a disparu. Un projet qui a un dossier `.sideco/` y garde ses fichiers : créer ce dossier avant le premier tableau permet de versionner le journal.
+
+| Fichier | Contenu | Git, dans `.sideco/` |
 | --- | --- | --- |
-| `.sideco/boards.jsonl` | L'histoire des tableaux | ✅ à versionner |
-| `.sideco/sessions.jsonl` | La trace des sessions : prompts, outils lancés, tâches | ❌ ignoré (local) |
-| `.sideco/server.json` | L'adresse du compagnon en cours | ❌ ignoré |
-| `.sideco/site/` | Le site publié | ❌ ignoré |
+| `boards.jsonl` | L'histoire des tableaux | ✅ à versionner |
+| `sessions.jsonl` | La trace des sessions : prompts, outils lancés, tâches | ❌ ignoré (local) |
+| `server.json` | L'adresse du compagnon en cours | ❌ ignoré |
+| `site/` | Le site publié | ❌ ignoré |
 
 Le compagnon n'écoute que sur `127.0.0.1` et refuse les requêtes d'une autre origine.
 
@@ -430,7 +432,7 @@ Le pourquoi des choix est dans [PRD.md](PRD.md).
 
 - ⚠️ Le contenu de `TodoWrite` n'est pas documenté côté hooks : les tâches sont lues prudemment, et peuvent manquer dans le panneau de session.
 - La page ne reçoit les outils lancés par Claude que pour les quatre derniers tours de chaque session, ceux que montre l'onglet `Session` : c'est les quatre cinquièmes du journal en moins à l'ouverture. En remontant l'historique, un tour plus ancien montre sa demande, sans ses outils. Le journal, lui, les garde tous.
-- ⚠️ Deux personnes qui modifient `.sideco/boards.jsonl` chacune de leur côté auront un conflit de fusion : le multi-utilisateur n'est pas traité.
+- ⚠️ Deux personnes qui modifient `boards.jsonl` chacune de leur côté auront un conflit de fusion : le multi-utilisateur n'est pas traité.
 - Le compagnon s'arrête seul 5 minutes après que la dernière page et la dernière session l'ont quitté. Une session tuée sans se terminer le garde en marche jusqu'à 12 h. `SIDECO_IDLE_MS` règle le délai ; `SIDECO_IDLE_MS=off` le garde en marche jusqu'à `sideco stop`.
 - Une session sans interface (`claude -p`) n'est jamais réveillée par un passage de main : elle doit pouvoir se terminer.
 - Claude au repos depuis plus de 12 h n'est plus réveillé par un passage de main : la page le dit, et il lit tes changements à ton prochain message dans le terminal.

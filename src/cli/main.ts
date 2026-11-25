@@ -41,6 +41,7 @@ import {
   showPage,
   stopServer,
 } from "./client.ts";
+import { dataText } from "./data.ts";
 import { exportOne, publish } from "./export.ts";
 import { HELP } from "./help.ts";
 import { hookFromStdin } from "./hook.ts";
@@ -57,6 +58,7 @@ export const CLI_VERBS: ReadonlySet<string> = new Set([
   "hook",
   "statusline",
   "init",
+  "data",
   "serve",
   "stop",
   "formats",
@@ -133,6 +135,9 @@ async function run(verb: string, rest: string[]): Promise<number> {
       return serveForeground(resolve(args.flags.get("root") ?? findRoot(cwd) ?? cwd), args);
     case "formats":
       console.log(formatsText());
+      return 0;
+    case "data":
+      console.log(dataText());
       return 0;
   }
 

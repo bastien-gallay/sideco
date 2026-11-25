@@ -133,7 +133,7 @@ Claude runs `sideco` for you: in a session, the plugin puts it on the path of th
 | `sideco status` | Lists the boards, the sessions and the server: the output to join to an issue |
 | `sideco stop` | Stops the server; the log stays, and the next command starts it again |
 | `sideco export BOARD --format md` | Writes one board as Markdown; also `html`, `svg`, `mermaid`, `json`, and `-o FILE` |
-| `sideco publish` | Writes every board as a static site under `.sideco/site` |
+| `sideco publish` | Writes every board as a static site under the `site/` folder of the workspace |
 | `sideco retitle "Title"`, `sideco purpose "Question?"` | Give the board another title, or its own question; the page does both from the `⋯` menu |
 | `sideco renumber ID`, `sideco retype ID TYPE` | Give a card another id, or another type; Claude only, the page has no gesture for them |
 | `sideco help` | Lists every command, those Claude uses to write a board included |
@@ -160,7 +160,7 @@ The setting that avoids it, in Claude Code's `settings.json` (`~/.claude/setting
 
 ## Known limits
 
-- One person per workspace. Several Claude Code sessions may share it, each following the boards it writes or reads. Two people who edit `.sideco/boards.jsonl` each on their side get a merge conflict.
+- One person per workspace. Several Claude Code sessions may share it, each following the boards it writes or reads. Two people who edit `boards.jsonl` each on their side get a merge conflict.
 - The companion stops by itself 5 minutes after the last page and the last session left it; Claude starts it again at the next session.
 - A Claude that waited more than 12 hours is no longer woken by a send: the page says so, and it reads your changes at your next message in the terminal.
 - A session without an interface (`claude -p`) is never woken by a send.

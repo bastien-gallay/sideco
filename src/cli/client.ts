@@ -5,7 +5,7 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { Workspace } from "../domain/workspace.ts";
-import { dataDir, serverNote } from "../server/start.ts";
+import { dataDir, register, serverNote } from "../server/start.ts";
 
 export class ClientError extends Error {
   override name = "ClientError";
@@ -35,7 +35,7 @@ export function mayListen(): boolean {
  * the clone, found through the git directory they have in common.
  */
 export function findRoot(from: string): string | undefined {
-  let dir = resolve(from);
+  let dir = existsSync(from) ? realpathSync(from) : resolve(from);
   for (;;) {
     if (existsSync(dataDir(dir))) return realpathSync(dir);
     const parent = dirname(dir);
@@ -44,13 +44,16 @@ export function findRoot(from: string): string | undefined {
   }
 }
 
-/** The clone a worktree belongs to, when that clone holds boards. Without git, none. */
+/** The clone a worktree belongs to, when that clone holds boards. */
 function cloneRoot(from: string): string | undefined {
-  if (!existsSync(from)) return undefined;
-  const common = gitCommonDir(from);
-  if (!common?.endsWith("/.git")) return undefined;
-  const clone = dirname(common);
-  return existsSync(dataDir(clone)) ? realpathSync(clone) : undefined;
+  const clone = existsSync(from) ? gitClone(from) : undefined;
+  return clone !== undefined && existsSync(dataDir(clone)) ? clone : undefined;
+}
+
+/** The real path of the clone `dir` belongs to, through the git directory its worktrees share. Without git, none. */
+function gitClone(dir: string): string | undefined {
+  const common = gitCommonDir(dir);
+  return common?.endsWith("/.git") ? realpathSync(dirname(common)) : undefined;
 }
 
 function gitCommonDir(cwd: string): string | undefined {
@@ -65,16 +68,26 @@ function gitCommonDir(cwd: string): string | undefined {
   }
 }
 
-/** Creates the workspace and returns its real path. Session traces stay local; the board journal is yours to commit. */
-export function initRoot(root: string): string {
-  mkdirSync(dataDir(root), { recursive: true });
-  const ignore = join(dataDir(root), ".gitignore");
-  if (!existsSync(ignore))
+/**
+ * Creates the workspace and returns its real path. A project that holds a
+ * `.sideco/` keeps its boards there, yours to commit, session traces left out;
+ * any other is registered under the home of Sideco, by the clone it belongs to.
+ */
+export function initRoot(given: string): string {
+  mkdirSync(given, { recursive: true });
+  const found = realpathSync(given);
+  if (!existsSync(dataDir(found))) {
+    const root = gitClone(found) ?? found;
+    register(root);
+    return root;
+  }
+  const ignore = join(dataDir(found), ".gitignore");
+  if (dataDir(found).startsWith(found) && !existsSync(ignore))
     writeFileSync(
       ignore,
       "# Prompts and commands of your sessions stay on this machine.\nsessions.jsonl\nserver.json\nsite/\n",
     );
-  return realpathSync(root);
+  return found;
 }
 
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;

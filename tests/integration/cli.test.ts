@@ -15,6 +15,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { dataDir } from "../../src/server/start.ts";
 
 const SIDECO = join(import.meta.dir, "..", "..", "bin", "sideco");
 
@@ -76,10 +77,10 @@ function hook(payload: object, env: Record<string, string> = {}, rewake = false)
 }
 
 const note = (): { url: string; pid: number } =>
-  JSON.parse(readFileSync(join(root, ".sideco", "server.json"), "utf8"));
+  JSON.parse(readFileSync(join(dataDir(root), "server.json"), "utf8"));
 
 function stopCompanion(): void {
-  if (!existsSync(join(root, ".sideco", "server.json"))) return;
+  if (!existsSync(join(dataDir(root), "server.json"))) return;
   try {
     process.kill(note().pid);
   } catch {
@@ -111,10 +112,11 @@ describe("a workspace", () => {
     });
   });
 
-  test("init creates it, with the session traces kept out of git", async () => {
+  test("init creates it under the home of Sideco, leaving the project's folder as it was", async () => {
     const ran = await sideco(["init"]);
-    expect(ran).toEqual({ code: 0, out: `workspace ready: ${join(root, ".sideco")}`, err: "" });
-    expect(readFileSync(join(root, ".sideco", ".gitignore"), "utf8")).toContain("sessions.jsonl");
+    expect(ran).toEqual({ code: 0, out: `workspace ready: ${dataDir(root)}`, err: "" });
+    expect(dataDir(root).startsWith(process.env.SIDECO_HOME ?? "?")).toBe(true);
+    expect(existsSync(join(root, ".sideco"))).toBe(false);
     expect((await sideco(["status"])).out).toContain("server     not running");
   });
 
@@ -133,7 +135,7 @@ describe("a workspace", () => {
       `${JSON.stringify({ seq, ts: "2026-11-18T08:00:00.000Z", actor: "agent", ...event })}\n`;
     const task = { event: "ElementAdded", id: "T1", type: "task", label: "Un", col: 1, lane: "todo" };
     writeFileSync(
-      join(cwd, ".sideco", "boards.jsonl"),
+      join(dataDir(cwd), "boards.jsonl"),
       line(1, { event: "BoardCreated", board: "a", title: "A", format: "kanban" }) +
         line(2, { event: "BoardCreated", board: "b", title: "B", format: "kanban" }) +
         line(3, { ...task, board: "a" }) +
@@ -214,7 +216,7 @@ add command "Pay" --col 3 --from @placed
     const shown = (await sideco(["show", "checkout"])).out;
     for (const piece of ["E2 -> R2", "E2 -> C2", "Emitted by the checkout", "N1 by agent on R2"])
       expect(shown).toContain(piece);
-    expect(readFileSync(join(root, ".sideco", "boards.jsonl"), "utf8")).not.toContain("@placed");
+    expect(readFileSync(join(dataDir(root), "boards.jsonl"), "utf8")).not.toContain("@placed");
   });
 
   test("a batch that refers to a name it never gave changes nothing and names the line", async () => {
@@ -430,7 +432,7 @@ describe("Claude Code hooks, through stdin as Claude Code calls them", () => {
     });
     await hook({ hook_event_name: "Stop", last_assistant_message: "Voilà." });
     expect((await sideco(["status"])).out).toContain("session    s1 is idle");
-    expect(readFileSync(join(root, ".sideco", "sessions.jsonl"), "utf8")).not.toContain("secret output");
+    expect(readFileSync(join(dataDir(root), "sessions.jsonl"), "utf8")).not.toContain("secret output");
   });
 
   test("the Stop hook with --rewake wakes Claude (exit 2) when the human, page open, hands over", async () => {
@@ -571,7 +573,7 @@ describe("sharing", () => {
       "passage-de-commande.html",
       "passage-de-commande.svg",
     ])
-      expect(existsSync(join(root, ".sideco", "site", file))).toBe(true);
+      expect(existsSync(join(dataDir(root), "site", file))).toBe(true);
     const index = await (await fetch(`${url}/pub/`)).text();
     expect(index).toContain("Passage de commande");
     expect(index).toContain("<h1>Sideco boards</h1>");
@@ -626,7 +628,7 @@ describe("opening the page, by the agent as well as the human", () => {
 
   /** The address the companion of `dir` left for its clients, once it has started. */
   async function addressOf(dir: string): Promise<string> {
-    const note = join(dir, ".sideco", "server.json");
+    const note = join(dataDir(dir), "server.json");
     for (let attempt = 0; attempt < 100; attempt++) {
       if (existsSync(note)) {
         const { url: address } = JSON.parse(readFileSync(note, "utf8")) as { url: string };
@@ -907,7 +909,7 @@ describe("tidying up", () => {
       err: "",
     });
     expect((await sideco(["boards"])).out).not.toContain("brouillon");
-    expect(readFileSync(join(root, ".sideco", "boards.jsonl"), "utf8")).toContain('"label":"À jeter"');
+    expect(readFileSync(join(dataDir(root), "boards.jsonl"), "utf8")).toContain('"label":"À jeter"');
 
     const again = await sideco(["board", "rm", "brouillon"]);
     expect(again.code).toBe(1);
@@ -927,7 +929,7 @@ describe("history", () => {
     const before = (await sideco(["show", "passage-de-commande"])).out;
     const seq = Number(/seq (\d+)/.exec((await sideco(["status"])).out)?.[1]);
     expect(await sideco(["stop"])).toEqual({ code: 0, out: `stopped the companion at ${url}`, err: "" });
-    expect(existsSync(join(root, ".sideco", "server.json"))).toBe(false);
+    expect(existsSync(join(dataDir(root), "server.json"))).toBe(false);
     expect((await sideco(["stop"])).out).toBe("no companion is running for this workspace");
     expect((await sideco(["status"])).out).toContain("server     not running");
     expect((await sideco(["show", "passage-de-commande"])).out).toBe(before);
@@ -947,10 +949,10 @@ describe("history", () => {
   });
 
   test("boards are committable, sessions are not mixed into them", () => {
-    const boards = readFileSync(join(root, ".sideco", "boards.jsonl"), "utf8");
+    const boards = readFileSync(join(dataDir(root), "boards.jsonl"), "utf8");
     expect(boards).toContain("BoardCreated");
     expect(boards).not.toContain("PromptSubmitted");
-    expect(readFileSync(join(root, ".sideco", "sessions.jsonl"), "utf8")).toContain("PromptSubmitted");
+    expect(readFileSync(join(dataDir(root), "sessions.jsonl"), "utf8")).toContain("PromptSubmitted");
   });
 });
 
@@ -963,7 +965,7 @@ describe("a companion nobody uses", () => {
     await run(["init"]);
     return { dir, run };
   }
-  const running = (dir: string): boolean => existsSync(join(dir, ".sideco", "server.json"));
+  const running = (dir: string): boolean => existsSync(join(dataDir(dir), "server.json"));
   const pause = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
   test("stops by itself once the grace is over, and the next command starts it again", async () => {

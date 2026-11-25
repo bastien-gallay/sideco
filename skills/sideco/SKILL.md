@@ -82,7 +82,7 @@ sideco wait
 - **Link what you cite**: a board or element named in a reply is a link to
   it in the page, `[T152](URL/#/b/backlog/T152)`, as `sideco url T152` prints it.
 - **Write in the user's language** on the board.
-- **Never touch the files under `.sideco/`.** The journal is the history: do
+- **Never touch the files under `~/.sideco` or `.sideco/`.** The journal is the history: do
   not edit, move or delete it. To clear the table, remove boards with
   `sideco board rm ID`; the page follows at once.
 - **A sandbox may be in the way.** If `sideco` answers `this shell may not …`
@@ -133,7 +133,7 @@ the `board new` line that creates it.
 
 - `sideco export BOARD --format md -o docs/design/BOARD.md` writes a design
   note: the diagram as Mermaid, then every element with its detail.
-- `sideco publish` writes every board as a static site under `.sideco/site`.
-- `.sideco/boards.jsonl` is the model's history and can be committed.
+- `sideco publish` writes every board as a static site under its `site/`.
+- `boards.jsonl` is the history, under `~/.sideco`, or a project's `.sideco/`.
 - A Mermaid flowchart you write in a reply is captured as a `flow` board
   when your turn ends; prefer writing to the board directly.

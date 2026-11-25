@@ -8,6 +8,10 @@ All notable changes to Sideco are listed here. The format follows
 
 ### Added
 
+- A new project keeps its boards under `~/.sideco` (`$SIDECO_HOME`), in a
+  folder named by an id of its own, and nothing in the project's folder; every
+  worktree of a clone shares them. A project that has a `.sideco/` folder keeps
+  using it. `sideco data` lists the projects kept there.
 - Claude Code installs Sideco straight from GitHub, no clone needed:
   `claude plugin marketplace add bastien-gallay/sideco && claude plugin install sideco@sideco`.
 - `sideco statusline --install` puts the companion's address in Claude Code's

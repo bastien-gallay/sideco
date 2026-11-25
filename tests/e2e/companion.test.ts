@@ -16,7 +16,7 @@ import { runHook } from "../../src/cli/hook.ts";
 import type { Locale } from "../../src/domain/i18n.ts";
 import { mint } from "../../src/domain/minting.ts";
 import type { Workspace } from "../../src/domain/workspace.ts";
-import { type Running, start } from "../../src/server/start.ts";
+import { dataDir, type Running, start } from "../../src/server/start.ts";
 
 // Playwright gives up first (4 s) and says which locator it was waiting for.
 setDefaultTimeout(20_000);
@@ -4058,7 +4058,7 @@ describe("tidying up", () => {
     const port = running.port;
     const before = problems.length;
     running.stop();
-    renameSync(join(root, ".sideco", "boards.jsonl"), join(root, ".sideco", "boards.jsonl.bak"));
+    renameSync(join(dataDir(root), "boards.jsonl"), join(dataDir(root), "boards.jsonl.bak"));
     running = await start(root, port);
     [started] = await agent('board new "Flux Sideco" --id flux-sideco\nadd event "Session démarrée" --col 1');
 
