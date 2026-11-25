@@ -333,7 +333,9 @@ let keepHistoryFocus = false;
 const turnSays = h("div", { class: "turn-says" });
 /** Made once: a message being typed for Claude keeps its words and the keyboard through every repaint. */
 const passMessage = messageField(t.messagePlaceholder, t.messageForClaude);
-const passButton = h("button", { type: "submit", class: "primary" }, t.handOver);
+/** With a choice of sessions, the one the turn goes to, said on the button itself (S337). */
+const passName = h("span", { class: "pass-name", hidden: true });
+const passButton = h("button", { type: "submit", class: "primary" }, t.handOver, passName);
 /** The board the turn is handed over on: the one on screen. */
 let passOn: string | undefined;
 /** ⌘↵ in a field of the Notes tab: once its words are saved, the turn goes to Claude with them (T208). */
@@ -1122,7 +1124,7 @@ interface TurnModel {
   theirs: string | undefined;
   /** The session a hand-over would go to, by its name; none when no session runs. */
   to: string | undefined;
-  /** Several sessions run: the one the turn goes to is worth saying on screen, not only on the button. */
+  /** Several sessions run: the one the turn goes to is worth saying on the button, not only in its tooltip. */
   several: boolean;
   /** The ids on the board shown, of cards and of notes: those Claude's words can lead to. */
   known: string[];
@@ -1142,9 +1144,6 @@ const paintTurnSays = region(turnSays, (m: TurnModel) => {
       ),
     // When Claude has read everything, when it will read is beside the point.
     h("p", { class: "pending" }, h("strong", {}, count), m.pending > 0 ? ` · ${m.hint}` : ""),
-    m.several &&
-      m.to !== undefined &&
-      h("p", { class: "pass-to" }, `${t.handOverTo} `, h("strong", {}, m.to)),
   ];
 });
 
@@ -1186,6 +1185,8 @@ function paintTurn(m: TurnModel): void {
   passMessage.disabled = passButton.disabled = !m.live || !m.board;
   const to = m.to !== undefined ? ` · ${t.handOverTo} ${m.to}` : "";
   passButton.title = `${t.withKey(t.handOver, SHORTCUTS.send)}${to}`;
+  passName.textContent = m.several && m.to !== undefined ? ` · ${m.to}` : "";
+  passName.hidden = passName.textContent === "";
 }
 
 interface HistoryModel {

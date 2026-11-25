@@ -380,7 +380,7 @@ describe("the human edits, the agent is told", () => {
     expect(await page.locator(".pass button").getAttribute("title")).toMatch(
       /^Send to Claude \((⌘↵|Ctrl\+Enter)\) · To the session .+ · s1$/,
     );
-    expect(await page.locator(".pass-to").count()).toBe(0);
+    expect(await page.locator(".pass button.primary").textContent()).toBe("Send to Claude");
     await shot("05-listening");
 
     await page.locator(".pass textarea").fill("J'ai corrigé la règle, continue");
@@ -3662,6 +3662,9 @@ describe("two sessions on one project", () => {
     await until("the chosen session's turns", async () => (await asked()).join().endsWith(" Une question"));
     // Handed over from the page, the turn goes to the session chosen, not to the board's last writer.
     expect(await page.locator(".pass button").getAttribute("title")).toContain("To the session sideco-ui");
+    // With a choice of sessions, the button itself says which one the turn goes to (S337).
+    expect(await page.locator(".pass button.primary").textContent()).toBe("Send to Claude · sideco-ui");
+    expect(await page.locator(".pass-to").count()).toBe(0);
     await page.locator(".pass textarea").fill("Pour la session choisie");
     await page.locator(".pass textarea").press("Enter");
     await until("the turn handed over", async () =>
@@ -3679,11 +3682,17 @@ describe("two sessions on one project", () => {
 
     await picker().selectOption(SESSION);
     await until("the first session back", async () => (await prompts()) === before);
+    // A session without a name is said as elsewhere on the page: its folder, then the start of its id.
+    expect(await page.locator(".pass button.primary").textContent()).toMatch(
+      new RegExp(`^Send to Claude · .+ · ${SESSION}$`),
+    );
   });
 
   test("a session that ends leaves the choice when it is not the one shown", async () => {
     await runHook({ session_id: OTHER, cwd: root, hook_event_name: "SessionEnd", reason: "exit" }, {}, false);
     await until("the picker gone", async () => (await picker().count()) === 0);
+    // One session alone: the button names none.
+    expect(await page.locator(".pass button.primary").textContent()).toBe("Send to Claude");
   });
 });
 

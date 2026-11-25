@@ -2380,7 +2380,6 @@ legend {
 }
 
 .pending,
-.pass-to,
 .theirs {
   max-width: 100%;
   overflow: hidden;
@@ -2389,8 +2388,7 @@ legend {
   font-size: 12.5px;
 }
 
-.pending strong,
-.pass-to strong {
+.pending strong {
   color: var(--ink);
 }
 
@@ -2426,6 +2424,20 @@ legend {
   flex: none;
   display: flex;
   gap: 6px;
+}
+
+/* The session the turn goes to, said on the button when there is a choice: cut short, it never widens the bar. */
+.pass button.primary {
+  display: inline-flex;
+  max-width: 22em;
+  white-space: nowrap;
+}
+
+.pass-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+  font-weight: 400;
 }
 
 /* One line at rest; once it has the keyboard, room for a few lines, and more as they come. */
