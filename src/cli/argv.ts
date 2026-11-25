@@ -344,6 +344,9 @@ export function parseBatch(text: string, board: string | undefined): WireCommand
     try {
       const tokens = tokenize(line);
       if (tokens.length === 0) return;
+      // A batch is sent as it is: a dry run in it would be dropped, and the gesture made for real.
+      if (tokens.includes("--dry-run"))
+        throw new UsageError(`--dry-run does not go in a batch: run \`sideco ${tokens[0]} --dry-run\` alone`);
       const action = boardAction(tokens, current);
       current = action.board ?? current;
       if (action.command.kind === "remove-board" && action.command.board === current) current = undefined;

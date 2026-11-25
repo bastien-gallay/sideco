@@ -161,6 +161,12 @@ describe("boardAction", () => {
     expect(() => boardAction(tokenize("board rm"), "b")).toThrow("`board rm` needs the id of the board");
   });
 
+  test("in a batch, --dry-run is refused: it would be dropped, and the undo done for real (PA11)", () => {
+    expect(() => parseBatch('rename E1 "A"\nundo --dry-run', "b")).toThrow(
+      "line 2: --dry-run does not go in a batch: run `sideco undo --dry-run` alone",
+    );
+  });
+
   test("in a batch, removing the current board leaves no current board", () => {
     expect(() => parseBatch('board new "Un" --id un\nboard rm un\nadd event "A"', undefined)).toThrow(
       /^line 3: /,

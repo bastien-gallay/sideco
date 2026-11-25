@@ -115,7 +115,15 @@ describe("taking a lane gesture back", () => {
   test("a lane that got cards since cannot be taken back: undo says so", () => {
     const t = table(KANBAN).script('lane add "Revue"', "human");
     t.script('add task "Là" --lane lane-1', "agent");
-    expect(() => undo(t)).toThrow("lane lane-1 has cards now");
+    expect(() => undo(t)).toThrow(
+      /^refused: your gesture seq \d+ \(lane add "Revue"\) was changed since by Claude/,
+    );
+    // Taken back anyway, the lane still holds Claude's card: that, too, is said.
+    const anyway = table(KANBAN).script('lane add "Revue"', "human");
+    anyway.script('add task "Là" --lane lane-1', "agent");
+    expect(() => anyway.do({ kind: "undo", board: "sprint", ifChanged: "overwrite" }, "human")).toThrow(
+      "lane lane-1 has cards now",
+    );
   });
 });
 

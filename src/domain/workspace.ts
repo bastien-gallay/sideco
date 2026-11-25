@@ -102,6 +102,8 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
     return;
   }
   board.changedSeq = e.seq;
+  // Read before the columns are renumbered: what a way back would overwrite is where it points now.
+  supersede(board, e);
 
   switch (e.event) {
     case "BoardRetitled":
@@ -322,7 +324,6 @@ function applyToBoard(ws: Workspace, e: Extract<Recorded, { board: string }>): v
       handledAll(e);
   }
   if (inverse) rememberGesture(board, e, inverse);
-  supersede(board, e);
 }
 
 function touch(board: Board, id: string, seq: number, change: (el: Element) => void): Element | undefined {

@@ -361,9 +361,10 @@ function writes(e: BoardEvent): string[] {
     case "SliceRemoved":
       return [`slice:${e.slice}.*`];
     case "ColumnInserted":
-    case "ColumnRemoved":
     case "ColumnMoved":
       return ["columns"];
+    case "ColumnRemoved":
+      return ["columns", `col:${e.at}.*`];
     case "ElementRenamed":
       return [`${e.id}.label`];
     case "ElementAnnotated":
@@ -373,8 +374,14 @@ function writes(e: BoardEvent): string[] {
     case "ElementLabeled":
     case "ElementUnlabeled":
       return [`${e.id}.label:${e.label.toLowerCase()}`];
+    case "ElementAdded":
+      return holds(e);
+    case "ElementRestored":
+      return [`${e.id}.*`, ...holds(e)];
     case "ElementMoved":
-      return [`${e.id}.place`];
+      return [`${e.id}.place`, ...holds(e)];
+    case "ElementRenumbered":
+      return [`${e.id}.id`, `${e.to}.id`, ...(e.type ? [`${e.to}.type`] : [])];
     case "ElementRemoved":
       return [`${e.id}.*`];
     case "ElementPlaced":
@@ -387,6 +394,11 @@ function writes(e: BoardEvent): string[] {
     default:
       return [];
   }
+}
+
+/** Where a card goes: its lane and its column, which taking either away would leave it without. */
+function holds(e: { id: string; col: number; lane: string }): string[] {
+  return [`lane:${e.lane}.holds:${e.id}`, `col:${e.col}.holds:${e.id}`];
 }
 
 function clash(mine: string, theirs: string): boolean {
