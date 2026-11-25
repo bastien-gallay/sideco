@@ -107,7 +107,7 @@ describe("adding elements", () => {
       "F2>O1:",
       "F3>D1:à réception",
     ]);
-    expect(() => t.script('add step "x" --from F9')).toThrow('no element F9 on "livraison"');
+    expect(() => t.script('add step "x" --from F9')).toThrow('no card F9 on "livraison"');
   });
 });
 
@@ -115,7 +115,7 @@ describe("changing elements", () => {
   test("rename, detail and remove need an element that exists", () => {
     const t = table(ORDERING);
     for (const line of ['rename E9 "x"', 'detail E9 "x"', "rm E9"]) {
-      expect(() => t.script(line)).toThrow('no element E9 on "commande"');
+      expect(() => t.script(line)).toThrow('no card E9 on "commande"');
     }
   });
 
@@ -159,7 +159,7 @@ describe("links, focus, notes, turn", () => {
   test("a link needs two different elements; linking twice keeps one link with the last label", () => {
     const t = table(ORDERING);
     expect(() => t.script("link E1 E1")).toThrow("E1 cannot link to itself");
-    expect(() => t.script("link E1 E9")).toThrow("no element E9");
+    expect(() => t.script("link E1 E9")).toThrow("no card E9");
     t.script('link C1 E1 "produit"');
     expect(t.board().edges.filter((e) => e.src === "C1" && e.dst === "E1")).toEqual([
       { src: "C1", dst: "E1", label: "produit", by: "agent" },
@@ -226,7 +226,7 @@ describe("links, focus, notes, turn", () => {
     expect(t.seq).toBe(before + 1);
     expect(t.board().notes.map((n) => n.resolved)).toEqual([true, false]);
     expect(() => t.script("resolve N9")).toThrow("no note N9");
-    expect(() => t.script('note "x" --on E9')).toThrow("no element E9");
+    expect(() => t.script('note "x" --on E9')).toThrow("no card E9");
   });
 
   test("a reply joins the thread of the note it answers, and stays on its card", () => {

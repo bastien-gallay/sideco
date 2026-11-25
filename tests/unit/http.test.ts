@@ -120,7 +120,7 @@ describe("commands", () => {
     const seq = hub.workspace.seq;
     const response = await say('add event "A"\nrename E99 "x"');
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: 'no element E99 on "commande"', index: 1 });
+    expect(await response.json()).toEqual({ error: 'no card E99 on "commande"', index: 1 });
     expect(hub.workspace.seq).toBe(seq);
   });
 

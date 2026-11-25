@@ -254,12 +254,12 @@ describe("html", () => {
     const board = table(ORDERING).board();
     const en = toHtml(board, META);
     expect(en).toContain('<html lang="en">');
-    expect(en).toContain("<h2>Elements</h2>");
+    expect(en).toContain("<h2>Cards</h2>");
     expect(en).toContain("<th>Label</th><th>Step</th><th>Detail</th><th>By</th>");
     expect(en).toContain("Source: Sideco journal, board <code>commande</code>");
     const fr = toHtml(board, { ...META, locale: "fr" });
     expect(fr).toContain('<html lang="fr">');
-    expect(fr).toContain("<h2>Éléments</h2>");
+    expect(fr).toContain("<h2>Cartes</h2>");
     expect(fr).toContain("Source : journal Sideco, tableau <code>commande</code>");
     // The drawing inside follows.
     expect(en).toContain(">Event</text>");
@@ -276,7 +276,7 @@ describe("html", () => {
     expect(html).toContain("Passage &lt;de&gt; commande");
     expect(html).toContain('<html lang="en">');
     expect(html).toContain("1 board, published on 2026-11-17.");
-    expect(html).toContain("<th>Board</th><th>Workshop</th><th>Elements</th><th>Other formats</th>");
+    expect(html).toContain("<th>Board</th><th>Workshop</th><th>Cards</th><th>Other formats</th>");
     expect(html).toContain("<td>Event Storming</td>");
   });
 

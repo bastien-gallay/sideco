@@ -53,8 +53,8 @@ describe("renumber", () => {
   test("a chosen id takes the letter of the card's type, and the card must be there", () => {
     const t = table(SPRINT);
     expect(() => t.script("renumber T1 B7")).toThrow("a task id starts with T, got B7");
-    expect(() => t.script("renumber T8")).toThrow('no element T8 on "sprint"');
-    expect(() => t.script("renumber N1")).toThrow('no element N1 on "sprint"');
+    expect(() => t.script("renumber T8")).toThrow('no card T8 on "sprint"');
+    expect(() => t.script("renumber N1")).toThrow('no card N1 on "sprint"');
   });
 
   test("show says the id it had, and find finds the card by it", () => {

@@ -18,7 +18,7 @@ each side sees the other's changes within a second.
    the page already open it only prints the address, so it is safe to repeat.
 2. **Read first.** `sideco boards`, then `sideco show BOARD`. Never write to a
    board you have not read in this turn: the user may have changed it.
-3. **Write in small batches** with `sideco apply`, five to nine elements at a
+3. **Write in small batches** with `sideco apply`, five to nine cards at a
    time, so the user watches the model grow and can stop you early.
 4. **Point** at what you want discussed: `sideco focus E3 R1 --why "…"`.
 5. **Hand over** with one question: `sideco pass "Qui réserve le stock ?"`.
@@ -53,7 +53,7 @@ sideco wait
 - **Ids come from Sideco.** Each `add` prints the id it minted (`E1`, `C2`);
   `sideco apply` prints them in order. Do not guess an id: read it from the
   output or from `sideco show`. A removed id is never used again, unless the
-  user brings the element back.
+  user brings the card back.
 - **In a batch, name what you add.** A line cannot know the id an earlier
   line will get: write `add event "Payée" --alias payee`, then `@payee` where
   an id goes on the lines after it (`link @payee R1`, `detail @payee "…"`,
@@ -66,7 +66,7 @@ sideco wait
 - **The user's edits win.** Do not undo a rename, a move or a removal they
   made. If you disagree, say why in the terminal or pin a note. They can
   undo their own gestures in the page: you are told the net result, and
-  `restored` marks an element or a board they brought back, id unchanged.
+  `restored` marks a card or a board they brought back, id unchanged.
 - **Labels are short** (six words or fewer). Rules, examples and sources go
   in the detail: `sideco detail E1 "…"`.
 - **One question at a time.** A hand-over carries a single question; a
@@ -79,7 +79,7 @@ sideco wait
 - **Close a thread when it is settled**: `sideco resolve N1` closes the whole
   thread. Close yours once the user has answered and you have acted on it;
   leave the user's own notes for them to close, unless they say otherwise.
-- **Link what you cite**: a board or element named in a reply is a link to
+- **Link what you cite**: a board or card named in a reply is a link to
   it in the page, `[T152](URL/#/b/backlog/T152)`, as `sideco url T152` prints it.
 - **Write in the user's language** on the board.
 - **Never touch the files under `~/.sideco` or `.sideco/`.** The journal is the history: do
@@ -92,7 +92,7 @@ sideco wait
 
 ## Choosing a workshop
 
-| The user asks | Format | Elements are placed with |
+| The user asks | Format | Cards are placed with |
 | --- | --- | --- |
 | what happens in the domain, in what order | `event-storming` | `--col N` |
 | which path, where it branches | `flow` | `--from ID`, `--edge "oui"` |
@@ -102,7 +102,7 @@ sideco wait
 | what to do first, for what it brings and costs | `impact-effort` | `--lane quick`, `bet`, `fill` or `avoid` |
 | who uses the system, what it depends on (C4 level 1) | `c4-context` | `--from ID --edge "uses"`; the detail is the description |
 
-`sideco formats` lists every element type with its id prefix, and what each lane of `impact-effort` stands for (`quick`: high impact for a low effort; `avoid`: the reverse).
+`sideco formats` lists every card type with its id prefix, and what each lane of `impact-effort` stands for (`quick`: high impact for a low effort; `avoid`: the reverse).
 
 ## Commands
 
@@ -118,7 +118,7 @@ sideco lane L "Name" (names it here) · lane hint L "What it stands for" · purp
 sideco done ID   sideco undone ID   sideco undo|redo [--dry-run] (your own last gesture, named; never the human's)
 sideco link SRC DST ["label"]       sideco unlink SRC DST   (link again: renames the link)   sideco reverse SRC DST (turns the link round, its name kept)   sideco relink SRC DST --from ID | --to ID (moves one end of the link to another card, its name kept)
 sideco focus [ID…] [--why "…"]      (no id clears the focus) · the user points too, by F in the page: `sideco changes` tells you `focus on E3: …`, or `focus lifted`
-sideco note "Text" [--on ID] (opens a thread, on the board or one element) · reply N1 "Text" · resolve N1
+sideco note "Text" [--on ID] (opens a thread, on the board or one card) · reply N1 "Text" · resolve N1
 sideco apply [FILE]   (a batch of the lines above, stdin by default; add … --alias NAME, then @NAME below)
 sideco changes                      sideco pass ["question"] [--to agent [--for SESSION]] (to another session)      sideco wait [--timeout SECONDS]
 sideco label ID type:bug @name · unlabel ID L (labels shared by every board; `sideco labels [KEY]` lists them) · sideco relabel OLD NEW (a label renamed on every card of every board) · sideco colour KEY blue|green|purple|orange|teal|pink|olive|grey|auto (the colour of every label of a key, on every board) · sideco find WORDS (cards holding every word, all boards) · sideco follow BOARD…                sideco unfollow BOARD…        (the boards whose changes you are told) · sideco sessions · sideco session name "Name" (with another session on the project, so the page tells you apart)
@@ -132,7 +132,7 @@ the `board new` line that creates it.
 ## Keeping the model
 
 - `sideco export BOARD --format md -o docs/design/BOARD.md` writes a design
-  note: the diagram as Mermaid, then every element with its detail.
+  note: the diagram as Mermaid, then every card with its detail.
 - `sideco publish` writes every board as a static site under its `site/`.
 - `boards.jsonl` is the history, under `~/.sideco`, or a project's `.sideco/`.
 - A Mermaid flowchart you write in a reply is captured as a `flow` board

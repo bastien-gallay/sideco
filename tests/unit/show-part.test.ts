@@ -85,6 +85,6 @@ describe("one card", () => {
 
   test("in a timeline it says its column; an unknown card is refused", () => {
     expect(describeCard(table(ORDERING).board(), "R1")).toContain("  in col 2");
-    expect(() => describeCard(table(ORDERING).board(), "Z9")).toThrow("no element Z9");
+    expect(() => describeCard(table(ORDERING).board(), "Z9")).toThrow("no card Z9");
   });
 });

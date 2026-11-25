@@ -24,7 +24,7 @@ export function requireFormat(id: string): Format {
 
 export function requireElement(board: Board, id: string): Element {
   const el = findElement(board, id);
-  if (!el) throw new CommandError(`no element ${id} on "${board.id}"`);
+  if (!el) throw new CommandError(`no card ${id} on "${board.id}"`);
   return el;
 }
 

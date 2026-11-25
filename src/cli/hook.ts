@@ -190,7 +190,7 @@ function context(event: string, text: string, lead = ""): HookResult {
  * of the session start is gone.
  */
 export function reminder(url: string): string {
-  return `Sideco runs at ${url}. When a reply cites a board or one of its elements, link it: [E1](${url}/#/b/BOARD/E1), [BOARD](${url}/#/b/BOARD).`;
+  return `Sideco runs at ${url}. When a reply cites a board or one of its cards, link it: [E1](${url}/#/b/BOARD/E1), [BOARD](${url}/#/b/BOARD).`;
 }
 
 /** The digest is the human's own edits on the board: say so, say where to look, and stay under the cap. */

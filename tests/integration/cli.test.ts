@@ -531,14 +531,12 @@ describe("sharing", () => {
   });
 
   test("exports are in English unless --lang or SIDECO_LANG says otherwise", async () => {
-    expect((await sideco(["export"])).out).toContain("## Elements\n");
-    expect((await sideco(["export", "--lang", "fr"])).out).toContain("## Éléments\n");
-    expect((await sideco(["export"], { env: { SIDECO_LANG: "fr_FR.UTF-8" } })).out).toContain(
-      "## Éléments\n",
-    );
+    expect((await sideco(["export"])).out).toContain("## Cards\n");
+    expect((await sideco(["export", "--lang", "fr"])).out).toContain("## Cartes\n");
+    expect((await sideco(["export"], { env: { SIDECO_LANG: "fr_FR.UTF-8" } })).out).toContain("## Cartes\n");
     // The flag wins over the environment.
     expect((await sideco(["export", "--lang", "en"], { env: { SIDECO_LANG: "fr" } })).out).toContain(
-      "## Elements\n",
+      "## Cards\n",
     );
     const unknown = await sideco(["export", "--lang", "tlh"]);
     expect(unknown.code).toBe(1);

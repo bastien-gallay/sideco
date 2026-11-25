@@ -195,7 +195,7 @@ rename @here "Renamed by mistake"`;
       error = caught;
     }
     expect(error).toBeInstanceOf(BatchError);
-    expect(error).toMatchObject({ index: 1, message: 'no element E99 on "commande"' });
+    expect(error).toMatchObject({ index: 1, message: 'no card E99 on "commande"' });
     expect(JSON.stringify(hub.workspace)).toBe(before.state);
     expect(journal.load()).toHaveLength(before.lines);
     expect(heard).toEqual([]);

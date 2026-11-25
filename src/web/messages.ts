@@ -349,7 +349,7 @@ const en: Messages = {
   mermaidCopied: "Mermaid copied to the clipboard.",
   clipboardRefused: "The browser refused access to the clipboard; use the Mermaid export.",
 
-  palette: "Elements to add",
+  palette: "Cards to add",
   add: (type) => `Add: ${type}`,
   insertColumn: "Insert a column here",
   addLane: "Add a column here",
@@ -362,7 +362,7 @@ const en: Messages = {
   laneRemoved: (name) => `Column ${name} removed.`,
   removeStep: (col) => `Remove step ${col}`,
   stepRemoved: (col) => `Step ${col} removed.`,
-  howGraphFrom: (id) => `The new element will be linked to ${id}.`,
+  howGraphFrom: (id) => `The new card will be linked to ${id}.`,
   newCard: (type, hint) => `${type}: ${hint.toLowerCase()}`,
 
   notes: "Notes",
@@ -396,7 +396,7 @@ const en: Messages = {
   removeBoard: (title) => `Remove the board “${title}”`,
   removeBoardQuestion: (title) => `Remove the board “${title}”?`,
   removeBoardConsequence: (elements) =>
-    `${elements === 0 ? "It is empty." : `It holds ${elements} element${plural(elements)}.`} It leaves the page, for you and for Claude. Undo brings it back.`,
+    `${elements === 0 ? "It is empty." : `It holds ${elements} card${plural(elements)}.`} It leaves the page, for you and for Claude. Undo brings it back.`,
 
   sessionPanel: "Claude Code session",
   session: "Session",
@@ -659,7 +659,7 @@ const fr: Messages = {
   mermaidCopied: "Mermaid copié dans le presse-papiers.",
   clipboardRefused: "Le navigateur a refusé l'accès au presse-papiers ; utilise l'export Mermaid.",
 
-  palette: "Éléments à ajouter",
+  palette: "Cartes à ajouter",
   add: (type) => `Ajouter : ${type}`,
   insertColumn: "Insérer une colonne ici",
   addLane: "Ajouter une colonne ici",
@@ -672,7 +672,7 @@ const fr: Messages = {
   laneRemoved: (name) => `Colonne ${name} supprimée.`,
   removeStep: (col) => `Supprimer l'étape ${col}`,
   stepRemoved: (col) => `Étape ${col} supprimée.`,
-  howGraphFrom: (id) => `Le nouvel élément sera relié à ${id}.`,
+  howGraphFrom: (id) => `La nouvelle carte sera reliée à ${id}.`,
   newCard: (type, hint) => `${type} : ${hint.toLowerCase()}`,
 
   notes: "Notes",
@@ -707,7 +707,7 @@ const fr: Messages = {
   removeBoard: (title) => `Supprimer le tableau « ${title} »`,
   removeBoardQuestion: (title) => `Supprimer le tableau « ${title} » ?`,
   removeBoardConsequence: (elements) =>
-    `${elements === 0 ? "Il est vide." : `Il contient ${elements} élément${plural(elements)}.`} Il quitte la page, pour toi comme pour Claude. Annuler le fait revenir.`,
+    `${elements === 0 ? "Il est vide." : `Il contient ${elements} carte${plural(elements)}.`} Il quitte la page, pour toi comme pour Claude. Annuler le fait revenir.`,
 
   sessionPanel: "Session Claude Code",
   session: "Session",

@@ -129,7 +129,7 @@ export function describeBoard(board: Board, part: Part = {}): string {
 /** One card: its line, where it is, its links, and its threads, closed ones included. */
 export function describeCard(board: Board, id: string): string {
   const e = findElement(board, id);
-  if (!e) throw new CommandError(`no element ${id} on "${board.id}"`);
+  if (!e) throw new CommandError(`no card ${id} on "${board.id}"`);
   const format = findFormat(board.format);
   const lines = [heading(board, [`card ${id}`]), cardLine(board, e)];
   if (format?.layout === "timeline") lines.push(`  in col ${e.col}`);

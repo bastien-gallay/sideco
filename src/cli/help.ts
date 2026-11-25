@@ -14,7 +14,7 @@ export const HELP = `sideco — a visual companion for Claude Code
   sideco status                       boards, sessions, server
 
 Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
-  sideco formats                      the workshops and their element types
+  sideco formats                      the workshops and their card types
   sideco board new "Title" [--format F] [--id ID]
   sideco board rm ID                  remove a board; its history stays in the journal
   sideco retitle "Title"              give the board a new title; its id stays
@@ -56,7 +56,7 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco reverse SRC DST              turn the link round, its name kept
   sideco relink SRC DST --from ID | --to ID   move one end of the link to another card, its name kept
   sideco focus [ID…] [--why "…"]      no id clears the focus
-  sideco note "Text" [--on ID]        open a discussion, on the board or on one element
+  sideco note "Text" [--on ID]        open a discussion, on the board or on one card
   sideco reply N1 "Text"              answer in the thread of a note
   sideco resolve N1                   close the thread
   sideco apply [FILE]                 run a batch of the commands above, all or nothing (stdin by default)

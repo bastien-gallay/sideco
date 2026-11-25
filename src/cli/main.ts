@@ -426,7 +426,7 @@ function formatsText(): string {
 
 function boardsText(ws: Workspace): string {
   if (ws.boards.length === 0) return 'no board yet; create one with `sideco board new "Title"`';
-  return ws.boards.map((b) => `${b.id}  ${b.format}  ${b.elements.length} elements  "${b.title}"`).join("\n");
+  return ws.boards.map((b) => `${b.id}  ${b.format}  ${b.elements.length} cards  "${b.title}"`).join("\n");
 }
 
 if (import.meta.main) process.exit(await main(process.argv.slice(2)));

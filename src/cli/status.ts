@@ -32,7 +32,7 @@ export async function statusText(root: string, journal: JournalRead): Promise<st
     ...(session
       ? [`session    ${sessionLabel(session)} is ${session.status} (all: \`sideco sessions\`)`]
       : []),
-    ...ws.boards.map((b) => `board      ${b.id}  ${b.format}  ${b.elements.length} elements`),
+    ...ws.boards.map((b) => `board      ${b.id}  ${b.format}  ${b.elements.length} cards`),
     ...sharedIdsLine(ws),
   ].join("\n");
 }

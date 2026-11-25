@@ -1327,7 +1327,7 @@ describe("other workshops", () => {
     await card(ship).click();
     await page.waitForFunction(
       (id) =>
-        document.querySelector(".palette .how")?.textContent === `The new element will be linked to ${id}.`,
+        document.querySelector(".palette .how")?.textContent === `The new card will be linked to ${id}.`,
       ship,
     );
     const delivered = mint(await workspace(), "O");
@@ -1535,7 +1535,7 @@ describe("the reader's language", () => {
       page.waitForEvent("download"),
       page.locator(".menu-items button", { hasText: "Markdown" }).click(),
     ]);
-    expect(readFileSync(await download.path(), "utf8")).toContain("## Éléments\n");
+    expect(readFileSync(await download.path(), "utf8")).toContain("## Cartes\n");
 
     await page.reload();
     await card("E1").waitFor();
@@ -4062,7 +4062,7 @@ describe("tidying up", () => {
     );
     await remove.click();
     expect(await sheet.locator("h2").textContent()).toBe("Remove the board “À jeter”?");
-    expect(await sheet.locator("p").textContent()).toStartWith("It holds 1 element. ");
+    expect(await sheet.locator("p").textContent()).toStartWith("It holds 1 card. ");
     await shot("12-remove-board");
     // The safe answer has the focus: Enter keeps the board.
     await page.keyboard.press("Enter");
