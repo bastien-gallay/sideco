@@ -47,6 +47,8 @@ export function resolveAliases(command: Command, aliases: Aliases): Command {
     case "add":
       return { ...command, from: optional(command.from), before: optional(command.before) };
     case "rename":
+    case "label":
+    case "unlabel":
     case "annotate":
     case "mark":
     case "remove":
@@ -63,6 +65,8 @@ export function resolveAliases(command: Command, aliases: Aliases): Command {
       return { ...command, src: id(command.src), dst: id(command.dst), to: id(command.to) };
     case "focus":
       return { ...command, ids: command.ids.map(id) };
+    case "place":
+      return { ...command, cards: command.cards.map((card) => ({ ...card, id: id(card.id) })) };
     case "note":
       return { ...command, target: optional(command.target) };
     case "reply":

@@ -128,7 +128,7 @@ export function spot(input: unknown, index: number): Spot {
   if (typeof input !== "object" || input === null)
     throw new CommandError(`\`cards[${index}]\` must be an object`);
   const f = input as Fields;
-  return { id: elementId(f, "id"), x: scene(f, "x"), y: scene(f, "y") };
+  return { id: idOrName(f, "id", `cards[${index}].id`), x: scene(f, "x"), y: scene(f, "y") };
 }
 
 /** A length on the scene, in whole units. */

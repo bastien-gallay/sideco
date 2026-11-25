@@ -28,6 +28,9 @@ describe("resolveAliases", () => {
     ['add command "Pay" --from @placed', { from: "E1" }],
     ['reply @ask "Yes"', { to: "N1" }],
     ["resolve @ask", { id: "N1" }],
+    ["label @placed urgent", { id: "E1" }],
+    ["unlabel @placed urgent", { id: "E1" }],
+    ["place @placed 40 80", { cards: [{ id: "E1", x: 40, y: 80 }] }],
   ])("%s", (line, ids) => {
     const resolved = resolveAliases(command(line), NAMED);
     expect(resolved).toMatchObject(ids);
