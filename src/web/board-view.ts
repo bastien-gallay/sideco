@@ -28,6 +28,7 @@ import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
 import { BACKBONE_H, liftHeadings } from "./headings.ts";
 import { mountLaneFold, seen } from "./lane-fold.ts";
+import { linkEnds } from "./link-ends.ts";
 import { linkHandle } from "./link-handle.ts";
 import { locale, t } from "./locale.ts";
 import { arrange } from "./reading-order.ts";
@@ -497,9 +498,24 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     say: hooks.announce,
   });
 
+  /** The ends of the link picked, each pulled to another card (S350). */
+  const paintEnds = linkEnds(root, {
+    picked: () => (board && pickedLink && isLive() && !editing ? pickedLink : undefined),
+    toScene,
+    linked: (src, dst) => board?.edges.some((e) => e.src === src && e.dst === dst) ?? false,
+    moved: async (link, end, to) => {
+      if (!board) return false;
+      // The link it was is no more: its bar and its ends are put away.
+      pickedLink = undefined;
+      return saved(send({ kind: "relink", board: board.id, src: link.src, dst: link.dst, end, to }));
+    },
+    say: hooks.announce,
+  });
+
   function paintTools(): void {
     light();
     paintHandle();
+    paintEnds();
     const id = state.selected;
     const node = id ? nodes.get(id) : undefined;
     const link = pickedLink;
@@ -560,7 +576,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
    * their own target says nothing: ask the document instead.
    */
   function under(event: MouseEvent): Element | null {
-    return document.elementFromPoint(event.clientX, event.clientY);
+    // An end of the link picked lies over its line: a double click there is the link's, not the dot's.
+    const stack = document.elementsFromPoint(event.clientX, event.clientY);
+    return stack.find((el) => !el.closest(".link-ends")) ?? null;
   }
 
   /**

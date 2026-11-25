@@ -2779,6 +2779,69 @@ describe("the spotlight on links (S325)", () => {
       return (await page.locator(".board-picker select").inputValue()) !== "sens";
     });
   });
+
+  test("an end of a link picked is pulled to another card, and one Undo puts it back (S350)", async () => {
+    const [stock, ship, warn] = await agent(
+      'board new "Bouts" --format flow --id bouts\nadd decision "En stock ?" --alias d\nadd step "Expédier" --from @d --edge oui\nadd step "Prévenir"',
+    );
+    await page.locator(".board-picker select").selectOption("bouts");
+    await conn(stock, ship).waitFor();
+    const ends = page.locator("g.link-ends circle.link-handle-dot");
+    /** Picks the link, then pulls one of its ends, the start (0) or the arrow (1), to a place on screen. */
+    const pullEnd = async (src: string, dst: string, end: 0 | 1, to: { x: number; y: number }) => {
+      const at = await onLink(src, dst);
+      await page.mouse.click(at.x, at.y);
+      await until("the two ends of the link picked", async () => (await ends.count()) === 2);
+      const box = await ends.nth(end).boundingBox();
+      if (!box) throw new Error("no end to pull");
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(to.x, to.y, { steps: 6 });
+    };
+    const inside = async (id: string) => {
+      const box = await card(id).boundingBox();
+      if (!box) throw new Error(`no card ${id}`);
+      return { x: box.x + 14, y: box.y + box.height - 10 };
+    };
+    // No link picked, no end to pull.
+    expect(await ends.count()).toBe(0);
+
+    // The arrow goes to another card: the link keeps its start and its name.
+    await pullEnd(stock, ship, 1, await inside(warn));
+    expect(await card(warn).evaluate((g) => g.classList.contains("is-link-target"))).toBe(true);
+    await shot("66-link-end-pulled");
+    await page.mouse.up();
+    await conn(stock, warn).waitFor();
+    expect(await conn(stock, ship).count()).toBe(0);
+    expect(await conn(stock, warn).locator("text.conn-label").textContent()).toBe("oui");
+    // The link it was is no more: its bar and its ends are put away.
+    await page.locator(".card-tools").waitFor({ state: "hidden" });
+    expect(await ends.count()).toBe(0);
+    await page.getByRole("button", { name: "Undo" }).click();
+    await conn(stock, ship).waitFor();
+    expect(await conn(stock, warn).count()).toBe(0);
+
+    // The start goes to another card: the link keeps its arrow and its name.
+    await pullEnd(stock, ship, 0, await inside(warn));
+    await page.mouse.up();
+    await conn(warn, ship).waitFor();
+    expect(await conn(stock, ship).count()).toBe(0);
+    expect(await conn(warn, ship).locator("text.conn-label").textContent()).toBe("oui");
+
+    // Released on the card at its other end, or where no card is: the link stays, still picked.
+    await pullEnd(warn, ship, 1, await inside(warn));
+    expect(await card(warn).evaluate((g) => g.classList.contains("is-link-target"))).toBe(false);
+    await page.mouse.up();
+    await page.waitForTimeout(150);
+    expect(await conn(warn, ship).count()).toBe(1);
+    expect(await ends.count()).toBe(2);
+    await page.keyboard.press("Escape");
+
+    await agent("board rm bouts");
+    await until("the page has left the board removed", async () => {
+      return (await page.locator(".board-picker select").inputValue()) !== "bouts";
+    });
+  });
 });
 
 describe("a link drawn from the handle of the card chosen (S326)", () => {
@@ -3047,6 +3110,7 @@ describe("a flow's branches named from the page", () => {
         const point = new DOMPoint(at.x, at.y).matrixTransform(path.getScreenCTM() ?? undefined);
         return { x: point.x, y: point.y };
       });
+    // Near its arrow too, where the first click lays the end of the link picked under the second (S350).
     await page.mouse.dblclick(middle.x, middle.y);
     await typeInEditor("en rupture");
     await named(stock, order).waitFor();

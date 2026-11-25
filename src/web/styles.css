@@ -1785,8 +1785,8 @@ kbd {
   pointer-events: none;
 }
 
-/* Under the pointer, the dot grows: it can be pulled. */
-.link-handle:hover .link-handle-dot {
+/* Under the pointer, the dot grows: it can be pulled. Each dot follows the circle that takes the pointer for it. */
+.link-handle-hit:hover + .link-handle-dot {
   r: 8;
 }
 

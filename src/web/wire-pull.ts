@@ -156,12 +156,14 @@ class Pull {
   /** Lets the wire go; `missed`, it goes back to where it holds as it fades, so it does not look like a bug. */
   letGo(missed = false): void {
     if (!this.wire) return;
+    // A dot pressed and not pulled stays as it is: redrawn, the click it began would be lost, and the double click with it.
+    const pulled = this.wire.pointer !== undefined;
     this.aim(this.wire, undefined);
     if (missed) fadeBack(this.wire);
     else this.wire.g.remove();
     this.wire = undefined;
     this.root.classList.remove("is-wiring");
-    this.paint();
+    if (pulled) this.paint();
   }
 
   /** The card under the wire says what releasing would do: solid outline to link, dashed red to cut; none where nothing would be done. */
