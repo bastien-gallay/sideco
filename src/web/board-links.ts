@@ -22,9 +22,17 @@ export interface PickedLink {
   y: number;
 }
 
+/** What each layer of links was last drawn from. */
+const drawn = new WeakMap<SVGGElement, string>();
+
 /** Draws the links, each under a wide transparent twin of its line: a thin line is hard to hit. */
 export function drawLinks(layer: SVGGElement, scene: Scene): void {
-  layer.innerHTML = scene.connectors.map(connectorMarkup).join("");
+  const markup = scene.connectors.map(connectorMarkup).join("");
+  // Unchanged, the links keep their nodes: Chrome gives no click to a node taken away
+  // between the press and the release, so a link redrawn under the pointer could not be picked.
+  if (drawn.get(layer) === markup) return;
+  drawn.set(layer, markup);
+  layer.innerHTML = markup;
   for (const conn of layer.querySelectorAll<SVGGElement>(".conn")) {
     const path = conn.querySelector("path");
     if (path) conn.prepend(svg("path", { class: "conn-hit", d: path.getAttribute("d") ?? "" }));

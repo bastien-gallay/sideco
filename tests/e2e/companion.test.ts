@@ -2791,6 +2791,16 @@ describe("the spotlight on links (S325)", () => {
     );
     await page.locator(".board-picker select").selectOption("bouts");
     await conn(stock, ship).waitFor();
+    // A board painted again with its links unchanged keeps their nodes: Chrome gives no click to a node
+    // taken away between the press and the release, so a link redrawn under the pointer could not be picked.
+    await conn(stock, ship).evaluate((g) => g.setAttribute("data-kept", "yes"));
+    const first = await onLink(stock, ship);
+    await page.mouse.click(first.x, first.y);
+    await page.keyboard.press("Escape");
+    await page.evaluate(
+      () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+    );
+    expect(await conn(stock, ship).getAttribute("data-kept")).toBe("yes");
     const ends = page.locator("g.link-ends circle.link-handle-dot");
     /** Picks the link, then pulls one of its ends, the start (0) or the arrow (1), to a place on screen. */
     const pullEnd = async (src: string, dst: string, end: 0 | 1, to: { x: number; y: number }) => {
