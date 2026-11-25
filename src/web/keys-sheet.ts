@@ -74,6 +74,28 @@ function markLegend(): HTMLElement {
   );
 }
 
+/** The head of the sheet: its title, and the way out beside it. */
+function keysHead(): HTMLElement {
+  return h(
+    "header",
+    { class: "keys-head" },
+    // The title takes the keyboard: the sheet is read from its top, not from its last button (T283).
+    h("h2", { id: "keys-title", tabindex: -1 }, t.shortcuts),
+    // Beside the title, where Tab finds it without a scroll to the foot of the sheet (T306).
+    h(
+      "button",
+      {
+        type: "button",
+        class: "quiet keys-close",
+        "aria-label": t.close,
+        title: t.close,
+        onclick: () => keysSheet.close(),
+      },
+      "×",
+    ),
+  );
+}
+
 /** The sheet, for the board shown and the names its plan gives its axes. */
 export function openKeys(board: Board | undefined, axes: { x: string; y: string } | undefined): void {
   const how = sheetKind(board);
@@ -84,27 +106,28 @@ export function openKeys(board: Board | undefined, axes: { x: string; y: string 
       { class: "key-list" },
       ...rows.flatMap(([what, does]) => [h("dt", {}, keys ? h("kbd", {}, what) : what), h("dd", {}, does)]),
     );
+  /** A section stays whole when the sheet is wide enough for two columns (T303). */
+  const section = (title: string, body: HTMLElement) =>
+    h("section", { class: "key-section" }, h("h3", {}, title), body);
+  // The sheet is named by its title for a screen reader (T306).
+  keysSheet.setAttribute("aria-labelledby", "keys-title");
   keysSheet.replaceChildren(
-    // The title takes the keyboard: the sheet is read from its top, not from its last button (T283).
-    h("h2", { tabindex: -1 }, t.shortcuts),
-    ...keySections(
-      withMoreKeys(
-        t.shortcutList(how, Boolean(findFormat(board?.format ?? "")?.doneLast), axes),
-        locale,
-        how === "kanban",
-        how !== "graph",
-      ),
-      locale,
-      how,
-    ).flatMap((section) => [h("h3", {}, section.title), list(section.rows, true)]),
-    h("h3", {}, t.withTheMouse),
-    list(t.mouseList(how), false),
-    h("h3", {}, t.onACard),
-    markLegend(),
+    keysHead(),
     h(
       "div",
-      { class: "actions" },
-      h("button", { type: "button", class: "primary", onclick: () => keysSheet.close() }, t.close),
+      { class: "key-sections" },
+      ...keySections(
+        withMoreKeys(
+          t.shortcutList(how, Boolean(findFormat(board?.format ?? "")?.doneLast), axes),
+          locale,
+          how === "kanban",
+          how !== "graph",
+        ),
+        locale,
+        how,
+      ).map((part) => section(part.title, list(part.rows, true))),
+      section(t.withTheMouse, list(t.mouseList(how), false)),
+      section(t.onACard, markLegend()),
     ),
   );
   keysSheet.showModal();

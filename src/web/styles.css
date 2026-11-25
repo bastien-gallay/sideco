@@ -987,6 +987,55 @@ input[type="text"] {
   grid-template-columns: max-content 1fr;
 }
 
+/* The title, and the way out beside it: Tab finds it without a scroll to the foot of the sheet (T306). */
+.keys-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.keys-close {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* The first heading of a sheet, or of a column of it, has nothing to stand off from. */
+.key-section:first-child {
+  margin-top: -8px;
+}
+
+/*
+ * A window wide enough shows the sheet in two columns, so that it is read at a glance and not scrolled; a
+ * section is never cut in two (T303).
+ */
+@media (min-width: 1100px) {
+  dialog.sheet.keys {
+    width: min(1040px, calc(100vw - 32px));
+  }
+
+  .key-sections {
+    columns: 2;
+    column-gap: 40px;
+  }
+
+  .key-section {
+    break-inside: avoid;
+  }
+}
+
+/* A narrow window has no room for two columns of words: each key stands over what it does (T303). */
+@media (max-width: 480px) {
+  .keys .key-list:not(.mark-list) {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .keys .key-list:not(.mark-list) dd {
+    margin-bottom: 8px;
+  }
+}
+
 kbd {
   padding: 1px 6px;
   border: 1px solid var(--rule);
@@ -2161,6 +2210,13 @@ dialog.sheet {
 
 dialog.sheet::backdrop {
   background: rgba(0, 0, 0, 0.35);
+}
+
+/* On a dark page a sheet is hardly lighter than what it stands on: the page dims more, and its edge shows (T306). */
+@media (prefers-color-scheme: dark) {
+  dialog.sheet::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+  }
 }
 
 dialog.sheet form,

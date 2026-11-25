@@ -3137,6 +3137,35 @@ describe("a kanban's own lanes, from the page", () => {
     // It opens at its top, whatever the window leaves of it (T283): its last button is not where the reader starts.
     const scrolled = () => sheet.evaluate((el) => el.scrollTop);
     expect(await scrolled()).toBe(0);
+    // It is named by its title, and its way out is beside the title, the first thing Tab finds (T306).
+    expect(await sheet.getAttribute("aria-labelledby")).toBe(await sheet.locator("h2").getAttribute("id"));
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Close");
+    expect(await scrolled()).toBe(0);
+    // Wide, the sheet is in two columns and no section is cut; narrow, each key stands over what it does (T303).
+    const size = page.viewportSize() ?? { width: 1280, height: 800 };
+    const columns = () => sheet.locator(".key-sections").evaluate((el) => getComputedStyle(el).columnCount);
+    const beside = () =>
+      sheet
+        .locator(".key-list")
+        .first()
+        .evaluate((el) => {
+          const [dt, dd] = [el.querySelector("dt"), el.querySelector("dd")];
+          return (dt?.getBoundingClientRect().top ?? 0) === (dd?.getBoundingClientRect().top ?? 1);
+        });
+    try {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      expect(await columns()).toBe("2");
+      // Two columns of the width one had: the sheet is about twice as wide, and far less tall.
+      expect(await sheet.evaluate((el) => el.clientWidth)).toBeGreaterThan(1000);
+      expect(await sheet.evaluate((el) => el.scrollHeight)).toBeLessThan(1100);
+      await page.setViewportSize({ width: 420, height: 800 });
+      expect(await columns()).toBe("auto");
+      expect(await beside()).toBe(false);
+    } finally {
+      await page.setViewportSize(size);
+    }
+    expect(await beside()).toBe(true);
     await shot("44-keys-kanban");
     await sheet.evaluate((el) => el.scrollTo(0, el.scrollHeight));
     await page.keyboard.press("Escape");
