@@ -18,6 +18,10 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
     },
     { after: "E", row: ["I", "Read its detail, in the right panel"] },
     {
+      after: "/ or ⌘K / Ctrl+K",
+      row: ["B, S", "To the list of boards, to the list of Claude's sessions: its arrows choose another"],
+    },
+    {
       after: "Shift + ← → ↑ ↓",
       cells: true,
       row: ["Shift + Home, End", "Send the card to the top of its cell, or to its foot"],
@@ -46,6 +50,13 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
       row: ["A", "Ajouter une carte liée à celle-ci : du type auquel elle mène, sinon du sien, sous elle"],
     },
     { after: "E", row: ["I", "Lire son détail, dans le panneau de droite"] },
+    {
+      after: "/ ou ⌘K / Ctrl+K",
+      row: [
+        "B, S",
+        "À la liste des tableaux, à celle des sessions de Claude : ses flèches en choisissent une autre",
+      ],
+    },
     {
       after: "Maj + ← → ↑ ↓",
       cells: true,

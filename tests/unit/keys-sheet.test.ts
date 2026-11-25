@@ -64,6 +64,14 @@ describe("the sheet of keys", () => {
     );
   });
 
+  test("tells B and S, which reach the lists of boards and of sessions, after the search (T275, T273)", () => {
+    const en = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([keys]) => keys);
+    expect(en[en.indexOf("/ or ⌘K / Ctrl+K") + 1]).toBe("B, S");
+    expect(says(withMoreKeys(MESSAGES.fr.shortcutList("graph", true), "fr"))).toContain(
+      "B, S = À la liste des tableaux, à celle des sessions de Claude",
+    );
+  });
+
   test("tells Redo beside Undo, with every key that does it", () => {
     expect(says(MESSAGES.en.shortcutList("kanban", true))).toContain(
       "⇧⌘Z / Ctrl+Shift+Z or Ctrl+Y = Redo the change undone",

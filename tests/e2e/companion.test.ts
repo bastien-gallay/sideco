@@ -4483,9 +4483,27 @@ describe("two sessions on one project", () => {
     );
   });
 
+  test("B gives the list of boards the keyboard, S the list of sessions: another is chosen without the mouse (T275, T273)", async () => {
+    const holds = () => page.evaluate(() => (document.activeElement as HTMLSelectElement | null)?.name ?? "");
+    await page.locator("g.card").first().focus();
+    await page.keyboard.press("s");
+    await until("the list of sessions holds the keyboard", async () => (await holds()) === "session");
+    // In a list, a letter is the list's: it goes to the name that starts by it, and B is not taken.
+    await page.keyboard.press("b");
+    expect(await holds()).toBe("session");
+    await page.locator("g.card").first().focus();
+    await page.keyboard.press("b");
+    await until("the list of boards holds the keyboard", async () => (await holds()) === "board");
+    await page.locator("g.card").first().focus();
+  });
+
   test("a session that ends leaves the choice when it is not the one shown", async () => {
+    // One session alone has no list: S is then no key of the page.
+    await page.locator("g.card").first().focus();
     await runHook({ session_id: OTHER, cwd: root, hook_event_name: "SessionEnd", reason: "exit" }, {}, false);
     await until("the picker gone", async () => (await picker().count()) === 0);
+    await page.keyboard.press("s");
+    expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe("SELECT");
     // One session alone: the button names none.
     expect(await page.locator(".pass button.primary").textContent()).toBe("Send to Claude");
   });

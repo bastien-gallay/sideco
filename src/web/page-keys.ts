@@ -4,6 +4,8 @@
  * says which key asks for it.
  */
 
+import { toPicker } from "./picker-keys.ts";
+
 export interface PageKeys {
   /** `/` or Ctrl+K: the search. False where there is no board to search: the key is then the browser's. */
   find(): boolean;
@@ -33,6 +35,9 @@ function plain(key: string, on: PageKeys): (() => unknown) | undefined {
   if (key === "/") return on.find;
   if (key === "?") return on.keys;
   if (key === "f" || key === "F") return on.focus;
+  // The lists at the head of the page need nothing of main.ts: they are found where they stand.
+  if (key === "b" || key === "B") return () => toPicker("board");
+  if (key === "s" || key === "S") return () => toPicker("session");
   // < and > a key away on a French keyboard, [ and ] on an American one (T201).
   if (key === "<" || key === "[") return () => on.fold("left");
   if (key === ">" || key === "]") return () => on.fold("right");
