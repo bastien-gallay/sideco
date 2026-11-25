@@ -44,6 +44,7 @@ import { mountFind } from "./find-bar.ts";
 import { focusBar, focusButton, focusShown, paintFocusBar, pointAtChosen } from "./focus-bar.ts";
 import { keysSheet, openKeys } from "./keys-sheet.ts";
 import { filterBar, mountLabelFilter, paintLabelFilter } from "./label-filter.ts";
+import { paintUnseen } from "./lane-unseen.ts";
 import { mountLinkHint } from "./link-hint.ts";
 import { type LinkRow, linkRows } from "./link-rows.ts";
 import { languagePicker, locale, t } from "./locale.ts";
@@ -1456,6 +1457,7 @@ function render(): void {
   visitBar.hidden = !away?.count;
   view.paint(focusShown(board), unread.cards, away?.cards ?? []);
   paintChosen(canvas, speak);
+  paintUnseen(canvas, board);
   paintLabelFilter(board, canvas);
   const landing = arrived(board?.id);
   if (landing) requestAnimationFrame(() => view.focus(landing, true));

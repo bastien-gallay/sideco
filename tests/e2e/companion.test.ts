@@ -311,6 +311,43 @@ describe("the agent writes, the page follows", () => {
     await agent("board rm viser");
   });
 
+  test("a column longer than the window says how many of its cards are out of sight, and takes there (S306)", async () => {
+    const adds = Array.from({ length: 24 }, (_, i) => `add task "Carte ${i + 1}" --lane todo`).join("\n");
+    await agent(`board new "Longue" --format kanban --id longue\nadd task "Seule" --lane doing\n${adds}`);
+    await page.locator(".board-picker select").selectOption("longue");
+    const below = page.locator(".unseen-chip.is-below");
+    // Each column counts for itself: the short one too, once its card has gone under its heading.
+    const above = page.locator('.unseen-chip.is-above[aria-label$="To do"]');
+    const count = async (chip: typeof below) => Number(((await chip.textContent()) ?? "").replace(/\D/g, ""));
+    // The long column alone says it: so many cards lower; the short one says nothing.
+    // The count is read once the board has settled: the cards arrive in a batch.
+    let hidden = 0;
+    await until("the long column counts its cards lower, alone", async () => {
+      if ((await below.count()) !== 1 || (await page.locator(".unseen-chip.is-above").count()) !== 0)
+        return false;
+      const now = await count(below);
+      const settled = now > 3 && now === hidden;
+      hidden = now;
+      return settled && (await below.getAttribute("aria-label")) === `${now} cards lower in To do`;
+    });
+    // Pressed, it brings the next ones into view: fewer are lower, some are now higher.
+    await below.click();
+    await until(
+      "fewer lower, some higher",
+      async () =>
+        (await above.count()) === 1 && ((await below.count()) === 0 || (await count(below)) < hidden),
+    );
+    expect(await above.getAttribute("aria-label")).toContain("cards higher in To do");
+    await shot("74-unseen");
+    await above.click();
+    await until("back at the top", async () => (await page.locator(".unseen-chip.is-above").count()) === 0);
+    await page.locator(".board-picker select").selectOption("commande");
+    await card("R1").waitFor();
+    await agent("board rm longue");
+    // A board whose lanes are not columns counts nothing.
+    await until("no count left", async () => (await page.locator(".unseen-chip").count()) === 0);
+  });
+
   test("several cards are chosen by Shift and a click, or X; done and removed together, one Undo takes it back (S333)", async () => {
     const [a, b, c] = await agent(
       'board new "Plusieurs" --format kanban --id plusieurs\nadd task "Un" --lane todo\nadd task "Deux" --lane todo\nadd task "Trois" --lane todo',

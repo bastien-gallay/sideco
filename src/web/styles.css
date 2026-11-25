@@ -1367,6 +1367,28 @@ kbd {
   background: var(--surface);
 }
 
+/* How many cards of a column are out of sight (S306): a count at the top and at the foot of the column. */
+.unseen {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.unseen-chip {
+  position: absolute;
+  transform: translateX(-50%);
+  padding: 1px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 18%);
+  pointer-events: auto;
+}
+
 .canvas-scroll {
   position: absolute;
   inset: 0;
