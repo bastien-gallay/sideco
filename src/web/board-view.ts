@@ -17,6 +17,7 @@ import {
 } from "../domain/layout/index.ts";
 import { arrowDefs, bandMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
+import { axisEditorBox, dressAxes } from "./axis-words.ts";
 import type { BoardHooks, BoardView } from "./board-api.ts";
 import { type CardKey, cardKey, type LaneKey, laneKey } from "./board-keys.ts";
 import * as links from "./board-links.ts";
@@ -204,7 +205,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (banding !== paintedBands) {
       paintedBands = banding;
       bands.innerHTML = banding;
-      dressAxes();
+      dressAxes(bands, scene.bands, isLive());
       frozen = liftHeadings(heads, bands, scene, !!format()?.ownLanes && !format()?.grid);
     }
     backToAxis();
@@ -734,24 +735,6 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   }
 
   /**
-   * Where the editor opens on a word of an axis: over the word it replaces,
-   * starting where it starts. The axis across the bottom has its editor above
-   * it, clear of the footer; the upright one has it beside it.
-   */
-  function axisEditorBox(box: DOMRect, axis: string, bound: string | undefined): DOMRect {
-    const w = 220;
-    const h = 36;
-    if (axis === "y") return new DOMRect(box.right + 6, box.top + box.height / 2 - h / 2, w, h);
-    const left =
-      bound === "low"
-        ? box.left - 6
-        : bound === "high"
-          ? box.right + 6 - w
-          : box.left + box.width / 2 - w / 2;
-    return new DOMRect(left, box.top - h - 4, w, h);
-  }
-
-  /**
    * Opens the editor on an axis of a plan: its name, or the word at one of its
    * ends. Emptied, the name gives back the workshop's axis, its ends with it;
    * an end gives back the workshop's word for it.
@@ -781,23 +764,6 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       { name: placeholder, lines: false, blank: true, short: true },
     );
     axisArriving = { axis, bound };
-  }
-
-  /** The words of a plan's axes, each a key stop that Enter or F2 writes, as a double-click does. */
-  function dressAxes(): void {
-    for (const band of scene.bands.filter((b) => b.kind === "axis")) {
-      const group = bands.querySelector(`text.axis-label[data-axis="${CSS.escape(band.id)}"]`)?.parentElement;
-      for (const word of group?.querySelectorAll<SVGTextElement>("text") ?? []) {
-        const bound = word.dataset.bound as "low" | "high" | undefined;
-        word.setAttribute("tabindex", isLive() ? "0" : "-1");
-        word.setAttribute("role", "button");
-        word.setAttribute(
-          "aria-label",
-          bound ? t.axisEndKey(bound, band[bound] ?? "") : t.axisKey(band.label),
-        );
-        word.setAttribute("aria-description", t.axisKeys);
-      }
-    }
   }
 
   function backToAxis(): void {
