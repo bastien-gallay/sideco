@@ -12,6 +12,25 @@ import { withMoreKeys } from "./more-keys.ts";
 /** The keys of the page, in one place: asked for with `?`, or from the palette. */
 export const keysSheet = h("dialog", { class: "sheet keys" });
 
+// `?` closes the sheet as it opened it (T278); Escape is the dialog's own.
+keysSheet.addEventListener("keydown", (event) => {
+  if (event.key !== "?" || event.ctrlKey || event.metaKey || event.altKey) return;
+  event.preventDefault();
+  // The page's own `?` would open it again, once closed.
+  event.stopPropagation();
+  keysSheet.close();
+});
+// A click beside the sheet, on what dims the page, closes it: the click is the dialog's, out of its box.
+keysSheet.addEventListener("click", (event) => {
+  const box = keysSheet.getBoundingClientRect();
+  const inside =
+    event.clientX >= box.left &&
+    event.clientX <= box.right &&
+    event.clientY >= box.top &&
+    event.clientY <= box.bottom;
+  if (event.target === keysSheet && !inside) keysSheet.close();
+});
+
 /** How the board shown is laid out, as far as its keys and gestures go. */
 function sheetKind(board: Board | undefined): SheetKind {
   const format = findFormat(board?.format ?? "");
@@ -53,7 +72,8 @@ export function openKeys(board: Board | undefined, axes: { x: string; y: string 
       ...rows.flatMap(([what, does]) => [h("dt", {}, keys ? h("kbd", {}, what) : what), h("dd", {}, does)]),
     );
   keysSheet.replaceChildren(
-    h("h2", {}, t.shortcuts),
+    // The title takes the keyboard: the sheet is read from its top, not from its last button (T283).
+    h("h2", { tabindex: -1 }, t.shortcuts),
     list(
       withMoreKeys(
         t.shortcutList(how, Boolean(findFormat(board?.format ?? "")?.doneLast), axes),
@@ -73,4 +93,6 @@ export function openKeys(board: Board | undefined, axes: { x: string; y: string 
     ),
   );
   keysSheet.showModal();
+  keysSheet.querySelector("h2")?.focus();
+  keysSheet.scrollTop = 0;
 }

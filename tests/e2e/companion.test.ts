@@ -2858,8 +2858,26 @@ describe("a kanban's own lanes, from the page", () => {
     expect(await marks.locator("dd", { hasText: "Added by" }).count()).toBe(0);
     expect(await marks.locator("dd", { hasText: "Has a detail" }).count()).toBe(1);
     expect(await marks.locator("dd", { hasText: "Changed by Claude since your last visit" }).count()).toBe(1);
+    // It opens at its top, whatever the window leaves of it (T283): its last button is not where the reader starts.
+    const scrolled = () => sheet.evaluate((el) => el.scrollTop);
+    expect(await scrolled()).toBe(0);
     await shot("44-keys-kanban");
+    await sheet.evaluate((el) => el.scrollTo(0, el.scrollHeight));
     await page.keyboard.press("Escape");
+    await sheet.waitFor({ state: "hidden" });
+    // `?` again closes it, as it opened it (T278), and the card has the keyboard back.
+    await page.keyboard.press("?");
+    await sheet.waitFor({ state: "visible" });
+    expect(await scrolled()).toBe(0);
+    await page.keyboard.press("?");
+    await sheet.waitFor({ state: "hidden" });
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-id"))).toBe(there);
+    // A click beside it closes it too; a click in it does not.
+    await page.keyboard.press("?");
+    await sheet.waitFor({ state: "visible" });
+    await sheet.locator("h2").click();
+    expect(await sheet.isVisible()).toBe(true);
+    await page.mouse.click(6, 6);
     await sheet.waitFor({ state: "hidden" });
     expect(await page.locator(".palette .keys-open").textContent()).toBe("Keys and gestures (?)");
   });

@@ -2169,6 +2169,11 @@ dialog.sheet h2 {
   color: var(--ink);
 }
 
+/* The title of a sheet holds the keyboard as it opens, so that it is read from its top: it is no control. */
+dialog.sheet h2:focus {
+  outline: none;
+}
+
 .field {
   display: grid;
   gap: 4px;
