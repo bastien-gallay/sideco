@@ -404,6 +404,7 @@ describe("the agent writes, the page follows", () => {
     await page.getByPlaceholder("A word for Claude (optional)").focus();
     await page.keyboard.press("d");
     expect(await lanes()).toBe(`${a}:todo,${b}:todo,${c}:todo`);
+    await page.getByPlaceholder("A word for Claude (optional)").fill("");
     await card(a).click();
     await card(b).click({ modifiers: ["Shift"] });
     await until("two again", async () => ((await bar.textContent()) ?? "").includes("2 cards chosen"));
@@ -421,6 +422,20 @@ describe("the agent writes, the page follows", () => {
     expect(await bar.isVisible()).toBe(true);
     await page.locator("button", { hasText: "Undo" }).first().click();
     await until("both unlabelled by one undo", async () => (await worn(a)) === "" && (await worn(b)) === "");
+    // The keys typed in the field are the field's: a d or a Backspace there does nothing to the cards.
+    await toAll.click();
+    await page.keyboard.type("dx");
+    await page.keyboard.press("Backspace");
+    expect(await toAll.inputValue()).toBe("d");
+    expect(await lanes()).toBe(`${a}:todo,${b}:todo,${c}:todo`);
+    // Escape empties the field, then leaves it for the card: the choice stays.
+    await page.keyboard.press("Escape");
+    expect(await toAll.inputValue()).toBe("");
+    await page.keyboard.press("Escape");
+    await until("the keyboard back on a card", () =>
+      page.evaluate(() => document.activeElement?.classList.contains("card") ?? false),
+    );
+    expect(await bar.isVisible()).toBe(true);
     await card(a).focus();
     // D marks them all done: on a kanban they go to the last column; one Undo brings both back.
     await page.keyboard.press("d");

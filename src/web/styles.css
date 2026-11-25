@@ -1307,7 +1307,17 @@ kbd {
   gap: 6px;
 }
 
+/* What the bar says and its buttons are drawn again; the field between them is not: it keeps its place by its order. */
+.chosen-says {
+  display: contents;
+}
+
+.chosen-says > span:first-child {
+  margin-right: auto;
+}
+
 .chosen-label {
+  order: 1;
   width: 22ch;
   min-width: 0;
 }
@@ -1316,6 +1326,11 @@ kbd {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+}
+
+/* In the bar of the cards chosen, the buttons come after the field. */
+.chosen-says > .focus-acts {
+  order: 2;
 }
 
 .focus-toggle {

@@ -9,6 +9,7 @@
 import type { Command } from "../domain/commands.ts";
 import { isDone } from "../domain/formats.ts";
 import type { Locale } from "../domain/i18n.ts";
+import { hasLabel, normalLabel } from "../domain/labels.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h, region } from "./dom.ts";
 import { locale } from "./locale.ts";
@@ -30,13 +31,16 @@ const WORDS: Record<
     label: (cards: number) => string;
     labelHint: string;
     labelled: (labels: string, cards: number) => string;
+    worn: (labels: string) => string;
   }
 > = {
   en: {
     chosen: (cards) => `${cards} cards chosen`,
     label: (cards) => `Add a label to the ${cards} cards chosen`,
     labelHint: "Label them: type:bug, @name… (Enter)",
-    labelled: (labels, cards) => `${labels} added to ${cards} cards: Undo takes it back at once`,
+    labelled: (labels, cards) =>
+      `${labels} added to ${cards} card${cards > 1 ? "s" : ""}: Undo takes it back at once`,
+    worn: (labels) => `The cards chosen all wear ${labels} already`,
     done: "Mark done (D)",
     undone: "Mark not done (D)",
     remove: "Remove (Delete)",
@@ -50,7 +54,9 @@ const WORDS: Record<
     chosen: (cards) => `${cards} cartes choisies`,
     label: (cards) => `Ajouter un label aux ${cards} cartes choisies`,
     labelHint: "Les labéliser : type:bug, @nom… (Entrée)",
-    labelled: (labels, cards) => `${labels} ajouté à ${cards} cartes : Undo le retire d'un coup`,
+    labelled: (labels, cards) =>
+      `${labels} ajouté à ${cards} carte${cards > 1 ? "s" : ""} : Undo le retire d'un coup`,
+    worn: (labels) => `Les cartes choisies portent déjà toutes ${labels}`,
     done: "Marquer faites (D)",
     undone: "Marquer non faites (D)",
     remove: "Supprimer (Suppr)",
@@ -63,7 +69,9 @@ const WORDS: Record<
 };
 const w = WORDS[locale];
 
-export const chosenBar = h("div", { class: "chosen-bar", hidden: true });
+/** What the bar says and its buttons, drawn again as the choice changes; the field beside them is never drawn again. */
+const chosenSays = h("div", { class: "chosen-says" });
+export const chosenBar = h("div", { class: "chosen-bar", hidden: true }, chosenSays);
 
 /** The cards kept chosen whatever the keyboard moves to, on the board they were kept on. */
 const kept = new Set<string>();
@@ -110,6 +118,8 @@ function act(what: Act): boolean {
         : { kind: "mark", board: board.id, id, done: !all },
   );
   void sendTogether(commands).then((answer) => {
+    // The bar that is not drawn again has no button to give the keyboard to.
+    if (answer === undefined || what === "remove") moved = false;
     if (answer === undefined) return;
     if (what === "remove") kept.clear();
     speak(w.did(what, ids.length));
@@ -154,7 +164,8 @@ document.addEventListener(
     // A question asked in a dialog comes first: the keys are not for the cards behind it.
     if (document.querySelector("dialog[open]")) return;
     const on = cardOf(event.target);
-    if (!on && event.target !== document.body) return;
+    // On a card only: a key pressed with the keyboard nowhere is not for the cards chosen.
+    if (!on) return;
     const what = KEYS[event.key];
     const more = event.key === "x" || event.key === "X";
     const taken = more ? on !== undefined && toggle(on) : what !== undefined && act(what);
@@ -166,17 +177,43 @@ document.addEventListener(
 );
 
 /** What is written here is a label for every card chosen (S333): several by commas, as in the Detail tab. */
-const labelField = h("input", { class: "chosen-label", placeholder: w.labelHint, maxlength: 200 });
+const labelField = h("input", {
+  class: "chosen-label",
+  type: "text",
+  name: "labels",
+  autocomplete: "off",
+  placeholder: w.labelHint,
+  maxlength: 200,
+});
+chosenBar.append(labelField);
+
+/** Escape empties the field, then leaves it for the card chosen: the choice stays. */
+function leaveField(event: KeyboardEvent): void {
+  event.preventDefault();
+  event.stopPropagation();
+  if (labelField.value === "" && state.selected)
+    document.querySelector<SVGGElement>(`g.card[data-id="${CSS.escape(state.selected)}"]`)?.focus();
+  labelField.value = "";
+}
+
 labelField.addEventListener("keydown", (event) => {
-  if (event.key !== "Enter" || event.isComposing) return;
+  if (event.isComposing) return;
+  if (event.key === "Escape") return leaveField(event);
+  if (event.key !== "Enter") return;
   event.preventDefault();
   const board = currentBoard();
-  const ids = chosen(board);
-  const labels = labelField.value
-    .split(",")
-    .map((label) => label.trim())
-    .filter(Boolean);
-  if (!board || ids.length === 0 || labels.length === 0 || !isLive()) return;
+  const labels = labelField.value.split(",").map(normalLabel).filter(Boolean);
+  if (!board || labels.length === 0 || !isLive()) return;
+  // Only the cards that lack one of them are written to: what is said and what Undo takes back are the same.
+  const ids = chosen(board).filter((id) => {
+    const element = board.elements.find((e) => e.id === id);
+    return element !== undefined && labels.some((label) => !hasLabel(element, label));
+  });
+  if (ids.length === 0) {
+    if (chosen(board).length > 0) speak(w.worn(labels.join(", ")));
+    labelField.value = "";
+    return;
+  }
   const commands = ids.map((id): Command => ({ kind: "label", board: board.id, id, labels }));
   void sendTogether(commands).then((answer) => {
     if (answer === undefined) return;
@@ -188,7 +225,7 @@ labelField.addEventListener("keydown", (event) => {
 /** A button of the bar was pressed and the bar is to be drawn again: the keyboard follows. */
 let moved = false;
 
-const paintBar = region(chosenBar, (m: { ids: string[]; allDone: boolean; live: boolean }) => {
+const paintBar = region(chosenSays, (m: { ids: string[]; allDone: boolean; live: boolean }) => {
   labelField.setAttribute("aria-label", w.label(m.ids.length));
   const button = (words: string, onclick: () => void): HTMLElement =>
     h("button", { type: "button", class: "quiet", onclick }, words);
@@ -196,7 +233,9 @@ const paintBar = region(chosenBar, (m: { ids: string[]; allDone: boolean; live: 
     kept.clear();
     changed();
   };
-  if (moved) queueMicrotask(() => chosenBar.querySelector("button")?.focus());
+  // The keyboard follows the button pressed, unless the reader went on to write a label.
+  if (moved && document.activeElement !== labelField)
+    queueMicrotask(() => chosenBar.querySelector("button")?.focus());
   moved = false;
   const all = (what: Act) => (): void => {
     // The button pressed may be drawn again with another word: the keyboard stays in the bar.
@@ -208,7 +247,6 @@ const paintBar = region(chosenBar, (m: { ids: string[]; allDone: boolean; live: 
     h(
       "span",
       { class: "focus-acts" },
-      m.live && labelField,
       m.live && button(m.allDone ? w.undone : w.done, all("done")),
       m.live && button(w.remove, all("remove")),
       button(w.leave, leave),
@@ -224,6 +262,9 @@ export function paintChosen(canvas: Element, say: (words: string) => void): void
   for (const g of canvas.querySelectorAll<SVGGElement>("g.card"))
     g.classList.toggle("is-also", ids.includes(g.dataset.id ?? "") && g.dataset.id !== state.selected);
   chosenBar.hidden = ids.length === 0;
+  labelField.hidden = !isLive();
+  // What was written for a choice let go is not kept for the next one.
+  if (ids.length === 0) labelField.value = "";
   if (!board || ids.length === 0) return;
   const allDone = ids.every((id) => {
     const element = board.elements.find((e) => e.id === id);
