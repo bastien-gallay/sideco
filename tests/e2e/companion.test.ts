@@ -3277,10 +3277,15 @@ describe("a link drawn from the handle of the card chosen (S326)", () => {
   const handle = () => page.locator("g.link-handle circle.link-handle-dot");
   // The handle is drawn again with its card: between two drawings it has no box, so it is waited for.
   const centre = async (l: Locator) => {
-    await l.waitFor();
-    const box = await l.boundingBox();
-    if (!box) throw new Error("nothing to point at");
-    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    let box: Awaited<ReturnType<Locator["boundingBox"]>> = null;
+    await until("something to point at", async () => {
+      await l.waitFor();
+      box = await l.boundingBox();
+      return box !== null;
+    });
+    const at = box as { x: number; y: number; width: number; height: number } | null;
+    if (!at) throw new Error("nothing to point at");
+    return { x: at.x + at.width / 2, y: at.y + at.height / 2 };
   };
   /** Pulls a wire from the handle to somewhere on the card, not its centre: it lands anywhere on it. */
   const pull = async (to: string, release = true) => {

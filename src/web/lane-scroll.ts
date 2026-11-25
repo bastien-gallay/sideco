@@ -82,7 +82,9 @@ export function laneSeen(lane: string): LaneSeen | undefined {
 export function windowed(board: Board, view: View, held: readonly (string | null | undefined)[]): View {
   const format = findFormat(board.format);
   if (!format?.ownLanes || format.grid) {
+    // No column scrolls alone here: no window was given, so none is found stale and painted again for.
     last = undefined;
+    given = undefined;
     return view;
   }
   given = tallNow();
