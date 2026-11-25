@@ -2796,18 +2796,27 @@ describe("the spotlight on links (S325)", () => {
     await conn(stock, ship).evaluate((g) => g.setAttribute("data-kept", "yes"));
     const first = await onLink(stock, ship);
     await page.mouse.click(first.x, first.y);
-    await page.keyboard.press("Escape");
-    await page.evaluate(
-      () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
-    );
-    expect(await conn(stock, ship).getAttribute("data-kept")).toBe("yes");
     const ends = page.locator("g.link-ends circle.link-handle-dot");
+    await until("the two ends of the link picked", async () => (await ends.count()) === 2);
+    await page.keyboard.press("Escape");
+    // The ends put away say the board was painted again.
+    await until("the link let go", async () => (await ends.count()) === 0);
+    expect(await conn(stock, ship).getAttribute("data-kept")).toBe("yes");
     /** Picks the link, then pulls one of its ends, the start (0) or the arrow (1), to a place on screen. */
     const pullEnd = async (src: string, dst: string, end: 0 | 1, to: { x: number; y: number }) => {
+      // The ends of a link let go are put away at the next frame: counted before, they would be taken for the new ones.
+      await until("no link picked", async () => (await ends.count()) === 0);
       const at = await onLink(src, dst);
       await page.mouse.click(at.x, at.y);
       await until("the two ends of the link picked", async () => (await ends.count()) === 2);
-      const box = await ends.nth(end).boundingBox();
+      // The ends are drawn anew at each paint: one measured as it is replaced has no place, and is measured again.
+      const found: { x: number; y: number; width: number; height: number }[] = [];
+      await until("an end to pull", async () => {
+        const measured = await ends.nth(end).boundingBox();
+        if (measured) found.push(measured);
+        return measured !== null;
+      });
+      const box = found[0];
       if (!box) throw new Error("no end to pull");
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await page.mouse.down();
