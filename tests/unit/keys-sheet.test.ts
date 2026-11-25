@@ -29,10 +29,10 @@ describe("the sheet of keys", () => {
   test("tells the keys that go along a column where the lanes are columns, after the arrows (T284)", () => {
     const rows = MESSAGES.en.shortcutList("kanban", true);
     const en = withMoreKeys(rows, "en", true).map(([keys]) => keys);
-    expect(en[en.indexOf("← → ↑ ↓") + 1]).toBe("Page ↑ ↓, Home, End");
-    expect(withMoreKeys(rows, "en").map(([keys]) => keys)).not.toContain("Page ↑ ↓, Home, End");
+    expect(en[en.indexOf("← → ↑ ↓") + 1]).toBe("PgUp, PgDn, Home, End");
+    expect(withMoreKeys(rows, "en").map(([keys]) => keys)).not.toContain("PgUp, PgDn, Home, End");
     expect(says(withMoreKeys(MESSAGES.fr.shortcutList("kanban", true), "fr", true))).toContain(
-      "Page ↑ ↓, Début, Fin = Le long de la colonne",
+      "Pg préc., Pg suiv., Début, Fin = Le long de la colonne",
     );
   });
 

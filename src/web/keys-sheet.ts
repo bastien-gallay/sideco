@@ -5,6 +5,7 @@
 import { findFormat } from "../domain/formats.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h } from "./dom.ts";
+import { ownKeys, pieces } from "./key-notation.ts";
 import { keySections } from "./key-sections.ts";
 import { locale, t } from "./locale.ts";
 import type { CardMark, SheetKind } from "./messages.ts";
@@ -74,6 +75,12 @@ function markLegend(): HTMLElement {
   );
 }
 
+/** The keys of a row as the reader's keyboard writes them, each drawn as a key (T305). */
+function drawn(keys: string): (HTMLElement | string)[] {
+  const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+  return pieces(ownKeys(keys, mac)).map((piece) => ("key" in piece ? h("kbd", {}, piece.key) : piece.word));
+}
+
 /** The head of the sheet: its title, and the way out beside it. */
 function keysHead(): HTMLElement {
   return h(
@@ -104,7 +111,7 @@ export function openKeys(board: Board | undefined, axes: { x: string; y: string 
     h(
       "dl",
       { class: "key-list" },
-      ...rows.flatMap(([what, does]) => [h("dt", {}, keys ? h("kbd", {}, what) : what), h("dd", {}, does)]),
+      ...rows.flatMap(([what, does]) => [h("dt", {}, ...(keys ? drawn(what) : [what])), h("dd", {}, does)]),
     );
   /** A section stays whole when the sheet is wide enough for two columns (T303). */
   const section = (title: string, body: HTMLElement) =>

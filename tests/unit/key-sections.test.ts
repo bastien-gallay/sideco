@@ -22,7 +22,7 @@ describe("the keys of the sheet, in sections (T282)", () => {
       "The page",
       "A lane heading",
     ]);
-    expect(keysOf(sections[0])).toEqual(["Tab", "← → ↑ ↓", "Page ↑ ↓, Home, End"]);
+    expect(keysOf(sections[0])).toEqual(["Tab", "← → ↑ ↓", "PgUp, PgDn, Home, End"]);
     // The keys of a card are two sections (T304): fifteen rows under one heading were a column by themselves.
     expect(keysOf(sections[1])).toEqual(["Shift + ← → ↑ ↓", "Shift + Home, End", "Alt + ← → ↑ ↓", "A"]);
     expect(keysOf(sections[2])?.[0]).toBe("Enter or F2");

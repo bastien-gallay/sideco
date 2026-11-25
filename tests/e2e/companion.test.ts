@@ -3125,6 +3125,19 @@ describe("a kanban's own lanes, from the page", () => {
       "On a card",
     ]);
     expect(await sheet.locator("dd", { hasText: "Write its subtitle" }).count()).toBe(1);
+    // The keys are those of the reader's keyboard, each drawn as one key, none wider than its column (T305).
+    const drawn = await sheet.locator("dt kbd").evaluateAll((all) =>
+      all.map((key) => ({
+        text: key.textContent ?? "",
+        fits:
+          key.getBoundingClientRect().right <= (key.parentElement?.getBoundingClientRect().right ?? 0) + 1,
+      })),
+    );
+    expect(drawn.filter((key) => !key.fits)).toEqual([]);
+    expect(drawn.filter((key) => /⌘.*Ctrl| or |\S\+\S/.test(key.text))).toEqual([]);
+    const mac = await page.evaluate(() => /Mac|iPhone|iPad/.test(navigator.platform));
+    expect(drawn.some((key) => key.text === (mac ? "⇧⌘Z" : "Ctrl + Shift + Z"))).toBe(true);
+    expect(drawn.some((key) => key.text === (mac ? "Ctrl + Y" : "⇧⌘Z"))).toBe(false);
     expect(await sheet.locator("h3", { hasText: "With the mouse" }).count()).toBe(1);
     expect(await sheet.locator("dt", { hasText: "+ between two lane headings" }).count()).toBe(1);
     // What the marks of a card mean, each drawn as the card draws it.

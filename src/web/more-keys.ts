@@ -22,7 +22,7 @@ const MORE: Record<Locale, More[]> = {
     {
       after: "← → ↑ ↓",
       columns: true,
-      row: ["Page ↑ ↓, Home, End", "Along the column: a page further, its first card, its last"],
+      row: ["PgUp, PgDn, Home, End", "Along the column: a page further, its first card, its last"],
     },
     // Where it lands is the board's to say: under the card, in the lane of its kind, at the next rank of a diagram.
     {
@@ -51,7 +51,7 @@ const MORE: Record<Locale, More[]> = {
       after: "← → ↑ ↓",
       columns: true,
       row: [
-        "Page ↑ ↓, Début, Fin",
+        "Pg préc., Pg suiv., Début, Fin",
         "Le long de la colonne : une page plus loin, sa première carte, sa dernière",
       ],
     },
