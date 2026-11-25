@@ -4493,6 +4493,14 @@ describe("labels on a card, from the page", () => {
         (await worn("noms-ici", fix)) === "type:bug" && (await worn("noms-ici", also)).includes("type:bug"),
     );
     expect(await worn("noms-loin", far)).toBe("type:issue");
+    // Renamed to another key, the label has another dot: the keyboard goes to it.
+    await page.locator(".card-panel-labels .label-colour").first().click();
+    await field.fill("kind:issue");
+    await field.press("Enter");
+    await until("renamed to another key", async () => (await worn("noms-ici", fix)) === "kind:issue");
+    await until("the keyboard on the dot of the new key", () =>
+      page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.key === "kind"),
+    );
     await page.keyboard.press("Escape");
     await agent("board rm noms-ici");
     await agent("board rm noms-loin");

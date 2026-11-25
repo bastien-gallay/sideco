@@ -24,3 +24,13 @@ export function renameLabel(ws: Workspace, from: string, to: string): Command[] 
     }),
   );
 }
+
+/** The commands of a rename, a batch a board: each is one gesture there, and none is too long to send. */
+export function byBoard(commands: readonly Command[]): Command[][] {
+  const batches = new Map<string, Command[]>();
+  for (const command of commands) {
+    const board = "board" in command && typeof command.board === "string" ? command.board : "";
+    batches.set(board, [...(batches.get(board) ?? []), command]);
+  }
+  return [...batches.values()];
+}

@@ -406,6 +406,8 @@ describe("Claude Code hooks, through stdin as Claude Code calls them", () => {
     expect(await labels()).toContain("type:bug");
     expect(await labels()).not.toContain("type:issue");
     expect((await sideco(["relabel", "type:none", "type:issue"])).out.trim()).toBe("no card wears type:none");
+    expect((await sideco(["relabel", "ui", "ui"])).out.trim()).toBe("ui is its name already");
+    expect((await sideco(["relabel", "", "x"])).code).not.toBe(0);
     const short = await sideco(["relabel", "type:bug"]);
     expect(short.code).not.toBe(0);
     expect(short.err).toContain("sideco relabel OLD NEW");

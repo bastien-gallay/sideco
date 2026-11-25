@@ -4,7 +4,7 @@
  * it back there.
  */
 import type { Command } from "../domain/commands.ts";
-import { renameLabel } from "../domain/label-rename.ts";
+import { byBoard, renameLabel } from "../domain/label-rename.ts";
 import { normalLabel } from "../domain/labels.ts";
 import type { Workspace } from "../domain/workspace.ts";
 import { UsageError } from "./args.ts";
@@ -17,11 +17,14 @@ export async function relabel(
   [from, to, ...more]: readonly string[],
   send: (commands: Command[]) => Promise<unknown>,
 ): Promise<string> {
-  if (from === undefined || to === undefined || more.length > 0 || !normalLabel(to))
+  const [old, next] = [normalLabel(from ?? ""), normalLabel(to ?? "")];
+  if (!old || !next || more.length > 0)
     throw new UsageError("relabel needs the label and its new name: sideco relabel OLD NEW");
-  const commands = renameLabel(ws, from, to);
-  if (commands.length === 0) return `no card wears ${normalLabel(from)}`;
-  await send(commands);
+  if (old === next) return `${old} is its name already`;
+  const commands = renameLabel(ws, old, next);
+  if (commands.length === 0) return `no card wears ${old}`;
+  // A batch a board: each is one gesture there, and a label worn by many cards is not too long to send.
+  for (const batch of byBoard(commands)) await send(batch);
   const boards = new Set(commands.map((command) => ("board" in command ? command.board : "")));
-  return `${normalLabel(from)} is now ${normalLabel(to)} on ${count(commands.length / 2, "card")} of ${count(boards.size, "board")}`;
+  return `${old} is now ${next} on ${count(commands.length / 2, "card")} of ${count(boards.size, "board")}`;
 }

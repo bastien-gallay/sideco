@@ -5,7 +5,7 @@
  * Escape puts the colours away, and the keyboard goes back to the dot.
  */
 import type { Locale } from "../domain/i18n.ts";
-import { renameLabel } from "../domain/label-rename.ts";
+import { byBoard, renameLabel } from "../domain/label-rename.ts";
 import { normalLabel } from "../domain/labels.ts";
 import {
   type Chosen,
@@ -88,9 +88,11 @@ export function settleColours(labels: readonly string[], live: boolean): void {
   if (open !== undefined && !(live && labels.some((label) => labelKey(label) === open))) putAway();
 }
 
-function close(): void {
-  const key = putAway();
-  if (key === undefined) return;
+/** Puts the colours away and gives the keyboard back to the dot that opened them, or to the dot of `to`. */
+function close(to?: string): void {
+  const opened = putAway();
+  if (opened === undefined) return;
+  const key = to ?? opened;
   dotOf(key)?.focus();
   back = key;
   setTimeout(() => {
@@ -123,11 +125,13 @@ function renaming(label: string): HTMLElement {
     const commands = renameLabel(shown(), label, to);
     // Nothing to rename, refused or not sent: the field stays open, to be written again.
     if (commands.length === 0) return;
-    void sendTogether(commands).then((done) => {
-      if (done === undefined) return;
+    void (async () => {
+      // A batch a board: each is one gesture there. A board refused stops the rename where it is.
+      for (const batch of byBoard(commands)) if ((await sendTogether(batch)) === undefined) return;
       said(w.renamed(label, to, commands.length / 2));
-      close();
-    });
+      // The label may have another key now: the keyboard goes to the dot it has.
+      close(labelKey(to));
+    })();
   };
   return h(
     "form",

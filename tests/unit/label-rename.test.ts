@@ -1,8 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { renameLabel } from "../../src/domain/label-rename.ts";
+import { byBoard, renameLabel } from "../../src/domain/label-rename.ts";
 import { KANBAN, table } from "../support.ts";
 
 describe("a label renamed on every card (S328, its second half)", () => {
+  test("the commands go a batch a board, in the order of the boards", () => {
+    const at = (board: string) => ({ kind: "unlabel" as const, board, id: "T1", labels: ["x"] });
+    expect(byBoard([at("a"), at("a"), at("b"), at("a")])).toEqual([[at("a"), at("a"), at("a")], [at("b")]]);
+  });
+
   const labelled = () => {
     const t = table(KANBAN);
     const [first, second, third] = t.ws.boards[0]?.elements.map((e) => e.id) ?? [];
