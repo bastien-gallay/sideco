@@ -6,7 +6,6 @@
 import type { Command } from "../domain/commands.ts";
 import { type Format, findFormat, findType, isDone, lanesOf } from "../domain/formats.ts";
 import {
-  headingSlide,
   laneDrop,
   layoutBoard,
   locate,
@@ -26,7 +25,7 @@ import { type CardNode, drawCard, newCardNode, sayCard } from "./card-node.ts";
 import { cardButtons, leadButton, type MoreMenu, standBy } from "./card-tools.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
-import { BACKBONE_H, liftHeadings } from "./headings.ts";
+import { type Held, headingsDrop, holdInView, liftHeadings } from "./headings.ts";
 import { mountLaneFold, seen } from "./lane-fold.ts";
 import { linkEnds } from "./link-ends.ts";
 import { linkHandle } from "./link-handle.ts";
@@ -53,8 +52,6 @@ const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5];
 const CARD_MOVE_MS = 300;
 /** The editor's least height: room for two lines of words. */
 const EDITOR_MIN_H = 72;
-/** What a lane heading keeps beside its name: the inset on the left and the count on the right. */
-const LANE_COUNT_ROOM = 56;
 
 interface Editing {
   /** The text the editor opened with, as it would be saved: leaving it as it was saves nothing. */
@@ -332,73 +329,27 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     paintOffers();
   }
 
-  /**
-   * Keeps the names of rows, steps and lanes on screen while the board scrolls
-   * under them, as the frozen headings of a sheet: the reader never has to
-   * remember which row is which.
-   */
+  /** What holding the headings in view reads: where the board is scrolled, and what is in the human's hand. */
+  const held = (): Held => ({
+    heads,
+    scroll,
+    zoom,
+    scene,
+    frozen,
+    ownLanes: format()?.ownLanes === true,
+    timeline: format()?.layout === "timeline",
+    lane: laneDrag?.moving ? laneDrag : undefined,
+    step: stepDrag?.moving ? stepDrag : undefined,
+  });
+
+  /** Keeps the names of rows, steps and lanes on screen while the board scrolls under them (headings.ts). */
   function holdHeadings(): void {
-    const sx = scroll.scrollLeft / zoom;
-    const sy = scroll.scrollTop / zoom;
-    const steps = heads.querySelector(".heads-steps");
-    steps?.setAttribute("transform", `translate(0 ${sy})`);
-    // On a story map, once the activities have scrolled under the numbers, each step says its activity and task.
-    const backbone = scene.backbone !== undefined && sy > scene.backbone - frozen.top;
-    steps?.classList.toggle("shows-backbone", backbone);
-    holdSteps();
-    heads.querySelector(".heads-rows")?.setAttribute("transform", `translate(${sx} 0)`);
-    for (const head of heads.querySelectorAll<SVGGElement>("g.head")) {
-      const band = scene.bands[Number(head.dataset.band)];
-      if (band?.kind === "lane") holdLane(head, band, sx);
-    }
+    holdInView(held());
     paintOffers();
-    // A card the keyboard or a search brings into view lands clear of the frozen names, never under them.
-    scroll.style.scrollPaddingTop = `${(frozen.top + (backbone ? BACKBONE_H : 0)) * zoom + 8}px`;
-    scroll.style.scrollPaddingLeft = `${frozen.left * zoom + 8}px`;
   }
 
-  /** The step in the human's hand stays there, its number and its captions, whatever is painted meanwhile. */
-  function holdSteps(): void {
-    for (const label of heads.querySelectorAll<SVGTextElement>(".heads-steps text")) {
-      const held = stepDrag?.moving === true && label.dataset.col === String(stepDrag.from);
-      label.classList.toggle("is-dragging", held);
-      if (held) label.setAttribute("transform", `translate(${stepDrag?.dx ?? 0} 0)`);
-      else label.removeAttribute("transform");
-    }
-  }
-
-  /** A lane's heading goes down to its last card at most; in the human's hand it stays there, whatever is painted meanwhile. */
-  function holdLane(head: SVGGElement, band: Scene["bands"][number], sx: number): void {
-    const held = laneDrag?.moving === true && laneDrag.lane === band.id;
-    head.classList.toggle("is-dragging", held);
-    head.setAttribute("transform", `translate(${held ? laneDrag?.dx : 0} ${headDrop(band)})`);
-    // Its name and what it stands for follow a sideways scroll too, short of the count at its right end.
-    const words = [
-      ...head.querySelectorAll<SVGTextElement>("text.lane-label:not(.is-upright), text.lane-hint"),
-    ];
-    const room = Math.max(0, ...words.map((text) => text.getComputedTextLength())) + LANE_COUNT_ROOM;
-    const slide = headingSlide(band, sx, room);
-    for (const text of words) {
-      if (slide > 0) text.setAttribute("transform", `translate(${slide} 0)`);
-      else text.removeAttribute("transform");
-    }
-  }
-
-  /** How far a lane's heading has come down with the scroll: it never leaves its own lane. */
-  function headDrop(band: { y: number; h: number }): number {
-    return Math.max(0, Math.min(scroll.scrollTop / zoom - band.y, band.h - 56));
-  }
-
-  /** How far the headings of a kanban came down: what is offered in them comes down too. */
-  function lanesDrop(): number {
-    const first = scene.bands.find((band) => band.kind === "lane");
-    return first && format()?.ownLanes ? headDrop(first) : 0;
-  }
-
-  /** How far the headings came down with the scroll, step numbers or kanban headings: what is offered there comes down too. */
-  function headsDrop(): number {
-    return format()?.layout === "timeline" ? scroll.scrollTop / zoom : lanesDrop();
-  }
+  /** How far the headings came down with the scroll: what is offered there comes down too. */
+  const headsDrop = (): number => headingsDrop(held());
 
   /** What the pointer is on among the headings, as they are drawn after the scroll. */
   function inHeadings(x: number, y: number): Target | undefined {
