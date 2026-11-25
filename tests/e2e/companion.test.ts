@@ -835,6 +835,25 @@ describe("the human edits, the agent is told", () => {
     await agent("unlink E2 E3", "commande");
   });
 
+  test("I reads the detail of a card in its panel, the keyboard with it, and writes nothing (T276)", async () => {
+    await agent('detail E2 "Le paiement est confirmé par la banque."', "commande");
+    await card("E2").focus();
+    await page.keyboard.press("i");
+    const panel = page.locator(".card-panel");
+    await until("the panel of the card holds the keyboard", () =>
+      page.evaluate(() => document.activeElement?.classList.contains("card-panel") ?? false),
+    );
+    expect(await panel.locator(".card-panel-detail").textContent()).toContain("confirmé par la banque");
+    // It is read, not written: no field is open.
+    expect(await page.locator("textarea.card-panel-editor").count()).toBe(0);
+    expect(await panel.locator("h2").textContent()).toContain("E2");
+    // Escape gives the card the keyboard back.
+    await page.keyboard.press("Escape");
+    await until("the card has the keyboard back", () =>
+      page.evaluate(() => document.activeElement?.getAttribute("data-id") === "E2"),
+    );
+  });
+
   test("the footer counts what Claude has not read, and says when it will read it", async () => {
     const told = await page.locator(".pending").textContent();
     expect(told).toMatch(/^\d+ changes not read yet · /);

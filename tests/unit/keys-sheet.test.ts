@@ -20,7 +20,7 @@ describe("the sheet of keys", () => {
 
   test("tells T, which adds a label, after E (S332)", () => {
     const en = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([keys]) => keys);
-    expect(en[en.indexOf("E") + 1]).toBe("T");
+    expect(en[en.indexOf("E") + 2]).toBe("T");
     expect(says(withMoreKeys(MESSAGES.fr.shortcutList("kanban", true), "fr"))).toContain(
       "T = Ajouter un label, dans le panneau de droite",
     );
@@ -33,6 +33,14 @@ describe("the sheet of keys", () => {
     expect(withMoreKeys(rows, "en").map(([keys]) => keys)).not.toContain("Page ↑ ↓, Home, End");
     expect(says(withMoreKeys(MESSAGES.fr.shortcutList("kanban", true), "fr", true))).toContain(
       "Page ↑ ↓, Début, Fin = Le long de la colonne",
+    );
+  });
+
+  test("tells I, which reads the detail, after E which writes it (T276)", () => {
+    const en = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([keys]) => keys);
+    expect(en[en.indexOf("E") + 1]).toBe("I");
+    expect(says(withMoreKeys(MESSAGES.fr.shortcutList("graph", true), "fr"))).toContain(
+      "I = Lire son détail, dans le panneau de droite",
     );
   });
 

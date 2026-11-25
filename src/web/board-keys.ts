@@ -21,6 +21,8 @@ type Ask<K extends string, More = unknown> = K extends string ? { ask: K } & Mor
 
 export type CardKey =
   | { ask: "go"; direction: Direction; reads: true }
+  /** The detail is read, not written: on the past too. */
+  | { ask: "read"; reads: true }
   | Ask<"move" | "beside", { direction: Direction }>
   | Ask<"rename" | "choose" | "remove" | "done" | "link" | "note" | "detail" | "label">;
 
@@ -48,6 +50,7 @@ const CARD: Record<string, CardKey> = {
   l: { ask: "link" },
   n: { ask: "note" },
   e: { ask: "detail" },
+  i: { ask: "read", reads: true },
   t: { ask: "label" },
 };
 

@@ -42,13 +42,16 @@ test("on a card, each letter has its gesture, in either case", () => {
   expect(cardKey(key("l"))).toEqual({ ask: "link" });
   expect(cardKey(key("n"))).toEqual({ ask: "note" });
   expect(cardKey(key("e"))).toEqual({ ask: "detail" });
+  // I reads the detail where E writes it (T276): it changes nothing, so it works on the past too.
+  expect(cardKey(key("i"))).toEqual({ ask: "read", reads: true });
+  expect(cardKey(key("I", { shiftKey: true }))).toEqual({ ask: "read", reads: true });
   expect(cardKey(key("t"))).toEqual({ ask: "label" });
   expect(cardKey(key("T", { shiftKey: true }))).toEqual({ ask: "label" });
   expect(cardKey(key("x"))).toBeUndefined();
 });
 
 test("on a card, a letter held with Ctrl, ⌘ or Alt is the browser's: its bookmark, its address bar, its new tab", () => {
-  for (const letter of ["d", "l", "n", "e", "t"]) {
+  for (const letter of ["d", "l", "n", "e", "t", "i"]) {
     expect(cardKey(key(letter, { ctrlKey: true }))).toBeUndefined();
     expect(cardKey(key(letter, { metaKey: true }))).toBeUndefined();
     expect(cardKey(key(letter, { altKey: true }))).toBeUndefined();

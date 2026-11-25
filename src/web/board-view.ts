@@ -24,6 +24,7 @@ import * as links from "./board-links.ts";
 import { dropCommand, keyCommand, snapCommand, whereTo } from "./card-drop.ts";
 import { mountEditor } from "./card-editor.ts";
 import { type CardNode, drawCard, dropNodes, keepKeyboard, newCardNode, sayCard } from "./card-node.ts";
+import { readDetail } from "./card-read.ts";
 import { cardButtons, leadButton, type MoreMenu, outOfSight, standBy } from "./card-tools.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
@@ -1118,6 +1119,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     link: (_, id) => beginLink(id),
     note: (_, id) => noteOn(id),
     detail: (_, id) => hooks.editDetail(id),
+    read: (_, id) => readDetail(() => hooks.showDetail(id)),
     label: (_, id) => hooks.editLabels(id),
   };
 

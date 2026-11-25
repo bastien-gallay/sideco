@@ -12,6 +12,7 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
       columns: true,
       row: ["Page ↑ ↓, Home, End", "Along the column: a page further, its first card, its last"],
     },
+    { after: "E", row: ["I", "Read its detail, in the right panel"] },
     { after: "E", row: ["T", "Add a label, in the right panel"] },
     {
       after: "E",
@@ -31,6 +32,7 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
         "Le long de la colonne : une page plus loin, sa première carte, sa dernière",
       ],
     },
+    { after: "E", row: ["I", "Lire son détail, dans le panneau de droite"] },
     { after: "E", row: ["T", "Ajouter un label, dans le panneau de droite"] },
     {
       after: "E",
