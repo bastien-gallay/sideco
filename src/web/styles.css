@@ -1071,6 +1071,12 @@ kbd {
   white-space: nowrap;
 }
 
+/* Two keys of a row that fold onto two lines keep a gap between them (T305). */
+.keys .key-list dt kbd {
+  display: inline-block;
+  margin: 1px 0;
+}
+
 .thread-on {
   overflow: hidden;
   padding: 0;

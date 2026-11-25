@@ -550,9 +550,9 @@ function fit(): void {
 const SHORTCUTS = /Mac|iPhone|iPad/.test(navigator.platform)
   ? { undo: "⌘Z", redo: "⇧⌘Z", send: "⌘↵" }
   : {
-      undo: "Ctrl+Z",
-      redo: locale === "fr" ? "Ctrl+Maj+Z" : "Ctrl+Shift+Z",
-      send: locale === "fr" ? "Ctrl+Entrée" : "Ctrl+Enter",
+      undo: "Ctrl + Z",
+      redo: locale === "fr" ? "Ctrl + Maj + Z" : "Ctrl + Shift + Z",
+      send: locale === "fr" ? "Ctrl + Entrée" : "Ctrl + Enter",
     };
 
 const paintUndo = region(undoGroup, (m: { undo: boolean; redo: boolean }) => [

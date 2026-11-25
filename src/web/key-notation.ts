@@ -9,14 +9,17 @@ export type Piece = { key: string } | { word: string };
 
 /** `⌘K / Ctrl+K`: what a Mac writes, then what another keyboard writes, to the end of the row. */
 const EITHER = /(\S*⌘\S*) \/ (.+)$/;
-/** A plus that joins two keys without a space: `Ctrl+K`. The key `+` itself stands alone. */
-const JOINED = /(?<=\S)\+(?=\S)/g;
+/**
+ * A plus that joins two keys without a space: `Ctrl+K`. The key `+` itself stands alone. Written without a look
+ * behind, which an older Safari cannot read: it would not draw the page at all.
+ */
+const JOINED = /(\S)\+(?=\S)/g;
 /** The words between two keys, in both languages; a comma too. */
 const BETWEEN = /(, or |, ou | or | ou | and | et |, )/;
 
 /** The keys of a row as the reader's keyboard writes them. */
 export function ownKeys(keys: string, mac: boolean): string {
-  return keys.replace(EITHER, mac ? "$1" : "$2").replace(JOINED, " + ");
+  return keys.replace(EITHER, mac ? "$1" : "$2").replace(JOINED, "$1 + ");
 }
 
 /**
