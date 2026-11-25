@@ -106,7 +106,7 @@ describe("the page names it", () => {
     expect(sessionName({ ...second, id: "0f3a9c21-77", cwd: undefined })).toBe("0f3a9c");
   });
 
-  test("a named session by its name alone, as the picker in the header says it", () => {
+  test("a named session by its name alone, as the picker at the foot of the page says it", () => {
     const { hub } = setup();
     const second = hub.workspace.sessions.find((s) => s.id === "second");
     if (!second) throw new Error("no session");

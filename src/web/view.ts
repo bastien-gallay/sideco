@@ -701,7 +701,7 @@ export interface Waiting {
   others: number;
 }
 
-/** What is said while Claude waits: in the header, and in the tab for who looks at another one. */
+/** What is said while Claude waits: at the foot of the page, and in the tab for who looks at another one. */
 export interface WaitsNotice {
   text: string;
   /** What the tab of the browser says before its own name. */

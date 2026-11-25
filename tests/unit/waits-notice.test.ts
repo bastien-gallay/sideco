@@ -8,7 +8,7 @@ import { tabTitle, waitsNotice } from "../../src/web/view.ts";
 const WAITING = { board: "priorites", title: "Priorités", message: "Ton avis ?", others: 0 };
 
 describe("the notice that Claude waits", () => {
-  test("a hand-over is said in the header, and in the tab for who looks at another one", () => {
+  test("a hand-over is said at the foot of the page, and in the tab for who looks at another one", () => {
     expect(waitsNotice(WAITING, true, 0)).toEqual({
       text: "Claude waits for you",
       tab: "● Claude waits for you",

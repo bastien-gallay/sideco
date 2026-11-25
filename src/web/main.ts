@@ -116,8 +116,9 @@ document.head.prepend(h("style", {}, SVG_STYLE));
 // ── Shell, built once ────────────────────────────────────────────────────────
 
 const statusPill = h("div", { class: "status", role: "status", "aria-live": "polite" });
-/** Claude waits for the human: said just before the zoom, whatever board is on screen. */
+/** Claude waits for the human: said beside what Claude does, whatever board is on screen. */
 const waitsPill = h("div", { class: "waits", role: "status", "aria-live": "polite" });
+const claudeSays = [sessionPicker, statusPill, waitsPill];
 /** Says the zoom, and fits the whole board when pressed: on a large board, the way to see all of it. */
 const zoomLabel = h(
   "button",
@@ -472,9 +473,8 @@ app.append(
   h(
     "header",
     { class: "top" },
-    // Three groups: the board, then what Claude is doing, then the view of it.
+    // The top is the board's (S336): which one, then the view of it. What Claude does is at the foot.
     h("div", { class: "top-board" }, brand, boardPicker, boardMenu),
-    h("div", { class: "top-claude" }, sessionPicker, statusPill, waitsPill),
     h(
       "div",
       { class: "top-view" },
@@ -507,7 +507,8 @@ app.append(
       cardPanel,
     ),
   ),
-  h("footer", { class: "bottom" }, turnBar),
+  // The foot is the agents' (S336): which session and what it does, then what is said to it.
+  h("footer", { class: "bottom" }, h("div", { class: "bottom-claude" }, ...claudeSays), turnBar),
   notices.bottom,
   newBoardSheet,
   removeSheet,

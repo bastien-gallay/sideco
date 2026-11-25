@@ -211,7 +211,7 @@ input[type="text"] {
   border-bottom: 1px solid var(--rule);
 }
 
-/* The board, then what Claude is doing, then the view: three groups, the middle one taking the room. */
+/* The board, then the view of it, at the two ends: what Claude is doing is at the foot of the page (S336). */
 .top-board,
 .top-view {
   display: flex;
@@ -220,7 +220,7 @@ input[type="text"] {
 }
 
 .top-board {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -229,13 +229,16 @@ input[type="text"] {
   gap: 12px;
 }
 
-.top-claude {
+.bottom-claude {
   display: flex;
-  flex: 1;
   align-items: center;
-  justify-content: center;
   gap: 12px;
   min-width: 0;
+}
+
+/* No session yet, and none to choose: the group takes no room. */
+.bottom-claude:not(:has(> :not(:empty))) {
+  display: none;
 }
 
 .brand {
@@ -294,7 +297,7 @@ input[type="text"] {
   color: var(--muted);
 }
 
-.top-claude .status {
+.bottom-claude .status {
   flex: 0 1 auto;
 }
 
@@ -2258,7 +2261,7 @@ legend {
 .bottom {
   grid-row: 4;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 24px;
   padding: 8px 14px;
@@ -2571,18 +2574,12 @@ legend {
   }
 
   /*
-   * The session panel is gone: the status in the header is all that says what Claude does.
-   * It gets a row of its own, under the controls, rather than the room they leave it.
+   * The session panel is gone: the status at the foot is all that says what Claude does.
+   * It gets a row of its own, over what is said to Claude, rather than the room that leaves it.
    */
   .top {
     flex-wrap: wrap;
     row-gap: 6px;
-  }
-
-  .top-claude {
-    order: 10;
-    flex: 1 1 100%;
-    justify-content: flex-start;
   }
 
   .status:has(~ .waits:not(:empty)) {

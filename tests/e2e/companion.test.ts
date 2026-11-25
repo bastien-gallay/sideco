@@ -2231,9 +2231,9 @@ describe("adding from the keyboard", () => {
 
 describe("Claude waits for the human", () => {
   const BOARD = "attente";
-  const pill = () => page.locator(`.top .waits button[data-board="${BOARD}"]`);
+  const pill = () => page.locator(`.bottom .waits button[data-board="${BOARD}"]`);
 
-  test("a pill in the header says so, from another board too, and leads to the board", async () => {
+  test("a pill at the foot of the page says so, from another board too, and leads to the board", async () => {
     const elsewhere = await page.locator(".board-picker select").inputValue();
     expect(elsewhere).not.toBe(BOARD);
     const [sent] = await agent(
@@ -2246,8 +2246,10 @@ describe("Claude waits for the human", () => {
     expect(await pill().getAttribute("title")).toBe("Ton avis sur le devis ?");
     // The tab says it too, for who looks at another one.
     expect(await page.title()).toStartWith("● Claude waits for you · ");
-    // In the middle of the header, beside what Claude is doing.
-    expect(await pill().evaluate((button) => button.closest(".top-claude") !== null)).toBe(true);
+    // At the foot of the page, with what is said to Claude (S336): the top is the board's, the foot the agents'.
+    expect(await pill().evaluate((button) => button.closest("footer .bottom-claude") !== null)).toBe(true);
+    expect(await page.locator("footer .bottom-claude .status").count()).toBe(1);
+    expect(await page.locator("header .status, header .waits, header .session-picker").count()).toBe(0);
     await shot("22-claude-waits");
 
     await pill().click();
@@ -2265,7 +2267,7 @@ describe("Claude waits for the human", () => {
     const listening = fetch(`${running.url}/api/wait?session=${SESSION}&timeout=20000`).then((response) =>
       response.json(),
     );
-    await page.locator(".top .waits button.is-blocked").waitFor();
+    await page.locator(".bottom .waits button.is-blocked").waitFor();
     expect(await pill().textContent()).toStartWith("Claude is blocked on you");
     expect(await page.title()).toBe("● Claude is blocked on you · Attente · Sideco");
     await shot("24-claude-blocked");
