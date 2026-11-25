@@ -4,15 +4,13 @@
  * from disk and need no server; writing commands go through the running
  * companion, which is started on demand.
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { type Command, CommandError, slugify } from "../domain/commands.ts";
 import { describeBoard, describeCard } from "../domain/digest.ts";
-import { toIndexHtml } from "../domain/export/html.ts";
-import { EXPORT_FORMATS, EXTENSION, exportBoard } from "../domain/export/index.ts";
 import { fromModel } from "../domain/export/model.ts";
 import { FORMATS } from "../domain/formats.ts";
-import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale, WORDS } from "../domain/i18n.ts";
+import { asLocale, DEFAULT_LOCALE, LOCALES, type Locale } from "../domain/i18n.ts";
 import { describeFind, describeLabels, describeSessions } from "../domain/project-digest.ts";
 import { latestSession } from "../domain/sessions.ts";
 import type { Board, Workspace } from "../domain/workspace.ts";
@@ -43,6 +41,7 @@ import {
   showPage,
   stopServer,
 } from "./client.ts";
+import { exportOne, publish } from "./export.ts";
 import { HELP } from "./help.ts";
 import { hookFromStdin } from "./hook.ts";
 import { renumberAll } from "./renumber-all.ts";
@@ -205,9 +204,9 @@ async function run(verb: string, rest: string[]): Promise<number> {
       return 0;
     }
     case "export":
-      return exportOne(read(), args);
+      return exportOne(read(), args, language(args));
     case "publish":
-      return publish(root, read(), args);
+      return publish(root, read(), args, language(args));
   }
 
   const server = await ensureServer(root);
@@ -412,48 +411,6 @@ function formatsText(): string {
 function boardsText(ws: Workspace): string {
   if (ws.boards.length === 0) return 'no board yet; create one with `sideco board new "Title"`';
   return ws.boards.map((b) => `${b.id}  ${b.format}  ${b.elements.length} elements  "${b.title}"`).join("\n");
-}
-
-function exportOne(ws: Workspace, args: Args): number {
-  const board = chooseBoard(ws, args.positional[0] ?? args.flags.get("board"));
-  const format = EXPORT_FORMATS.find((f) => f === (args.flags.get("format") ?? "md"));
-  if (!format) throw new UsageError(`--format is one of: ${EXPORT_FORMATS.join(", ")}`);
-  const text = exportBoard(board, format, { exportedAt: new Date().toISOString(), locale: language(args) });
-  const out = args.flags.get("out");
-  if (out) {
-    writeFileSync(out, text);
-    console.log(`wrote ${out}`);
-  } else {
-    process.stdout.write(text);
-  }
-  return 0;
-}
-
-async function publish(root: string, ws: Workspace, args: Args): Promise<number> {
-  const out = resolve(args.flags.get("out") ?? join(dataDir(root), "site"));
-  const locale = language(args);
-  const meta = { exportedAt: new Date().toISOString(), locale };
-  mkdirSync(out, { recursive: true });
-  for (const board of ws.boards) {
-    for (const format of EXPORT_FORMATS) {
-      if (format !== "mermaid")
-        writeFileSync(join(out, `${board.id}.${EXTENSION[format]}`), exportBoard(board, format, meta));
-    }
-  }
-  const entries = ws.boards.map((b) => ({
-    id: b.id,
-    title: b.title,
-    format: b.format,
-    elements: b.elements.length,
-  }));
-  writeFileSync(join(out, "index.html"), toIndexHtml(WORDS[locale].site, entries, meta));
-  // Publishing only writes files; a companion out of reach just leaves the address unsaid.
-  const server =
-    out === join(dataDir(root), "site") ? await findServer(root).catch(() => undefined) : undefined;
-  console.log(
-    `published ${ws.boards.length} board${ws.boards.length === 1 ? "" : "s"} to ${out}${server ? `\nserved at ${server.url}/pub/` : ""}`,
-  );
-  return 0;
 }
 
 if (import.meta.main) process.exit(await main(process.argv.slice(2)));
