@@ -90,6 +90,20 @@ describe("undo takes back the author's last gesture", () => {
     expect(between.map((e) => [e.src, e.dst, e.label])).toEqual([["C1", "E1", "produit"]]);
   });
 
+  test("an end of a link moved is one gesture, named as such: one undo puts it back (S350)", () => {
+    const t = table(ORDERING).script('link C1 E1 "produit"', "human").script("relink C1 E1 --to H1", "human");
+    expect(t.board().trails.human?.undo.at(-1)?.name).toBe("relink C1 E1 --to H1");
+    undo(t, "commande");
+    expect(
+      t
+        .board()
+        .edges.filter((e) => e.src === "C1")
+        .map((e) => [e.dst, e.label]),
+    ).toEqual([["E1", "produit"]]);
+    t.script("relink C1 E1 --from H1", "human");
+    expect(t.board().trails.human?.undo.at(-1)?.name).toBe("relink C1 E1 --from H1");
+  });
+
   test("an element added with its link is one gesture: one undo removes both", () => {
     const t = table(FLOW).script('add step "Emballer" --from F2', "human");
     expect(findElement(t.board(), "F4")).toBeDefined();

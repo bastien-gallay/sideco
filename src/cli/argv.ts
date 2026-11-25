@@ -305,6 +305,22 @@ export function boardAction(tokens: readonly string[], board: string | undefined
             dst: need(1, "a target id"),
           },
         };
+      case "relink": {
+        const from = flags.get("from");
+        const to = from ?? flags.get("to");
+        if (to === undefined || (from !== undefined && flags.has("to")))
+          throw new UsageError("usage: relink SRC DST --from ID | --to ID");
+        return {
+          command: {
+            kind: "relink",
+            board: target(),
+            src: need(0, "a source id"),
+            dst: need(1, "a target id"),
+            end: from === undefined ? "dst" : "src",
+            to,
+          },
+        };
+      }
       case "focus":
         // Every argument is a card to focus on.
         used = p.length;
@@ -376,6 +392,7 @@ export const BOARD_VERBS: ReadonlySet<string> = new Set([
   "link",
   "unlink",
   "reverse",
+  "relink",
   "focus",
   "note",
   "reply",

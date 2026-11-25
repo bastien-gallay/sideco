@@ -17,6 +17,7 @@ describe("resolveAliases", () => {
     ["link @placed P7", { src: "E1", dst: "P7" }],
     ["unlink @placed @reserve", { src: "E1", dst: "P1" }],
     ["reverse @placed @reserve", { src: "E1", dst: "P1" }],
+    ["relink @placed P7 --to @reserve", { src: "E1", dst: "P7", to: "P1" }],
     ['rename @placed "Order confirmed"', { id: "E1" }],
     ['detail @placed "Emitted by the checkout"', { id: "E1" }],
     ["move @placed --col 2", { id: "E1" }],

@@ -99,6 +99,7 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco slice add "Name" [--before S] a story map's slice, a named line under its stories; slice rm S
   sideco link SRC DST ["label"]       sideco unlink SRC DST
   sideco reverse SRC DST              turn the link round, its name kept
+  sideco relink SRC DST --from ID | --to ID   move one end of the link to another card, its name kept
   sideco focus [ID…] [--why "…"]      no id clears the focus
   sideco note "Text" [--on ID]        open a discussion, on the board or on one element
   sideco reply N1 "Text"              answer in the thread of a note

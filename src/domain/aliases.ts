@@ -59,6 +59,8 @@ export function resolveAliases(command: Command, aliases: Aliases): Command {
     case "unlink":
     case "reverse":
       return { ...command, src: id(command.src), dst: id(command.dst) };
+    case "relink":
+      return { ...command, src: id(command.src), dst: id(command.dst), to: id(command.to) };
     case "focus":
       return { ...command, ids: command.ids.map(id) };
     case "note":

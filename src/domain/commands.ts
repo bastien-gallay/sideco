@@ -97,6 +97,8 @@ export type Command =
   | { kind: "unlink"; board: string; src: string; dst: string }
   /** Turns the link round: its source becomes its target, its name kept (S349). */
   | { kind: "reverse"; board: string; src: string; dst: string }
+  /** One end of the link src → dst goes to another card: its start (`end: "src"`) or its arrow. */
+  | { kind: "relink"; board: string; src: string; dst: string; end: "src" | "dst"; to: string }
   | { kind: "focus"; board: string; ids: string[]; reason?: string }
   | { kind: "note"; board: string; text: string; target?: string; alias?: string }
   /** Answers a note, in its thread. */
@@ -286,6 +288,15 @@ export function parseCommand(input: unknown): Command {
     case "unlink":
     case "reverse":
       return { kind, board: boardId(f), src: idOrName(f, "src"), dst: idOrName(f, "dst") };
+    case "relink":
+      return {
+        kind,
+        board: boardId(f),
+        src: idOrName(f, "src"),
+        dst: idOrName(f, "dst"),
+        end: f.end === "src" ? "src" : "dst",
+        to: idOrName(f, "to"),
+      };
     case "focus":
       return {
         kind,

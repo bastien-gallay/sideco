@@ -179,6 +179,32 @@ describe("links, focus, notes, turn", () => {
     expect(() => t.script("reverse C1 E1")).toThrow("E1 already links to C1");
   });
 
+  test("an end of a link goes to another card, its name kept (S350)", () => {
+    const t = table(ORDERING).script('link C1 E1 "produit"\nrelink C1 E1 --to H1');
+    expect(
+      t
+        .board()
+        .edges.filter((e) => e.src === "C1")
+        .map((e) => [e.dst, e.label]),
+    ).toEqual([["H1", "produit"]]);
+    t.script("relink C1 H1 --from E1");
+    expect(t.board().edges.map((e) => [e.src, e.dst, e.label])).toContainEqual(["E1", "H1", "produit"]);
+    expect(t.board().edges.some((e) => e.src === "C1" && e.dst === "H1")).toBe(false);
+  });
+
+  test("an end of a link is not moved to where no link can be", () => {
+    const t = table(ORDERING).script("link C1 E1\nlink C1 H1");
+    expect(() => t.script("relink E1 C1 --to H1")).toThrow("no link E1 → C1");
+    expect(() => t.script("relink C1 E1 --to H1")).toThrow("C1 already links to H1");
+    expect(() => t.script("relink C1 E1 --to C1")).toThrow("C1 cannot link to itself");
+    expect(() => t.script("relink C1 E1 --from E1")).toThrow("E1 cannot link to itself");
+    expect(() => t.script("relink C1 E1 --to Z9")).toThrow("Z9");
+    // Put back where it is: nothing to do, and nothing recorded.
+    const before = t.events.length;
+    t.script("relink C1 E1 --to E1");
+    expect(t.events.length).toBe(before);
+  });
+
   test("unlinking a link that is not there is refused", () => {
     expect(() => table(ORDERING).script("unlink E1 C1")).toThrow("no link E1 → C1");
   });

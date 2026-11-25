@@ -21,6 +21,7 @@ import {
 import { hasLabel, normalLabel, sameLabel } from "./labels.ts";
 import { claim, mint } from "./minting.ts";
 import { besideIn, move, placeNew, stays } from "./placement.ts";
+import { relink } from "./relink.ts";
 import { renumbering } from "./renumber.ts";
 import { reverse } from "./reverse.ts";
 import { decideOnSession } from "./session-decide.ts";
@@ -279,6 +280,8 @@ function decideOnBoard(ws: Workspace, cmd: BoardCommand, ctx: Context): BoardDec
         ],
       };
     }
+    case "relink":
+      return relink(board, cmd);
     case "focus":
       for (const id of cmd.ids) requireElement(board, id);
       return {
