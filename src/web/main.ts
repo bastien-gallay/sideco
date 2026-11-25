@@ -27,6 +27,7 @@ import {
 } from "./boards.ts";
 import { cardFacts, kindSaid } from "./card-facts.ts";
 import {
+  type LabelsModel,
   labelSection,
   onLabelsLeft,
   projectLabels,
@@ -977,8 +978,7 @@ const paintFocus = region(
   ],
 );
 
-interface CardPanelModel {
-  id: string;
+interface CardPanelModel extends LabelsModel {
   /** The ids it went by, renumbered since: "formerly T1". */
   former: string | undefined;
   label: string;
@@ -987,14 +987,10 @@ interface CardPanelModel {
   facts: string;
   /** None while it is being written: the field holds the words then. */
   detail: string | undefined;
-  live: boolean;
   editing: boolean;
   saving: boolean;
   /** The card's open discussions: said under its detail, a click away in the Notes tab. */
   notes: number;
-  /** Its labels, as kept, and those the project already uses, offered as it is typed. */
-  labels: string[];
-  known: string[];
   /** Its links, each way, for the keyboard (S310). */
   links: LinkRow[];
 }
