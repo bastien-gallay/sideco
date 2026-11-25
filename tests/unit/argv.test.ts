@@ -51,6 +51,12 @@ describe("parseArgs", () => {
 
   test("a flag without a value says which", () => {
     expect(() => parseArgs(["E1", "--col"])).toThrow("--col needs a value");
+    // A word named as an object's own parts are is a word like another.
+    expect(parseArgs(["E1", "constructor", "__proto__"]).positional).toEqual([
+      "E1",
+      "constructor",
+      "__proto__",
+    ]);
     // A switch says yes by being there, and takes nothing after it.
     expect(parseArgs(["--brief", "backlog", "--notes"])).toEqual({
       positional: ["backlog"],

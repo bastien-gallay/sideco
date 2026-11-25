@@ -12,7 +12,7 @@ import { type Chosen, chipText, labelColours } from "../domain/render/labels.ts"
 import type { Board } from "../domain/workspace.ts";
 import { h, region } from "./dom.ts";
 import { locale } from "./locale.ts";
-import { currentBoard, state } from "./store.ts";
+import { currentBoard, shown, state } from "./store.ts";
 
 interface Words {
   filter: string;
@@ -124,8 +124,7 @@ const paintBar = region(filterBar, (m: { label: string; count: string; colours?:
 export function paintLabelFilter(board: Board | undefined, canvas: HTMLElement): void {
   const by = board ? label : undefined;
   filterBar.hidden = by === undefined;
-  if (board && by !== undefined)
-    paintBar({ label: by, count: count(board, by), colours: state.live.colours });
+  if (board && by !== undefined) paintBar({ label: by, count: count(board, by), colours: shown().colours });
   const worn = new Set(
     board && by !== undefined ? board.elements.filter((e) => hasLabel(e, by)).map((e) => e.id) : [],
   );

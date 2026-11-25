@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { parseCommand } from "../../src/domain/commands.ts";
 import { exportBoard } from "../../src/domain/export/index.ts";
+import { colouredKey } from "../../src/domain/label-colour.ts";
 import { layoutBoard } from "../../src/domain/layout/index.ts";
 import { describeLabels } from "../../src/domain/project-digest.ts";
-import { LABEL_COLOURS, labelColours } from "../../src/domain/render/labels.ts";
+import { LABEL_COLOURS, labelColours, labelKey } from "../../src/domain/render/labels.ts";
 import { sceneToSvg } from "../../src/domain/render/svg.ts";
 import { KANBAN, table } from "../support.ts";
 
@@ -86,5 +87,45 @@ describe("the colour of a label's key (S328)", () => {
     expect(describeLabels(t.ws).split("\n").at(-1)).toBe("colours  epic teal · type pink");
     expect(describeLabels(t.ws, "type").split("\n").at(-1)).toBe("colours  type pink");
     expect(describeLabels(t.ws, "assignee")).not.toContain("colours");
+  });
+
+  test("the key recorded is the one a label is looked up by, whatever the label (what a second reader found)", () => {
+    for (const label of [
+      "ui",
+      "Tidy First",
+      "type:bug",
+      "a:b:c",
+      "assignee:bob",
+      ":",
+      "::",
+      ":x:",
+      "@",
+      "É:x",
+    ]) {
+      const key = colouredKey(labelKey(label));
+      expect(key).toBe(labelKey(label));
+      expect(labelColours(label, { [key]: "teal" })).toEqual(
+        LABEL_COLOURS[4] as (typeof LABEL_COLOURS)[number],
+      );
+    }
+    // Said at the terminal, a key may end with its colon.
+    expect(colouredKey("Type:")).toBe("type");
+  });
+
+  test("auto on a key never coloured records nothing, even one named as an object's own parts are", () => {
+    const t = table(KANBAN).script("colour type pink");
+    const before = t.events.length;
+    t.script("colour constructor auto").script("colour __proto__ auto");
+    expect(t.events.length).toBe(before);
+  });
+
+  test("a colour chosen before any card wears the key is still said by the list of the labels", () => {
+    const t = table(KANBAN).script("colour type teal");
+    expect(describeLabels(t.ws)).toBe("no label yet\ncolours  type teal");
+    expect(describeLabels(t.ws, "type")).toBe("no label type\ncolours  type teal");
+  });
+
+  test("the terminal asks for the key before the colour", () => {
+    expect(() => table(KANBAN).script("colour")).toThrow("a key of label");
   });
 });

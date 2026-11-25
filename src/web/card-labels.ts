@@ -6,7 +6,7 @@
 import { sameLabel } from "../domain/labels.ts";
 import { chipText, labelColours } from "../domain/render/labels.ts";
 import { h } from "./dom.ts";
-import { colourDot, colourRow, keepDot } from "./label-colour.ts";
+import { colourDot, colourRow, keepDot, settleColours } from "./label-colour.ts";
 import { filteredBy, filterName, toggleLabelFilter } from "./label-filter.ts";
 import { t } from "./locale.ts";
 import { currentBoard, isLive, send, state } from "./store.ts";
@@ -98,6 +98,7 @@ export function projectLabels(): string[] {
 export function labelSection(m: LabelsModel, speaker: (words: string) => void): HTMLElement | false {
   speak = speaker;
   shownFor = m.id;
+  settleColours(m.labels, m.live);
   if (m.labels.length === 0 && !m.live) return false;
   knownLabels.replaceChildren(
     ...m.known

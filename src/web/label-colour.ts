@@ -5,13 +5,13 @@
  * Escape puts the colours away, and the keyboard goes back to the dot.
  */
 import type { Locale } from "../domain/i18n.ts";
-import { colouredKey } from "../domain/label-colour.ts";
 import {
   type Chosen,
   LABEL_COLOUR_NAMES,
   LABEL_COLOURS,
   type LabelColourName,
   labelColours,
+  labelKey,
 } from "../domain/render/labels.ts";
 import { h } from "./dom.ts";
 import { locale } from "./locale.ts";
@@ -54,11 +54,26 @@ const dotOf = (key: string): HTMLButtonElement | null =>
 /** The key whose dot is to have the keyboard back: the panel painted again draws a new dot, the one focused is gone. */
 let back: string | undefined;
 
-function close(): void {
+/** Puts the colours away, and says so on their dot. */
+function putAway(): string | undefined {
   const key = open;
   open = undefined;
   colourRow.hidden = true;
   colourRow.replaceChildren();
+  if (key !== undefined) dotOf(key)?.setAttribute("aria-expanded", "false");
+  return key;
+}
+
+/**
+ * Called as the panel is painted: the colours of a key stay open only on a card that
+ * wears it, and only while the board can be written. The keyboard is not moved.
+ */
+export function settleColours(labels: readonly string[], live: boolean): void {
+  if (open !== undefined && !(live && labels.some((label) => labelKey(label) === open))) putAway();
+}
+
+function close(): void {
+  const key = putAway();
   if (key === undefined) return;
   dotOf(key)?.focus();
   back = key;
@@ -82,7 +97,10 @@ function show(key: string, colours: Chosen): void {
   open = key;
   const now = Object.hasOwn(colours, key) ? colours[key] : undefined;
   const choose = (colour?: LabelColourName): void => {
-    void send({ kind: "colour-label", key, ...(colour ? { colour } : {}) }).then(close);
+    // Refused or not sent, the colours stay open: to be chosen again.
+    void send({ kind: "colour-label", key, ...(colour ? { colour } : {}) }).then(
+      (done) => done !== undefined && close(),
+    );
   };
   colourRow.setAttribute("aria-label", w.everywhere(key));
   colourRow.replaceChildren(
@@ -110,7 +128,9 @@ function show(key: string, colours: Chosen): void {
     ),
   );
   colourRow.hidden = false;
-  colourRow.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus();
+  dotOf(key)?.setAttribute("aria-expanded", "true");
+  // A colour this build does not know leaves none pressed: the first has the keyboard then.
+  colourRow.querySelector<HTMLButtonElement>('[aria-pressed="true"], button')?.focus();
 }
 
 colourRow.addEventListener("keydown", (event) => {
@@ -123,7 +143,7 @@ colourRow.addEventListener("keydown", (event) => {
 
 /** The dot a chip wears before its words: it opens the colours of its key, or puts them away. */
 export function colourDot(label: string, colours: Chosen): HTMLButtonElement {
-  const key = colouredKey(label);
+  const key = labelKey(label);
   return h("button", {
     type: "button",
     class: "label-colour",

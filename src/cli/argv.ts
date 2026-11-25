@@ -74,8 +74,9 @@ export function boardAction(tokens: readonly string[], board: string | undefined
         };
       }
       case "colour": {
+        // `@` alone is the short way to say the key of every `@name`.
+        const key = need(0, "a key of label") === "@" ? "assignee" : at(0);
         const colour = need(1, "a colour, or auto");
-        const key = need(0, "a key of label");
         return { command: { kind: "colour-label", key, ...(colour === "auto" ? {} : { colour }) } };
       }
       case "session":

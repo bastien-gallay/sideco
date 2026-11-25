@@ -13,16 +13,20 @@ import type { Workspace } from "./workspace.ts";
 
 export type ProjectCommand = Extract<Command, { kind: "colour-label" }>;
 
-/** The key as it is kept: that of a label, `type:` and `type:bug` both `type`, `@` the assignee. */
+/**
+ * The key as it is kept: the one a label is looked up by. `type:` and `type:bug`
+ * both say `type`; a label that begins with its colon is its own key, colon and all.
+ */
 export function colouredKey(said: string): string {
-  const key = said.trim() === "@" ? "assignee" : normalLabel(said);
-  return labelKey(key.endsWith(":") ? key.slice(0, -1) : key);
+  const key = normalLabel(said);
+  return labelKey(key.endsWith(":") && !key.startsWith(":") ? key.slice(0, -1) : key);
 }
 
 /** Asked for the colour the key has, nothing is recorded. */
 export function colourLabel(ws: Workspace, cmd: ProjectCommand): ProjectEvent[] {
   const key = colouredKey(cmd.key);
-  if (ws.colours?.[key] === cmd.colour) return [];
+  const has = ws.colours && Object.hasOwn(ws.colours, key) ? ws.colours[key] : undefined;
+  if (has === cmd.colour) return [];
   return [{ event: "LabelColoured", key, ...(cmd.colour ? { colour: cmd.colour } : {}) }];
 }
 

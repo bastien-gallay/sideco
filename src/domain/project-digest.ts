@@ -28,7 +28,6 @@ export function describeLabels(ws: Workspace, only?: string): string {
         entry.cards.push(`${board.id} ${e.id}`);
         found.set(label.toLowerCase(), entry);
       }
-  if (found.size === 0) return only === undefined ? "no label yet" : `no label ${only}`;
   const listed = [...found.values()]
     .sort((a, b) => a.label.localeCompare(b.label))
     .map(({ label, cards }) => `${label}  ${cards.length}  ${cards.join(" · ")}`);
@@ -37,7 +36,11 @@ export function describeLabels(ws: Workspace, only?: string): string {
     .filter(([key]) => fits(key))
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, colour]) => `${key} ${colour}`);
-  return [...listed, ...(coloured.length > 0 ? [`colours  ${coloured.join(" · ")}`] : [])].join("\n");
+  const none = only === undefined ? "no label yet" : `no label ${only}`;
+  return [
+    ...(listed.length > 0 ? listed : [none]),
+    ...(coloured.length > 0 ? [`colours  ${coloured.join(" · ")}`] : []),
+  ].join("\n");
 }
 
 /** One line per card found, its board and id first, then where the words were when not in its name. */

@@ -4226,6 +4226,7 @@ describe("labels on a card, from the page", () => {
     await dot.click();
     const row = page.getByRole("group", { name: "Colour of the “type” labels, on every board" });
     await row.waitFor({ state: "visible" });
+    expect(await dot.getAttribute("aria-expanded")).toBe("true");
     expect(await row.getByRole("button").count()).toBe(9);
     expect(await row.locator('[aria-pressed="true"]').textContent()).toBe("Auto");
     await row.getByRole("button", { name: "teal" }).click();
@@ -4251,7 +4252,17 @@ describe("labels on a card, from the page", () => {
     await shot("70-label-colours");
     await page.keyboard.press("Escape");
     await row.waitFor({ state: "hidden" });
+    expect(await dot.getAttribute("aria-expanded")).toBe("false");
     expect(await card(fix).evaluate((g) => g.classList.contains("is-selected"))).toBe(true);
+    // The colours of a key do not follow the reader to a card that does not wear it.
+    await agent(`add task "Sans label" --lane todo --board couleurs`);
+    await dot.click();
+    await row.waitFor({ state: "visible" });
+    await page.locator("g.card", { hasText: "Sans label" }).click();
+    await row.waitFor({ state: "hidden" });
+    await card(fix).click();
+    await dot.waitFor();
+    expect(await row.isHidden()).toBe(true);
     // Claude chooses from the terminal: the page follows. Auto gives the key back to chance.
     await agent("colour type auto");
     await until("chance again", async () => (await chipFill(fix)) !== TEAL);

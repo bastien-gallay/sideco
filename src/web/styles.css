@@ -2728,9 +2728,9 @@ legend {
   cursor: pointer;
 }
 
-.label-colour:hover,
-.label-colour:focus-visible,
-.label-colour[aria-expanded="true"] {
+button.label-colour:hover,
+button.label-colour:focus-visible,
+button.label-colour[aria-expanded="true"] {
   border-color: rgb(0 0 0 / 0.1);
 }
 
@@ -2758,9 +2758,9 @@ legend {
   color: var(--ink);
 }
 
+/* The colour the key has: a ring inside, so that the outline stays the keyboard's. */
 .label-swatch[aria-pressed="true"] {
-  outline: 2px solid currentcolor;
-  outline-offset: 1px;
+  box-shadow: inset 0 0 0 2px currentcolor;
 }
 
 /* The chip's own words are the button that filters by it: it looks like the chip it is. */

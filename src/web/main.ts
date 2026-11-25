@@ -1542,7 +1542,7 @@ function render(): void {
       notes: discussions(board).filter((thread) => thread.on?.id === chosen.id).length,
       labels: chosen.labels ?? [],
       known: projectLabels(),
-      colours: state.live.colours ?? {},
+      colours: shown().colours ?? {},
       links: linkRows(board, chosen.id),
     });
     if (typing && document.activeElement !== detailField) detailField.focus();

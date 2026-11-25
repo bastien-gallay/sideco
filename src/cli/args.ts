@@ -54,7 +54,9 @@ export function parseArgs(tokens: readonly string[]): Args {
   const positional: string[] = [];
   const flags = new Map<string, string>();
   for (let i = 0; i < tokens.length; i++) {
-    const token = SHORT[tokens[i] ?? ""] ?? tokens[i] ?? "";
+    const word = tokens[i] ?? "";
+    // Looked up as its own: `constructor` is a word like another, not what every object has.
+    const token = Object.hasOwn(SHORT, word) ? (SHORT[word] ?? word) : word;
     if (!token.startsWith("--") || token === "--") {
       positional.push(token);
       continue;

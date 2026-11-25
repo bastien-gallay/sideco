@@ -9,7 +9,7 @@
 import type { View } from "../domain/layout/index.ts";
 import { type Board, findElement } from "../domain/workspace.ts";
 import { isCarry, stillFolded, toggled } from "./fold-rules.ts";
-import { changed, state } from "./store.ts";
+import { changed, shown, state } from "./store.ts";
 
 const KEY = "sideco.lanes-folded";
 
@@ -51,7 +51,7 @@ const foldedOn = (board: string): string[] => {
  * sight.
  */
 export function seen(board: Board | undefined, span: number | undefined): View {
-  const colours = state.live.colours;
+  const colours = shown().colours;
   if (!board) return { span, colours };
   const folded = foldedOn(board.id);
   const held = document.activeElement?.closest<SVGGElement>("g.card")?.dataset.id;

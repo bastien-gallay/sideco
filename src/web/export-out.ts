@@ -8,7 +8,7 @@ import { toMermaid } from "../domain/export/mermaid.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h } from "./dom.ts";
 import { locale } from "./locale.ts";
-import { state } from "./store.ts";
+import { shown } from "./store.ts";
 
 const MIME: Record<ExportFormat, string> = {
   md: "text/markdown",
@@ -23,7 +23,7 @@ export function downloadBoard(board: Board, format: ExportFormat): void {
   const text = exportBoard(board, format, {
     exportedAt: new Date().toISOString(),
     locale,
-    colours: state.live.colours,
+    colours: shown().colours,
   });
   const url = URL.createObjectURL(new Blob([text], { type: MIME[format] }));
   const link = h("a", { href: url, download: `${board.id}.${EXTENSION[format]}` });
