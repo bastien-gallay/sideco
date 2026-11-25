@@ -71,16 +71,33 @@ export function kinSaid(board: Board, id: string, locale: Locale = DEFAULT_LOCAL
   const w = WORDS[locale];
   const parent = kin.parent ? findElement(board, kin.parent) : undefined;
   const named = parent ? `${parent.id} ${parent.label.replace(/\s+/g, " ").trim()}` : "";
-  if (parent) return kin.gathered ? w.sameAs(named) : w.splits(named, kin.others);
+  if (parent) return kin.gathered ? w.sameAs(named, kin.others) : w.splits(named, kin.others);
   if (kin.children.length === 0) return undefined;
   return kin.gathered ? w.sameCount(kin.children.length) : w.splitDone(kin.done, kin.children.length);
 }
 
-/** Among cards chosen together, the one the others can be joined to: the first that takes them all. */
+/** The card a gathered card says the same as, at the end of the line: itself when it names none. */
+function rootOf(board: Board, id: string): string {
+  const seen = new Set<string>();
+  let at = id;
+  for (let kin = kinOf(board, at); kin.gathered && kin.parent && !seen.has(at); kin = kinOf(board, at)) {
+    seen.add(at);
+    at = kin.parent;
+  }
+  return at;
+}
+
+/**
+ * Among cards chosen together, the one the others can be joined to: the first that takes them all. Where cards are
+ * gathered, it is the card that one already says the same as: a group keeps one head, which counts them all.
+ */
 export function headOf(board: Board, ids: readonly string[]): string | undefined {
   const of = (id: string): Element | undefined => findElement(board, id);
   if (ids.length < 2) return undefined;
-  return ids.find((head) => ids.every((other) => other === head || splits(board, of(head), of(other))));
+  const head = ids.find((first) =>
+    ids.every((other) => other === first || splits(board, of(first), of(other))),
+  );
+  return head === undefined ? undefined : rootOf(board, head);
 }
 
 /** The cards chosen that are not joined to their head yet, nor it to them: those a link from it would join. */
@@ -88,5 +105,7 @@ export function toJoin(board: Board, ids: readonly string[]): string[] {
   const head = headOf(board, ids);
   if (head === undefined) return [];
   const linked = (a: string, b: string): boolean => board.edges.some((e) => e.src === a && e.dst === b);
-  return ids.filter((id) => id !== head && !linked(head, id) && !linked(id, head));
+  return ids.filter(
+    (id) => id !== head && rootOf(board, id) !== head && !linked(head, id) && !linked(id, head),
+  );
 }

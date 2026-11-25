@@ -123,8 +123,10 @@ test("in a retro, a point linked to a point says the same: one counts them, the 
 test("the cards chosen have a head when one of them takes all the others; only those not linked yet are joined (S327)", () => {
   const board = table(SAME).board();
   const [head, long, agenda, alone, action] = idsOf(board);
-  expect(headOf(board, [long, alone])).toBe(long);
+  // A card that says the same as another already is not a head: the one it names takes the newcomer.
+  expect(headOf(board, [long, alone])).toBe(head);
   expect(toJoin(board, [long, alone])).toEqual([alone]);
+  expect(toJoin(board, [alone, long])).toEqual([long]);
   // An action is not gathered with observations: no head, nothing offered.
   expect(headOf(board, [long, action])).toBeUndefined();
   // Linked already, either way: nothing left to join.
@@ -134,4 +136,14 @@ test("the cards chosen have a head when one of them takes all the others; only t
   const [pay, , , lone] = idsOf(sprint);
   expect(headOf(sprint, [lone, pay])).toBe(pay);
   expect(toJoin(sprint, [lone, pay])).toEqual([lone]);
+});
+
+test("gathering on a card of a group keeps one head, and never closes a ring (S327)", () => {
+  const t = table(SAME);
+  const [head, long, , alone] = idsOf(t.board());
+  // Joined under a member by hand, as the terminal may: the line is followed up to its head.
+  t.do({ kind: "link", board: "retro", src: long, dst: alone });
+  expect(headOf(t.board(), [alone, head])).toBe(head);
+  expect(toJoin(t.board(), [alone, head])).toEqual([]);
+  expect(kinSaid(t.board(), alone ?? "", "en")).toBe(`says the same as ${long} Réunions trop longues`);
 });

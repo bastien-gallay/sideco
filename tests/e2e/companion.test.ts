@@ -4323,6 +4323,9 @@ describe("a story and the tasks that split it (S323)", () => {
       "no longer offered",
       async () => (await bar.getByRole("button", { name: /Gather on/ }).count()) === 0,
     );
+    await until("the keyboard stays in the bar", () =>
+      page.evaluate(() => document.activeElement?.closest(".chosen-bar") !== null),
+    );
     await page.locator("button", { hasText: "Undo" }).first().click();
     await until("let go by one undo", async () => (await edges("idees-s327")) === "");
 
@@ -4340,6 +4343,7 @@ describe("a story and the tasks that split it (S323)", () => {
       async () => (await card(task).locator(".card-kin").textContent()) === `↳ ${story}`,
     );
     await page.keyboard.press("Escape");
+    await page.locator(".board-picker select").selectOption("decoupe-s323");
     await agent("board rm idees-s327");
     await agent("board rm attache-s327");
   });

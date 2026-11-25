@@ -29,7 +29,7 @@ export interface Words {
   splits: (card: string, others?: number) => string;
   splitDone: (done: number, of: number) => string;
   /** A card that says the same as another, and the card they are gathered on: how many say the same. */
-  sameAs: (card: string) => string;
+  sameAs: (card: string, others?: number) => string;
   sameCount: (others: number) => string;
   /** What the button of a column does: fold it, or open it folded, with how many cards it keeps (S307). */
   foldLane: (name: string) => string;
@@ -71,7 +71,8 @@ export const WORDS: Record<Locale, Words> = {
     splits: (card, others = 0) =>
       `splits ${card}${others > 0 ? `, and ${others} ${others > 1 ? "others" : "other"}` : ""}`,
     splitDone: (done, of) => `${done} of ${of} task${of > 1 ? "s" : ""} done`,
-    sameAs: (card) => `says the same as ${card}`,
+    sameAs: (card, others = 0) =>
+      `says the same as ${card}${others > 0 ? `, and ${others} ${others > 1 ? "others" : "other"}` : ""}`,
     sameCount: (others) => `${others} other${others > 1 ? "s say" : " says"} the same`,
     foldLane: (name) => `Fold the column ${name}`,
     openLane: (name, cards) => `Open the column ${name}, ${cards} card${cards > 1 ? "s" : ""}`,
@@ -105,7 +106,8 @@ export const WORDS: Record<Locale, Words> = {
     splits: (card, others = 0) =>
       `découpe ${card}${others > 0 ? `, et ${others} ${others > 1 ? "autres" : "autre"}` : ""}`,
     splitDone: (done, of) => `${done} tâche${done > 1 ? "s" : ""} faite${done > 1 ? "s" : ""} sur ${of}`,
-    sameAs: (card) => `dit la même chose que ${card}`,
+    sameAs: (card, others = 0) =>
+      `dit la même chose que ${card}${others > 0 ? `, et ${others} ${others > 1 ? "autres" : "autre"}` : ""}`,
     sameCount: (others) => `${others} autre${others > 1 ? "s disent" : " dit"} la même chose`,
     foldLane: (name) => `Replier la colonne ${name}`,
     openLane: (name, cards) => `Ouvrir la colonne ${name}, ${cards} carte${cards > 1 ? "s" : ""}`,

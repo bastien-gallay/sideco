@@ -76,7 +76,7 @@ const WORDS: Record<
     lane: (cards) => `Déplacer les ${cards} cartes choisies vers une colonne`,
     laneHint: "Déplacer vers…",
     moved: (lane, cards) =>
-      `${cards} carte${cards > 1 ? "s" : ""} déplacée${cards > 1 ? "s" : ""} vers ${lane} : Undo les ramène d'un coup`,
+      `${cards} carte${cards > 1 ? "s" : ""} déplacée${cards > 1 ? "s" : ""} vers ${lane} : Undo ${cards > 1 ? "les" : "la"} ramène d'un coup`,
     done: "Marquer faites (D)",
     undone: "Marquer non faites (D)",
     remove: "Supprimer (Suppr)",
@@ -253,8 +253,11 @@ function join(): void {
   const head = headOf(board, ids);
   const others = toJoin(board, ids);
   if (head === undefined || others.length === 0) return;
+  // The button pressed goes once they are joined: the keyboard stays in the bar.
+  moved = true;
   const commands = others.map((dst): Command => ({ kind: "link", board: board.id, src: head, dst }));
   void sendTogether(commands).then((answer) => {
+    if (answer === undefined) moved = false;
     if (answer === undefined) return;
     speak(w.joined(head, others.length, kinOf(board, head).gathered));
     changed();
@@ -267,7 +270,7 @@ function join(): void {
  */
 const laneMenu = h("select", { class: "chosen-lane", name: "lane" });
 chosenBar.append(laneMenu);
-/** The columns the menu lists, as last written: it is written again only when they change, never while open. */
+/** The columns the menu lists, as last written: it is written again only when they change. */
 let listed = "";
 
 /** Lists the columns of the board in the menu, or hides it where cards are not placed by column. */
@@ -286,6 +289,22 @@ function paintLanes(board: Board, cards: number): void {
     ...lanes.map(([id, name]) => h("option", { value: id }, name)),
   );
 }
+
+// Shut, a menu takes an arrow or a letter as a choice made on some systems: the cards would go at each key. The
+// keys open it; what is picked there is the choice. Escape leaves it for the card: the choice of cards stays.
+laneMenu.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    event.preventDefault();
+    event.stopPropagation();
+    if (state.selected)
+      document.querySelector<SVGGElement>(`g.card[data-id="${CSS.escape(state.selected)}"]`)?.focus();
+    return;
+  }
+  if (!event.key.startsWith("Arrow") && event.key.length !== 1) return;
+  if (event.key === " " || event.metaKey || event.ctrlKey || event.altKey) return;
+  event.preventDefault();
+  laneMenu.showPicker?.();
+});
 
 laneMenu.addEventListener("change", () => {
   const board = currentBoard();
