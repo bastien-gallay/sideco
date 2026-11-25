@@ -54,12 +54,14 @@ type Listener = (event: Recorded) => void;
 /**
  * The events of a command in a batch sent as one gesture (S333): the first is
  * joined to the command before it when both are on one board, so one undo
- * takes the batch back, board by board.
+ * takes back the commands that follow each other on a board. An undo or a redo
+ * is a gesture of its own.
  */
 function asGesture(ctx: Context, before: Recorded | undefined, events: SidecoEvent[]): SidecoEvent[] {
   const [first, ...rest] = events;
   if (!ctx.together || !first || !before || !("board" in before) || !("board" in first)) return events;
-  return before.board === first.board ? [{ ...first, joined: true } as SidecoEvent, ...rest] : events;
+  if ("undoes" in first || "redoes" in first || before.board !== first.board) return events;
+  return [{ ...first, joined: true } as SidecoEvent, ...rest];
 }
 
 export class Hub {

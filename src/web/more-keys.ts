@@ -12,7 +12,7 @@ const MORE: Record<Locale, { after: string; row: [string, string] }[]> = {
       after: "E",
       row: [
         "X",
-        "Choose the card too, beside the one chosen (Shift and a click): D and Delete are then for them all",
+        "Keep the card chosen while an arrow goes to the next, chosen in turn (or Shift and a click): D and Delete are then for them all",
       ],
     },
     { after: "E", row: ["F", "Point at the card chosen as Claude does, or no longer: it joins the focus"] },
@@ -23,7 +23,7 @@ const MORE: Record<Locale, { after: string; row: [string, string] }[]> = {
       after: "E",
       row: [
         "X",
-        "Choisir la carte aussi, à côté de celle choisie (Maj et un clic) : D et Suppr valent alors pour toutes",
+        "Garder la carte choisie pendant qu'une flèche passe à la suivante, choisie à son tour (ou Maj et un clic) : D et Suppr valent alors pour toutes",
       ],
     },
     {

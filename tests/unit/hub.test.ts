@@ -34,7 +34,7 @@ describe("a batch sent as one gesture (S333)", () => {
     hub.dispatch(remove, { actor: "human", together: true });
     expect(labels(hub)).toEqual(before.slice(2));
     hub.dispatch(batch("undo", "commande"), { actor: "human" });
-    expect(labels(hub).sort()).toEqual([...before].sort());
+    expect(labels(hub)).toEqual(before);
     hub.dispatch(batch("redo", "commande"), { actor: "human" });
     expect(labels(hub)).toEqual(before.slice(2));
   });

@@ -331,15 +331,27 @@ describe("the agent writes, the page follows", () => {
     await card(b).click({ modifiers: ["Shift"] });
     await until("two chosen", async () => (await has(b, "is-also")) && (await has(a, "is-selected")));
     expect(await bar.textContent()).toContain(`2 cards chosen — ${a}, ${b}`);
-    // X on the card the keyboard is on does the same, and takes it out again.
-    await card(c).focus();
+    // By the keyboard alone: X keeps the card chosen, and the arrow goes on to the next, chosen in turn.
+    await card(c).click();
+    await bar.waitFor({ state: "hidden" });
+    await card(a).click();
     await page.keyboard.press("x");
+    await page.keyboard.press("ArrowDown");
+    await until("kept and next", async () =>
+      ((await bar.textContent()) ?? "").includes(`2 cards chosen — ${a}, ${b}`),
+    );
+    await page.keyboard.press("x");
+    await page.keyboard.press("ArrowDown");
     await until("three chosen", async () => ((await bar.textContent()) ?? "").includes("3 cards chosen"));
-    await page.keyboard.press("x");
+    // A letter typed in a field is the field's: nothing is done to the cards.
+    await page.getByPlaceholder("A word for Claude (optional)").focus();
+    await page.keyboard.press("d");
+    expect(await lanes()).toBe(`${a}:todo,${b}:todo,${c}:todo`);
+    await card(a).click();
+    await card(b).click({ modifiers: ["Shift"] });
     await until("two again", async () => ((await bar.textContent()) ?? "").includes("2 cards chosen"));
     await shot("73-several-chosen");
     // D marks them all done: on a kanban they go to the last column; one Undo brings both back.
-    await card(a).focus();
     await page.keyboard.press("d");
     await until("both done", async () => (await lanes()) === `${a}:done,${b}:done,${c}:todo`);
     await page.locator("button", { hasText: "Undo" }).first().click();
