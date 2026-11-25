@@ -25,7 +25,7 @@ export async function postCommands(body: string, options: PostOptions): Promise<
   const timeout = setTimeout(() => abandon.abort(), options.timeoutMs);
   const slow = options.onSlow && setTimeout(options.onSlow, options.slowMs ?? 0);
   try {
-    const response = await options.fetch("/api/commands", {
+    const response = await options.fetch("api/commands", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body,

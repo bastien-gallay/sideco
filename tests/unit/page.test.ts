@@ -35,9 +35,12 @@ test("a page that opens in another language is another build", async () => {
 
 test("the page comes with the worker its tabs share for the event stream", async () => {
   const page = await buildPage();
-  expect(page.worker).toContain("/api/events");
+  // Addresses relative to the page, so a companion that serves it under /w/<id>/ keeps each project apart.
+  expect(page.worker).toContain("api/events");
+  expect(page.worker).not.toContain("/api/events");
   // A tab of one build must not share the stream of another: the address carries the build.
-  expect(page.html).toContain("/stream-worker.js?build=");
+  expect(page.html).toContain("stream-worker.js?build=");
+  expect(page.html).not.toContain("/stream-worker.js");
 });
 
 test("a change to the worker alone is another build", () => {

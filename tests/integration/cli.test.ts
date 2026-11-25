@@ -69,6 +69,13 @@ async function human(...commands: object[]): Promise<Response> {
   });
 }
 
+/**
+ * A home of its own for a project: its own companion, as on another machine.
+ * What a companion is started with (a browser, a language, a grace) is its own,
+ * not that of a project the shared companion serves.
+ */
+const apartHome = (dir: string) => ({ SIDECO_HOME: join(dir, ".home") });
+
 function hook(payload: object, env: Record<string, string> = {}, rewake = false): Promise<Ran> {
   return sideco(rewake ? ["hook", "--rewake"] : ["hook"], {
     stdin: JSON.stringify({ session_id: "s1", cwd: root, ...payload }),
@@ -166,7 +173,9 @@ describe("the agent models from the terminal", () => {
   test("the first write starts the companion and prints where to look", async () => {
     const ran = await sideco(["board", "new", "Passage de commande", "--format", "event-storming"]);
     expect(ran.err).toBe("");
-    expect(ran.out).toMatch(/^passage-de-commande \(http:\/\/127\.0\.0\.1:\d+\/#\/b\/passage-de-commande\)$/);
+    expect(ran.out).toMatch(
+      /^passage-de-commande \(http:\/\/127\.0\.0\.1:\d+\/w\/[\w.-]+\/#\/b\/passage-de-commande\)$/,
+    );
     url = note().url;
     const health = (await (await fetch(`${url}/health`)).json()) as { name: string; workspace: string };
     expect(health).toMatchObject({ name: "sideco", workspace: root });
@@ -599,10 +608,11 @@ describe("opening the page, by the agent as well as the human", () => {
   /** Another project, with its own companion, stopped and removed afterwards. */
   async function elsewhere(run: (dir: string) => Promise<void>): Promise<void> {
     const dir = realpathSync(mkdtempSync(join(tmpdir(), "sideco-cli-open-")));
+    mkdirSync(join(dir, ".sideco")); // its notes where this process reads them, whatever home it has
     try {
       await run(dir);
     } finally {
-      await sideco(["stop"], { cwd: dir });
+      await sideco(["stop"], { cwd: dir, env: apartHome(dir) });
       rmSync(dir, { recursive: true, force: true });
     }
   }
@@ -646,13 +656,13 @@ describe("opening the page, by the agent as well as the human", () => {
 
   test("after a restart, open waits for the page left open to come back instead of opening another", () =>
     elsewhere(async (dir) => {
-      await sideco(["open"], { cwd: dir, env: recorder(dir) });
-      await sideco(["board", "new", "Atelier"], { cwd: dir });
-      await sideco(["stop"], { cwd: dir });
+      await sideco(["open"], { cwd: dir, env: { ...recorder(dir), ...apartHome(dir) } });
+      await sideco(["board", "new", "Atelier"], { cwd: dir, env: apartHome(dir) });
+      await sideco(["stop"], { cwd: dir, env: apartHome(dir) });
       expect(visited(dir)).toHaveLength(1);
 
       // The companion is down; the tab is still there and will reconnect a moment after it is back.
-      const opening = sideco(["open"], { cwd: dir, env: recorder(dir) });
+      const opening = sideco(["open"], { cwd: dir, env: { ...recorder(dir), ...apartHome(dir) } });
       const address = await addressOf(dir);
       await Bun.sleep(600);
       const page = new AbortController();
@@ -665,10 +675,10 @@ describe("opening the page, by the agent as well as the human", () => {
 
   test("after a restart with no page left, open shows one once the wait is over", () =>
     elsewhere(async (dir) => {
-      await sideco(["open"], { cwd: dir, env: recorder(dir) });
-      await sideco(["board", "new", "Atelier"], { cwd: dir });
-      await sideco(["stop"], { cwd: dir });
-      const env = { ...recorder(dir), SIDECO_PAGE_RETURN_MS: "400" };
+      await sideco(["open"], { cwd: dir, env: { ...recorder(dir), ...apartHome(dir) } });
+      await sideco(["board", "new", "Atelier"], { cwd: dir, env: apartHome(dir) });
+      await sideco(["stop"], { cwd: dir, env: apartHome(dir) });
+      const env = { ...recorder(dir), ...apartHome(dir), SIDECO_PAGE_RETURN_MS: "400" };
       const began = Date.now();
       const ran = await sideco(["open"], { cwd: dir, env });
       expect(ran.out).toEndWith("opened in the browser");
@@ -679,20 +689,20 @@ describe("opening the page, by the agent as well as the human", () => {
   test("a shell that may not open a browser has the companion do it", () =>
     elsewhere(async (dir) => {
       // The companion starts where a browser opens, as the plugin's hook starts it outside the sandbox.
-      const started = await sideco(["open"], { cwd: dir, env: recorder(dir) });
+      const started = await sideco(["open"], { cwd: dir, env: { ...recorder(dir), ...apartHome(dir) } });
       const address = started.out.split("\n")[0] ?? "";
       expect(visited(dir)).toEqual([address]);
       // The next shell cannot open one, as a sandboxed shell cannot.
-      const asked = await sideco(["open"], { cwd: dir, env: { BROWSER: "false" } });
+      const asked = await sideco(["open"], { cwd: dir, env: { BROWSER: "false", ...apartHome(dir) } });
       expect(asked).toEqual({ code: 0, out: `${address}\nopened in the browser`, err: "" });
       expect(visited(dir)).toEqual([address, address]);
     }));
 
   test("when neither the shell nor the companion can open a browser, open says so and fails", () =>
     elsewhere(async (dir) => {
-      const ran = await sideco(["open"], { cwd: dir, env: { BROWSER: "false" } });
+      const ran = await sideco(["open"], { cwd: dir, env: { BROWSER: "false", ...apartHome(dir) } });
       expect(ran.code).toBe(1);
-      expect(ran.out).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+      expect(ran.out).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/w\/[\w.-]+$/);
       expect(ran.err).toBe(
         "sideco: could not open the browser, from this shell or from the companion (a sandbox blocks it, or no browser is set). Run `sideco open` outside the sandbox, or give the user the address above.",
       );
@@ -707,11 +717,11 @@ describe("the page's language", () => {
   test("a companion started with SIDECO_LANG=fr serves it in French", async () => {
     const dir = realpathSync(mkdtempSync(join(tmpdir(), "sideco-cli-lang-")));
     try {
-      const started = await sideco(["open"], { cwd: dir, env: { SIDECO_LANG: "fr" } });
+      const started = await sideco(["open"], { cwd: dir, env: { SIDECO_LANG: "fr", ...apartHome(dir) } });
       const address = started.out.split("\n")[0] ?? "";
       expect(await (await fetch(address)).text()).toStartWith('<!doctype html>\n<html lang="fr">');
     } finally {
-      await sideco(["stop"], { cwd: dir });
+      await sideco(["stop"], { cwd: dir, env: apartHome(dir) });
       rmSync(dir, { recursive: true, force: true });
     }
   });
@@ -960,12 +970,12 @@ describe("a companion nobody uses", () => {
   /** A workspace of its own, so stopping its companion leaves the others alone. */
   async function apart(): Promise<{ dir: string; run: (args: string[], stdin?: string) => Promise<Ran> }> {
     const dir = realpathSync(mkdtempSync(join(tmpdir(), "sideco-idle-")));
-    const env = { SIDECO_IDLE_MS: "400" };
+    const env = { SIDECO_IDLE_MS: "400", ...apartHome(dir) };
     const run = (args: string[], stdin?: string) => sideco(args, { cwd: dir, env, stdin });
     await run(["init"]);
     return { dir, run };
   }
-  const running = (dir: string): boolean => existsSync(join(dataDir(dir), "server.json"));
+  const running = (dir: string): boolean => existsSync(join(apartHome(dir).SIDECO_HOME, "server.json"));
   const pause = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
   test("stops by itself once the grace is over, and the next command starts it again", async () => {

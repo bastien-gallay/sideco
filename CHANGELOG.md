@@ -8,6 +8,13 @@ All notable changes to Sideco are listed here. The format follows
 
 ### Added
 
+- One companion serves every project of the machine, each under
+  `http://127.0.0.1:4747/w/<id>/` with its own journal, instead of one
+  companion, and one port, per project. Its own address leads to the only
+  project open, or lists them. `sideco stop` closes the project it is run in;
+  the companion stops with the last. A command line refuses a companion that
+  speaks another protocol, and the companion refuses a project that an older
+  companion still holds, so a journal never has two writers.
 - A new project keeps its boards under `~/.sideco` (`$SIDECO_HOME`), in a
   folder named by an id of its own, and nothing in the project's folder; every
   worktree of a clone shares them. A project that has a `.sideco/` folder keeps

@@ -94,7 +94,7 @@ Plusieurs sessions dans le même projet : le passage de main va à une seule : d
 
 Chacun de tes messages rappelle aussi à Claude l'adresse du compagnon de ce projet, en une ligne que tu ne vois pas, même après un compactage de la conversation. Quand il cite un tableau ou une carte dans sa réponse, il en fait un lien : `[T152](http://127.0.0.1:4747/#/b/backlog/T152)`. Un clic ouvre la page sur cette carte. `sideco url T152 --board backlog` imprime cette adresse, et `sideco show T152` la donne sous sa première ligne quand le compagnon tourne.
 
-Pour voir toi aussi l'adresse du compagnon, ajoute-la à la ligne d'état de Claude Code. `sideco statusline` lit la session que Claude Code lui passe et affiche `sideco · 127.0.0.1:4747`, cliquable (Cmd+clic) dans les terminaux qui le permettent (iTerm2, Kitty, WezTerm ; pas Terminal.app). Elle n'affiche rien hors d'un projet Sideco et ne démarre jamais le compagnon. Un plugin ne peut pas poser la ligne d'état : elle se règle dans `~/.claude/settings.json`. Demande à Claude de lancer `sideco statusline --install` : sans ligne d'état à toi, la commande pose celle de Sideco, en gardant le reste du fichier (sous `CLAUDE_CONFIG_DIR` s'il est défini). Elle vise le binaire de la place de marché, qui survit aux mises à jour, plutôt que la copie numérotée par version :
+Pour voir toi aussi l'adresse du compagnon, ajoute-la à la ligne d'état de Claude Code. `sideco statusline` lit la session que Claude Code lui passe et affiche `sideco · 127.0.0.1:4747/w/<id>`, cliquable (Cmd+clic) dans les terminaux qui le permettent (iTerm2, Kitty, WezTerm ; pas Terminal.app). Elle n'affiche rien hors d'un projet Sideco et ne démarre jamais le compagnon. Un plugin ne peut pas poser la ligne d'état : elle se règle dans `~/.claude/settings.json`. Demande à Claude de lancer `sideco statusline --install` : sans ligne d'état à toi, la commande pose celle de Sideco, en gardant le reste du fichier (sous `CLAUDE_CONFIG_DIR` s'il est défini). Elle vise le binaire de la place de marché, qui survit aux mises à jour, plutôt que la copie numérotée par version :
 
 ```json
 { "statusLine": { "type": "command", "command": "~/.claude/plugins/marketplaces/sideco/bin/sideco statusline" } }
@@ -316,7 +316,7 @@ Quand le mot n'est pas dans le nom, la ligne dit où il est : `[labels]`, `— d
 
 Dans la page, `/` ou `⌘K` (`Ctrl+K` hors Mac) ouvre la même recherche au-dessus du tableau. Les cartes trouvées se listent au fil de la frappe : celles du tableau affiché d'abord, la carte de cet id en tête, puis celles des autres tableaux, chacune avec le nom de son tableau et, si le mot n'est pas dans son nom, l'endroit où il est. Les flèches choisissent ; une carte du tableau affiché est pointée sur le tableau. Entrée, ou un clic, va à la carte : la page ouvre son tableau s'il le faut, et le clavier se pose sur elle. Échap referme.
 
-Chaque carte a son adresse, `#/b/TABLEAU/ID` (par exemple `http://127.0.0.1:4747/#/b/backlog/T182`) : l'adresse de la page suit la carte choisie, et l'ouvrir, collée ailleurs ou après un rechargement, ouvre son tableau, centre la carte, la choisit et la surligne un instant. `#/b/TABLEAU` seul ouvre le tableau. Un id est unique dans tout le projet ; le lien porte quand même le tableau, qu'il ouvre.
+Chaque carte a son adresse, `#/b/TABLEAU/ID` (par exemple `http://127.0.0.1:4747/w/sideco-1a2b3c/#/b/backlog/T182`) : l'adresse de la page suit la carte choisie, et l'ouvrir, collée ailleurs ou après un rechargement, ouvre son tableau, centre la carte, la choisit et la surligne un instant. `#/b/TABLEAU` seul ouvre le tableau. Un id est unique dans tout le projet ; le lien porte quand même le tableau, qu'il ouvre.
 
 <sub>Source : `src/domain/find.ts` (`findInWorkspace`), `src/domain/digest.ts` (`describeFind`), `src/web/view.ts` (`findHits`) ; `tests/unit/find.test.ts`, `tests/unit/find-hits.test.ts`.</sub>
 
@@ -341,6 +341,8 @@ Les fichiers d'un projet sont rangés dans `~/.sideco/<id>/` (`$SIDECO_HOME` pou
 | `sessions.jsonl` | La trace des sessions : prompts, outils lancés, tâches | ❌ ignoré (local) |
 | `server.json` | L'adresse du compagnon en cours | ❌ ignoré |
 | `site/` | Le site publié | ❌ ignoré |
+
+Un seul compagnon sert tous les projets de la machine, chacun sous `/w/<id>/` avec son propre journal ; `http://127.0.0.1:4747` mène au seul projet ouvert, ou les liste. `sideco stop` ferme le projet où il est lancé, et le compagnon s'arrête avec le dernier. Une ligne de commande refuse un compagnon d'un autre protocole.
 
 Le compagnon n'écoute que sur `127.0.0.1` et refuse les requêtes d'une autre origine.
 

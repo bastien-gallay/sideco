@@ -34,7 +34,7 @@ In any project, start Claude Code and ask:
 Let's model the checkout flow on the Sideco board
 ```
 
-Claude creates the workspace (its folder under `~/.sideco`, nothing in the project), starts a local server and opens the board in your browser, at `http://127.0.0.1:4747`. The cards appear as Claude writes them. There is nothing else to launch. Claude runs the `sideco` commands this page names; ask for one in plain words, or [type it yourself](docs/guide.md#the-commands).
+Claude creates the workspace (its folder under `~/.sideco`, nothing in the project), starts a local server and opens the board in your browser, at `http://127.0.0.1:4747/w/<id>`: one companion serves every project, each under its own address, and `http://127.0.0.1:4747` lists them. The cards appear as Claude writes them. There is nothing else to launch. Claude runs the `sideco` commands this page names; ask for one in plain words, or [type it yourself](docs/guide.md#the-commands).
 
 ## One turn of the loop
 
@@ -88,7 +88,7 @@ Ask Claude in plain words, or name the command.
 | What you see | What to do |
 | --- | --- |
 | Claude answers in the terminal and no board opens | Name it: *"on the Sideco board"*. If nothing changes, start Claude Code again and check that `claude plugin list` shows `sideco` |
-| The page did not open | Ask Claude to run `sideco url`: it prints the address to open, `http://127.0.0.1:4747` unless that port was taken |
+| The page did not open | Ask Claude to run `sideco url`: it prints the address to open, `http://127.0.0.1:4747/w/<id>` unless that port was taken |
 | Claude reports `this shell may not connect to the companion` | Claude Code's sandbox blocks local connections: let Claude run the command outside it, or [allow them once](docs/guide.md#with-claude-codes-sandbox) |
 | `sideco: Sideco runs on Bun 1.4 or later, not found` | Install [Bun](https://bun.sh), then start Claude Code again. An older Bun is not detected: check with `bun --version` |
 | The board is stuck or out of date | Ask Claude to run `sideco stop`, then `sideco url`: the server starts again from the same log |

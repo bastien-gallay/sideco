@@ -5,7 +5,7 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { Workspace } from "../domain/workspace.ts";
-import { dataDir, register, serverNote } from "../server/start.ts";
+import { companionNote, dataDir, idOf, PROTOCOL, readNote, register, serverNote } from "../server/start.ts";
 
 export class ClientError extends Error {
   override name = "ClientError";
@@ -129,17 +129,51 @@ export async function findServer(
 
 /**
  * Stops the companion of `root` and returns its address; undefined when none
- * runs. Only a server that answers for this workspace is stopped.
+ * runs. A companion that serves several projects only closes this one, and
+ * stops with the last; one that serves this project alone is stopped.
  */
-export async function stopServer(root: string): Promise<string | undefined> {
-  const server = await findServer(root);
+export async function stopServer(root: string, fetcher: Fetch = fetch): Promise<string | undefined> {
+  const server = await findServer(root, undefined, fetcher);
   if (!server) return undefined;
-  const pid = (JSON.parse(readFileSync(serverNote(root), "utf8")) as { pid?: unknown }).pid;
-  if (typeof pid !== "number")
-    throw new ClientError(`${serverNote(root)} does not name the companion's process`);
-  process.kill(pid, "SIGTERM");
-  for (let attempt = 0; attempt < 30 && (await findServer(root, 200)); attempt++) await Bun.sleep(50);
+  if (/\/w\/[^/]+$/.test(server.url))
+    await fetcher(`${server.url}/api/stop`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+    });
+  else {
+    const pid = (JSON.parse(readFileSync(serverNote(root), "utf8")) as { pid?: unknown }).pid;
+    if (typeof pid !== "number")
+      throw new ClientError(`${serverNote(root)} does not name the companion's process`);
+    process.kill(pid, "SIGTERM");
+  }
+  for (let attempt = 0; attempt < 30 && (await findServer(root, 200, fetcher)); attempt++)
+    await Bun.sleep(50);
   return server.url;
+}
+
+/**
+ * The companion that runs on this machine, whichever projects it serves;
+ * undefined when none answers. One that speaks another protocol is refused:
+ * a command line and a companion of different versions would misread each other.
+ */
+export async function findCompanion(fetcher: Fetch = fetch, timeoutMs = 400): Promise<string | undefined> {
+  const url = readNote(companionNote())?.url;
+  if (typeof url !== "string") return undefined;
+  let health: { name?: string; protocol?: unknown; pid?: unknown };
+  try {
+    health = (await (
+      await fetcher(`${url}/health`, { signal: AbortSignal.timeout(timeoutMs) })
+    ).json()) as typeof health;
+  } catch {
+    return undefined;
+  }
+  if (health.name !== "sideco") return undefined;
+  if (health.protocol !== PROTOCOL)
+    throw new ClientError(
+      `the companion at ${url} speaks protocol ${String(health.protocol)}, this command line ${PROTOCOL}: ` +
+        `stop it (kill ${String(health.pid)}) and run the command again`,
+    );
+  return url;
 }
 
 /** The running server, started in the background first if none answers. */
@@ -150,6 +184,15 @@ export async function ensureServer(
 ): Promise<Server> {
   const running = await findServer(root, undefined, fetcher);
   if (running) return running;
+  const companion = await findCompanion(fetcher);
+  if (companion) {
+    const opened = await fetcher(`${companion}/w/${idOf(root)}/health`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    if (opened.status === 409) throw new ClientError(((await opened.json()) as { error: string }).error);
+    const served = await findServer(root, undefined, fetcher);
+    if (served) return served;
+  }
   if (!canListen()) throw new Blocked("start the companion: a sandbox blocks local ports");
   const main = join(import.meta.dir, "main.ts");
   Bun.spawn([process.execPath, main, "serve", "--root", root], {

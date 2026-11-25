@@ -35,14 +35,16 @@ export class IdleWatch {
   private idleSince: number | undefined;
   private done = false;
 
+  /** `hubs` are those the companion has open: it is of use while one of them is. */
   constructor(
-    private readonly hub: Hub,
+    private readonly hubs: Hub | (() => Hub[]),
     private readonly options: IdleOptions,
   ) {}
 
   check(now: number): void {
     if (this.done) return;
-    if (inUse(this.hub, now, this.options.staleMs)) {
+    const hubs = typeof this.hubs === "function" ? this.hubs() : [this.hubs];
+    if (hubs.some((hub) => inUse(hub, now, this.options.staleMs))) {
       this.idleSince = undefined;
       return;
     }

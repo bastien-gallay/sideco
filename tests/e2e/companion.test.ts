@@ -2975,7 +2975,7 @@ describe("many tabs open on the companion", () => {
     const last = tabs.at(-1) as Page;
     const answered = await last.evaluate(async (id) => {
       const started = performance.now();
-      const response = await fetch("/api/commands", {
+      const response = await fetch("api/commands", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -4198,7 +4198,7 @@ describe("tidying up", () => {
       /(name="sideco-build" content=")[^"]+/,
       "$1stale",
     );
-    const thePage = (url: URL): boolean => url.pathname === "/";
+    const thePage = (url: URL): boolean => url.pathname === `${new URL(running.url).pathname}/`;
     await page.route(thePage, (route) => route.fulfill({ contentType: "text/html", body: stale }));
     let loads = 0;
     const count = (): void => void loads++;

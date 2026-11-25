@@ -4,28 +4,34 @@
  * (`.sideco/server.json`) so the CLI and the hooks can find it. The command line
  * reaches the server through this module only.
  */
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locale } from "../domain/i18n.ts";
 import { replay, type Workspace } from "../domain/workspace.ts";
-import { homeData } from "./home.ts";
-import { serve } from "./http.ts";
-import { Hub } from "./hub.ts";
+import { homeData, homeDir } from "./home.ts";
+import { type Handler, listenWith } from "./http.ts";
+import type { Hub } from "./hub.ts";
 import { IDLE_CHECK_MS, IdleWatch, STALE_SESSION_MS } from "./idle.ts";
 import { journalBytes, openJournal } from "./journal.ts";
 import { buildPage } from "./page.ts";
+import { companion, PROTOCOL, type Space, Spaces } from "./spaces.ts";
 
-export { homeDir, register, workspaces } from "./home.ts";
+export { homeDir, idOf, register, workspaces } from "./home.ts";
 export { IDLE_GRACE_MS } from "./idle.ts";
 export { journalBytes } from "./journal.ts";
+export { PROTOCOL } from "./spaces.ts";
 
 export const DEFAULT_PORT = 4747;
 const PORT_TRIES = 20;
 
 export interface Running {
+  /** The address of the workspace `start` was asked for: `<base>/w/<id>`. */
   url: string;
+  /** The companion's own address, which every workspace shares. */
+  base: string;
   port: number;
   hub: Hub;
+  spaces: Spaces;
   stop(): void;
 }
 
@@ -79,41 +85,83 @@ export interface StartOptions {
    * waiting session, no open session. Without it, the companion never stops by itself.
    */
   idle?: { graceMs: number; onIdle: () => void };
+  /** Called once `sideco stop` has closed every project: without it, the companion stays. */
+  onEmpty?: () => void;
 }
 
+/**
+ * Starts the companion, which serves every project under `/w/<id>/`, and opens
+ * the space of `root`. It leaves a note at home (`server.json`) so a command
+ * line finds it, and one in each project it opens, for an older command line.
+ */
 export async function start(
   root: string,
   preferredPort = DEFAULT_PORT,
-  { show, locale, idle }: StartOptions = {},
+  { show, locale, idle, onEmpty }: StartOptions = {},
 ): Promise<Running> {
-  const dir = dataDir(root);
-  mkdirSync(dir, { recursive: true });
-  const hub = new Hub(openJournal(dir));
   const page = await buildPage(locale);
-  const siteDir = join(dir, "site");
-
-  const server = listen((port) => serve({ hub, page, root, siteDir, show, port }), preferredPort);
+  let handle: Handler = async () => new Response(null, { status: 503 });
+  const server = listen(
+    (port) => listenWith((request, keepOpen) => handle(request, keepOpen), port),
+    preferredPort,
+  );
   const port = server.port;
   if (port === undefined) throw new Error("the server did not report its port");
-  const url = `http://127.0.0.1:${port}`;
+  const base = `http://127.0.0.1:${port}`;
+  const spaces = new Spaces({
+    page,
+    base,
+    dataDir,
+    show,
+    onEmpty: () => setTimeout(() => (onEmpty ?? stop)(), 0),
+  });
+  handle = companion(spaces);
+  let space: Space | undefined;
+  try {
+    space = spaces.of(root);
+  } catch (error) {
+    server.stop(true);
+    throw error;
+  }
+  if (!space) throw new Error(`${root} has no id`);
+  const note = companionNote();
   writeFileSync(
-    serverNote(root),
-    `${JSON.stringify({ url, port, pid: process.pid, workspace: root }, null, 2)}\n`,
+    note,
+    `${JSON.stringify({ url: base, port, pid: process.pid, protocol: PROTOCOL }, null, 2)}\n`,
   );
-  const watch = idle && new IdleWatch(hub, { ...idle, staleMs: STALE_SESSION_MS });
+  const watch =
+    idle && new IdleWatch(() => spaces.all().map((open) => open.hub), { ...idle, staleMs: STALE_SESSION_MS });
   const looking =
     watch &&
     setInterval(() => watch.check(Date.now()), Math.min(IDLE_CHECK_MS, Math.max(50, idle.graceMs / 4)));
-  return {
-    url,
-    port,
-    hub,
-    stop() {
-      if (looking) clearInterval(looking);
-      server.stop(true);
-      rmSync(serverNote(root), { force: true });
-    },
-  };
+  function stop(): void {
+    if (looking) clearInterval(looking);
+    server.stop(true);
+    spaces.close();
+    if (readNote(note)?.pid === process.pid) rmSync(note, { force: true });
+  }
+  return { url: `${base}/w/${space.id}`, base, port, hub: space.hub, spaces, stop };
+}
+
+/** Where the companion says where it listens: at home, shared by every project. */
+export function companionNote(): string {
+  mkdirSync(homeDir(), { recursive: true });
+  return join(homeDir(), "server.json");
+}
+
+export interface CompanionNote {
+  url: string;
+  port: number;
+  pid: number;
+  protocol: number;
+}
+
+export function readNote(path: string): Partial<CompanionNote> | undefined {
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as Partial<CompanionNote>;
+  } catch {
+    return undefined;
+  }
 }
 
 /** The preferred port, or the next free one. Port 0 asks the system for any free port. */

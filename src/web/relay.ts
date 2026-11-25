@@ -140,7 +140,7 @@ export class Relay {
 }
 
 /** The stream a page follows: it opens on the workspace as it stands, not on the whole journal. */
-export const STREAM = "/api/events?snapshot=1";
+export const STREAM = "api/events?snapshot=1";
 
 /** The stream itself, as the browser reads it. */
 export const eventSource =

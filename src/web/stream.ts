@@ -11,7 +11,7 @@ export function connect(build: string | undefined, hear: (frame: Frame) => void)
     return;
   }
   // One worker per build: a tab of another build must not share this one's stream.
-  const worker = new SharedWorker(`/stream-worker.js?build=${build ?? ""}`, { name: "sideco-stream" });
+  const worker = new SharedWorker(`stream-worker.js?build=${build ?? ""}`, { name: "sideco-stream" });
   worker.port.onmessage = (message: MessageEvent<Frame>) => hear(message.data);
   worker.port.start();
   const say = (request: Request): void => worker.port.postMessage(request);

@@ -27,7 +27,7 @@ git clone https://github.com/bastien-gallay/sideco.git ~/sideco
 claude --plugin-dir ~/sideco
 ```
 
-To keep the board's address in sight, Claude Code's status line can show `sideco · 127.0.0.1:4747`, a link where the terminal supports one, and nothing outside a Sideco project. A plugin cannot set the status line; ask Claude to run `sideco statusline --install`, which writes it into `~/.claude/settings.json`. A status line of your own is left as it is: the command prints the two lines to append to your script instead.
+To keep the board's address in sight, Claude Code's status line can show `sideco · 127.0.0.1:4747/w/<id>`, a link where the terminal supports one, and nothing outside a Sideco project. A plugin cannot set the status line; ask Claude to run `sideco statusline --install`, which writes it into `~/.claude/settings.json`. A status line of your own is left as it is: the command prints the two lines to append to your script instead.
 
 ## How a turn travels
 

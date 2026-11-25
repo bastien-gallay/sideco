@@ -27,6 +27,8 @@ export interface Site {
   siteDir: string;
   /** Shows the page at this address to the human on this machine; absent when the server cannot. */
   show?: (address: string) => Promise<boolean>;
+  /** Where this workspace is served on a companion that serves several: `/w/<id>`. */
+  prefix?: string;
 }
 
 export interface ServerOptions extends Site {
@@ -45,11 +47,12 @@ const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache
 
 /** The whole HTTP behaviour, with no socket: the server and the tests call it the same way. */
 export function handler(site: Site): Handler {
-  const { hub, page, root, siteDir, show } = site;
+  const { hub, page, root, siteDir, show, prefix = "" } = site;
   return async (request, keepOpen = () => {}) => {
     const url = new URL(request.url);
     const refusal = guard(request, url);
     if (refusal) return refusal;
+    if (url.pathname.startsWith(`${prefix}/`)) url.pathname = url.pathname.slice(prefix.length);
 
     if (request.method === "GET") {
       switch (url.pathname) {
@@ -88,23 +91,27 @@ export function handler(site: Site): Handler {
     if (request.method === "POST" && url.pathname === "/api/commands") return commands(hub, request);
     // A sandboxed shell cannot open a browser; this server, started outside it, can. Its own page only.
     if (request.method === "POST" && url.pathname === "/api/open")
-      return json({ opened: show ? await show(url.origin) : false });
+      return json({ opened: show ? await show(`${url.origin}${prefix}`) : false });
     return json({ error: "not found" }, 404);
   };
 }
 
 /** Listens on the loopback interface only. */
 export function serve(options: ServerOptions): ReturnType<typeof Bun.serve> {
-  const handle = handler(options);
+  return listenWith(handler(options), options.port);
+}
+
+/** Serves `handle` on the loopback interface only. */
+export function listenWith(handle: Handler, port: number): ReturnType<typeof Bun.serve> {
   return Bun.serve({
     hostname: "127.0.0.1",
-    port: options.port,
+    port,
     fetch: (request, server) => handle(request, () => server.timeout(request, 0)),
   });
 }
 
 /** Refuses what a foreign web page could trigger: a rebound host name, or a cross-origin write. */
-function guard(request: Request, url: URL): Response | undefined {
+export function guard(request: Request, url: URL): Response | undefined {
   const allowed = new Set([`127.0.0.1:${url.port}`, `localhost:${url.port}`]);
   if (!allowed.has(request.headers.get("host") ?? "")) return json({ error: "unexpected host" }, 403);
   const origin = request.headers.get("origin");

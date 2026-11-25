@@ -362,6 +362,7 @@ async function serveForeground(given: string, args: Args): Promise<number> {
     show: openBrowser,
     locale: language(args),
     idle: graceMs === undefined ? undefined : { graceMs, onIdle: () => stop() },
+    onEmpty: () => stop(),
   });
   console.log(`sideco is serving ${root}\n  ${running.url}`);
   const stop = (): void => {

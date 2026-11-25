@@ -30,18 +30,31 @@ export function homeData(root: string, home = homeDir()): string | undefined {
   return id === undefined ? undefined : join(home, id);
 }
 
-/** Gives `root` its id, once, and returns its folder: the same project keeps its id, two projects never share one. */
-export function register(root: string, home = homeDir()): string {
+/**
+ * Gives `root` its id, once: the same project keeps it, two projects never
+ * share one. A project that keeps its boards in its own `.sideco/` has one
+ * too, so the companion can name its address.
+ */
+export function idOf(root: string, home = homeDir()): string {
   const known = workspaces(home);
-  let id = known[root];
-  if (id === undefined) {
-    const taken = new Set(Object.values(known));
-    do id = mint(root);
-    while (taken.has(id));
-    mkdirSync(home, { recursive: true });
-    writeFileSync(registry(home), `${JSON.stringify({ ...known, [root]: id }, null, 2)}\n`);
-  }
-  const dir = join(home, id);
+  const id = known[root];
+  if (id !== undefined) return id;
+  const taken = new Set(Object.values(known));
+  let minted = mint(root);
+  while (taken.has(minted)) minted = mint(root);
+  mkdirSync(home, { recursive: true });
+  writeFileSync(registry(home), `${JSON.stringify({ ...known, [root]: minted }, null, 2)}\n`);
+  return minted;
+}
+
+/** The project an id was given to. */
+export function rootOf(id: string, home = homeDir()): string | undefined {
+  return Object.entries(workspaces(home)).find(([, known]) => known === id)?.[0];
+}
+
+/** Gives `root` its id and makes its folder at home, where its boards will be. */
+export function register(root: string, home = homeDir()): string {
+  const dir = join(home, idOf(root, home));
   mkdirSync(dir, { recursive: true });
   return dir;
 }

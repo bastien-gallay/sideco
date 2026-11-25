@@ -332,7 +332,7 @@ let pastAsked: Promise<void> | null = null;
 function fetchPast(): Promise<void> {
   if (pastAsked) return pastAsked;
   const upTo = state.from;
-  const asked = fetch(`/api/history?upTo=${upTo}`)
+  const asked = fetch(`api/history?upTo=${upTo}`)
     .then((response) => (response.ok ? (response.json() as Promise<{ events: Recorded[] }>) : null))
     .then((answer) => {
       // Another stream started over meanwhile: this answer is for a journal no longer held.
