@@ -22,7 +22,8 @@ const BROKEN_BY: Record<Limit, string> = {
 
 /** Counted on 2026-11-22; lower a count when a change brings a module under it. */
 export const FUNCTION_LIMITS: Counts = {
-  "src/cli/argv.ts": { lines: 2, complexity: 2 },
+  "src/cli/args.ts": { complexity: 1 },
+  "src/cli/argv.ts": { lines: 2, complexity: 1 },
   "src/cli/hook.ts": { lines: 1, complexity: 1 },
   "src/cli/main.ts": { complexity: 1, lines: 1 },
   "src/domain/capture.ts": { complexity: 1 },
