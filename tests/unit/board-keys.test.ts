@@ -42,6 +42,8 @@ test("on a card, each letter has its gesture, in either case", () => {
   expect(cardKey(key("l"))).toEqual({ ask: "link" });
   expect(cardKey(key("n"))).toEqual({ ask: "note" });
   expect(cardKey(key("e"))).toEqual({ ask: "detail" });
+  expect(cardKey(key("t"))).toEqual({ ask: "label" });
+  expect(cardKey(key("T", { shiftKey: true }))).toEqual({ ask: "label" });
   expect(cardKey(key("x"))).toBeUndefined();
 });
 

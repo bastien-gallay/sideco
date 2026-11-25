@@ -4,6 +4,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { MESSAGES } from "../../src/web/messages.ts";
+import { withMoreKeys } from "../../src/web/more-keys.ts";
 
 const says = (rows: [string, string][]) => rows.map(([keys, does]) => `${keys} = ${does}`).join("\n");
 
@@ -14,6 +15,14 @@ describe("the sheet of keys", () => {
     );
     expect(says(MESSAGES.fr.shortcutList("grid", false, { y: "Origine", x: "Effet" }))).toContain(
       "↑ ↓ Origine, ← → Effet",
+    );
+  });
+
+  test("tells T, which adds a label, after E (S332)", () => {
+    const en = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([keys]) => keys);
+    expect(en[en.indexOf("E") + 1]).toBe("T");
+    expect(says(withMoreKeys(MESSAGES.fr.shortcutList("kanban", true), "fr"))).toContain(
+      "T = Ajouter un label à la carte",
     );
   });
 

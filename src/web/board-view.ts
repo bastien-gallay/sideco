@@ -575,10 +575,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
    * click and double-click that follow are addressed to the board itself, so
    * their own target says nothing: ask the document instead.
    */
-  function under(event: MouseEvent): Element | null {
+  function under({ clientX, clientY }: MouseEvent): Element | null {
     // An end of the link picked lies over its line: a double click there is the link's, not the dot's.
-    const stack = document.elementsFromPoint(event.clientX, event.clientY);
-    return stack.find((el) => !el.closest(".link-ends")) ?? null;
+    return document.elementsFromPoint(clientX, clientY).find((el) => !el.closest(".link-ends")) ?? null;
   }
 
   /**
@@ -1325,6 +1324,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     link: (_, id) => beginLink(id),
     note: (_, id) => noteOn(id),
     detail: (_, id) => hooks.editDetail(id),
+    label: (_, id) => hooks.editLabels(id),
   };
 
   root.addEventListener("keydown", (event) => {

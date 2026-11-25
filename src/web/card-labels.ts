@@ -22,6 +22,12 @@ export interface LabelsModel {
 /** How the page speaks to a screen reader: set by the panel each time it paints. */
 let speak: (words: string) => void = () => {};
 
+/** What the page does when the keyboard leaves the field by Escape: set by main.ts, which knows the board. */
+let left: () => void = () => {};
+export function onLabelsLeft(then: () => void): void {
+  left = then;
+}
+
 /** Made once, like the detail's field: what is being typed keeps its place and the keyboard through every repaint. */
 const labelField = h("input", {
   type: "text",
@@ -35,6 +41,8 @@ const labelField = h("input", {
 const knownLabels = h("datalist", { id: "known-labels" });
 labelField.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    // Emptied first; empty already, the keyboard leaves the field for the card.
+    if (labelField.value === "") left();
     labelField.value = "";
     return;
   }

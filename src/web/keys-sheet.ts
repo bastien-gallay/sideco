@@ -5,8 +5,9 @@
 import { findFormat } from "../domain/formats.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h } from "./dom.ts";
-import { t } from "./locale.ts";
+import { locale, t } from "./locale.ts";
 import type { CardMark, SheetKind } from "./messages.ts";
+import { withMoreKeys } from "./more-keys.ts";
 
 /** The keys of the page, in one place: asked for with `?`, or from the palette. */
 export const keysSheet = h("dialog", { class: "sheet keys" });
@@ -53,7 +54,10 @@ export function openKeys(board: Board | undefined, axes: { x: string; y: string 
     );
   keysSheet.replaceChildren(
     h("h2", {}, t.shortcuts),
-    list(t.shortcutList(how, Boolean(findFormat(board?.format ?? "")?.doneLast), axes), true),
+    list(
+      withMoreKeys(t.shortcutList(how, Boolean(findFormat(board?.format ?? "")?.doneLast), axes), locale),
+      true,
+    ),
     h("h3", {}, t.withTheMouse),
     list(t.mouseList(how), false),
     h("h3", {}, t.onACard),

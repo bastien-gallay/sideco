@@ -4084,6 +4084,19 @@ describe("labels on a card, from the page", () => {
       ),
     );
     await page.locator(".board-picker select").selectOption("labels-t155");
+    const onField = () =>
+      page.evaluate(() => document.activeElement?.classList.contains("label-field") ?? false);
+    // T on a card goes straight to the field that adds a label: the card chosen, its Detail tab opened (S332).
+    await card(sort).focus();
+    await page.keyboard.press("t");
+    await until("the keyboard in the field that adds a label", onField);
+    expect(await card(sort).evaluate((g) => g.classList.contains("is-selected"))).toBe(true);
+    expect(await page.getByRole("tab", { name: "Detail" }).getAttribute("aria-selected")).toBe("true");
+    // Escape in the field, empty, gives the keyboard back to the card.
+    await page.keyboard.press("Escape");
+    await until("the keyboard back on the card", async () =>
+      page.evaluate((id) => document.activeElement?.getAttribute("data-id") === id, sort),
+    );
     await card(sort).click();
     await page.getByRole("tab", { name: "Detail" }).click();
     const field = page.locator(".label-field");

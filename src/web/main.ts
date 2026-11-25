@@ -26,7 +26,14 @@ import {
   removeSheet,
 } from "./boards.ts";
 import { cardFacts, kindSaid } from "./card-facts.ts";
-import { labelSection, projectLabels, refocusLabelField, refocusLabels, typingLabel } from "./card-labels.ts";
+import {
+  labelSection,
+  onLabelsLeft,
+  projectLabels,
+  refocusLabelField,
+  refocusLabels,
+  typingLabel,
+} from "./card-labels.ts";
 import { linkSection } from "./card-links.ts";
 import { clock, h, region } from "./dom.ts";
 import { describeEvent, sessionName } from "./event-words.ts";
@@ -385,20 +392,29 @@ const skip = h(
   t.skipToBoard,
 );
 
+/** The card chosen, its Detail tab opened, and the panel with it if it was folded. */
+function showDetail(id: string): void {
+  // Not by chooseTab: the Detail tab is quiet until the repaint learns of the card.
+  state.selected = id;
+  openDetailTab();
+  if (isFolded("right")) toggleFold("right");
+  render();
+}
+
 const view = mountBoard(canvas, {
   removed: (said) => say(said, undoOffer()),
   announce: speak,
   notice: (text) => say(text),
   editDetail: (id) => editDetail(id, "card"),
   showNotes: (id) => showNotes(id),
-  showDetail: (id) => {
-    // Not by chooseTab: the Detail tab is quiet until the repaint learns of the card.
-    state.selected = id;
-    openDetailTab();
-    if (isFolded("right")) toggleFold("right");
-    render();
+  showDetail,
+  editLabels: (id) => {
+    showDetail(id);
+    refocusLabelField();
   },
 });
+// Escape in the field that adds a label, empty: the keyboard goes back to the card.
+onLabelsLeft(() => state.selected && view.focus(state.selected));
 
 /** The search over the cards of every board: `/` or Ctrl+K opens it. */
 const find = mountFind({ view, open: openBoard });

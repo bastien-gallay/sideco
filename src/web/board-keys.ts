@@ -22,7 +22,7 @@ type Ask<K extends string, More = unknown> = K extends string ? { ask: K } & Mor
 export type CardKey =
   | { ask: "go"; direction: Direction; reads: true }
   | Ask<"move" | "beside", { direction: Direction }>
-  | Ask<"rename" | "choose" | "remove" | "done" | "link" | "note" | "detail">;
+  | Ask<"rename" | "choose" | "remove" | "done" | "link" | "note" | "detail" | "label">;
 
 export type LaneKey =
   | { ask: "to-lane"; by: 1 | -1; reads: true }
@@ -48,6 +48,7 @@ const CARD: Record<string, CardKey> = {
   l: { ask: "link" },
   n: { ask: "note" },
   e: { ask: "detail" },
+  t: { ask: "label" },
 };
 
 /** What a key asks with the keyboard on a card; undefined for a key that is not the board's. */

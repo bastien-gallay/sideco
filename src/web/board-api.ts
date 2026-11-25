@@ -13,6 +13,8 @@ export interface BoardHooks {
   notice(text: string): void;
   /** The card's detail is to be written: the page opens it in its panel. */
   editDetail(id: string): void;
+  /** The keyboard goes to the field that adds a label to the card, in the page's panel. */
+  editLabels(id: string): void;
   /** The card's detail is to be read: the page shows it in its panel, unfolded if need be. */
   showDetail(id: string): void;
   /** The card's discussions are to be read: the page opens its Notes tab on them. */
