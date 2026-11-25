@@ -461,6 +461,49 @@ describe("the agent writes, the page follows", () => {
     await until("no count left", async () => (await page.locator(".unseen-chip").count()) === 0);
   });
 
+  test("a card added has the keyboard, in view wherever it lands; taken back, the keyboard stays on the board (S353)", async () => {
+    const adds = Array.from({ length: 24 }, (_, i) => `add task "Carte ${i + 1}" --lane todo`).join("\n");
+    await agent(`board new "Ajouts" --format kanban --id ajouts\n${adds}`);
+    await page.locator(".board-picker select").selectOption("ajouts");
+    await page.locator(".unseen-chip.is-below").waitFor();
+    const holds = () =>
+      page.evaluate(() => {
+        const at = document.activeElement as HTMLElement | null;
+        return at?.dataset.id ?? at?.tagName ?? "";
+      });
+    const inSight = (id: string) =>
+      card(id).evaluate((g) => {
+        const box = g.getBoundingClientRect();
+        const frame = document.querySelector(".canvas-scroll")?.getBoundingClientRect();
+        return (
+          !g.hasAttribute("data-cut") && !!frame && box.top >= frame.top && box.bottom <= frame.bottom + 1
+        );
+      });
+    const last = async () =>
+      ((await workspace()).boards.find((b) => b.id === "ajouts")?.elements ?? []).at(-1)?.id ?? "";
+    // From the palette, the card lands at the foot of the first column, under its window: the column comes to it.
+    await paletteType("Task").click();
+    await typeInEditor("Tout en bas");
+    await until("the card added is the last", async () => {
+      const id = await last();
+      return (
+        id !== "" &&
+        (await card(id).count()) === 1 &&
+        (await card(id).textContent())?.includes("Tout en bas") === true
+      );
+    });
+    const added = await last();
+    await until("it holds the keyboard", async () => (await holds()) === added);
+    await until("and is in sight, whole", () => inSight(added));
+    // Taken back, the card is gone: the keyboard is on another card, not on the page.
+    await page.keyboard.press("Control+z");
+    await card(added).waitFor({ state: "detached" });
+    await until("the keyboard is on a card", async () => /^T\d+$/.test(await holds()));
+    await page.locator(".board-picker select").selectOption("commande");
+    await card("R1").waitFor();
+    await agent("board rm ajouts");
+  });
+
   test("several cards are chosen by Shift and a click, or X; done and removed together, one Undo takes it back (S333)", async () => {
     const [a, b, c] = await agent(
       'board new "Plusieurs" --format kanban --id plusieurs\nadd task "Un" --lane todo\nadd task "Deux" --lane todo\nadd task "Trois" --lane todo',

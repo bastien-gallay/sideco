@@ -30,6 +30,18 @@ export function newCardNode(id: string): CardNode {
   return { g: svg("g", { class: "card", "data-id": id, tabindex: -1, role: "button" }), signature: "" };
 }
 
+/** Takes off the page the nodes of the cards that are gone; says whether one of them held the keyboard. */
+export function dropNodes(nodes: Map<string, CardNode>, alive: ReadonlySet<string>): boolean {
+  let held = false;
+  for (const [id, node] of nodes) {
+    if (alive.has(id)) continue;
+    held ||= node.g === document.activeElement;
+    node.g.remove();
+    nodes.delete(id);
+  }
+  return held;
+}
+
 /** Draws the card in its node, when what it shows changed. Where it is drawn is not part of it. */
 export function drawCard(node: CardNode, card: Card, marks: Marks): void {
   const { x: _x, y: _y, cut: _cut, ...look } = card;

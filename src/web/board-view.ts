@@ -23,7 +23,7 @@ import { type CardKey, cardKey, type LaneKey, laneKey } from "./board-keys.ts";
 import * as links from "./board-links.ts";
 import { dropCommand, keyCommand, snapCommand, whereTo } from "./card-drop.ts";
 import { mountEditor } from "./card-editor.ts";
-import { type CardNode, drawCard, newCardNode, sayCard } from "./card-node.ts";
+import { type CardNode, drawCard, dropNodes, newCardNode, sayCard } from "./card-node.ts";
 import { cardButtons, leadButton, type MoreMenu, standBy } from "./card-tools.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
@@ -220,13 +220,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   }
 
   /** The cards that are gone leave the page; the words being written on one of them are handed back, not dropped. */
-  function dropGone(alive: ReadonlySet<string>): void {
+  function dropGone(alive: ReadonlySet<string>): boolean {
     editor.dropGone(alive);
-    for (const [id, node] of nodes) {
-      if (alive.has(id)) continue;
-      node.g.remove();
-      nodes.delete(id);
-    }
+    return dropNodes(nodes, alive);
   }
 
   /** The board is one Tab stop: the selected card, else the last one the keyboard was on, else the first one read. */
@@ -270,10 +266,12 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const switched = paintedBoard !== board.id;
     paintedBoard = board.id;
     const alive = paintCards(board, switched);
-    dropGone(alive);
+    const lost = dropGone(alive) && !switched;
     const reading = readingGroups(board, scene, locale);
     arrange(cards, groups, (id) => nodes.get(id)?.g, reading, !switched);
     keepTabStop(alive, reading[0]?.ids[0], switched);
+    // The card that held the keyboard is gone, taken back or removed by Claude: the keyboard stays on the board (S353).
+    if (lost) nodes.get(current ?? "")?.g.focus({ preventScroll: true });
     landOnCard(alive);
     if (switched)
       requestAnimationFrame(() => {
