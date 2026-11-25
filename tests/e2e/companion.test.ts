@@ -4291,6 +4291,58 @@ describe("a story and the tasks that split it (S323)", () => {
     await shot("62-kin");
     await page.keyboard.press("Escape");
   });
+
+  test("observations chosen together are gathered as one idea, and tasks attached to a story; one Undo (S327)", async () => {
+    const [head, long, agenda] = await agent(
+      [
+        'board new "Idées" --format retro --id idees-s327',
+        'add point "Trop de réunions" --lane went-badly',
+        'add point "Réunions trop longues" --lane went-badly',
+        'add point "Sans ordre du jour" --lane went-badly',
+      ].join("\n"),
+    );
+    await page.locator(".board-picker select").selectOption("idees-s327");
+    const edges = async (board: string) =>
+      ((await workspace()).boards.find((b) => b.id === board)?.edges ?? [])
+        .map((e) => `${e.src}>${e.dst}`)
+        .join();
+    const bar = page.locator(".chosen-bar");
+    await card(head).click();
+    await card(long).click({ modifiers: ["Shift"] });
+    await card(agenda).click({ modifiers: ["Shift"] });
+    await bar.getByRole("button", { name: `Gather on ${head}` }).click();
+    await until("gathered", async () => (await edges("idees-s327")) === `${head}>${long},${head}>${agenda}`);
+    await until(
+      "the first counts the others",
+      async () => (await card(head).locator(".card-kin").textContent()) === "+2",
+    );
+    expect(await card(long).locator(".card-kin").textContent()).toBe(`↳ ${head}`);
+    await shot("74-gathered");
+    // Gathered already: the bar no longer offers it. One Undo lets them all go.
+    await until(
+      "no longer offered",
+      async () => (await bar.getByRole("button", { name: /Gather on/ }).count()) === 0,
+    );
+    await page.locator("button", { hasText: "Undo" }).first().click();
+    await until("let go by one undo", async () => (await edges("idees-s327")) === "");
+
+    // On a kanban, tasks chosen with a story are attached to it, wherever the story is among them.
+    const [task, story] = await agent(
+      'board new "Attache" --format kanban --id attache-s327\nadd task "Brancher la banque"\nadd story "Payer en ligne"',
+    );
+    await page.locator(".board-picker select").selectOption("attache-s327");
+    await card(task).click();
+    await card(story).click({ modifiers: ["Shift"] });
+    await bar.getByRole("button", { name: `Attach to ${story}` }).click();
+    await until("attached", async () => (await edges("attache-s327")) === `${story}>${task}`);
+    await until(
+      "the task names its story",
+      async () => (await card(task).locator(".card-kin").textContent()) === `↳ ${story}`,
+    );
+    await page.keyboard.press("Escape");
+    await agent("board rm idees-s327");
+    await agent("board rm attache-s327");
+  });
 });
 
 describe("labels on a card, from the page", () => {

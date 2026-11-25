@@ -36,6 +36,8 @@ export interface ElementType {
     /** The card made is a part of this one, counted done among its parts: a kanban's task of a story (S323). */
     splits?: true;
   };
+  /** A card of this kind linked to another of it says the same: a retro's observations, gathered as one idea (S327). */
+  gathers?: true;
   /**
    * The letters the kind minted before, oldest first: a card made then keeps its id
    * until `sideco renumber --all`, and one may still be chosen while no kind of the

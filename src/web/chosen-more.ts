@@ -9,6 +9,7 @@
 import type { Command } from "../domain/commands.ts";
 import { findFormat, isDone, laneName, lanesOf } from "../domain/formats.ts";
 import type { Locale } from "../domain/i18n.ts";
+import { headOf, kinOf, toJoin } from "../domain/kin.ts";
 import { hasLabel, normalLabel } from "../domain/labels.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h, region } from "./dom.ts";
@@ -32,6 +33,8 @@ const WORDS: Record<
     labelHint: string;
     labelled: (labels: string, cards: number) => string;
     worn: (labels: string) => string;
+    join: (head: string, gathered: boolean) => string;
+    joined: (head: string, cards: number, gathered: boolean) => string;
     lane: (cards: number) => string;
     laneHint: string;
     moved: (lane: string, cards: number) => string;
@@ -44,6 +47,9 @@ const WORDS: Record<
     labelled: (labels, cards) =>
       `${labels} added to ${cards} card${cards > 1 ? "s" : ""}: Undo takes it back at once`,
     worn: (labels) => `The cards chosen all wear ${labels} already`,
+    join: (head, gathered) => (gathered ? `Gather on ${head}` : `Attach to ${head}`),
+    joined: (head, cards, gathered) =>
+      `${cards} card${cards > 1 ? "s" : ""} ${gathered ? "gathered on" : "attached to"} ${head}: Undo takes it back at once`,
     lane: (cards) => `Move the ${cards} cards chosen to a column`,
     laneHint: "Move to…",
     moved: (lane, cards) =>
@@ -64,6 +70,9 @@ const WORDS: Record<
     labelled: (labels, cards) =>
       `${labels} ajouté à ${cards} carte${cards > 1 ? "s" : ""} : Undo le retire d'un coup`,
     worn: (labels) => `Les cartes choisies portent déjà toutes ${labels}`,
+    join: (head, gathered) => (gathered ? `Regrouper sur ${head}` : `Attacher à ${head}`),
+    joined: (head, cards, gathered) =>
+      `${cards} carte${cards > 1 ? "s" : ""} ${gathered ? "regroupée" : "attachée"}${cards > 1 ? "s" : ""} ${gathered ? "sur" : "à"} ${head} : Undo le défait d'un coup`,
     lane: (cards) => `Déplacer les ${cards} cartes choisies vers une colonne`,
     laneHint: "Déplacer vers…",
     moved: (lane, cards) =>
@@ -234,6 +243,25 @@ labelField.addEventListener("keydown", (event) => {
 });
 
 /**
+ * The cards chosen are joined to the one of them that takes the others (S327): observations of a retro gathered as
+ * one idea, tasks attached to their story. A link from it to each, as one gesture; unlinking lets a card go.
+ */
+function join(): void {
+  const board = currentBoard();
+  if (!board || !isLive()) return;
+  const ids = chosen(board);
+  const head = headOf(board, ids);
+  const others = toJoin(board, ids);
+  if (head === undefined || others.length === 0) return;
+  const commands = others.map((dst): Command => ({ kind: "link", board: board.id, src: head, dst }));
+  void sendTogether(commands).then((answer) => {
+    if (answer === undefined) return;
+    speak(w.joined(head, others.length, kinOf(board, head).gathered));
+    changed();
+  });
+}
+
+/**
  * The cards chosen go to the column picked here (S333), at its end and in their order, as one gesture. A menu and
  * not a drag: several cards under one pointer is another gesture, and this one is for the keyboard too.
  */
@@ -277,7 +305,16 @@ laneMenu.addEventListener("change", () => {
 /** A button of the bar was pressed and the bar is to be drawn again: the keyboard follows. */
 let moved = false;
 
-const paintBar = region(chosenSays, (m: { ids: string[]; allDone: boolean; live: boolean }) => {
+interface Bar {
+  ids: string[];
+  allDone: boolean;
+  live: boolean;
+  /** The card the others can be joined to, when some are not yet, and whether that gathers them. */
+  head?: string;
+  gathered?: boolean;
+}
+
+const paintBar = region(chosenSays, (m: Bar) => {
   labelField.setAttribute("aria-label", w.label(m.ids.length));
   const button = (words: string, onclick: () => void): HTMLElement =>
     h("button", { type: "button", class: "quiet", onclick }, words);
@@ -300,6 +337,7 @@ const paintBar = region(chosenSays, (m: { ids: string[]; allDone: boolean; live:
       "span",
       { class: "focus-acts" },
       m.live && button(m.allDone ? w.undone : w.done, all("done")),
+      m.live && m.head !== undefined && button(w.join(m.head, m.gathered === true), join),
       m.live && button(w.remove, all("remove")),
       button(w.leave, leave),
     ),
@@ -323,5 +361,12 @@ export function paintChosen(canvas: Element, say: (words: string) => void): void
     return element !== undefined && isDone(board, element);
   });
   paintLanes(board, ids.length);
-  paintBar({ ids, allDone, live: isLive() });
+  const head = toJoin(board, ids).length > 0 ? headOf(board, ids) : undefined;
+  paintBar({
+    ids,
+    allDone,
+    live: isLive(),
+    head,
+    gathered: head !== undefined && kinOf(board, head).gathered,
+  });
 }

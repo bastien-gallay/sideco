@@ -27,6 +27,7 @@ export const RETRO: Format = {
       prefix: "Q",
       formerPrefixes: ["K", "P"],
       leadsTo: { type: "action", label: t("Make an action of it", "En faire une action") },
+      gathers: true,
       fill: "#FCEFA1",
       ink: DARK,
       shape: "sticky",

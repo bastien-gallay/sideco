@@ -98,7 +98,7 @@ sideco wait
 | which path, where it branches | `flow` | `--from ID`, `--edge "oui"` |
 | where the work stands, what blocks it | `kanban` | `--lane todo`, `doing` or `done`; a `story` splits into `task`s: `add task "…" --from S1` |
 | which journey, what ships first | `story-map` | `--col N` |
-| what went well or not, what to keep, stop, try | `retro` | `--lane went-well`, `went-badly`, `keep`, `drop` or `try`; an action from a point: `add action "…" --from Q1` |
+| what went well or not, what to keep, stop, try | `retro` | `--lane went-well`, `went-badly`, `keep`, `drop` or `try`; an action from a point: `add action "…" --from Q1`; points that say the same: `link Q1 Q2` (Q1 counts them) |
 | what to do first, for what it brings and costs | `impact-effort` | `--lane quick`, `bet`, `fill` or `avoid` |
 | who uses the system, what it depends on (C4 level 1) | `c4-context` | `--from ID --edge "uses"`; the detail is the description |
 
