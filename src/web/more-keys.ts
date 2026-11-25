@@ -24,17 +24,17 @@ const MORE: Record<Locale, More[]> = {
       columns: true,
       row: ["Page ↑ ↓, Home, End", "Along the column: a page further, its first card, its last"],
     },
-    // On a diagram Alt and an arrow already add the next step, linked: A is the same, one way.
+    // Where it lands is the board's to say: under the card, in the lane of its kind, at the next rank of a diagram.
     {
       after: "Alt +",
       starts: true,
-      row: ["A", "Add a card linked from this one, under it"],
-      graph: ["A", "The same, to its right"],
+      row: ["A", "Add a card linked from this one"],
+      graph: ["A", "The same: the next step, linked"],
     },
     { after: "E", row: ["I", "Read its detail, in the right panel"] },
     {
       after: "/ or ⌘K / Ctrl+K",
-      row: ["B, S", "To the list of boards; to that of Claude's sessions, if several"],
+      row: ["B, S", "To the boards; to Claude's sessions"],
     },
     {
       after: "Shift + ← → ↑ ↓",
@@ -43,7 +43,7 @@ const MORE: Record<Locale, More[]> = {
       kanban: ["Shift + Home, End", "Send the card to the top of its lane, or to its foot"],
     },
     { after: "E", row: ["T", "Add a label, in the right panel"] },
-    { after: "Space", row: ["X", "Choose several: this card stays chosen as the arrows go on"] },
+    { after: "Space", row: ["X", "Keep it chosen, and choose more"] },
     { after: "Space", row: ["F", "Put the card chosen in the focus, or take it out"] },
   ],
   fr: [
@@ -58,13 +58,13 @@ const MORE: Record<Locale, More[]> = {
     {
       after: "Alt +",
       starts: true,
-      row: ["A", "Ajouter une carte liée à celle-ci, sous elle"],
-      graph: ["A", "De même, à sa droite"],
+      row: ["A", "Ajouter une carte liée à celle-ci"],
+      graph: ["A", "De même : l'étape suivante, liée"],
     },
     { after: "E", row: ["I", "Lire son détail, dans le panneau de droite"] },
     {
       after: "/ ou ⌘K / Ctrl+K",
-      row: ["B, S", "À la liste des tableaux ; à celle des sessions de Claude, s'il y en a plusieurs"],
+      row: ["B, S", "Aux tableaux ; aux sessions de Claude"],
     },
     {
       after: "Maj + ← → ↑ ↓",
@@ -75,7 +75,7 @@ const MORE: Record<Locale, More[]> = {
     { after: "E", row: ["T", "Ajouter un label, dans le panneau de droite"] },
     {
       after: "Espace",
-      row: ["X", "En choisir plusieurs : cette carte reste choisie quand les flèches continuent"],
+      row: ["X", "La garder choisie, en choisir d'autres"],
     },
     { after: "Espace", row: ["F", "Mettre la carte choisie au focus, ou l'en sortir"] },
   ],

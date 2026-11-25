@@ -534,7 +534,7 @@ const en: Messages = {
     [
       "Shift + ← → ↑ ↓",
       how === "graph"
-        ? "Nudge the card; Snap comes on, it stays"
+        ? "Nudge the card; Snap then keeps it there"
         : how === "timeline"
           ? "Move the card: ← → a step, ↑ ↓ its place in its cell"
           : how === "grid"
@@ -562,7 +562,7 @@ const en: Messages = {
   mouseList: (how) => [
     [
       "Drag a card",
-      how === "graph" ? "Put it there; Snap comes on, it stays" : "Move it; a line shows where it lands",
+      how === "graph" ? "Put it there; Snap then keeps it there" : "Move it; a line shows where it lands",
     ],
     ...(how === "timeline"
       ? ([

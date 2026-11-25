@@ -48,12 +48,15 @@ describe("the sheet of keys", () => {
     const en = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([keys]) => keys);
     expect(en[en.indexOf("Alt + ← → ↑ ↓") + 1]).toBe("A");
     expect(says(withMoreKeys(MESSAGES.fr.shortcutList("kanban", true), "fr"))).toContain(
-      "A = Ajouter une carte liée à celle-ci, sous elle",
+      "A = Ajouter une carte liée à celle-ci",
     );
-    // On a diagram Alt and an arrow say it already, and nothing is under a card: A is the same, one way.
+    // On a diagram Alt and an arrow say it already: A is the same. Where the card lands is not the sheet's to
+    // say: a story's task goes to the lane of tasks, not under the story.
     const flow = says(withMoreKeys(MESSAGES.en.shortcutList("graph", true), "en", false, false));
-    expect(flow).toContain("A = The same, to its right");
-    expect(flow).not.toContain("under it");
+    expect(flow).toContain("A = The same: the next step, linked");
+    expect(says(withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en", true))).not.toContain(
+      "under it",
+    );
   });
 
   test("says a row in the word of the board, and in one line (T304)", () => {
@@ -66,11 +69,19 @@ describe("the sheet of keys", () => {
     // X stands by Space, which chooses too.
     const keys = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([key]) => key);
     expect(keys[keys.indexOf("Space") + 1]).toBe("X");
-    // No row of the sheet is a paragraph: the guide tells the rest.
+    // No row of the sheet is a paragraph, on the sheet each board shows; those of X, A and B, S, which were two
+    // lines and three, fit the 38 letters a column of the wide sheet gives. The guide tells the rest.
     for (const locale of ["en", "fr"] as const)
       for (const how of ["timeline", "lanes", "kanban", "grid", "graph"] as const)
-        for (const [, does] of withMoreKeys(MESSAGES[locale].shortcutList(how, true), locale, true))
+        for (const [key, does] of withMoreKeys(
+          MESSAGES[locale].shortcutList(how, true),
+          locale,
+          how === "kanban",
+          how !== "graph",
+        )) {
           expect(does.length).toBeLessThanOrEqual(80);
+          if (["X", "A", "B, S"].includes(key)) expect(does.length).toBeLessThanOrEqual(38);
+        }
   });
 
   test("tells Shift and Home or End, which send a card to an end of its cell, after Shift and the arrows (S355)", () => {
@@ -89,7 +100,7 @@ describe("the sheet of keys", () => {
     const en = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([keys]) => keys);
     expect(en[en.indexOf("/ or ⌘K / Ctrl+K") + 1]).toBe("B, S");
     expect(says(withMoreKeys(MESSAGES.fr.shortcutList("graph", true), "fr"))).toContain(
-      "B, S = À la liste des tableaux ; à celle des sessions de Claude, s'il y en a plusieurs",
+      "B, S = Aux tableaux ; aux sessions de Claude",
     );
   });
 

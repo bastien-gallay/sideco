@@ -65,6 +65,10 @@ What Claude receives is net of back-and-forth: a card added then renamed reads a
 | Select a card | Opens its action bar: rename, detail, link, note for Claude, remove |
 | Reply in the Notes tab | Answers Claude in the thread of the card; `⌘` / `Ctrl` + Enter sends the reply and hands the turn back |
 | Undo and Redo, or `⌘Z` / `Ctrl+Z` | Takes back your last gesture, never one of Claude's |
+| `X` on a card, then an arrow; or `Shift` and a click | Chooses several cards: `X` keeps the card chosen while the arrow goes to the next, chosen in its turn. `D` and `Delete` are then for them all |
+| `A` on a card | Adds a card linked from it: of the kind it leads to when it leads to one (a story to a task), else of its own, just under it in its cell; on a diagram, the next step |
+| `B`, `S` | Out of a text being typed, `B` gives the keyboard to the list of boards and `S` to the list of Claude's sessions, where there are several. An arrow or a letter opens the list; Escape leaves it |
+| `Tab` to an axis of a plan, then `Enter` or `F2` | Renames the axis, or the word at one of its ends, for this board |
 | `?` | Lists every key and gesture of the board on screen, and what each mark on a card means |
 
 <picture>

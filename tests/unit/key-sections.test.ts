@@ -9,7 +9,7 @@ import { MESSAGES } from "../../src/web/messages.ts";
 import { withMoreKeys } from "../../src/web/more-keys.ts";
 
 const rows = (locale: "en" | "fr", how: "kanban" | "graph") =>
-  withMoreKeys(MESSAGES[locale].shortcutList(how, true), locale, how === "kanban");
+  withMoreKeys(MESSAGES[locale].shortcutList(how, true), locale, how === "kanban", how !== "graph");
 const keysOf = (section: { rows: [string, string][] } | undefined) => section?.rows.map(([keys]) => keys);
 
 describe("the keys of the sheet, in sections (T282)", () => {
@@ -66,7 +66,12 @@ describe("the keys of the sheet, in sections (T282)", () => {
     // Whatever the board and the language: every row is under one heading, in its order.
     for (const locale of ["en", "fr"] as const)
       for (const how of ["timeline", "lanes", "kanban", "grid", "graph"] as const) {
-        const told = withMoreKeys(MESSAGES[locale].shortcutList(how, false), locale, how === "kanban");
+        const told = withMoreKeys(
+          MESSAGES[locale].shortcutList(how, false),
+          locale,
+          how === "kanban",
+          how !== "graph",
+        );
         const under = keySections(told, locale, how).filter(
           (s) => !s.title.match(/heading|en-tête|ax[ie]s?/),
         );
