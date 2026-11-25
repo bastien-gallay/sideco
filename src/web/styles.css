@@ -662,11 +662,6 @@ input[type="text"] {
   height: 18px;
 }
 
-/* Where the names do not fit with their icons, the icons give way; then only the chosen tab keeps its name. */
-.tabs-names .tab-icon {
-  display: none;
-}
-
 /* How many discussions are open; filled with the accent while one waits for the reader's answer. */
 .tab-count {
   min-width: 16px;
@@ -1137,17 +1132,10 @@ kbd {
   color: var(--accent);
 }
 
+/* Each tab is its icon (S330): the chosen one keeps its name beside it where there is room; in the rail, none does. */
+.tabs-icons .tab-label,
+.tab:not([aria-selected="true"]) .tab-label,
 .fold-right .right .tab-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* Open but short of room: the chosen tab keeps its name, the others their icon. */
-.tabs-chosen .tab:not([aria-selected="true"]) .tab-label {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1159,10 +1147,6 @@ kbd {
 /* Notifications is a bell with its count: its name goes to a screen reader and a hover, the other four keep the room. */
 #tab-notices .tab-label {
   display: none;
-}
-
-.tabs-names #tab-notices .tab-icon {
-  display: block;
 }
 
 .fold-left .left .type {

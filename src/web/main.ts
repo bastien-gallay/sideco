@@ -237,18 +237,13 @@ function paintTabs(): void {
 }
 
 /**
- * The tabs say their names where they fit: icons and names, then names alone,
- * then the chosen tab's name beside the others' icons. Measured, so a longer
- * language or a narrower panel finds its own step. Folded, the rail keeps icons.
+ * Each tab is its icon, and the chosen one says its name beside it (S330).
+ * Measured: where even that name does not fit, the icons stand alone, as in the rail.
  */
 function fitTabs(): void {
-  tabList.classList.remove("tabs-names", "tabs-chosen");
+  tabList.classList.remove("tabs-icons");
   if (isFolded("right")) return;
-  const fits = (): boolean => tabList.scrollWidth <= tabList.clientWidth;
-  if (fits()) return;
-  tabList.classList.add("tabs-names");
-  if (fits()) return;
-  tabList.classList.replace("tabs-names", "tabs-chosen");
+  if (tabList.scrollWidth > tabList.clientWidth) tabList.classList.add("tabs-icons");
 }
 new ResizeObserver(() => fitTabs()).observe(tabList);
 

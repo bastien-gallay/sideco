@@ -1743,13 +1743,19 @@ describe("the chosen card, read in the right panel", () => {
     await page.keyboard.press("Escape");
   });
 
-  test("the tabs keep their names where they fit, with icons drawn alike, and only icons in the rail", async () => {
+  test("each tab is its icon, drawn alike; the chosen one says its name beside it; only icons in the rail (S330)", async () => {
     const shown = (locator: ReturnType<typeof page.locator>) =>
       locator.evaluateAll((all) => all.map((e) => e.getBoundingClientRect().width > 4));
-    // The panel is 300 px: the four names fit, the icons give way first; Notifications stays a bell (T89).
+    // Every tab shows its icon; the tab chosen alone spells its name, the others say it on hover and to a screen reader.
+    await page.locator("#tab-session").click();
     const names = page.locator(".tabs .tab:not(#tab-notices) .tab-label");
-    expect(await shown(names)).toEqual([true, true, true, true]);
-    expect(await shown(page.locator("#tab-notices .tab-icon"))).toEqual([true]);
+    expect(await shown(names)).toEqual([true, false, false, false]);
+    expect(await shown(page.locator(".tabs .tab-icon"))).toEqual([true, true, true, true, true]);
+    expect(await page.locator("#tab-history").getAttribute("title")).toBe("History");
+    expect(await page.getByRole("tab", { name: "History" }).count()).toBe(1);
+    await page.locator("#tab-history").click();
+    expect(await shown(names)).toEqual([false, false, true, false]);
+    await page.locator("#tab-session").click();
     expect(await page.locator("#tab-notices").getAttribute("aria-label")).toBe("Notifications");
     expect(await page.locator(".tabs .tab-icon svg").count()).toBe(5);
     // Folded, the rail keeps the icons alone.
@@ -1759,8 +1765,8 @@ describe("the chosen card, read in the right panel", () => {
     expect(await shown(page.locator(".tabs .tab-icon"))).toEqual([true, true, true, true, true]);
     await page.keyboard.press("]");
     await until("the right panel is open again", async () => !(await foldedRight()));
-    // The names come back once the panel has its width again, measured after the unfolding.
-    await until("the four names back", async () => (await shown(names)).every(Boolean));
+    // The name of the tab chosen comes back once the panel has its width again, measured after the unfolding.
+    await until("the chosen name back", async () => (await shown(names))[0] === true);
   });
 
   test("in a narrow window, a card chosen unfolds its detail, and folds it back once left", async () => {
