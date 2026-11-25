@@ -44,9 +44,24 @@ All notable changes to Sideco are listed here. The format follows
 - The wire pulled from a card's handle ends on an arrow, as the link it lays
   will, and held near an edge of the board it scrolls the board towards the
   cards out of sight.
-- While a link is drawn from a card, the board says what comes next ("Choose
-  the card to link to · Esc cancels"), and the bar of a link picked opens
-  beside the line, off the cards around it.
+- While a link is drawn from a card, the board says what comes next ("Arrows to
+  the other card, then Space · or click it · Esc cancels"), and the bar of a
+  link picked opens beside the line, off the cards around it. A link that is
+  there already is said so, not laid twice; Link taken from the bar of a card leaves the
+  keyboard on the card.
+- More of a card from the keyboard: `I` reads its detail in the right panel
+  without opening it for writing; `A`, or Add a linked card under `⋯`, adds a
+  card linked from it; `Shift` with `Home` or `End`, or Send to top and Send to
+  bottom under `⋯`, sends it to an end of its cell. A card just added has the
+  keyboard.
+- `B` gives the keyboard to the list of boards and `S` to the list of Claude's
+  sessions, where there are several; `Esc` leaves the list for the card it came
+  from.
+- The sheet of keys (`?`) is in two columns in a wide window, and puts each key
+  over what it does in a narrow one. It writes the keys of the keyboard that
+  reads it, `⌘` on a Mac and `Ctrl` elsewhere, each drawn as one key; its way
+  out is a cross beside its title. The keys that move a card or add one have
+  their heading, and so have those of an axis on a plan.
 - On a kanban, a story wears the count of its tasks done (`1/2`) and a task the
   id of the story it splits (`↳ S1`); the tooltip and the Detail tab say it in
   words.
@@ -59,6 +74,11 @@ All notable changes to Sideco are listed here. The format follows
   `svg`, `md` and `html` exports are headed "System context: " and the board's
   title, and name the three kinds of card: drawn in their colours in the svg and
   the html, by their letters in the markdown.
+
+### Fixed
+
+- `sideco export` writes a long export whole to a pipe: past 64 KB, a reader
+  slow to read lost the end of it.
 
 ### Changed
 
