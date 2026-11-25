@@ -31,7 +31,7 @@ import { type Held, headingsDrop, holdInView, liftHeadings } from "./headings.ts
 import { mountLaneFold, seen } from "./lane-fold.ts";
 import { linkEnds } from "./link-ends.ts";
 import { linkHandle } from "./link-handle.ts";
-import { linkChosen } from "./link-hint.ts";
+import { linkChosen, linkFrom } from "./link-hint.ts";
 import { locale, t } from "./locale.ts";
 import { arrange } from "./reading-order.ts";
 import { changed, isLive, send, state } from "./store.ts";
@@ -702,10 +702,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     });
   }
 
-  function beginLink(id: string): void {
-    state.linking = id;
-    changed();
-  }
+  const beginLink = (id: string): void => linkFrom(id, nodes.get(id)?.g);
 
   /** The button that makes, from a card, one of the kind it leads to: a point of a retro, an action. */
   function leadsFrom(id: string, typeId: string | undefined): HTMLElement[] {
@@ -976,7 +973,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   function choose(id: string): void {
     if (!board) return;
     pickedLink = undefined;
-    if (state.linking && state.linking !== id) linkChosen(board.id, state.linking, id, hooks.announce);
+    if (state.linking && state.linking !== id) linkChosen(board, state.linking, id, hooks.announce);
     state.linking = null;
     state.selected = id;
     changed();

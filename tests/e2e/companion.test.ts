@@ -711,6 +711,23 @@ describe("the human edits, the agent is told", () => {
     await until("the link made is said", async () =>
       ((await page.locator(".spoken").textContent()) ?? "").includes("Link H1 → E2 made"),
     );
+    // Asked for again, the link is left as it is, and said to be there.
+    await card("H1").focus();
+    await page.keyboard.press("l");
+    await card("E2").focus();
+    await page.keyboard.press("Space");
+    await until("the link there is said", async () =>
+      ((await page.locator(".spoken").textContent()) ?? "").includes("Link H1 → E2 is there already"),
+    );
+    // From the bar of a card, Link gives the card the keyboard: the arrows go on from it.
+    await card("H1").click();
+    await page.locator(".card-tools .card-more summary").click();
+    await page.locator(".card-tools .card-more .menu-items button", { hasText: /^Link$/ }).click();
+    await hint.waitFor({ state: "visible" });
+    await until("the card holds the keyboard", () =>
+      page.evaluate(() => document.activeElement?.getAttribute("data-id") === "H1"),
+    );
+    await page.keyboard.press("Escape");
     await card("H1").focus();
     await page.keyboard.press("Delete");
     await card("H1").waitFor({ state: "detached" });
@@ -731,6 +748,7 @@ describe("the human edits, the agent is told", () => {
     await until("the card has the keyboard back", async () => (await holds()) === "E2");
     // From the button of the panel: Escape gives the button the keyboard back, and Escape again the card.
     await card("E2").click();
+    await page.getByRole("tab", { name: "Detail" }).click();
     await page.locator("button.edit-detail").click();
     await field.waitFor();
     await page.keyboard.press("Escape");

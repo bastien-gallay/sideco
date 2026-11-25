@@ -7,9 +7,10 @@
  * the other card is said as the handle says its own.
  */
 import type { Locale } from "../domain/i18n.ts";
+import type { Board } from "../domain/workspace.ts";
 import { h } from "./dom.ts";
 import { locale, t } from "./locale.ts";
-import { send } from "./store.ts";
+import { changed, send, state } from "./store.ts";
 
 const WORDS: Record<Locale, string> = {
   en: "Arrows to the other card, then Space · or click it · Esc cancels",
@@ -30,9 +31,30 @@ export function mountLinkHint(canvas: HTMLElement, speak: (words: string) => voi
   }).observe(canvas, { attributes: true, attributeFilter: ["class"] });
 }
 
-/** Links `src` to `dst`, chosen while a link was drawn from `src`, and says so once it is saved. */
-export function linkChosen(board: string, src: string, dst: string, say: (words: string) => void): void {
-  void send({ kind: "link", board, src, dst }).then((saved) => {
-    if (saved !== undefined) say(t.wired(t.linkBetween(src, dst), false));
+/** What is said of a link asked for where it is already. */
+const THERE: Record<Locale, (link: string) => string> = {
+  en: (link) => `${link} is there already`,
+  fr: (link) => `${link} existe déjà`,
+};
+
+/**
+ * A link is drawn from the card: the card takes the keyboard, so that the arrows go on from it. Asked for from
+ * its toolbar, the button pressed is put away with the bar, and the keyboard would fall to the page.
+ */
+export function linkFrom(id: string, card: SVGGElement | undefined): void {
+  state.linking = id;
+  if (document.activeElement !== card) card?.focus({ preventScroll: true });
+  changed();
+}
+
+/**
+ * Links `src` to `dst`, chosen while a link was drawn from `src`, and says so once it is saved. A link that is
+ * there already is left as it is, its name with it, and said to be there.
+ */
+export function linkChosen(board: Board, src: string, dst: string, say: (words: string) => void): void {
+  const link = t.linkBetween(src, dst);
+  if (board.edges.some((e) => e.src === src && e.dst === dst)) return void say(THERE[locale](link));
+  void send({ kind: "link", board: board.id, src, dst }).then((saved) => {
+    if (saved !== undefined) say(t.wired(link, false));
   });
 }
