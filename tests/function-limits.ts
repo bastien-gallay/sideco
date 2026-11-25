@@ -29,7 +29,6 @@ export const FUNCTION_LIMITS: Counts = {
   "src/domain/commands.ts": { lines: 1 },
   "src/domain/decide.ts": { complexity: 1, lines: 1 },
   "src/domain/describe.ts": { lines: 1, complexity: 1, nesting: 1 },
-  "src/domain/digest.ts": { lines: 2, complexity: 2, nesting: 4 },
   "src/domain/export/markdown.ts": { complexity: 1, lines: 1 },
   "src/domain/export/mermaid.ts": { complexity: 1 },
   "src/domain/export/model.ts": { complexity: 1, lines: 1 },

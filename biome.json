@@ -124,22 +124,6 @@
           }
         }
       }
-    },
-    {
-      "includes": ["src/domain/digest.ts"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noExcessiveLinesPerFile": {
-              "level": "error",
-              "options": {
-                "maxLines": 508,
-                "skipBlankLines": true
-              }
-            }
-          }
-        }
-      }
     }
   ]
 }
