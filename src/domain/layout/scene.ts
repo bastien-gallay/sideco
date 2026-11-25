@@ -61,6 +61,10 @@ export interface Band {
    * A lane the reader may fold: whether it is, and what its button says. Undefined
    * where no reader folds: on paper, and in the cells of a plan.
    */
+  /** In a column that scrolls alone (S306): its cards out of view above and below, and the lines scrolled past. */
+  above?: number;
+  below?: number;
+  skip?: number;
   folded?: boolean;
   foldSaid?: string;
   /** A step of a story map: the activity and the task it belongs to, one line each. */
@@ -102,6 +106,10 @@ export interface View {
   folded?: ReadonlySet<string>;
   /** Per key of label, the colour chosen for it in the project. */
   colours?: Chosen;
+  /** How tall a column may be on screen (S306): a taller one lays the cards that fit, and scrolls alone. */
+  tall?: number;
+  /** Per lane, how many of its lines the reader scrolled past. */
+  skip?: ReadonlyMap<string, number>;
 }
 /** The width alone, or all the page gives. */
 export type Seen = number | View | undefined;

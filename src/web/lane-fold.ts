@@ -6,9 +6,11 @@
  * draws the band and its button (`data-fold`); this module keeps which
  * columns are folded and answers the click, Enter and Space on that button.
  */
+
 import type { View } from "../domain/layout/index.ts";
 import { type Board, findElement } from "../domain/workspace.ts";
 import { isCarry, stillFolded, toggled } from "./fold-rules.ts";
+import { windowed } from "./lane-scroll.ts";
 import { changed, shown, state } from "./store.ts";
 
 const KEY = "sideco.lanes-folded";
@@ -57,7 +59,7 @@ export function seen(board: Board | undefined, span: number | undefined): View {
   const held = document.activeElement?.closest<SVGGElement>("g.card")?.dataset.id;
   const lanes = stillFolded(board, folded, [state.selected, held]);
   if (lanes !== folded) keep(board.id, lanes);
-  return { span, folded: new Set(lanes), colours };
+  return windowed(board, { span, folded: new Set(lanes), colours }, [state.selected, held]);
 }
 
 /** Folds the lane, or opens it folded. Folding the column of the card chosen lets the card go: it is put away. */

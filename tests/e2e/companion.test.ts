@@ -338,6 +338,8 @@ describe("the agent writes, the page follows", () => {
         (await above.count()) === 1 && ((await below.count()) === 0 || (await count(below)) < hidden),
     );
     expect(await above.getAttribute("aria-label")).toContain("cards higher in To do");
+    // The cards slide to their place: the picture is taken once they are there.
+    await page.waitForTimeout(400);
     await shot("74-unseen");
     // By the keyboard: the count pressed keeps the keyboard, so Enter goes on down the column.
     if ((await below.count()) === 1) {
@@ -352,6 +354,42 @@ describe("the agent writes, the page follows", () => {
       if ((await above.count()) === 1) await above.click();
       return (await page.locator(".unseen-chip.is-above").count()) === 0;
     });
+    // The column scrolls alone: the wheel over it goes down its cards, and the board stays where it is.
+    const first = page.locator("g.card", { hasText: "Carte 1" }).first();
+    const box = await first.boundingBox();
+    await page.mouse.move((box?.x ?? 0) + 40, (box?.y ?? 0) + 20);
+    await page.mouse.wheel(0, 120);
+    await until(
+      "the wheel scrolled the column",
+      async () => (await above.count()) === 1 && (await count(above)) === 2,
+    );
+    expect(await page.evaluate(() => document.querySelector(".canvas-scroll")?.scrollTop)).toBe(0);
+    await page.mouse.wheel(0, -120);
+    await until("and back", async () => (await above.count()) === 0);
+    // By the keyboard, the arrow goes on under the last card in view: the column follows the card chosen.
+    const drawn = () =>
+      page.locator("g.card").evaluateAll((all) =>
+        all
+          .filter((g) => g.textContent?.includes("Carte"))
+          .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)
+          .map((g) => g.getAttribute("data-id") ?? ""),
+      );
+    const last = (await drawn()).at(-1) ?? "";
+    await card(last).click();
+    await page.keyboard.press("ArrowDown");
+    await until("the next card is drawn and holds the keyboard", async () => {
+      const now = await drawn();
+      const held = await page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.id);
+      return now.at(-1) !== last && held === now.at(-1);
+    });
+    expect(await count(above)).toBe(1);
+    await page.keyboard.press("Escape");
+    // A card Claude puts in the focus, far down the column, comes into view.
+    const far = (await workspace()).boards.find((b) => b.id === "longue")?.elements.at(-1)?.id ?? "";
+    expect(await card(far).count()).toBe(0);
+    await agent(`focus ${far} --why "Celle-ci"`, "longue");
+    await card(far).waitFor();
+    await agent("focus", "longue");
     await page.locator(".board-picker select").selectOption("commande");
     await card("R1").waitFor();
     await agent("board rm longue");
@@ -4946,7 +4984,9 @@ describe("a long journal", () => {
         "long",
       );
     await page.goto(`${running.url}/#/b/long`);
-    await until("the long board is drawn", async () => (await page.locator("g.card").count()) === 1500);
+    // A column scrolls alone (S306): it draws the cards that fit, and its heading counts them all.
+    const counted = async () => Number((await page.locator(".lane-count").first().textContent()) ?? 0);
+    await until("the long board is drawn", async () => (await counted()) === 1500);
     // Counts the cards at every frame of the next load; only a page that asks for it is watched.
     await page.evaluate(() => sessionStorage.setItem("sideco.watch-paint", "1"));
     await page.addInitScript(() => {
@@ -4954,15 +4994,18 @@ describe("a long journal", () => {
       const seen: number[] = [];
       (window as unknown as { cardCounts: number[] }).cardCounts = seen;
       const look = (): void => {
-        const n = document.querySelectorAll("g.card").length;
+        const n = Number(document.querySelector(".lane-count")?.textContent ?? 0);
         if (n !== seen.at(-1)) seen.push(n);
         requestAnimationFrame(look);
       };
       requestAnimationFrame(look);
     });
     await page.reload();
-    await until("every card is back", async () => (await page.locator("g.card").count()) === 1500);
-    const counts = await page.evaluate(() => (window as unknown as { cardCounts: number[] }).cardCounts);
+    await until("every card is back", async () => (await counted()) === 1500);
+    const watched = () => page.evaluate(() => (window as unknown as { cardCounts: number[] }).cardCounts);
+    // The watch looks once a frame: it has seen the board a frame after the board is there.
+    await until("the watch has seen it", async () => (await watched()).includes(1500));
+    const counts = await watched();
     await page.evaluate(() => sessionStorage.removeItem("sideco.watch-paint"));
     expect(counts.filter((n) => n > 0)).toEqual([1500]);
     await agent("board rm long");

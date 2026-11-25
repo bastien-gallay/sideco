@@ -135,13 +135,19 @@ export function bandMarkup(b: Band): string {
       return `<g class="band band-slice"><line class="slice-rule" x1="${b.x}" y1="${b.y}" x2="${b.x + b.w}" y2="${b.y}"/><text class="slice-label" x="12" y="${b.y + 18}">${esc(b.label)}</text></g>`;
     case "lane":
       // Folded, the whole band opens it: its background says so to the page.
-      return `<g class="band band-lane${b.folded ? " is-folded" : ""}"><rect class="lane-bg"${b.folded ? ` data-fold="${esc(b.id)}"` : ""} x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="10"/>${b.folded ? foldedHeading(b) : laneHeading(b)}</g>`;
+      return `<g class="band band-lane${b.folded ? " is-folded" : ""}"><rect class="lane-bg"${b.folded ? ` data-fold="${esc(b.id)}"` : ""}${laneWindow(b)} x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="10"/>${b.folded ? foldedHeading(b) : laneHeading(b)}</g>`;
   }
 }
 
 /** The button that folds a lane, or opens it folded: a chevron that says which way, reached by the keyboard. */
 function foldButton(b: Band, x: number, y: number): string {
   return `<text class="lane-fold${b.folded ? " is-shut" : ""}" data-fold="${esc(b.id)}" role="button" tabindex="0" aria-expanded="${!b.folded}" aria-label="${esc(b.foldSaid ?? "")}" x="${x}" y="${y}">${b.folded ? "›" : "‹"}</text>`;
+}
+
+/** What a column that scrolls alone (S306) says to the page: its lane, its cards out of view, how far it is scrolled. */
+function laneWindow(b: Band): string {
+  if (b.above === undefined) return "";
+  return ` data-lane-box="${esc(b.id)}" data-above="${b.above}" data-below="${b.below ?? 0}" data-skip="${b.skip ?? 0}"`;
 }
 
 /** Across the top of a lane: its name, how many cards it holds, and what it stands for when it says so. */

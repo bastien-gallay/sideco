@@ -10,6 +10,7 @@
 import { type Format, laneHint, laneName, lanesOf, planAxis } from "../formats.ts";
 import { type Locale, WORDS } from "../i18n.ts";
 import type { Board, Element } from "../workspace.ts";
+import { CHIP_H, reveal, windowOf } from "./lane-window.ts";
 import {
   type Band,
   CARD_H,
@@ -23,6 +24,7 @@ import {
   type Seen,
   spanOf,
   type Target,
+  type View,
 } from "./scene.ts";
 
 const LANE_GAP = 16;
@@ -62,6 +64,12 @@ interface LanePlan {
   count: number;
   /** Folded by its reader: narrow, its cards put away. */
   folded: boolean;
+  /** Scrolling alone (S306): its cards out of view above and below, the lines scrolled past; none without a window. */
+  above?: number;
+  below?: number;
+  skip?: number;
+  /** The first card under its window: a card dropped at its foot lands before it. */
+  next?: string;
 }
 
 interface Plan {
@@ -108,6 +116,42 @@ function stackLines(stack: Element[], x: number, top: number, abreast: number, c
 }
 
 /**
+ * The lines of a lane that fit the window the page gives (S306), and what is out of view; all of them without a
+ * window, and in a plan, whose cells do not scroll.
+ */
+function stackSeen(
+  stack: Element[],
+  x: number,
+  top: number,
+  abreast: number,
+  cardW: number,
+  seen: Seen,
+  lane: string,
+) {
+  const all = stackLines(stack, x, top, abreast, cardW);
+  const tall = typeof seen === "object" ? seen.tall : undefined;
+  if (tall === undefined) return all;
+  const skip = typeof seen === "object" ? (seen.skip?.get(lane) ?? 0) : 0;
+  const room = tall - HEADER_H - LANE_PAD - SLOT_H;
+  const cut = windowOf(
+    all.lines.map((line) => line.h),
+    skip,
+    room,
+    STACK_GAP,
+  );
+  if (!cut) return { ...all, above: 0, below: 0, skip: 0 };
+  const laid = stackLines(stack.slice(cut.from * abreast, cut.to * abreast), x, top + CHIP_H, abreast, cardW);
+  return {
+    lines: laid.lines,
+    stackH: laid.stackH + CHIP_H,
+    above: cut.from * abreast,
+    below: Math.max(0, stack.length - cut.to * abreast),
+    skip: cut.from,
+    next: stack[cut.to * abreast]?.id,
+  };
+}
+
+/**
  * Where every lane and every card goes. `without` is a card in the human's
  * hand: it takes no place. `seen` is what the page gives: the width the board
  * has on screen, and the lanes its reader folded, which keep their count and
@@ -131,7 +175,15 @@ function plan(board: Board, format: Format, without?: string, seen?: Seen): Plan
     const row = ids.slice(start, start + perRow).map((id) => {
       const folded = shut?.has(id) === true;
       const stack = board.elements.filter((e) => e.lane === id && e.id !== without);
-      const laid = stackLines(folded ? [] : stack, x, top + HEADER_H + LANE_PAD, abreast, cardW);
+      const laid = stackSeen(
+        folded ? [] : stack,
+        x,
+        top + HEADER_H + LANE_PAD,
+        abreast,
+        cardW,
+        grid ? undefined : seen,
+        id,
+      );
       const lane = { id, x, w: folded ? FOLD_W : laneW, folded, count: stack.length, ...laid };
       x += lane.w + LANE_GAP;
       return lane;
@@ -185,6 +237,9 @@ export function layoutColumns(
       w: lane.w,
       h: lane.h,
       count: lane.count,
+      above: lane.above,
+      below: lane.below,
+      skip: lane.skip,
       ...foldOf(planned, lane, laneName(format, board, lane.id, locale), locale),
     });
     for (const line of lane.lines)
@@ -279,7 +334,25 @@ export function locateInColumns(
             y < c.line.y + c.line.h + STACK_GAP / 2 &&
             (y < c.line.y - STACK_GAP / 2 || x < c.x + planned.cardW / 2),
         );
-  return { kind: "slot", lane: lane.id, before: before?.e.id };
+  // Under the last card of a window, the drop lands before the first card out of view, not at the end of the lane.
+  return { kind: "slot", lane: lane.id, before: before?.e.id ?? lane.next };
+}
+
+/** How many lines of its lane to scroll past so that the card is in its window (S306); undefined where none scrolls. */
+export function skipToSee(
+  board: Board,
+  format: Format,
+  id: string,
+  seen: View,
+): { lane: string; skip: number } | undefined {
+  const lane = board.elements.find((e) => e.id === id)?.lane;
+  if (lane === undefined || seen.tall === undefined || format.grid) return undefined;
+  const planned = plan(board, format, undefined, seen);
+  const stack = board.elements.filter((e) => e.lane === lane);
+  const heights = stackLines(stack, 0, 0, planned.abreast, planned.cardW).lines.map((line) => line.h);
+  const at = Math.floor(stack.findIndex((e) => e.id === id) / planned.abreast);
+  const room = seen.tall - HEADER_H - LANE_PAD - SLOT_H;
+  return { lane, skip: reveal(heights, seen.skip?.get(lane) ?? 0, room, STACK_GAP, at) };
 }
 
 /** How far into a lane heading its edge reaches, either side of the gap. */
