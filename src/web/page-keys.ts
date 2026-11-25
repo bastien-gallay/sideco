@@ -35,7 +35,7 @@ function plain(key: string, on: PageKeys): (() => unknown) | undefined {
   if (key === "/") return on.find;
   if (key === "?") return on.keys;
   if (key === "f" || key === "F") return on.focus;
-  // The lists at the head of the page need nothing of main.ts: they are found where they stand.
+  // The lists of boards and of sessions need nothing of main.ts: they are found where they stand.
   if (key === "b" || key === "B") return () => toPicker("board");
   if (key === "s" || key === "S") return () => toPicker("session");
   // < and > a key away on a French keyboard, [ and ] on an American one (T201).

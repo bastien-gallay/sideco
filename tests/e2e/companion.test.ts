@@ -4483,18 +4483,45 @@ describe("two sessions on one project", () => {
     );
   });
 
-  test("B gives the list of boards the keyboard, S the list of sessions: another is chosen without the mouse (T275, T273)", async () => {
+  test("B gives the list of boards the keyboard, S the list of sessions; chosen or left, the keyboard is back on the board (T275, T273)", async () => {
     const holds = () => page.evaluate(() => (document.activeElement as HTMLSelectElement | null)?.name ?? "");
-    await page.locator("g.card").first().focus();
+    const onCard = () =>
+      page.evaluate(() => document.activeElement?.closest("g.card")?.getAttribute("data-id") ?? "");
+    const first = (await page.locator("g.card").first().getAttribute("data-id")) ?? "";
+    await card(first).focus();
     await page.keyboard.press("s");
     await until("the list of sessions holds the keyboard", async () => (await holds()) === "session");
-    // In a list, a letter is the list's: it goes to the name that starts by it, and B is not taken.
+    // In a list, B is not the page's.
     await page.keyboard.press("b");
     expect(await holds()).toBe("session");
-    await page.locator("g.card").first().focus();
+    // Escape leaves the list for the card the keyboard came from.
+    await page.keyboard.press("Escape");
+    await until("the card has the keyboard back", async () => (await onCard()) === first);
+    // Another session chosen, the page draws its list anew: the keyboard is back on the card, not nowhere.
+    await page.keyboard.press("s");
+    await until("the list of sessions again", async () => (await holds()) === "session");
+    await picker().selectOption({ label: "sideco-ui" });
+    await until("the card has the keyboard after the choice", async () => (await onCard()) === first);
+    await picker().selectOption(SESSION);
+    // Another board chosen: the keyboard is on a card of that board.
+    const boards = page.locator(".board-picker select");
+    const shown = await boards.inputValue();
+    const other = (await boards
+      .locator("option")
+      .evaluateAll(
+        (all, now) => all.map((o) => (o as HTMLOptionElement).value).find((v) => v !== "" && v !== now),
+        shown,
+      )) as string;
+    await card(first).focus();
     await page.keyboard.press("b");
     await until("the list of boards holds the keyboard", async () => (await holds()) === "board");
-    await page.locator("g.card").first().focus();
+    await boards.selectOption(other);
+    await until("the other board is drawn", async () => (await card(first).count()) === 0);
+    await until("a card of the other board holds the keyboard", async () => (await onCard()) !== "");
+    expect(await boards.inputValue()).toBe(other);
+    await page.locator(".board-picker select").selectOption(shown);
+    await card(first).waitFor();
+    await card(first).focus();
   });
 
   test("a session that ends leaves the choice when it is not the one shown", async () => {

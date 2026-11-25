@@ -68,7 +68,7 @@ describe("the sheet of keys", () => {
     const en = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([keys]) => keys);
     expect(en[en.indexOf("/ or ⌘K / Ctrl+K") + 1]).toBe("B, S");
     expect(says(withMoreKeys(MESSAGES.fr.shortcutList("graph", true), "fr"))).toContain(
-      "B, S = À la liste des tableaux, à celle des sessions de Claude",
+      "B, S = À la liste des tableaux ; à celle des sessions de Claude, s'il y en a plusieurs",
     );
   });
 

@@ -19,7 +19,10 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
     { after: "E", row: ["I", "Read its detail, in the right panel"] },
     {
       after: "/ or ⌘K / Ctrl+K",
-      row: ["B, S", "To the list of boards, to the list of Claude's sessions: its arrows choose another"],
+      row: [
+        "B, S",
+        "To the list of boards; to the list of Claude's sessions, where there are several. Its arrows open it",
+      ],
     },
     {
       after: "Shift + ← → ↑ ↓",
@@ -54,7 +57,7 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
       after: "/ ou ⌘K / Ctrl+K",
       row: [
         "B, S",
-        "À la liste des tableaux, à celle des sessions de Claude : ses flèches en choisissent une autre",
+        "À la liste des tableaux ; à celle des sessions de Claude, s'il y en a plusieurs. Ses flèches l'ouvrent",
       ],
     },
     {
