@@ -339,12 +339,32 @@ describe("the agent writes, the page follows", () => {
     );
     expect(await above.getAttribute("aria-label")).toContain("cards higher in To do");
     await shot("74-unseen");
-    await above.click();
-    await until("back at the top", async () => (await page.locator(".unseen-chip.is-above").count()) === 0);
+    // By the keyboard: the count pressed keeps the keyboard, so Enter goes on down the column.
+    if ((await below.count()) === 1) {
+      await below.focus();
+      await page.keyboard.press("Enter");
+      await until("the keyboard still on a count", () =>
+        page.evaluate(() => document.activeElement?.classList.contains("unseen-chip") ?? false),
+      );
+    }
+    // Pressed again and again, the count of those higher brings the reader back to the top.
+    await until("back at the top", async () => {
+      if ((await above.count()) === 1) await above.click();
+      return (await page.locator(".unseen-chip.is-above").count()) === 0;
+    });
     await page.locator(".board-picker select").selectOption("commande");
     await card("R1").waitFor();
     await agent("board rm longue");
-    // A board whose lanes are not columns counts nothing.
+    // A board whose lanes are not columns counts nothing, however tall: a plan sorts into four corners.
+    const many = Array.from({ length: 30 }, (_, i) => `add item "Idée ${i + 1}" --lane quick`).join("\n");
+    await agent(`board new "Haut" --format impact-effort --id haut\n${many}`);
+    await page.locator(".board-picker select").selectOption("haut");
+    await page.locator("g.card").first().waitFor();
+    await page.waitForTimeout(200);
+    expect(await page.locator(".unseen-chip").count()).toBe(0);
+    await page.locator(".board-picker select").selectOption("commande");
+    await card("R1").waitFor();
+    await agent("board rm haut");
     await until("no count left", async () => (await page.locator(".unseen-chip").count()) === 0);
   });
 

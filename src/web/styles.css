@@ -1378,6 +1378,8 @@ kbd {
 .unseen-chip {
   position: absolute;
   transform: translateX(-50%);
+  min-width: 24px;
+  min-height: 24px;
   padding: 1px 10px;
   border: 1px solid var(--rule);
   border-radius: 999px;

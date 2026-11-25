@@ -56,7 +56,8 @@ export function tabKeys(
 ): void {
   tabList.addEventListener("keydown", (event) => {
     const open = TABS.filter((id) => buttons[id].getAttribute("aria-disabled") !== "true");
-    const next = open[STEP[event.key]?.(open.indexOf(current()), open.length) ?? -1];
+    const step = Object.hasOwn(STEP, event.key) ? STEP[event.key] : undefined;
+    const next = step && open[step(open.indexOf(current()), open.length)];
     if (!next) return;
     event.preventDefault();
     choose(next);
