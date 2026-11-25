@@ -22,6 +22,9 @@ export function besideBox(r: DOMRect, direction: Direction, gap: number): { x: n
   return { x, y };
 }
 
+const under = (place: AddPlace | undefined, from: string): AddPlace | undefined =>
+  place && { ...place, from };
+
 /**
  * The `add` that makes a card linked from `id`: of the kind the card leads to where it leads to one (a story to
  * a task), the board placing it; else of its own kind, just under it in its cell. Undefined for a card not there.
@@ -32,8 +35,9 @@ export function linkedAdd(board: Board, id: string): AddPlace | undefined {
   if (!format || !el) return undefined;
   const leads = findType(format, el.type)?.leadsTo;
   if (leads) return { type: leads.type, from: id };
-  // In a grid, below is another cell: the card stays in the cell of the one it comes from.
-  if (format.grid) return { type: el.type, lane: el.lane, from: id };
-  const under = keyAdd(board, id, "down");
-  return under && { ...under, from: id };
+  // In a grid, below is another cell: the card stays in the cell of the one it comes from, just under it.
+  if (!format.grid) return under(keyAdd(board, id, "down"), id);
+  const cell = board.elements.filter((other) => other.lane === el.lane);
+  const after = cell[cell.indexOf(el) + 1];
+  return { type: el.type, lane: el.lane, ...(after ? { before: after.id } : {}), from: id };
 }

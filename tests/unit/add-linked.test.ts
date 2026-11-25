@@ -24,9 +24,10 @@ test("on a timeline, the card goes under it in its step", () => {
   expect(linkedAdd(t.board(), "E1")).toEqual({ type: "event", col: 1, from: "E1" });
 });
 
-test("on a grid, it stays in the cell of the card: below is another cell", () => {
-  const t = table(IMPACT_EFFORT);
-  expect(linkedAdd(t.board(), "I1")).toEqual({ type: "item", lane: "quick", from: "I1" });
+test("on a grid, it stays in the cell of the card, just under it: below is another cell", () => {
+  const t = table(IMPACT_EFFORT).script('add item "Deuxième" --lane quick');
+  expect(linkedAdd(t.board(), "I1")).toEqual({ type: "item", lane: "quick", before: "I4", from: "I1" });
+  expect(linkedAdd(t.board(), "I4")).toEqual({ type: "item", lane: "quick", from: "I4" });
 });
 
 test("on a diagram, it is the next step", () => {

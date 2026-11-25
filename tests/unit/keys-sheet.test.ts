@@ -52,6 +52,14 @@ describe("the sheet of keys", () => {
     );
   });
 
+  test("tells Shift and Home or End, which send a card to an end of its cell, after Shift and the arrows (S355)", () => {
+    const en = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([keys]) => keys);
+    expect(en[en.indexOf("Shift + ← → ↑ ↓") + 1]).toBe("Shift + Home, End");
+    expect(says(withMoreKeys(MESSAGES.fr.shortcutList("kanban", true), "fr"))).toContain(
+      "Maj + Début, Fin = Envoyer la carte en haut de sa case, ou en bas",
+    );
+  });
+
   test("tells Redo beside Undo, with every key that does it", () => {
     expect(says(MESSAGES.en.shortcutList("kanban", true))).toContain(
       "⇧⌘Z / Ctrl+Shift+Z or Ctrl+Y = Redo the change undone",

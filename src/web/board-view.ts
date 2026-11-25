@@ -27,6 +27,7 @@ import { mountEditor } from "./card-editor.ts";
 import { type CardNode, drawCard, dropNodes, keepKeyboard, newCardNode, sayCard } from "./card-node.ts";
 import { readDetail } from "./card-read.ts";
 import { cardButtons, cardShown, keyboardAway, type MoreMenu, noPlace, standBy } from "./card-tools.ts";
+import { toEnd } from "./cell-ends.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
 import { type Held, headingsDrop, holdInView, liftHeadings } from "./headings.ts";
@@ -37,7 +38,15 @@ import { linkChosen, linkFrom } from "./link-hint.ts";
 import { locale, t } from "./locale.ts";
 import { arrange } from "./reading-order.ts";
 import { changed, isLive, send, state } from "./store.ts";
-import { addOffers, type Direction, keyAdd, laneKeyMove, neighbour, readingGroups } from "./view.ts";
+import {
+  type AddPlace,
+  addOffers,
+  type Direction,
+  keyAdd,
+  laneKeyMove,
+  neighbour,
+  readingGroups,
+} from "./view.ts";
 
 const DRAG_THRESHOLD = 4;
 /** The offers drawn in the headings: they come down with them when the board scrolls. */
@@ -77,7 +86,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       tools.hidden = true;
       paintOffers();
     },
-    back: (id) => nodes.get(id)?.g.focus({ preventScroll: true }),
+    // Given up, the words leave the keyboard on the card they were about; saved as a card, that card takes it.
+    back: (id) => !arriving && nodes.get(id)?.g.focus({ preventScroll: true }),
   });
   host.append(scroll, tools, editor.el);
   // A window resized, or a panel folded or unfolded, shares its new width out over the lanes.
@@ -442,6 +452,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         note: () => noteOn(id),
         link: () => beginLink(id),
         linked: () => addLinked(id),
+        move: (command) => moveBy(id, command),
         done: () => markDone(id, !shown.done),
         remove: () => void send({ kind: "remove", board: boardId, id }),
       }),
@@ -694,14 +705,14 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   function addBeside(id: string, direction: Direction, linked = false): void {
     const node = nodes.get(id);
     const place = board && (linked ? linkedAdd(board, id) : keyAdd(board, id, direction));
-    if (!node || !place) return;
+    if (!node || !place || (linked && state.linking)) return;
     const r = node.g.getBoundingClientRect();
-    beginAdd(place.type, { ...place, ...besideBox(r, direction, 12 * zoom) });
+    beginAdd(place.type, { ...place, back: id, ...besideBox(r, direction, 12 * zoom) });
   }
 
   function beginAdd(
     typeId: string,
-    place?: { col?: number; lane?: string; before?: string; from?: string; x: number; y: number },
+    place?: Partial<AddPlace> & { back?: string; x: number; y: number },
   ): void {
     const f = format();
     const type = f ? findType(f, typeId) : undefined;
@@ -712,17 +723,13 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       ? new DOMRect(place.x, place.y, 152 * zoom, 88 * zoom)
       : new DOMRect(frame.left + 16, frame.top + 16, 168, 88);
     const from = place?.from ?? (f.layout === "graph" ? (state.selected ?? undefined) : undefined);
-    openEditor(box, "", t.newCard(type.label[locale], type.hint[locale]), type, (label) => {
-      const command: Command = {
-        kind: "add",
-        board: boardId,
-        type: type.id,
-        label,
-        col: place?.col,
-        lane: place?.lane,
-        before: place?.before,
-        from,
-      };
+    // Given up, the words leave the keyboard on the card they were asked from (`back`).
+    const kind = { name: t.cardLabel, lines: false, from: place?.back };
+    const typed = type.id;
+    openEditor(box, "", t.newCard(type.label[locale], type.hint[locale]), type, added, kind);
+    function added(label: string): Promise<boolean> | undefined {
+      const { col, lane, before } = place ?? {};
+      const command: Command = { kind: "add", board: boardId, type: typed, label, col, lane, before, from };
       return saved(
         send(command).then((minted) => {
           const id = minted?.[0];
@@ -734,7 +741,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
           return minted;
         }),
       );
-    });
+    }
   }
 
   let drag:
@@ -1057,8 +1064,11 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   }
 
   /** Where it goes, said once it got there: the eye sees the move, the ear hears it. */
-  function moveByKey(on: Board, id: string, direction: Direction): void {
-    const command = keyCommand(on, scene, id, direction, span);
+  const moveByKey = (on: Board, id: string, direction: Direction): void =>
+    moveBy(id, keyCommand(on, scene, id, direction, span));
+
+  /** Sends a move asked by a key or a list, then follows the card and says where it went. */
+  function moveBy(id: string, command: Command | undefined): void {
     if (command?.kind !== "move" && command?.kind !== "place") return;
     const place = whereTo(command, scene);
     void send(command).then((done) => {
@@ -1091,6 +1101,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     move: (on, id, key) => moveByKey(on, id, key.direction),
     beside: (_, id, key) => addBeside(id, key.direction),
     linked: (_, id) => addLinked(id),
+    end: (on, id, key) => moveBy(id, toEnd(on, id, key.top)),
     rename: (_, id) => rename(id),
     choose: (_, id) => choose(id),
     remove: removeByKey,

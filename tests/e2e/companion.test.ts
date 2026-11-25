@@ -461,6 +461,42 @@ describe("the agent writes, the page follows", () => {
     await until("no count left", async () => (await page.locator(".unseen-chip").count()) === 0);
   });
 
+  test("a card of a grid is sent to the top of its cell or to its foot, by a key and by its ⋯ (S355)", async () => {
+    await agent(
+      'board new "Grille" --format impact-effort --id grille\nadd item "Un" --lane quick\nadd item "Deux" --lane quick\nadd item "Trois" --lane quick',
+    );
+    await page.locator(".board-picker select").selectOption("grille");
+    const cards = async () => (await workspace()).boards.find((b) => b.id === "grille")?.elements ?? [];
+    const order = async () => (await cards()).map((el) => el.label).join(" ");
+    const third = (await cards()).find((el) => el.label === "Trois")?.id ?? "";
+    await card(third).waitFor();
+    // Shift and an arrow go to another cell: Shift and Home or End order the cards of this one.
+    await card(third).focus();
+    await page.keyboard.press("Shift+Home");
+    await until("the card is first of its cell", async () => (await order()) === "Trois Un Deux");
+    await until("it keeps the keyboard", () =>
+      page.evaluate((id) => document.activeElement?.getAttribute("data-id") === id, third),
+    );
+    // The page reads the board it has painted: the next key waits for the move to be drawn.
+    await page.waitForTimeout(300);
+    await page.keyboard.press("Shift+End");
+    await until("then last", async () => (await order()) === "Un Deux Trois");
+    // Under ⋯, only the end the card is not at is offered.
+    await card(third).click();
+    await page.locator(".card-tools .card-more summary").click();
+    const items = page.locator(".card-tools .card-more .menu-items button");
+    expect(await items.allTextContents()).not.toContain("Send to bottom");
+    expect(await items.filter({ hasText: "Send to top" }).getAttribute("title")).toBe(
+      "Send to top (Shift + Home)",
+    );
+    await items.filter({ hasText: "Send to top" }).click();
+    await until("sent to the top by the list", async () => (await order()) === "Trois Un Deux");
+    await page.keyboard.press("Escape");
+    await page.locator(".board-picker select").selectOption("commande");
+    await card("R1").waitFor();
+    await agent("board rm grille");
+  });
+
   test("a card added has the keyboard, in view wherever it lands; taken back, the keyboard stays on the board (S353)", async () => {
     const adds = Array.from({ length: 24 }, (_, i) => `add task "Carte ${i + 1}" --lane todo`).join("\n");
     await agent(`board new "Ajouts" --format kanban --id ajouts\n${adds}`);
@@ -894,6 +930,10 @@ describe("the human edits, the agent is told", () => {
     await editor.press("Escape");
     await editor.waitFor({ state: "hidden" });
     expect((await commande())?.elements.length).toBe(before + 1);
+    // Given up, the card it came from has the keyboard back.
+    await until("the keyboard is back on the card", () =>
+      page.evaluate(() => document.activeElement?.getAttribute("data-id") === "E2"),
+    );
     await agent(`rm ${added?.id}`, "commande");
     await page.keyboard.press("Escape");
   });

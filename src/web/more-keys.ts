@@ -14,9 +14,13 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
     },
     {
       after: "L",
-      row: ["A", "Add a card linked from this one: what it leads to, or one of its kind under it"],
+      row: ["A", "Add a card linked from this one: of the kind it leads to, else of its own, under it"],
     },
     { after: "E", row: ["I", "Read its detail, in the right panel"] },
+    {
+      after: "Shift + ← → ↑ ↓",
+      row: ["Shift + Home, End", "Send the card to the top of its cell, or to its foot"],
+    },
     { after: "E", row: ["T", "Add a label, in the right panel"] },
     {
       after: "E",
@@ -38,9 +42,10 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
     },
     {
       after: "L",
-      row: ["A", "Ajouter une carte liée à celle-ci : ce à quoi elle mène, ou une du même type sous elle"],
+      row: ["A", "Ajouter une carte liée à celle-ci : du type auquel elle mène, sinon du sien, sous elle"],
     },
     { after: "E", row: ["I", "Lire son détail, dans le panneau de droite"] },
+    { after: "Maj + ← → ↑ ↓", row: ["Maj + Début, Fin", "Envoyer la carte en haut de sa case, ou en bas"] },
     { after: "E", row: ["T", "Ajouter un label, dans le panneau de droite"] },
     {
       after: "E",

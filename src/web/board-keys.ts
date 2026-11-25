@@ -24,6 +24,8 @@ export type CardKey =
   /** The detail is read, not written: on the past too. */
   | { ask: "read"; reads: true }
   | Ask<"move" | "beside", { direction: Direction }>
+  /** To the top of its cell, or to its foot (S355). */
+  | { ask: "end"; top: boolean }
   | Ask<"rename" | "choose" | "remove" | "done" | "link" | "linked" | "note" | "detail" | "label">;
 
 export type LaneKey =
@@ -74,6 +76,8 @@ export function cardKey(e: Keyed): CardKey | undefined {
   if (direction && chord === "alt") return { ask: "beside", direction };
   // ⌘↵ or Ctrl+Enter is the page's: it sends to Claude, whatever holds the keyboard.
   if (e.key === "Enter") return e.metaKey || e.ctrlKey ? undefined : { ask: "rename" };
+  if ((e.key === "Home" || e.key === "End") && chord === "shift")
+    return { ask: "end", top: e.key === "Home" };
   return gesture(e);
 }
 

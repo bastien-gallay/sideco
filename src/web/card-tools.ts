@@ -4,9 +4,11 @@
  * when it shows and what each action does.
  */
 
+import type { Command } from "../domain/commands.ts";
 import { findFormat, findType, isDone } from "../domain/formats.ts";
 import { type Board, findElement } from "../domain/workspace.ts";
 import { ADD_LINKED } from "./add-linked.ts";
+import { type Ends, endsOf, KEYS, TO_END } from "./cell-ends.ts";
 import { h } from "./dom.ts";
 import { locale, t } from "./locale.ts";
 import { placeTools, type Rect } from "./tools-place.ts";
@@ -24,6 +26,8 @@ export interface CardActions {
   link(): void;
   /** Adds a card linked from this one. */
   linked(): void;
+  /** Sends a move of the card: to the top of its cell, or to its foot. */
+  move(command: Command): void;
   /** Marks the card done, or no longer done. */
   done(): void;
   remove(): void;
@@ -34,6 +38,8 @@ export interface CardShown {
   id: string;
   hasDetail: boolean;
   done: boolean;
+  /** The moves that send the card to the top of its cell, then to its foot: none where it is there already. */
+  ends: Ends;
   /** The buttons that make a card this one leads to, between the detail and the note. */
   leads: HTMLElement[];
 }
@@ -47,6 +53,7 @@ export function cardShown(board: Board, id: string, lead: () => void): CardShown
     id,
     hasDetail: !!el?.detail,
     done: el !== undefined && isDone(board, el),
+    ends: endsOf(board, id),
     leads: next ? [leadButton(next.label[locale], lead)] : [],
   };
 }
@@ -78,7 +85,18 @@ function drawn(icon: keyof typeof ICON, word: string): HTMLElement[] {
 
 /** The button that makes, from a card, one of the kind it leads to: a plus, named by what it makes. */
 export function leadButton(label: string, onclick: () => void): HTMLElement {
-  return h("button", { type: "button", title: label, onclick }, ...drawn("lead", label));
+  return h("button", { ...keyed(label, "A"), onclick }, ...drawn("lead", label));
+}
+
+/** The two buttons that send a card to an end of its cell, each there only when the card is not. */
+function endButtons(ends: Ends, send: (command: Command) => void): HTMLElement[] {
+  return (["top", "foot"] as const).flatMap((end, at) => {
+    const command = ends[at];
+    const label = TO_END[locale][end];
+    return command
+      ? [h("button", { ...keyed(label, KEYS[locale][end]), onclick: () => send(command) }, label)]
+      : [];
+  });
 }
 
 /** The actions taken less often wait under ⋯, their keys still at hand. */
@@ -111,6 +129,7 @@ function moreMenu(card: CardShown, menu: MoreMenu, host: HTMLElement, on: CardAc
       { class: "menu-items" },
       h("button", { ...keyed(t.link, "L"), onclick: () => chosen(on.link) }, t.link),
       h("button", { ...keyed(linked, "A"), onclick: () => chosen(on.linked) }, linked),
+      ...endButtons(card.ends, (command) => chosen(() => on.move(command))),
       h("button", { ...keyed(doneLabel, "D"), onclick: () => chosen(on.done) }, doneLabel),
       h(
         "button",

@@ -40,6 +40,10 @@ test("on a card, each letter has its gesture, in either case", () => {
   expect(cardKey(key("d"))).toEqual({ ask: "done" });
   expect(cardKey(key("D", { shiftKey: true }))).toEqual({ ask: "done" });
   expect(cardKey(key("l"))).toEqual({ ask: "link" });
+  // Shift and Home or End send the card to an end of its cell (S355); alone, they are the column's.
+  expect(cardKey(key("Home", { shiftKey: true }))).toEqual({ ask: "end", top: true });
+  expect(cardKey(key("End", { shiftKey: true }))).toEqual({ ask: "end", top: false });
+  expect(cardKey(key("Home"))).toBeUndefined();
   // A adds a card linked from this one (T272).
   expect(cardKey(key("a"))).toEqual({ ask: "linked" });
   expect(cardKey(key("n"))).toEqual({ ask: "note" });
