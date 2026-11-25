@@ -31,6 +31,7 @@ import { type Held, headingsDrop, holdInView, liftHeadings } from "./headings.ts
 import { mountLaneFold, seen } from "./lane-fold.ts";
 import { linkEnds } from "./link-ends.ts";
 import { linkHandle } from "./link-handle.ts";
+import { linkChosen } from "./link-hint.ts";
 import { locale, t } from "./locale.ts";
 import { arrange } from "./reading-order.ts";
 import { changed, isLive, send, state } from "./store.ts";
@@ -975,8 +976,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   function choose(id: string): void {
     if (!board) return;
     pickedLink = undefined;
-    if (state.linking && state.linking !== id)
-      void send({ kind: "link", board: board.id, src: state.linking, dst: id });
+    if (state.linking && state.linking !== id) linkChosen(board.id, state.linking, id, hooks.announce);
     state.linking = null;
     state.selected = id;
     changed();

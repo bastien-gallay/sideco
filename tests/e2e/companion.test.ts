@@ -692,13 +692,25 @@ describe("the human edits, the agent is told", () => {
     await page.keyboard.press("l");
     // While a link is drawn, the board says what comes next, to the eye and to a screen reader (T265).
     await hint.waitFor({ state: "visible" });
-    expect(await hint.textContent()).toBe("Choose the card to link to · Esc cancels");
+    // It names the keys that end the gesture, not the mouse alone (T279).
+    expect(await hint.textContent()).toBe("Arrows to the other card, then Space · or click it · Esc cancels");
     await until("the hint is said", async () =>
-      ((await page.locator(".spoken").textContent()) ?? "").includes("Choose the card to link to"),
+      ((await page.locator(".spoken").textContent()) ?? "").includes("Arrows to the other card, then Space"),
     );
-    await card("E2").click();
+    // Esc lets the link go: the hint leaves, no link is made.
+    await page.keyboard.press("Escape");
+    await hint.waitFor({ state: "hidden" });
+    // By the keys alone: L, the keyboard taken to the other card, Space. The link made is said, as the handle says it.
+    await card("H1").focus();
+    await page.keyboard.press("l");
+    await hint.waitFor({ state: "visible" });
+    await card("E2").focus();
+    await page.keyboard.press("Space");
     await page.waitForFunction(() => document.querySelectorAll("g.conn").length === 5);
     await hint.waitFor({ state: "hidden" });
+    await until("the link made is said", async () =>
+      ((await page.locator(".spoken").textContent()) ?? "").includes("Link H1 → E2 made"),
+    );
     await card("H1").focus();
     await page.keyboard.press("Delete");
     await card("H1").waitFor({ state: "detached" });
