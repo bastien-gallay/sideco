@@ -993,6 +993,13 @@ input[type="text"] {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  /* It stays at the head of the sheet while the sheet scrolls under it: the way out is always in sight. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: -20px -20px 0;
+  padding: 16px 20px 8px;
+  background: var(--surface);
 }
 
 .keys-close {
@@ -1000,7 +1007,7 @@ input[type="text"] {
   line-height: 1;
 }
 
-/* The first heading of a sheet, or of a column of it, has nothing to stand off from. */
+/* The first heading of the sheet has nothing to stand off from but its title. */
 .key-section:first-child {
   margin-top: -8px;
 }
@@ -1022,13 +1029,27 @@ input[type="text"] {
   .key-section {
     break-inside: avoid;
   }
+
+  /* The head of a column loses the margin of its heading: the first column gives its own up, to start level. */
+  .key-section:first-child {
+    margin-top: -18px;
+  }
+
+  .key-sections {
+    padding-top: 10px;
+  }
 }
 
-/* A narrow window has no room for two columns of words: each key stands over what it does (T303). */
-@media (max-width: 480px) {
+/* Under the width the sheet needs for a column of keys and one of words, each key stands over what it does (T303). */
+@media (max-width: 600px) {
   .keys .key-list:not(.mark-list) {
     grid-template-columns: 1fr;
     gap: 2px;
+  }
+
+  /* A gesture of the mouse is said in words, as what it does is: heavier, it is told from it. */
+  .keys .key-list:not(.mark-list) dt {
+    font-weight: 600;
   }
 
   .keys .key-list:not(.mark-list) dd {

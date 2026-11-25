@@ -3154,12 +3154,25 @@ describe("a kanban's own lanes, from the page", () => {
           return (dt?.getBoundingClientRect().top ?? 0) === (dd?.getBoundingClientRect().top ?? 1);
         });
     try {
+      await page.setViewportSize({ width: 1099, height: 900 });
+      expect(await columns()).toBe("auto");
+      const tall = await sheet.evaluate((el) => el.scrollHeight);
       await page.setViewportSize({ width: 1440, height: 900 });
       expect(await columns()).toBe("2");
       // Two columns of the width one had: the sheet is about twice as wide, and far less tall.
       expect(await sheet.evaluate((el) => el.clientWidth)).toBeGreaterThan(1000);
-      expect(await sheet.evaluate((el) => el.scrollHeight)).toBeLessThan(1100);
-      await page.setViewportSize({ width: 420, height: 800 });
+      expect(await sheet.evaluate((el) => el.scrollHeight)).toBeLessThan(tall * 0.7);
+      // No section is cut between the columns: each is one box.
+      const boxes = await sheet
+        .locator(".key-section")
+        .evaluateAll((all) => all.map((section) => section.getClientRects().length));
+      expect(boxes.every((count) => count === 1)).toBe(true);
+      // The two columns start level.
+      const tops = await sheet
+        .locator(".key-section h3")
+        .evaluateAll((all) => all.map((heading) => Math.round(heading.getBoundingClientRect().top)));
+      expect(tops.filter((top) => top === Math.min(...tops)).length).toBe(2);
+      await page.setViewportSize({ width: 560, height: 800 });
       expect(await columns()).toBe("auto");
       expect(await beside()).toBe(false);
     } finally {
