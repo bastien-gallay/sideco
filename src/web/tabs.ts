@@ -36,3 +36,29 @@ export function fitTabsIn(tabList: HTMLElement, folded: boolean): void {
   if (folded) return;
   if (tabList.scrollWidth > tabList.clientWidth) tabList.classList.add("tabs-icons");
 }
+
+/** Where a key takes the keyboard among the tabs that are open: the arrows go round, Home and End to the ends. */
+const STEP: Record<string, (at: number, open: number) => number> = {
+  ArrowRight: (at, open) => (at + 1) % open,
+  ArrowDown: (at, open) => (at + 1) % open,
+  ArrowLeft: (at, open) => (at - 1 + open) % open,
+  ArrowUp: (at, open) => (at - 1 + open) % open,
+  Home: () => 0,
+  End: (_, open) => open - 1,
+};
+
+/** The arrows go from tab to tab, past the one that has nothing to show yet; Home and End to the first and the last. */
+export function tabKeys(
+  tabList: HTMLElement,
+  buttons: Record<Tab, HTMLButtonElement>,
+  current: () => Tab,
+  choose: (tab: Tab) => void,
+): void {
+  tabList.addEventListener("keydown", (event) => {
+    const open = TABS.filter((id) => buttons[id].getAttribute("aria-disabled") !== "true");
+    const next = open[STEP[event.key]?.(open.indexOf(current()), open.length) ?? -1];
+    if (!next) return;
+    event.preventDefault();
+    choose(next);
+  });
+}

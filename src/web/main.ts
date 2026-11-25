@@ -79,7 +79,7 @@ import {
   state,
   travelTo,
 } from "./store.ts";
-import { fitTabsIn, TABS, type Tab, tabIcon, tabName } from "./tabs.ts";
+import { fitTabsIn, TABS, type Tab, tabIcon, tabKeys, tabName } from "./tabs.ts";
 import { askBeforeUndo, lastGesture } from "./undo-ask.ts";
 import {
   agentStatus,
@@ -240,24 +240,12 @@ function paintTabs(): void {
 const fitTabs = (): void => fitTabsIn(tabList, isFolded("right"));
 new ResizeObserver(() => fitTabs()).observe(tabList);
 
-// The arrows go from tab to tab, past the one that has nothing to show yet.
-tabList.addEventListener("keydown", (event) => {
-  const open = TABS.filter((id) => tabButtons[id].getAttribute("aria-disabled") !== "true");
-  const at = open.indexOf(tab);
-  const next =
-    event.key === "ArrowRight" || event.key === "ArrowDown"
-      ? open[(at + 1) % open.length]
-      : event.key === "ArrowLeft" || event.key === "ArrowUp"
-        ? open[(at - 1 + open.length) % open.length]
-        : event.key === "Home"
-          ? open[0]
-          : event.key === "End"
-            ? open.at(-1)
-            : undefined;
-  if (!next) return;
-  event.preventDefault();
-  chooseTab(next, true);
-});
+tabKeys(
+  tabList,
+  tabButtons,
+  () => tab,
+  (next) => chooseTab(next, true),
+);
 const historyLabel = h("output", { class: "history-label" });
 /** The events, newest first: a click shows the board as that event left it. Repainted on its own. */
 const historyList = h("ol", { class: "history-list", "aria-label": t.history });
