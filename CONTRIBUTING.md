@@ -77,6 +77,9 @@ flowchart TD
     git branch -d <name>
     ```
 
+    The CI tests a commit once: `main` moved forward to a commit its branch
+    already had tested is not tested again, and its run says so.
+
     History is never rewritten on the remote: a branch that needs another
     push after a rebase is pushed under a new name.
 12. **Card to Done.** Its detail says what was delivered, in which commit, and

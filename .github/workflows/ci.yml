@@ -7,9 +7,36 @@ on:
 permissions:
   contents: read
 
+# A branch pushed again before its run ends: the older run stops. Runs on main are never stopped.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
+  # A branch is pushed, waits for this workflow, then main is fast-forwarded to
+  # the same commit: that commit was tested as it is, and is not tested twice.
+  seen:
+    name: Was this commit tested already?
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      green: ${{ steps.find.outputs.green }}
+    steps:
+      - id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUNS: repos/${{ github.repository }}/actions/workflows/ci.yml/runs
+        # Any doubt, an error of the API included, and the commit is tested.
+        run: |
+          count=$(gh api "$RUNS?head_sha=${{ github.sha }}&status=success&per_page=1" --jq '.total_count' || echo 0)
+          if [ "${count:-0}" -gt 0 ]; then echo "green=true" >> "$GITHUB_OUTPUT"; else echo "green=false" >> "$GITHUB_OUTPUT"; fi
+          echo "successful runs of this commit: ${count:-0}"
+
   check:
     name: Types, lint, unit and integration tests
+    needs: seen
+    if: needs.seen.outputs.green != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -23,6 +50,8 @@ jobs:
 
   e2e:
     name: End-to-end tests in Chrome
+    needs: seen
+    if: needs.seen.outputs.green != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
