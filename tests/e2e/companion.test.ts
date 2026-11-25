@@ -963,7 +963,7 @@ describe("the human edits, the agent is told", () => {
     expect(await page.locator(".pending").textContent()).toContain("Claude reads them as soon as you send.");
     // One session runs: the one the turn goes to is said on the button only, not on a line of its own.
     expect(await page.locator(".pass button").getAttribute("title")).toMatch(
-      /^Send to Claude \((⌘↵|Ctrl\+Enter)\) · To the session .+ · s1$/,
+      /^Send to Claude \((⌘↵|Ctrl \+ Enter)\) · To the session .+ · s1$/,
     );
     expect(await page.locator(".pass button.primary").textContent()).toBe("Send to Claude");
     await shot("05-listening");
