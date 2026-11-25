@@ -534,7 +534,7 @@ const en: Messages = {
     [
       "Shift + ← → ↑ ↓",
       how === "graph"
-        ? "Nudge the card; the diagram goes Snap"
+        ? "Nudge the card; Snap comes on, it stays"
         : how === "timeline"
           ? "Move the card: ← → a step, ↑ ↓ its place in its cell"
           : how === "grid"
@@ -562,7 +562,7 @@ const en: Messages = {
   mouseList: (how) => [
     [
       "Drag a card",
-      how === "graph" ? "Put it there; the diagram goes Snap" : "Move it; a line shows where it lands",
+      how === "graph" ? "Put it there; Snap comes on, it stays" : "Move it; a line shows where it lands",
     ],
     ...(how === "timeline"
       ? ([
@@ -590,7 +590,7 @@ const en: Messages = {
     ...(how === "grid"
       ? ([
           [
-            "Double-click an axis, or a word at one of its ends; from the keyboard, Tab to it, then Enter or F2",
+            "Double-click an axis, or a word at one of its ends",
             "Rename it for this board; emptied, the workshop's words come back",
           ],
         ] as [string, string][])
@@ -847,7 +847,7 @@ const fr: Messages = {
     [
       "Maj + ← → ↑ ↓",
       how === "graph"
-        ? "Pousser un peu la carte ; le diagramme passe en Snap"
+        ? "Pousser un peu la carte ; Snap s'active, elle y reste"
         : how === "timeline"
           ? "Déplacer la carte : ← → une étape, ↑ ↓ sa place dans sa case"
           : how === "grid"
@@ -876,7 +876,7 @@ const fr: Messages = {
     [
       "Glisser une carte",
       how === "graph"
-        ? "La poser là ; le diagramme passe en Snap"
+        ? "La poser là ; Snap s'active, elle y reste"
         : "La déplacer ; une ligne montre où elle tombe",
     ],
     ...(how === "timeline"
@@ -905,7 +905,7 @@ const fr: Messages = {
     ...(how === "grid"
       ? ([
           [
-            "Double-clic sur un axe, ou un mot à l'un de ses bouts ; au clavier, Tab jusqu'à lui, puis Entrée ou F2",
+            "Double-clic sur un axe, ou un mot à l'un de ses bouts",
             "Le renommer pour ce tableau ; vidé, les mots de l'atelier reviennent",
           ],
         ] as [string, string][])

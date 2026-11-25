@@ -3114,9 +3114,10 @@ describe("a kanban's own lanes, from the page", () => {
     await sheet.waitFor({ state: "visible" });
     expect(await sheet.locator("dd", { hasText: "Move the card to the last lane" }).count()).toBe(1);
     expect(await sheet.locator("dd", { hasText: "← → a lane, ↑ ↓ its place in its lane" }).count()).toBe(1);
-    // The keys are under four headings (T282): what a lane heading takes is said key by key.
+    // The keys are under five headings (T282, T304): what a lane heading takes is said key by key.
     expect(await sheet.locator("h3").allTextContents()).toEqual([
       "Moving about",
+      "Moving a card, adding one",
       "Changing a card",
       "The page",
       "A lane heading",

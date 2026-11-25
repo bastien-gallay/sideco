@@ -13,19 +13,34 @@ const rows = (locale: "en" | "fr", how: "kanban" | "graph") =>
 const keysOf = (section: { rows: [string, string][] } | undefined) => section?.rows.map(([keys]) => keys);
 
 describe("the keys of the sheet, in sections (T282)", () => {
-  test("a kanban has four: moving about, a card, the page, a lane heading", () => {
+  test("a kanban has five: moving about, a card moved or added, a card changed, the page, a lane heading", () => {
     const sections = keySections(rows("en", "kanban"), "en", "kanban");
     expect(sections.map((s) => s.title)).toEqual([
       "Moving about",
+      "Moving a card, adding one",
       "Changing a card",
       "The page",
       "A lane heading",
     ]);
     expect(keysOf(sections[0])).toEqual(["Tab", "← → ↑ ↓", "Page ↑ ↓, Home, End"]);
-    expect(keysOf(sections[1])?.[0]).toBe("Shift + ← → ↑ ↓");
-    expect(keysOf(sections[1])).toContain("Delete");
-    expect(keysOf(sections[2])?.[0]).toBe("/ or ⌘K / Ctrl+K");
-    expect(keysOf(sections[2])?.at(-1)).toBe("< and >, or [ and ]");
+    // The keys of a card are two sections (T304): fifteen rows under one heading were a column by themselves.
+    expect(keysOf(sections[1])).toEqual(["Shift + ← → ↑ ↓", "Shift + Home, End", "Alt + ← → ↑ ↓", "A"]);
+    expect(keysOf(sections[2])?.[0]).toBe("Enter or F2");
+    expect(keysOf(sections[2])).toContain("Delete");
+    expect(keysOf(sections[3])?.[0]).toBe("/ or ⌘K / Ctrl+K");
+    expect(keysOf(sections[3])?.at(-1)).toBe("< and >, or [ and ]");
+  });
+
+  test("a plan says what the keyboard does to an axis under its own heading, not among the gestures of the mouse (T304)", () => {
+    const told = withMoreKeys(MESSAGES.en.shortcutList("grid", true), "en");
+    const axis = keySections(told, "en", "grid").at(-1);
+    expect(axis?.title).toBe("An axis of the plan");
+    expect(keysOf(axis)).toEqual(["Tab", "Enter or F2"]);
+    expect(
+      keySections(withMoreKeys(MESSAGES.fr.shortcutList("grid", true), "fr"), "fr", "grid").at(-1)?.title,
+    ).toBe("Un axe du plan");
+    for (const locale of ["en", "fr"] as const)
+      for (const [gesture] of MESSAGES[locale].mouseList("grid")) expect(gesture).not.toMatch(/Tab|F2/);
   });
 
   test("what a lane heading takes is said key by key, no longer on one line", () => {
@@ -38,18 +53,25 @@ describe("the keys of the sheet, in sections (T282)", () => {
     expect(fr?.rows).toContainEqual(["Maj + Entrée", "Écrire son sous-titre"]);
   });
 
-  test("a board without lanes of its own has three, in French too; no key is lost", () => {
+  test("a board without lanes of its own has four, in French too; no key is lost", () => {
     const all = rows("fr", "graph");
     const sections = keySections(all, "fr", "graph");
-    expect(sections.map((s) => s.title)).toEqual(["Se déplacer", "Changer une carte", "La page"]);
+    expect(sections.map((s) => s.title)).toEqual([
+      "Se déplacer",
+      "Déplacer une carte, en ajouter une",
+      "Changer une carte",
+      "La page",
+    ]);
     expect(sections.flatMap((s) => s.rows)).toEqual(all);
     // Whatever the board and the language: every row is under one heading, in its order.
     for (const locale of ["en", "fr"] as const)
       for (const how of ["timeline", "lanes", "kanban", "grid", "graph"] as const) {
         const told = withMoreKeys(MESSAGES[locale].shortcutList(how, false), locale, how === "kanban");
-        const under = keySections(told, locale, how).filter((s) => !s.title.match(/heading|en-tête/));
+        const under = keySections(told, locale, how).filter(
+          (s) => !s.title.match(/heading|en-tête|ax[ie]s?/),
+        );
         expect(under.flatMap((s) => s.rows)).toEqual(told);
-        expect(under.length).toBe(3);
+        expect(under.length).toBe(4);
       }
   });
 });

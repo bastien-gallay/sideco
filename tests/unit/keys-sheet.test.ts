@@ -44,12 +44,33 @@ describe("the sheet of keys", () => {
     );
   });
 
-  test("tells A, which adds a linked card, after L which links two (T272)", () => {
+  test("tells A, which adds a linked card, after Alt and the arrows which add one too (T272, T304)", () => {
     const en = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([keys]) => keys);
-    expect(en[en.indexOf("L") + 1]).toBe("A");
-    expect(says(withMoreKeys(MESSAGES.fr.shortcutList("graph", true), "fr"))).toContain(
-      "A = Ajouter une carte liée",
+    expect(en[en.indexOf("Alt + ← → ↑ ↓") + 1]).toBe("A");
+    expect(says(withMoreKeys(MESSAGES.fr.shortcutList("kanban", true), "fr"))).toContain(
+      "A = Ajouter une carte liée à celle-ci, sous elle",
     );
+    // On a diagram Alt and an arrow say it already, and nothing is under a card: A is the same, one way.
+    const flow = says(withMoreKeys(MESSAGES.en.shortcutList("graph", true), "en", false, false));
+    expect(flow).toContain("A = The same, to its right");
+    expect(flow).not.toContain("under it");
+  });
+
+  test("says a row in the word of the board, and in one line (T304)", () => {
+    // A kanban has lanes: the key that sends a card to an end says lane, as Shift and the arrows do.
+    const kanban = says(withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en", true));
+    expect(kanban).toContain("Shift + Home, End = Send the card to the top of its lane, or to its foot");
+    expect(says(withMoreKeys(MESSAGES.fr.shortcutList("kanban", true), "fr", true))).toContain(
+      "Maj + Début, Fin = Envoyer la carte en haut de sa colonne, ou en bas",
+    );
+    // X stands by Space, which chooses too.
+    const keys = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([key]) => key);
+    expect(keys[keys.indexOf("Space") + 1]).toBe("X");
+    // No row of the sheet is a paragraph: the guide tells the rest.
+    for (const locale of ["en", "fr"] as const)
+      for (const how of ["timeline", "lanes", "kanban", "grid", "graph"] as const)
+        for (const [, does] of withMoreKeys(MESSAGES[locale].shortcutList(how, true), locale, true))
+          expect(does.length).toBeLessThanOrEqual(80);
   });
 
   test("tells Shift and Home or End, which send a card to an end of its cell, after Shift and the arrows (S355)", () => {

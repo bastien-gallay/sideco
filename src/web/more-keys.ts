@@ -5,39 +5,46 @@
 import type { Locale } from "../domain/i18n.ts";
 
 /** Each key with the key it follows on the sheet. */
-const MORE: Record<Locale, { after: string; row: [string, string]; columns?: true; cells?: true }[]> = {
+interface More {
+  /** The key this one follows; with `starts`, the key that starts by it: Alt and its arrows differ by board. */
+  after: string;
+  starts?: true;
+  row: [string, string];
+  /** What the row says on a kanban, in its word, and on a diagram, where the key does not do quite the same. */
+  kanban?: [string, string];
+  graph?: [string, string];
+  columns?: true;
+  cells?: true;
+}
+
+const MORE: Record<Locale, More[]> = {
   en: [
     {
       after: "← → ↑ ↓",
       columns: true,
       row: ["Page ↑ ↓, Home, End", "Along the column: a page further, its first card, its last"],
     },
+    // On a diagram Alt and an arrow already add the next step, linked: A is the same, one way.
     {
-      after: "L",
-      row: ["A", "Add a card linked from this one: of the kind it leads to, else of its own, under it"],
+      after: "Alt +",
+      starts: true,
+      row: ["A", "Add a card linked from this one, under it"],
+      graph: ["A", "The same, to its right"],
     },
     { after: "E", row: ["I", "Read its detail, in the right panel"] },
     {
       after: "/ or ⌘K / Ctrl+K",
-      row: [
-        "B, S",
-        "To the list of boards; to the list of Claude's sessions, where there are several. Its arrows open it",
-      ],
+      row: ["B, S", "To the list of boards; to that of Claude's sessions, if several"],
     },
     {
       after: "Shift + ← → ↑ ↓",
       cells: true,
       row: ["Shift + Home, End", "Send the card to the top of its cell, or to its foot"],
+      kanban: ["Shift + Home, End", "Send the card to the top of its lane, or to its foot"],
     },
     { after: "E", row: ["T", "Add a label, in the right panel"] },
-    {
-      after: "E",
-      row: [
-        "X",
-        "Keep this card chosen while the arrows choose another (or Shift and a click): D and Delete are for them all",
-      ],
-    },
-    { after: "E", row: ["F", "Put the card chosen in the focus, or take it out"] },
+    { after: "Space", row: ["X", "Choose several: this card stays chosen as the arrows go on"] },
+    { after: "Space", row: ["F", "Put the card chosen in the focus, or take it out"] },
   ],
   fr: [
     {
@@ -49,34 +56,28 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
       ],
     },
     {
-      after: "L",
-      row: ["A", "Ajouter une carte liée à celle-ci : du type auquel elle mène, sinon du sien, sous elle"],
+      after: "Alt +",
+      starts: true,
+      row: ["A", "Ajouter une carte liée à celle-ci, sous elle"],
+      graph: ["A", "De même, à sa droite"],
     },
     { after: "E", row: ["I", "Lire son détail, dans le panneau de droite"] },
     {
       after: "/ ou ⌘K / Ctrl+K",
-      row: [
-        "B, S",
-        "À la liste des tableaux ; à celle des sessions de Claude, s'il y en a plusieurs. Ses flèches l'ouvrent",
-      ],
+      row: ["B, S", "À la liste des tableaux ; à celle des sessions de Claude, s'il y en a plusieurs"],
     },
     {
       after: "Maj + ← → ↑ ↓",
       cells: true,
       row: ["Maj + Début, Fin", "Envoyer la carte en haut de sa case, ou en bas"],
+      kanban: ["Maj + Début, Fin", "Envoyer la carte en haut de sa colonne, ou en bas"],
     },
     { after: "E", row: ["T", "Ajouter un label, dans le panneau de droite"] },
     {
-      after: "E",
-      row: [
-        "X",
-        "Garder cette carte choisie pendant que les flèches en choisissent une autre (ou Maj et un clic) : D et Suppr valent pour toutes",
-      ],
+      after: "Espace",
+      row: ["X", "En choisir plusieurs : cette carte reste choisie quand les flèches continuent"],
     },
-    {
-      after: "E",
-      row: ["F", "Mettre la carte choisie au focus, ou l'en sortir"],
-    },
+    { after: "Espace", row: ["F", "Mettre la carte choisie au focus, ou l'en sortir"] },
   ],
 };
 
@@ -92,5 +93,8 @@ export function withMoreKeys(
   cells = true,
 ): [string, string][] {
   const told = MORE[locale].filter((more) => (columns || !more.columns) && (cells || !more.cells));
-  return rows.flatMap((row) => [row, ...told.filter((more) => more.after === row[0]).map((m) => m.row)]);
+  const follows = (more: More, key: string) =>
+    more.starts ? key.startsWith(more.after) : more.after === key;
+  const says = (more: More) => (columns && more.kanban) || (!cells && more.graph) || more.row;
+  return rows.flatMap((row) => [row, ...told.filter((more) => follows(more, row[0])).map(says)]);
 }
