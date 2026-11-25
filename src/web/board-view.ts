@@ -1119,7 +1119,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     link: (_, id) => beginLink(id),
     note: (_, id) => noteOn(id),
     detail: (_, id) => hooks.editDetail(id),
-    read: (_, id) => readDetail(() => hooks.showDetail(id)),
+    read: (_, id) => readDetail(id, hooks.showDetail, focusCard),
     label: (_, id) => hooks.editLabels(id),
   };
 

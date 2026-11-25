@@ -847,11 +847,24 @@ describe("the human edits, the agent is told", () => {
     // It is read, not written: no field is open.
     expect(await page.locator("textarea.card-panel-editor").count()).toBe(0);
     expect(await panel.locator("h2").textContent()).toContain("E2");
-    // Escape gives the card the keyboard back.
+    // Escape gives the card the keyboard back; not chosen before, the card is not chosen after.
     await page.keyboard.press("Escape");
-    await until("the card has the keyboard back", () =>
-      page.evaluate(() => document.activeElement?.getAttribute("data-id") === "E2"),
+    const onCard = () => page.evaluate(() => document.activeElement?.getAttribute("data-id") === "E2");
+    await until("the card has the keyboard back", onCard);
+    await until("and is let go", async () => (await page.locator("g.card.is-selected").count()) === 0);
+    // Chosen before, it stays chosen: reading its detail changes nothing of the choice.
+    await page.keyboard.press("Space");
+    await page.locator('g.card.is-selected[data-id="E2"]').waitFor();
+    await page.keyboard.press("i");
+    await until("the panel holds the keyboard again", () =>
+      page.evaluate(() => document.activeElement?.classList.contains("card-panel") ?? false),
     );
+    await page.keyboard.press("Escape");
+    await until("the card has the keyboard back, still chosen", onCard);
+    expect(await page.locator('g.card.is-selected[data-id="E2"]').count()).toBe(1);
+    // Left, the panel is as it was: a click in its words takes the keyboard from nothing.
+    expect(await panel.getAttribute("tabindex")).toBeNull();
+    await page.keyboard.press("Escape");
   });
 
   test("the footer counts what Claude has not read, and says when it will read it", async () => {
