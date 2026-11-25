@@ -312,11 +312,12 @@ export function journal(since = 0): Recorded[] {
 }
 
 /**
- * The events a session's digest reads: those after what it was told. One told
- * nothing yet follows no board's past (see `recentFrom`): the events held do.
+ * The events a session's digest reads: those after what it was told, or from
+ * the start when it has not been told yet. Empty while older events are still
+ * being fetched, so the page never counts on a partial slice.
  */
 export function journalFor(session: Session | undefined): Recorded[] {
-  return journal(session?.deliveredUpTo || state.from);
+  return heldSince(session?.deliveredUpTo ?? 0) ? state.events : [];
 }
 
 /** Whether every event after `since` is held; if not, the past is fetched and the page drawn again. */

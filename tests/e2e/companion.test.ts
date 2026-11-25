@@ -5527,4 +5527,51 @@ describe("a long journal", () => {
     await page.locator(".banner").waitFor({ state: "hidden" });
     await agent("board rm ancien");
   });
+
+  test("opening the history does not change the count of unread changes when no session has read yet (T295)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sideco-t295-"));
+    const fresh = await start(dataDir(dir), 0);
+    const post = (actor: "human" | "agent", script: string, board?: string) =>
+      fetch(`${fresh.url}/api/commands`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ actor, commands: parseBatch(script, board) }),
+      });
+    const tab = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    try {
+      await post("agent", `board new "Compteur" --format kanban --id compteur`);
+      await post(
+        "human",
+        `add task "H1" --lane todo\nadd task "H2" --lane todo\nadd task "H3" --lane todo`,
+        "compteur",
+      );
+      for (let batch = 0; batch < 2; batch++)
+        await post(
+          "agent",
+          Array.from({ length: 300 }, (_, i) => `add task "A${batch}-${i}" --lane todo`).join("\n"),
+          "compteur",
+        );
+      await post("human", `add task "H4" --lane todo`, "compteur");
+
+      await tab.goto(`${fresh.url}/#/b/compteur`);
+      await tab.locator(".pending").waitFor();
+      await until("unread count settles", async () => {
+        const text = (await tab.locator(".pending").textContent()) ?? "";
+        return text.includes("change");
+      });
+      const before = (await tab.locator(".pending").textContent()) ?? "";
+      expect(before).toMatch(/^4 changes not read yet/);
+
+      await tab.locator("#tab-history").click();
+      await tab.locator(".history-list .moment").nth(1).click();
+      await tab.locator(".banner").waitFor({ state: "visible" });
+      await tab.locator(".banner button").click();
+      await tab.locator(".banner").waitFor({ state: "hidden" });
+      expect(await tab.locator(".pending").textContent()).toBe(before);
+    } finally {
+      await tab.close();
+      await fresh.stop();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
