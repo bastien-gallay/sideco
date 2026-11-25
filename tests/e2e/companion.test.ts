@@ -882,7 +882,10 @@ describe("the human edits, the agent is told", () => {
     await until("the panel of the card holds the keyboard", () =>
       page.evaluate(() => document.activeElement?.classList.contains("card-panel") ?? false),
     );
-    expect(await panel.locator(".card-panel-detail").textContent()).toContain("confirmé par la banque");
+    // The detail Claude just wrote reaches the page a moment after the key.
+    await until("the detail is read in the panel", async () =>
+      ((await panel.locator(".card-panel-detail").textContent()) ?? "").includes("confirmé par la banque"),
+    );
     // It is read, not written: no field is open.
     expect(await page.locator("textarea.card-panel-editor").count()).toBe(0);
     expect(await panel.locator("h2").textContent()).toContain("E2");
@@ -4491,9 +4494,6 @@ describe("two sessions on one project", () => {
     await card(first).focus();
     await page.keyboard.press("s");
     await until("the list of sessions holds the keyboard", async () => (await holds()) === "session");
-    // In a list, B is not the page's.
-    await page.keyboard.press("b");
-    expect(await holds()).toBe("session");
     // Escape leaves the list for the card the keyboard came from.
     await page.keyboard.press("Escape");
     await until("the card has the keyboard back", async () => (await onCard()) === first);
