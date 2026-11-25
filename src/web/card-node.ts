@@ -30,16 +30,29 @@ export function newCardNode(id: string): CardNode {
   return { g: svg("g", { class: "card", "data-id": id, tabindex: -1, role: "button" }), signature: "" };
 }
 
-/** Takes off the page the nodes of the cards that are gone; says whether one of them held the keyboard. */
-export function dropNodes(nodes: Map<string, CardNode>, alive: ReadonlySet<string>): boolean {
-  let held = false;
+/**
+ * Takes off the page the nodes of the cards no longer drawn; names the one that held the keyboard. A card not
+ * drawn is not a card gone: its column may have scrolled past it.
+ */
+export function dropNodes(nodes: Map<string, CardNode>, alive: ReadonlySet<string>): string | undefined {
+  let held: string | undefined;
   for (const [id, node] of nodes) {
     if (alive.has(id)) continue;
-    held ||= node.g === document.activeElement;
+    if (node.g === document.activeElement) held = id;
     node.g.remove();
     nodes.delete(id);
   }
   return held;
+}
+
+/**
+ * The card that held the keyboard is gone from the board, taken back or removed by Claude: the keyboard goes to
+ * the card Tab stops at, and stays on the board (S353). Scrolled out of its column, the card is still there, and
+ * nothing is taken for it: another card focused would bring the column back to itself.
+ */
+export function keepKeyboard(held: string | undefined, board: Board, to: CardNode | undefined): void {
+  if (!held || document.activeElement !== document.body) return;
+  if (!board.elements.some((e) => e.id === held)) to?.g.focus({ preventScroll: true });
 }
 
 /** Draws the card in its node, when what it shows changed. Where it is drawn is not part of it. */

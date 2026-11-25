@@ -499,6 +499,23 @@ describe("the agent writes, the page follows", () => {
     await page.keyboard.press("Control+z");
     await card(added).waitFor({ state: "detached" });
     await until("the keyboard is on a card", async () => /^T\d+$/.test(await holds()));
+    // Removed by Claude under the keyboard, a card leaves it on the board too.
+    const under = await holds();
+    await agent(`rm ${under}`, "ajouts");
+    await card(under).waitFor({ state: "detached" });
+    await until("the keyboard is on another card", async () => /^T\d+$/.test(await holds()));
+    expect(await holds()).not.toBe(under);
+    // Scrolled out of its column by the wheel, the card that holds the keyboard is not gone: no other card takes
+    // it, which would bring the column back to that one.
+    const kept = await holds();
+    const box = await card(kept).boundingBox();
+    await page.mouse.move((box?.x ?? 0) + 20, (box?.y ?? 0) + 20);
+    // The column stands at its foot, the card at the head of its window: the wheel turned back puts it under.
+    await page.mouse.wheel(0, -3000);
+    await card(kept).waitFor({ state: "detached" });
+    await page.waitForTimeout(400);
+    expect(await card(kept).count()).toBe(0);
+    expect(await holds()).toBe("BODY");
     await page.locator(".board-picker select").selectOption("commande");
     await card("R1").waitFor();
     await agent("board rm ajouts");
