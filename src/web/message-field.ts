@@ -31,7 +31,8 @@ function leaveForBoard(event: KeyboardEvent): void {
   if (!card) return;
   event.preventDefault();
   event.stopPropagation();
-  card.focus({ preventScroll: true });
+  // Brought into view if it is not: the keyboard is never on a card out of sight.
+  card.focus();
 }
 
 /**
@@ -55,7 +56,7 @@ export function wordsField(
   });
   field.value = words;
   field.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") leaveForBoard(event);
+    if (event.key === "Escape" && !event.isComposing) leaveForBoard(event);
     if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
     event.preventDefault();
     field.form?.requestSubmit();

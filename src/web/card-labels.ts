@@ -26,8 +26,8 @@ let speak: (words: string) => void = () => {};
 let shownFor: string | undefined;
 
 /** What the page does when the keyboard leaves the field by Escape: set by main.ts, which knows the board. */
-let left: () => void = () => {};
-export function onLabelsLeft(then: () => void): void {
+let left: (card: string | undefined) => void = () => {};
+export function onLabelsLeft(then: (card: string | undefined) => void): void {
   left = then;
 }
 
@@ -43,12 +43,13 @@ const labelField = h("input", {
 });
 const knownLabels = h("datalist", { id: "known-labels" });
 labelField.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
+  // Escape that puts away what a keyboard of signs was composing is not ours.
+  if (event.key === "Escape" && !event.isComposing) {
     // Emptied first; empty already, the keyboard leaves the field for the card. As in the detail's
     // field, the key stops here: the card stays chosen.
     event.preventDefault();
     event.stopPropagation();
-    if (labelField.value === "") left();
+    if (labelField.value === "") left(shownFor);
     labelField.value = "";
     return;
   }

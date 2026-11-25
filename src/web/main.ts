@@ -414,7 +414,7 @@ const view = mountBoard(canvas, {
   },
 });
 // Escape in the field that adds a label, empty: the keyboard goes back to the card.
-onLabelsLeft(() => state.selected && view.focus(state.selected));
+onLabelsLeft((id) => id && view.focus(id));
 
 /** The search over the cards of every board: `/` or Ctrl+K opens it. */
 const find = mountFind({ view, open: openBoard });
