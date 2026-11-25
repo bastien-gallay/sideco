@@ -40,6 +40,7 @@ import { clock, h, region } from "./dom.ts";
 import { describeEvent, sessionName } from "./event-words.ts";
 import { copiedMermaid, downloadBoard } from "./export-out.ts";
 import { mountFind } from "./find-bar.ts";
+import { focusBar, paintFocusBar } from "./focus-bar.ts";
 import { keysSheet, openKeys } from "./keys-sheet.ts";
 import { filterBar, mountLabelFilter, paintLabelFilter } from "./label-filter.ts";
 import { mountLinkHint } from "./link-hint.ts";
@@ -134,7 +135,6 @@ const notes = h("section", {
   "aria-labelledby": "tab-notes",
   hidden: true,
 });
-const focusBar = h("div", { class: "focus-bar", hidden: true });
 /** What Claude changed on the board while the reader was away: said once, over the board, until they have seen it. */
 const visitBar = h("div", { class: "visit-bar", role: "status", hidden: true });
 const canvas = h("div", { class: "canvas" });
@@ -960,24 +960,6 @@ function revealThreads(selected: string | null): void {
   notes.querySelector(".thread.is-current")?.scrollIntoView({ block: "nearest" });
 }
 
-const paintFocus = region(
-  focusBar,
-  (m: { ids: string[]; reason?: string; live: boolean; board?: string }) => [
-    h("span", {}, h("strong", {}, t.focus(m.ids.join(", "))), m.reason ? ` — ${m.reason}` : ""),
-    m.live && m.board
-      ? h(
-          "button",
-          {
-            type: "button",
-            class: "quiet",
-            onclick: () => void send({ kind: "focus", board: m.board ?? "", ids: [] }),
-          },
-          t.clearFocus,
-        )
-      : null,
-  ],
-);
-
 interface CardPanelModel extends LabelsModel {
   /** The ids it went by, renumbered since: "formerly T1". */
   former: string | undefined;
@@ -1478,8 +1460,7 @@ function render(): void {
   revealThreads(state.selected);
   paintNotesTab(board?.id, board ? discussions(board) : [], live);
 
-  focusBar.hidden = !board?.focus;
-  if (board?.focus) paintFocus({ ids: board.focus.ids, reason: board.focus.reason, live, board: board.id });
+  paintFocusBar(board, live);
 
   canvas.hidden = !board;
   home.hidden = Boolean(board);
