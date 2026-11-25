@@ -33,6 +33,8 @@ import { type Board, findBoard, findSession, type Workspace } from "./workspace.
 export interface Context {
   actor: Actor;
   session?: string;
+  /** The commands of the batch are one gesture, board by board: one undo takes them back together (S333). */
+  together?: boolean;
 }
 
 export interface Decision {

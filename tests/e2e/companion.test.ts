@@ -310,6 +310,60 @@ describe("the agent writes, the page follows", () => {
     await card("R1").waitFor();
     await agent("board rm viser");
   });
+
+  test("several cards are chosen by Shift and a click, or X; done and removed together, one Undo takes it back (S333)", async () => {
+    const [a, b, c] = await agent(
+      'board new "Plusieurs" --format kanban --id plusieurs\nadd task "Un" --lane todo\nadd task "Deux" --lane todo\nadd task "Trois" --lane todo',
+    );
+    await page.locator(".board-picker select").selectOption("plusieurs");
+    const bar = page.locator(".chosen-bar");
+    const has = (id: string, name: string) => card(id).evaluate((g, cls) => g.classList.contains(cls), name);
+    const elements = async () => (await workspace()).boards.find((x) => x.id === "plusieurs")?.elements ?? [];
+    const lanes = async () =>
+      (await elements())
+        .map((e) => `${e.id}:${e.lane}`)
+        .sort()
+        .join();
+    // One card chosen is no choice of several: no bar.
+    await card(a).click();
+    expect(await bar.isHidden()).toBe(true);
+    // Shift and a click adds a card; the first stays the one chosen, and nothing is carried.
+    await card(b).click({ modifiers: ["Shift"] });
+    await until("two chosen", async () => (await has(b, "is-also")) && (await has(a, "is-selected")));
+    expect(await bar.textContent()).toContain(`2 cards chosen — ${a}, ${b}`);
+    // X on the card the keyboard is on does the same, and takes it out again.
+    await card(c).focus();
+    await page.keyboard.press("x");
+    await until("three chosen", async () => ((await bar.textContent()) ?? "").includes("3 cards chosen"));
+    await page.keyboard.press("x");
+    await until("two again", async () => ((await bar.textContent()) ?? "").includes("2 cards chosen"));
+    await shot("73-several-chosen");
+    // D marks them all done: on a kanban they go to the last column; one Undo brings both back.
+    await card(a).focus();
+    await page.keyboard.press("d");
+    await until("both done", async () => (await lanes()) === `${a}:done,${b}:done,${c}:todo`);
+    await page.locator("button", { hasText: "Undo" }).first().click();
+    await until("both back by one undo", async () => (await lanes()) === `${a}:todo,${b}:todo,${c}:todo`);
+    // The bar removes them all; one Undo brings both back.
+    await card(a).click();
+    await card(b).click({ modifiers: ["Shift"] });
+    await bar.locator("button", { hasText: "Remove" }).click();
+    await until("both removed", async () => (await elements()).map((e) => e.id).join() === c);
+    await bar.waitFor({ state: "hidden" });
+    await page.locator("button", { hasText: "Undo" }).first().click();
+    await until("both back", async () => (await elements()).length === 3);
+    // Choosing a card alone lets the others go.
+    await card(a).click();
+    await card(b).click({ modifiers: ["Shift"] });
+    await bar.waitFor({ state: "visible" });
+    await card(c).click();
+    await bar.waitFor({ state: "hidden" });
+    expect(await has(b, "is-also")).toBe(false);
+    await page.keyboard.press("Escape");
+    await page.locator(".board-picker select").selectOption("commande");
+    await card("R1").waitFor();
+    await agent("board rm plusieurs");
+  });
 });
 
 describe("the session beside the board", () => {

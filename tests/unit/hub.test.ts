@@ -22,6 +22,42 @@ function setup(script = ORDERING): {
   return { hub, journal, run };
 }
 
+describe("a batch sent as one gesture (S333)", () => {
+  const labels = (hub: Hub): string[] =>
+    (hub.workspace.boards.find((b) => b.id === "commande")?.elements ?? []).map((e) => e.id);
+
+  test("one undo takes all of it back, and one redo puts it back", () => {
+    const { hub } = setup();
+    const before = labels(hub);
+    const [first, second] = before;
+    const remove = batch(`rm ${first}\nrm ${second}`, "commande");
+    hub.dispatch(remove, { actor: "human", together: true });
+    expect(labels(hub)).toEqual(before.slice(2));
+    hub.dispatch(batch("undo", "commande"), { actor: "human" });
+    expect(labels(hub).sort()).toEqual([...before].sort());
+    hub.dispatch(batch("redo", "commande"), { actor: "human" });
+    expect(labels(hub)).toEqual(before.slice(2));
+  });
+
+  test("without it, each command of a batch is a gesture of its own", () => {
+    const { hub } = setup();
+    const before = labels(hub);
+    hub.dispatch(batch(`rm ${before[0]}\nrm ${before[1]}`, "commande"), { actor: "human" });
+    hub.dispatch(batch("undo", "commande"), { actor: "human" });
+    expect(labels(hub)).toHaveLength(before.length - 1);
+  });
+
+  test("gestures on two boards stay two: an undo is a board's", () => {
+    const { hub } = setup();
+    const made = hub.dispatch(batch('board new "B" --id b\nadd event "A"'), { actor: "human" });
+    const [first, second] = labels(hub);
+    const two = [...batch(`rm ${first}\nrm ${second}`, "commande"), ...batch(`rm ${made.minted[1]}`, "b")];
+    const done = hub.dispatch(two, { actor: "human", together: true });
+    const starts = done.events.filter((e) => !("joined" in e && e.joined));
+    expect(starts.map((e) => "board" in e && e.board)).toEqual(["commande", "b"]);
+  });
+});
+
 describe("dispatch", () => {
   test("stamps each event with its place, time, author and session", () => {
     const { hub } = setup("");

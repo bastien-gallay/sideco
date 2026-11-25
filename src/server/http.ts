@@ -138,7 +138,8 @@ async function commands(hub: Hub, request: Request): Promise<Response> {
   let parsed: Command[];
   try {
     parsed = batch.commands.map((raw, index) => atCommand(index, () => parseCommand(raw)));
-    const done = hub.dispatch(parsed, { actor: actor as Actor, session });
+    const together = batch.together === true;
+    const done = hub.dispatch(parsed, { actor: actor as Actor, session, together });
     return json({ seq: hub.workspace.seq, minted: done.minted, events: done.events.length });
   } catch (error) {
     if (error instanceof BatchError) return json({ error: error.message, index: error.index }, 400);

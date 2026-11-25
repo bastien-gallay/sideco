@@ -1319,7 +1319,8 @@ kbd {
   justify-self: start;
 }
 
-.focus-bar {
+.focus-bar,
+.chosen-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1607,6 +1608,7 @@ kbd {
 
 .card:focus-visible .card-ring,
 .card.is-selected .card-ring,
+.card.is-also .card-ring,
 .card.is-pointed .card-ring,
 .card.is-link-source .card-ring {
   stroke: var(--accent-text);

@@ -8,10 +8,24 @@ import type { Locale } from "../domain/i18n.ts";
 const MORE: Record<Locale, { after: string; row: [string, string] }[]> = {
   en: [
     { after: "E", row: ["T", "Add a label to the card, in the panel on the right"] },
+    {
+      after: "E",
+      row: [
+        "X",
+        "Choose the card too, beside the one chosen (Shift and a click): D and Delete are then for them all",
+      ],
+    },
     { after: "E", row: ["F", "Point at the card chosen as Claude does, or no longer: it joins the focus"] },
   ],
   fr: [
     { after: "E", row: ["T", "Ajouter un label à la carte, dans le panneau de droite"] },
+    {
+      after: "E",
+      row: [
+        "X",
+        "Choisir la carte aussi, à côté de celle choisie (Maj et un clic) : D et Suppr valent alors pour toutes",
+      ],
+    },
     {
       after: "E",
       row: ["F", "Viser la carte choisie comme le fait Claude, ou ne plus la viser : elle rejoint le focus"],

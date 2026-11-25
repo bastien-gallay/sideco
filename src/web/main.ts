@@ -36,6 +36,7 @@ import {
   typingLabel,
 } from "./card-labels.ts";
 import { linkSection } from "./card-links.ts";
+import { chosenBar, paintChosen } from "./chosen-more.ts";
 import { clock, h, region } from "./dom.ts";
 import { describeEvent, sessionName } from "./event-words.ts";
 import { copiedMermaid, downloadBoard } from "./export-out.ts";
@@ -504,7 +505,7 @@ app.append(
     "main",
     { class: "work" },
     h("aside", { class: "left", id: "panel-left" }, folds.left, palette),
-    h("section", { class: "stage" }, visitBar, focusBar, filterBar, find.bar, canvas, home),
+    h("section", { class: "stage" }, visitBar, focusBar, chosenBar, filterBar, find.bar, canvas, home),
     h(
       "aside",
       { class: "right", id: "panel-right" },
@@ -1466,6 +1467,7 @@ function render(): void {
   paintVisit({ count: away?.count ?? 0, cards: away?.cards.length ?? 0 });
   visitBar.hidden = !away?.count;
   view.paint(focusShown(board), unread.cards, away?.cards ?? []);
+  paintChosen(canvas, speak);
   paintLabelFilter(board, canvas);
   const landing = arrived(board?.id);
   if (landing) requestAnimationFrame(() => view.focus(landing, true));

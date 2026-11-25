@@ -51,6 +51,17 @@ export function atCommand<T>(index: number, step: () => T): T {
 
 type Listener = (event: Recorded) => void;
 
+/**
+ * The events of a command in a batch sent as one gesture (S333): the first is
+ * joined to the command before it when both are on one board, so one undo
+ * takes the batch back, board by board.
+ */
+function asGesture(ctx: Context, before: Recorded | undefined, events: SidecoEvent[]): SidecoEvent[] {
+  const [first, ...rest] = events;
+  if (!ctx.together || !first || !before || !("board" in before) || !("board" in first)) return events;
+  return before.board === first.board ? [{ ...first, joined: true } as SidecoEvent, ...rest] : events;
+}
+
 export class Hub {
   /** This run of the companion. A page that meets another run starts over from the journal. */
   readonly run: string = crypto.randomUUID();
@@ -88,7 +99,7 @@ export class Hub {
       }
       aliases = bindAlias(aliases, command, decision.minted);
       minted.push(decision.minted);
-      for (const event of decision.events) {
+      for (const event of asGesture(ctx, staged.at(-1), decision.events)) {
         const recorded = this.stamp(event, ctx, ts, this.workspace.seq + staged.length + 1);
         staged.push(recorded);
         if (!single) apply(draft, recorded);

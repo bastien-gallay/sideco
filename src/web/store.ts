@@ -384,10 +384,16 @@ export function settled(): Promise<void> {
  * the stream. Undefined when nothing was saved: refused, out of reach, or not
  * answered in time — the error says which.
  */
-export async function send(...commands: Command[]): Promise<(string | null)[] | undefined> {
+export const send = (...commands: Command[]): Promise<(string | null)[] | undefined> => post(commands);
+
+/** Sends the commands as one gesture: one Undo takes them back together (S333). */
+export const sendTogether = (commands: Command[]): Promise<(string | null)[] | undefined> =>
+  post(commands, true);
+
+async function post(commands: Command[], together = false): Promise<(string | null)[] | undefined> {
   if (!isLive()) return undefined;
   inFlight++;
-  const posted = await postCommands(JSON.stringify({ actor: "human", commands }), {
+  const posted = await postCommands(JSON.stringify({ actor: "human", commands, together }), {
     fetch: (input, init) => fetch(input, init),
     timeoutMs: SEND_TIMEOUT_MS,
     slowMs: SLOW_MS,
