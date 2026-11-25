@@ -42,6 +42,10 @@ describe("parseCommand", () => {
 
   test("refuses an unknown kind by name", () => {
     expect(() => parseCommand({ kind: "explode" })).toThrow('unknown command kind: "explode"');
+    // Which end of a link moves is never guessed (S350).
+    expect(() =>
+      parseCommand({ kind: "relink", board: "b1", src: "A1", dst: "B1", end: "source", to: "C1" }),
+    ).toThrow("`end` must be one of: src, dst");
   });
 
   test.each([
@@ -113,6 +117,7 @@ describe("names in a batch", () => {
       { kind: "unlink", board: b, src: "@paid", dst: "@paid" },
       { kind: "reverse", board: b, src: "@paid", dst: "@paid" },
       { kind: "relink", board: b, src: "@paid", dst: "E1", end: "src", to: "@paid" },
+      { kind: "relink", board: b, src: "E1", dst: "E2", end: "dst", to: "E3" },
       { kind: "focus", board: b, ids: ["E1", "@paid"] },
       { kind: "note", board: b, text: "x", target: "@paid" },
       { kind: "reply", board: b, to: "@paid", text: "x" },

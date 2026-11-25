@@ -2809,7 +2809,7 @@ describe("the spotlight on links (S325)", () => {
     // The arrow goes to another card: the link keeps its start and its name.
     await pullEnd(stock, ship, 1, await inside(warn));
     expect(await card(warn).evaluate((g) => g.classList.contains("is-link-target"))).toBe(true);
-    await shot("66-link-end-pulled");
+    await shot("67-link-end-pulled");
     await page.mouse.up();
     await conn(stock, warn).waitFor();
     expect(await conn(stock, ship).count()).toBe(0);
@@ -2828,13 +2828,35 @@ describe("the spotlight on links (S325)", () => {
     expect(await conn(stock, ship).count()).toBe(0);
     expect(await conn(warn, ship).locator("text.conn-label").textContent()).toBe("oui");
 
-    // Released on the card at its other end, or where no card is: the link stays, still picked.
-    await pullEnd(warn, ship, 1, await inside(warn));
+    // One Undo puts the start back too.
+    await page.getByRole("button", { name: "Undo" }).click();
+    await conn(stock, ship).waitFor();
+    expect(await conn(warn, ship).count()).toBe(0);
+
+    // Released on the card at its other end: the link stays, still picked.
+    await pullEnd(stock, ship, 1, await inside(stock));
+    expect(await card(stock).evaluate((g) => g.classList.contains("is-link-target"))).toBe(false);
+    await page.mouse.up();
+    await page.waitForTimeout(150);
+    expect(await conn(stock, ship).count()).toBe(1);
+    expect(await ends.count()).toBe(2);
+    await page.keyboard.press("Escape");
+    // Released where no card is: the same.
+    const far = await inside(warn);
+    await pullEnd(stock, ship, 1, { x: far.x, y: far.y + 160 });
+    await page.mouse.up();
+    await page.waitForTimeout(150);
+    expect(await conn(stock, ship).count()).toBe(1);
+    expect(await ends.count()).toBe(2);
+    await page.keyboard.press("Escape");
+    // Where a link already is, the end does not go: the card aimed at is not outlined.
+    await agent(`link ${stock} ${warn} --board bouts`);
+    await conn(stock, warn).waitFor();
+    await pullEnd(stock, ship, 1, await inside(warn));
     expect(await card(warn).evaluate((g) => g.classList.contains("is-link-target"))).toBe(false);
     await page.mouse.up();
     await page.waitForTimeout(150);
-    expect(await conn(warn, ship).count()).toBe(1);
-    expect(await ends.count()).toBe(2);
+    expect(await conn(stock, ship).count()).toBe(1);
     await page.keyboard.press("Escape");
 
     await agent("board rm bouts");

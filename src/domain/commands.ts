@@ -294,7 +294,7 @@ export function parseCommand(input: unknown): Command {
         board: boardId(f),
         src: idOrName(f, "src"),
         dst: idOrName(f, "dst"),
-        end: f.end === "src" ? "src" : "dst",
+        end: oneOf(f, "end", ["src", "dst"] as const),
         to: idOrName(f, "to"),
       };
     case "focus":

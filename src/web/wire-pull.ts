@@ -48,11 +48,16 @@ interface Wire {
   at?: Point;
   g: SVGGElement;
   target?: string | undefined;
-  /** Where the pointer is on screen: the board scrolling under it moves the end of the wire. */
+  /** Where the dot was pressed, on screen. */
+  pressed: { clientX: number; clientY: number };
+  /** Where the pointer is on screen, once it has pulled: the board scrolling under it moves the end of the wire. */
   pointer?: { clientX: number; clientY: number };
   /** The pointer has been clear of the edges: a dot that sits near one does not scroll the board at once. */
   armed?: boolean;
 }
+
+/** How far the pointer goes from where it pressed before the dot is pulled, in pixels of the screen. */
+const SLACK = 4;
 
 /** How long the wire released in the void takes to go back to where it holds. */
 const FADE_MS = 220;
@@ -71,7 +76,7 @@ class Pull {
     name: string,
     private readonly hooks: PullHooks,
   ) {
-    // A screen reader links by L, or from the Links section of the Detail tab.
+    // Not for a screen reader: who mounts the dots says what does the same without the pointer.
     this.layer = root.appendChild(svg("g", { class: name, "aria-hidden": "true" }));
   }
 
@@ -103,7 +108,7 @@ class Pull {
     this.layer.setPointerCapture(event.pointerId);
     const g = this.layer.appendChild(svg("g", { class: "link-wire" }));
     g.append(svg("path"), svg("path", { class: "link-wire-head" }));
-    this.wire = { grip, g };
+    this.wire = { grip, g, pressed: { clientX: event.clientX, clientY: event.clientY } };
     this.root.classList.add("is-wiring");
   }
 
@@ -111,6 +116,9 @@ class Pull {
     const wire = this.wire;
     if (!wire) return;
     const pulling = wire.pointer !== undefined;
+    // A hand that trembles on the dot has not pulled it: the click it began stays a click.
+    const far = Math.hypot(event.clientX - wire.pressed.clientX, event.clientY - wire.pressed.clientY);
+    if (!pulling && far < SLACK) return;
     wire.pointer = { clientX: event.clientX, clientY: event.clientY };
     this.draw(wire);
     if (!pulling) requestAnimationFrame(() => this.scroll(wire));

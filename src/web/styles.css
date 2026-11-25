@@ -2567,6 +2567,11 @@ legend {
     flex: 1;
     width: auto;
   }
+
+  /* The name of the session gives way first: the field keeps its room. */
+  .pass button.primary {
+    min-width: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

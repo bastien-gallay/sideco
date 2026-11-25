@@ -504,9 +504,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     toScene,
     linked: (src, dst) => board?.edges.some((e) => e.src === src && e.dst === dst) ?? false,
     moved: async (link, end, to) => {
+      // Saved, the link it was is no more: its bar and its ends are put away as the board is painted.
       if (!board) return false;
-      // The link it was is no more: its bar and its ends are put away.
-      pickedLink = undefined;
       return saved(send({ kind: "relink", board: board.id, src: link.src, dst: link.dst, end, to }));
     },
     say: hooks.announce,
