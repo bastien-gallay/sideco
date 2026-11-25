@@ -11,6 +11,7 @@ import { formerly, WORDS } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
 import { readerOf, shownSession, TURNS_SHOWN } from "../domain/sessions.ts";
 import { type Board, findBoard } from "../domain/workspace.ts";
+import { arrived, keepChosen } from "./address.ts";
 import { type Status, shownStatus } from "./agent-status.ts";
 import { mountBoard } from "./board-view.ts";
 import {
@@ -39,6 +40,7 @@ import { languagePicker, locale, t } from "./locale.ts";
 import { markdownNodes } from "./markdown.ts";
 import { messageField, wordsField } from "./message-field.ts";
 import { mountNotices, type Offer } from "./notices.ts";
+import { mountPageKeys } from "./page-keys.ts";
 import { type PaletteModel, paletteContent } from "./palette.ts";
 import { meetUpdates } from "./reload.ts";
 import { paintSession, sessionPanel } from "./session-panel.ts";
@@ -58,13 +60,10 @@ import {
   isLive,
   journal,
   journalFor,
-  linkedCard,
-  markFresh,
   onRenumbered,
   openBoard,
   send,
   settled,
-  showChosen,
   shown,
   start,
   state,
@@ -406,8 +405,6 @@ const view = mountBoard(canvas, {
   },
 });
 
-/** A card found on another board: the keyboard lands on it once that board is painted. */
-let arriving: { board: string; id: string } | undefined;
 /** The search over the cards of every board: `/` or Ctrl+K opens it. */
 const find = mountFind({ view, open: openBoard });
 
@@ -1411,70 +1408,28 @@ async function redo(): Promise<void> {
   if (board && (await send({ kind: "redo", board }))) speak(t.redone);
 }
 
-/** A text being typed has its own undo, and a question asked in a dialog comes first. */
-function typing(target: EventTarget | null): boolean {
-  if (document.querySelector("dialog[open]")) return true;
-  return (
-    target instanceof HTMLElement &&
-    (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
-  );
-}
-
-// `/` finds a card on any board, `?` lists the keys: wherever the keyboard is, except in a text being typed.
-window.addEventListener("keydown", (event) => {
-  if (event.ctrlKey || event.metaKey || event.altKey || typing(event.target)) return;
-  if (event.key === "/" && shown().boards.length > 0) find.open();
-  else if (event.key === "?") openKeys(currentBoard(), axesNamed(currentBoard()));
-  // < and > a key away on a French keyboard, [ and ] on an American one (T201).
-  else if (event.key === "<" || event.key === "[") toggleFold("left");
-  else if (event.key === ">" || event.key === "]") toggleFold("right");
-  else return;
-  event.preventDefault();
-});
-
-window.addEventListener("keydown", (event) => {
-  if (!(event.ctrlKey || event.metaKey) || event.altKey || typing(event.target)) return;
-  const key = event.key.toLowerCase();
-  if (key === "z") void (event.shiftKey ? redo() : undo());
-  else if (key === "k" && !event.shiftKey && shown().boards.length > 0) find.open();
-  else if (key === "y" && !event.shiftKey) void redo();
-  // Sending is one chord from anywhere but a text being typed: the word in the field goes with it.
-  else if (key === "enter" && !event.shiftKey && !passButton.disabled)
+// The keys of the whole page: what each one does here, which key asks for it in page-keys.ts.
+mountPageKeys({
+  find: () => {
+    if (shown().boards.length === 0) return false;
+    find.open();
+    return true;
+  },
+  keys: () => openKeys(currentBoard(), axesNamed(currentBoard())),
+  fold: toggleFold,
+  undo: () => void undo(),
+  redo: () => void redo(),
+  send: () => {
+    if (passButton.disabled) return false;
     passButton.form?.requestSubmit(passButton);
-  else return;
-  event.preventDefault();
+    return true;
+  },
 });
 
 /** Meets each build the companion serves: a reload when no words would be lost, else an offer. */
 const meet = meetUpdates(say, () => [...drafts.values()].some((text) => text !== ""));
 
 // ── The paint ────────────────────────────────────────────────────────────────
-
-/**
- * The card chosen lives in the address, `#/b/BOARD/ID`: a reload, a restart of the companion or a
- * link pasted elsewhere comes back on it, centred and lit up, the keyboard on it.
- */
-let toRestore = linkedCard();
-window.addEventListener("hashchange", () => {
-  toRestore = linkedCard();
-});
-
-/** Once the journal is replayed (again, after a restart): the card linked is chosen, then the address follows the choice. */
-function keepChosen(board: string | undefined): void {
-  if (!caughtUpYet()) {
-    toRestore ??= linkedCard();
-    return;
-  }
-  if (!board) return;
-  const kept = toRestore;
-  toRestore = undefined;
-  if (kept?.board === board && currentBoard()?.elements.some((e) => e.id === kept.id)) {
-    state.selected = kept.id;
-    arriving = kept;
-    markFresh(`${board}/${kept.id}`);
-  }
-  showChosen(board, state.selected);
-}
 
 function render(): void {
   keepChosen(currentBoard()?.id);
@@ -1545,11 +1500,8 @@ function render(): void {
   visitBar.hidden = !away?.count;
   view.paint(board, unread.cards, away?.cards ?? []);
   paintLabelFilter(board, canvas);
-  if (arriving && board?.id === arriving.board) {
-    const { id } = arriving;
-    arriving = undefined;
-    requestAnimationFrame(() => view.focus(id, true));
-  }
+  const landing = arrived(board?.id);
+  if (landing) requestAnimationFrame(() => view.focus(landing, true));
 
   // The card whose detail is being written stays in the panel until it is saved or left.
   if (detailEdit && !board?.elements.some((e) => e.id === detailEdit?.id)) {
