@@ -4,8 +4,7 @@
  * Everything shown is a function of the journal; every gesture sends a command.
  */
 import type { Command } from "../domain/commands.ts";
-import { EXPORT_FORMATS, EXTENSION, type ExportFormat, exportBoard } from "../domain/export/index.ts";
-import { toMermaid } from "../domain/export/mermaid.ts";
+import { EXPORT_FORMATS, type ExportFormat } from "../domain/export/index.ts";
 import { findFormat, planAxis } from "../domain/formats.ts";
 import { formerly, WORDS } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
@@ -31,6 +30,7 @@ import { labelSection, projectLabels, refocusLabelField, refocusLabels, typingLa
 import { linkSection } from "./card-links.ts";
 import { clock, h, region } from "./dom.ts";
 import { describeEvent, sessionName } from "./event-words.ts";
+import { copiedMermaid, downloadBoard } from "./export-out.ts";
 import { mountFind } from "./find-bar.ts";
 import { keysSheet, openKeys } from "./keys-sheet.ts";
 import { filterBar, mountLabelFilter, paintLabelFilter } from "./label-filter.ts";
@@ -97,13 +97,6 @@ import {
 } from "./view.ts";
 
 const TOOLS_SHOWN = 8;
-const MIME: Record<ExportFormat, string> = {
-  md: "text/markdown",
-  html: "text/html",
-  svg: "image/svg+xml",
-  mermaid: "text/plain",
-  json: "application/json",
-};
 
 const app = document.getElementById("app");
 if (!app) throw new Error("the page has no #app");
@@ -1361,25 +1354,14 @@ function selectFromNotes(id: string | undefined): void {
 function exportAs(format: ExportFormat): void {
   const board = currentBoard();
   if (!board) return;
-  const text = exportBoard(board, format, { exportedAt: new Date().toISOString(), locale });
-  const url = URL.createObjectURL(new Blob([text], { type: MIME[format] }));
-  const link = h("a", { href: url, download: `${board.id}.${EXTENSION[format]}` });
-  document.body.append(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadBoard(board, format);
   boardMenu.open = false;
 }
 
 async function copyMermaid(): Promise<void> {
   const board = currentBoard();
   if (!board) return;
-  try {
-    await navigator.clipboard.writeText(toMermaid(board, locale));
-    say(t.mermaidCopied);
-  } catch {
-    say(t.clipboardRefused);
-  }
+  say((await copiedMermaid(board)) ? t.mermaidCopied : t.clipboardRefused);
   boardMenu.open = false;
 }
 
