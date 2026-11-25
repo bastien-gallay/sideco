@@ -22,9 +22,23 @@ export function messageField(placeholder: string, label: string): HTMLTextAreaEl
 }
 
 /**
+ * Escape leaves a field of the panel for the board, by the keyboard alone (S331):
+ * the card chosen, else the one Tab stops at. The words begun stay in the field,
+ * and the card stays chosen: the key goes no further. With no card to go to, the key is left alone.
+ */
+function leaveForBoard(event: KeyboardEvent): void {
+  const card = document.querySelector<SVGGElement>('.sideco-board g.card[tabindex="0"]');
+  if (!card) return;
+  event.preventDefault();
+  event.stopPropagation();
+  card.focus({ preventScroll: true });
+}
+
+/**
  * A field for a few words that may run over several lines: Enter sends them,
  * Shift+Enter breaks the line, and ⌘↵ or Ctrl+Enter sends them then calls
  * `chord`: the chord that hands over anywhere else hands over from here too.
+ * Escape leaves it for the board.
  */
 export function wordsField(
   props: Props,
@@ -41,6 +55,7 @@ export function wordsField(
   });
   field.value = words;
   field.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") leaveForBoard(event);
     if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
     event.preventDefault();
     field.form?.requestSubmit();

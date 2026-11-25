@@ -1210,6 +1210,11 @@ describe("what Claude has not read yet", () => {
     // Already there when the board was shown, the note is read in its tab.
     await page.locator("#tab-notes").click();
     const reply = page.locator(`.notes .thread[data-thread="${chase}"] .thread-reply [name^=reply-]`);
+    // Escape leaves the field for the board, by the keyboard alone; the words begun stay for later (S331).
+    await reply.fill("La comp");
+    await reply.press("Escape");
+    expect(await page.evaluate(() => document.activeElement?.matches("g.card") ?? false)).toBe(true);
+    expect(await reply.inputValue()).toBe("La comp");
     await reply.fill("La compta");
     await reply.press("Enter");
     await threadMark(chase).waitFor();
@@ -4114,11 +4119,16 @@ describe("labels on a card, from the page", () => {
     await until("the keyboard in the field that adds a label", onField);
     expect(await card(sort).evaluate((g) => g.classList.contains("is-selected"))).toBe(true);
     expect(await page.getByRole("tab", { name: "Detail" }).getAttribute("aria-selected")).toBe("true");
-    // Escape in the field, empty, gives the keyboard back to the card.
+    // Escape empties the field and stays in it; empty, it gives the keyboard back to the card, still chosen.
+    await page.keyboard.type("brouillon");
+    await page.keyboard.press("Escape");
+    expect(await page.locator(".label-field").inputValue()).toBe("");
+    expect(await onField()).toBe(true);
     await page.keyboard.press("Escape");
     await until("the keyboard back on the card", async () =>
       page.evaluate((id) => document.activeElement?.getAttribute("data-id") === id, sort),
     );
+    expect(await card(sort).evaluate((g) => g.classList.contains("is-selected"))).toBe(true);
     await card(sort).click();
     await page.getByRole("tab", { name: "Detail" }).click();
     const field = page.locator(".label-field");
