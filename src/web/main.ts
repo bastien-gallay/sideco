@@ -4,7 +4,6 @@
  * Everything shown is a function of the journal; every gesture sends a command.
  */
 import type { Command } from "../domain/commands.ts";
-import { EXPORT_FORMATS, type ExportFormat } from "../domain/export/index.ts";
 import { findFormat, planAxis } from "../domain/formats.ts";
 import { formerly, WORDS } from "../domain/i18n.ts";
 import { SVG_STYLE } from "../domain/render/svg.ts";
@@ -12,15 +11,14 @@ import { readerOf, shownSession, TURNS_SHOWN } from "../domain/sessions.ts";
 import { type Board, findBoard } from "../domain/workspace.ts";
 import { arrived, keepChosen } from "./address.ts";
 import { type Status, shownStatus } from "./agent-status.ts";
+import { boardMenu, mountBoardMenu } from "./board-menu.ts";
 import { mountBoard } from "./board-view.ts";
 import {
-  askToRemove,
   boardPicker,
   boardTiles,
   brand,
   home,
   newBoardSheet,
-  openNewBoard,
   paintBoardPicker,
   paintHome,
   removeSheet,
@@ -39,7 +37,6 @@ import { linkSection } from "./card-links.ts";
 import { chosenBar, paintChosen } from "./chosen-more.ts";
 import { clock, h, region } from "./dom.ts";
 import { describeEvent, sessionName } from "./event-words.ts";
-import { copiedMermaid, downloadBoard } from "./export-out.ts";
 import { mountFind } from "./find-bar.ts";
 import { focusBar, focusButton, focusShown, paintFocusBar, pointAtChosen } from "./focus-bar.ts";
 import { keysSheet, openKeys } from "./keys-sheet.ts";
@@ -127,7 +124,6 @@ const zoomLabel = h(
 );
 const undoGroup = h("div", { class: "undo" });
 /** What is done to the board as a whole: a new one, an export, its removal. Out of the way, one click off. */
-const boardMenu = h("details", { class: "menu board-menu" });
 const banner = h("div", { class: "banner", hidden: true });
 const palette = h("section", { class: "palette", "aria-label": t.palette });
 /** The discussions of the board, a tab of the right panel: open ones first, resolved ones folded under. */
@@ -531,21 +527,13 @@ function step(by: -1 | 1): void {
   travelTo(historyStep(historyStopsShown(), state.cursor, by));
 }
 
-// A menu open closes as a menu does: on a click elsewhere, or on Escape, which gives its button the keyboard back.
 // The card chosen is let go on the stage beside the drawing and on the bare header or footer; panels and controls work on it.
 const BARE = ".canvas, header.top, footer.bottom";
 const KEEPS =
   ".sideco-board, .card-tools, .card-editor, button, a, input, textarea, select, summary, label, [tabindex]";
 document.addEventListener("click", (event) => {
-  if (boardMenu.open && !boardMenu.contains(event.target as Node)) boardMenu.open = false;
   const target = event.target as Element;
   if (target.closest(BARE) && !target.closest(KEEPS)) view.letGo();
-});
-boardMenu.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape" || !boardMenu.open) return;
-  event.stopPropagation();
-  boardMenu.open = false;
-  boardMenu.querySelector("summary")?.focus();
 });
 
 function zoom(by: -1 | 1): void {
@@ -635,55 +623,10 @@ const paintWaits = region(waitsPill, (m: Waits) => {
   ];
 });
 
-interface BoardMenuModel {
-  board: { id: string; title: string } | undefined;
-  live: boolean;
-}
-
-const paintBoardMenu = region(boardMenu, (m: BoardMenuModel) => [
-  h("summary", { title: t.boardMenu, "aria-label": t.boardMenu }, "⋯"),
-  h(
-    "div",
-    { class: "menu-items" },
-    h(
-      "button",
-      {
-        type: "button",
-        onclick: () => {
-          boardMenu.open = false;
-          openNewBoard();
-        },
-      },
-      t.newBoardItem,
-    ),
-    h("p", { class: "menu-heading" }, t.export),
-    ...EXPORT_FORMATS.map((format) =>
-      h(
-        "button",
-        { type: "button", disabled: !m.board, onclick: () => exportAs(format) },
-        t.exportAs[format],
-      ),
-    ),
-    h("button", { type: "button", disabled: !m.board, onclick: () => void copyMermaid() }, t.copyMermaid),
-    h("p", { class: "menu-note" }, t.publishAll),
-    m.board &&
-      h(
-        "button",
-        {
-          type: "button",
-          class: "remove-board",
-          title: t.removeBoard(m.board.title),
-          disabled: !m.live,
-          onclick: () => {
-            const id = m.board?.id;
-            boardMenu.open = false;
-            if (id) askToRemove(id, (title) => say(t.boardRemoved(title), undoOffer()));
-          },
-        },
-        t.removeBoardItem,
-      ),
-  ),
-]);
+const paintBoardMenu = mountBoardMenu({
+  say: (text) => say(text),
+  removed: (title) => say(t.boardRemoved(title), undoOffer()),
+});
 
 /** A plan's axes as the board shows them, renamed or the workshop's: the keys say them by these names. */
 function axesNamed(board: Board | undefined): { x: string; y: string } | undefined {
@@ -1325,20 +1268,6 @@ function selectFromNotes(id: string | undefined): void {
   if (!id) return;
   detailFor = id;
   select(id);
-}
-
-function exportAs(format: ExportFormat): void {
-  const board = currentBoard();
-  if (!board) return;
-  downloadBoard(board, format);
-  boardMenu.open = false;
-}
-
-async function copyMermaid(): Promise<void> {
-  const board = currentBoard();
-  if (!board) return;
-  say((await copiedMermaid(board)) ? t.mermaidCopied : t.clipboardRefused);
-  boardMenu.open = false;
 }
 
 /**
