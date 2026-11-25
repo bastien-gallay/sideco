@@ -25,7 +25,7 @@ import { dropCommand, keyCommand, snapCommand, whereTo } from "./card-drop.ts";
 import { mountEditor } from "./card-editor.ts";
 import { type CardNode, drawCard, dropNodes, keepKeyboard, newCardNode, sayCard } from "./card-node.ts";
 import { readDetail } from "./card-read.ts";
-import { cardButtons, leadButton, type MoreMenu, outOfSight, standBy } from "./card-tools.ts";
+import { cardButtons, keyboardAway, leadButton, type MoreMenu, noPlace, standBy } from "./card-tools.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
 import { type Held, headingsDrop, holdInView, liftHeadings } from "./headings.ts";
@@ -64,15 +64,10 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   scroll.append(root);
   const tools = h("div", { class: "card-tools", hidden: true });
   const more: MoreMenu = { open: false };
-  /** The keyboard is in the page's panels or header: the toolbar leaves the board to them. */
-  const keyboardAway = (): boolean => {
-    const active = document.activeElement;
-    return active !== null && active !== document.body && !host.contains(active);
-  };
   // Repainted only as the keyboard leaves the board or comes back: rebuilt on every focus, a button would vanish under its click.
   let away = false;
   document.addEventListener("focusin", () => {
-    if (keyboardAway() === away) return;
+    if (keyboardAway(host) === away) return;
     away = !away;
     paintTools();
   });
@@ -432,8 +427,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       !isLive() ||
       state.linking ||
       editor.writing() ||
-      keyboardAway() ||
-      outOfSight(node.g, scroll)
+      noPlace(host, node.g, scroll)
     ) {
       tools.hidden = true;
       return;

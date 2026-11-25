@@ -151,8 +151,18 @@ export function standBy(
   tools.style.top = `${top}px`;
 }
 
+/** The keyboard is in the page's panels or header: the toolbar leaves the board to them. */
+export function keyboardAway(host: HTMLElement): boolean {
+  const active = document.activeElement;
+  return active !== null && active !== document.body && !host.contains(active);
+}
+
+/** The toolbar has no place to stand: the keyboard is away from the board, or its card is out of sight. */
+export const noPlace = (host: HTMLElement, g: SVGGElement, scroll: HTMLElement): boolean =>
+  keyboardAway(host) || outOfSight(g, scroll);
+
 /** A card scrolled out of the board's window: its toolbar would stand alone at the edge, so it goes. */
-export function outOfSight(g: SVGGElement, scroll: HTMLElement): boolean {
+function outOfSight(g: SVGGElement, scroll: HTMLElement): boolean {
   const card = g.getBoundingClientRect();
   const seen = scroll.getBoundingClientRect();
   return card.right < seen.left || card.left > seen.right || card.bottom < seen.top || card.top > seen.bottom;
