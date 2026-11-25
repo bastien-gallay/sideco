@@ -1,9 +1,11 @@
 /**
  * The board's menu, ⋯ at the top (out of main.ts, tidy-first for T289): a new
- * board, the exports, and removing the board. It closes as a menu does: on a
+ * board, the board's title and question (T289, T290), the exports, and
+ * removing the board. It closes as a menu does: on a
  * click elsewhere, or on Escape, which gives its button the keyboard back.
  */
 import { EXPORT_FORMATS, type ExportFormat } from "../domain/export/index.ts";
+import { boardSheetWords, openBoardSheet } from "./board-sheet.ts";
 import { askToRemove, openNewBoard } from "./boards.ts";
 import { h, region } from "./dom.ts";
 import { copiedMermaid, downloadBoard } from "./export-out.ts";
@@ -56,6 +58,16 @@ export function mountBoardMenu(acts: BoardMenuActs): (m: BoardMenuModel) => void
       "div",
       { class: "menu-items" },
       h("button", { type: "button", onclick: picked(() => openNewBoard()) }, t.newBoardItem),
+      m.board &&
+        h(
+          "button",
+          {
+            type: "button",
+            disabled: !m.live,
+            onclick: picked(() => m.board && openBoardSheet("title", m.board.id)),
+          },
+          boardSheetWords.item,
+        ),
       h("p", { class: "menu-heading" }, t.export),
       ...EXPORT_FORMATS.map((format) =>
         h(

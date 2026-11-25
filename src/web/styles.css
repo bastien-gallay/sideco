@@ -2199,6 +2199,26 @@ dialog.sheet h2:focus {
   outline: none;
 }
 
+/* The question of a board, in the sheet that changes it (T290): a field like the title, two lines tall. */
+.board-question {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 5px 8px;
+  resize: vertical;
+  font-weight: 400;
+}
+
+dialog.board-sheet .hint {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* The question in the palette is changed by a double-click: it says so to the pointer. */
+.palette .purpose[title] {
+  cursor: text;
+}
+
 .field {
   display: grid;
   gap: 4px;

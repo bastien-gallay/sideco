@@ -1275,6 +1275,31 @@ describe("other workshops", () => {
     await settled(made);
     await shot("47-retro-action");
   });
+
+  test("a board's title and question are changed from the page (T289, T290)", async () => {
+    await page.locator(".board-menu summary").click();
+    await page.locator(".board-menu .menu-items button", { hasText: "Title and question…" }).click();
+    const sheet = page.locator("dialog.board-sheet");
+    await sheet.waitFor({ state: "visible" });
+    expect(await sheet.locator('input[name="title"]').inputValue()).toBe("Rétro sprint 12");
+    await sheet.locator('input[name="title"]').fill("Rétro sprint 13");
+    await sheet.locator('textarea[name="purpose"]').fill("Qu'a-t-on appris du sprint ?");
+    await sheet.locator("button[type=submit]").click();
+    await page.locator(".palette .purpose", { hasText: "Qu'a-t-on appris du sprint ?" }).waitFor();
+    expect((await workspace()).boards.find((b) => b.id === "retro-sprint-12")).toMatchObject({
+      title: "Rétro sprint 13",
+      purpose: "Qu'a-t-on appris du sprint ?",
+    });
+
+    // A double-click on the question opens the same sheet, at the question; emptied, the workshop's comes back.
+    await page.locator(".palette .purpose").dblclick();
+    await sheet.waitFor({ state: "visible" });
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("name"))).toBe("purpose");
+    await sheet.locator('textarea[name="purpose"]').fill("");
+    await sheet.locator("button[type=submit]").click();
+    await sheet.waitFor({ state: "hidden" });
+    expect((await workspace()).boards.find((b) => b.id === "retro-sprint-12")?.purpose).toBeUndefined();
+  });
 });
 
 describe("keeping the model", () => {

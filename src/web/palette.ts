@@ -4,6 +4,7 @@
  * main.ts (tidy-first for S344) to make room.
  */
 import { boardPurpose, findFormat } from "../domain/formats.ts";
+import { boardSheetWords, openBoardSheet } from "./board-sheet.ts";
 import { kindSwatch } from "./boards.ts";
 import { type Child, h } from "./dom.ts";
 import { locale, t } from "./locale.ts";
@@ -20,7 +21,7 @@ export interface PaletteModel {
   snap?: boolean;
 }
 
-/** What the palette does when used: add a card of a kind, open the keys. */
+/** What the palette does when used: add a card of a kind, open the keys; its question, double-clicked, opens the sheet that changes it. */
 export interface PaletteActs {
   add(type: string): void;
   keys(): void;
@@ -35,7 +36,15 @@ export function paletteContent(m: PaletteModel, acts: PaletteActs): Child[] {
   return [
     // A plan whose axes the board renamed is called by them: a SWOT is no longer an Impact / Effort.
     h("h2", {}, m.axes ? `${m.axes.y} / ${m.axes.x}` : format.name[locale]),
-    h("p", { class: "purpose" }, boardPurpose(format, { purpose: m.purpose }, locale)),
+    h(
+      "p",
+      {
+        class: "purpose",
+        title: m.live ? boardSheetWords.tip : undefined,
+        ondblclick: m.live ? () => openBoardSheet("purpose") : undefined,
+      },
+      boardPurpose(format, { purpose: m.purpose }, locale),
+    ),
     h(
       "ul",
       { class: "types" },
