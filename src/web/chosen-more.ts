@@ -27,10 +27,16 @@ const WORDS: Record<
     added: (id: string, cards: number) => string;
     out: (id: string, cards: number) => string;
     did: (what: Act, cards: number) => string;
+    label: (cards: number) => string;
+    labelHint: string;
+    labelled: (labels: string, cards: number) => string;
   }
 > = {
   en: {
     chosen: (cards) => `${cards} cards chosen`,
+    label: (cards) => `Add a label to the ${cards} cards chosen`,
+    labelHint: "Label them: type:bug, @name… (Enter)",
+    labelled: (labels, cards) => `${labels} added to ${cards} cards: Undo takes it back at once`,
     done: "Mark done (D)",
     undone: "Mark not done (D)",
     remove: "Remove (Delete)",
@@ -42,6 +48,9 @@ const WORDS: Record<
   },
   fr: {
     chosen: (cards) => `${cards} cartes choisies`,
+    label: (cards) => `Ajouter un label aux ${cards} cartes choisies`,
+    labelHint: "Les labéliser : type:bug, @nom… (Entrée)",
+    labelled: (labels, cards) => `${labels} ajouté à ${cards} cartes : Undo le retire d'un coup`,
     done: "Marquer faites (D)",
     undone: "Marquer non faites (D)",
     remove: "Supprimer (Suppr)",
@@ -156,10 +165,31 @@ document.addEventListener(
   true,
 );
 
+/** What is written here is a label for every card chosen (S333): several by commas, as in the Detail tab. */
+const labelField = h("input", { class: "chosen-label", placeholder: w.labelHint, maxlength: 200 });
+labelField.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.isComposing) return;
+  event.preventDefault();
+  const board = currentBoard();
+  const ids = chosen(board);
+  const labels = labelField.value
+    .split(",")
+    .map((label) => label.trim())
+    .filter(Boolean);
+  if (!board || ids.length === 0 || labels.length === 0 || !isLive()) return;
+  const commands = ids.map((id): Command => ({ kind: "label", board: board.id, id, labels }));
+  void sendTogether(commands).then((answer) => {
+    if (answer === undefined) return;
+    labelField.value = "";
+    speak(w.labelled(labels.join(", "), ids.length));
+  });
+});
+
 /** A button of the bar was pressed and the bar is to be drawn again: the keyboard follows. */
 let moved = false;
 
 const paintBar = region(chosenBar, (m: { ids: string[]; allDone: boolean; live: boolean }) => {
+  labelField.setAttribute("aria-label", w.label(m.ids.length));
   const button = (words: string, onclick: () => void): HTMLElement =>
     h("button", { type: "button", class: "quiet", onclick }, words);
   const leave = (): void => {
@@ -178,6 +208,7 @@ const paintBar = region(chosenBar, (m: { ids: string[]; allDone: boolean; live: 
     h(
       "span",
       { class: "focus-acts" },
+      m.live && labelField,
       m.live && button(m.allDone ? w.undone : w.done, all("done")),
       m.live && button(w.remove, all("remove")),
       button(w.leave, leave),

@@ -1307,6 +1307,11 @@ kbd {
   gap: 6px;
 }
 
+.chosen-label {
+  width: 22ch;
+  min-width: 0;
+}
+
 .focus-acts {
   display: flex;
   flex-wrap: wrap;

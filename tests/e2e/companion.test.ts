@@ -408,6 +408,20 @@ describe("the agent writes, the page follows", () => {
     await card(b).click({ modifiers: ["Shift"] });
     await until("two again", async () => ((await bar.textContent()) ?? "").includes("2 cards chosen"));
     await shot("73-several-chosen");
+    // A label written in the bar is given to them all, several by commas; one Undo takes it off both.
+    const worn = async (id: string) => ((await elements()).find((e) => e.id === id)?.labels ?? []).join();
+    const toAll = bar.getByRole("textbox", { name: "Add a label to the 2 cards chosen" });
+    await toAll.fill("type:lot, ui");
+    await toAll.press("Enter");
+    await until(
+      "both labelled",
+      async () => (await worn(a)) === "type:lot,ui" && (await worn(b)) === "type:lot,ui",
+    );
+    await until("the field emptied", async () => (await toAll.inputValue()) === "");
+    expect(await bar.isVisible()).toBe(true);
+    await page.locator("button", { hasText: "Undo" }).first().click();
+    await until("both unlabelled by one undo", async () => (await worn(a)) === "" && (await worn(b)) === "");
+    await card(a).focus();
     // D marks them all done: on a kanban they go to the last column; one Undo brings both back.
     await page.keyboard.press("d");
     await until("both done", async () => (await lanes()) === `${a}:done,${b}:done,${c}:todo`);
