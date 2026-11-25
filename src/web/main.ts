@@ -40,7 +40,7 @@ import { clock, h, region } from "./dom.ts";
 import { describeEvent, sessionName } from "./event-words.ts";
 import { copiedMermaid, downloadBoard } from "./export-out.ts";
 import { mountFind } from "./find-bar.ts";
-import { focusBar, paintFocusBar } from "./focus-bar.ts";
+import { focusBar, focusButton, focusShown, paintFocusBar, pointAtChosen } from "./focus-bar.ts";
 import { keysSheet, openKeys } from "./keys-sheet.ts";
 import { filterBar, mountLabelFilter, paintLabelFilter } from "./label-filter.ts";
 import { mountLinkHint } from "./link-hint.ts";
@@ -973,6 +973,8 @@ interface CardPanelModel extends LabelsModel {
   saving: boolean;
   /** The card's open discussions: said under its detail, a click away in the Notes tab. */
   notes: number;
+  /** Pointed at, by Claude or by the reader (S334). */
+  inFocus: boolean;
   /** Its links, each way, for the keyboard (S310). */
   links: LinkRow[];
 }
@@ -1022,6 +1024,7 @@ const paintCardPanel = region(cardPanel, (m: CardPanelModel) => [
       t.cardNotes(m.notes),
     ),
   labelSection(m, speak),
+  m.live && focusButton(m.id, m.inFocus),
   ...(m.editing
     ? [
         detailField,
@@ -1393,6 +1396,7 @@ mountPageKeys({
     return true;
   },
   keys: () => openKeys(currentBoard(), axesNamed(currentBoard())),
+  focus: pointAtChosen,
   fold: toggleFold,
   undo: () => void undo(),
   redo: () => void redo(),
@@ -1460,7 +1464,7 @@ function render(): void {
   revealThreads(state.selected);
   paintNotesTab(board?.id, board ? discussions(board) : [], live);
 
-  paintFocusBar(board, live);
+  paintFocusBar(board, live, speak);
 
   canvas.hidden = !board;
   home.hidden = Boolean(board);
@@ -1474,7 +1478,7 @@ function render(): void {
   const away = live && board && visit?.board === board.id ? visit : undefined;
   paintVisit({ count: away?.count ?? 0, cards: away?.cards.length ?? 0 });
   visitBar.hidden = !away?.count;
-  view.paint(board, unread.cards, away?.cards ?? []);
+  view.paint(focusShown(board), unread.cards, away?.cards ?? []);
   paintLabelFilter(board, canvas);
   const landing = arrived(board?.id);
   if (landing) requestAnimationFrame(() => view.focus(landing, true));
@@ -1524,6 +1528,7 @@ function render(): void {
       labels: chosen.labels ?? [],
       known: projectLabels(),
       colours: shown().colours ?? {},
+      inFocus: board.focus?.ids.includes(chosen.id) ?? false,
       links: linkRows(board, chosen.id),
     });
     if (typing && document.activeElement !== detailField) detailField.focus();

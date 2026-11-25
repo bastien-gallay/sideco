@@ -1325,6 +1325,16 @@ kbd {
   gap: 6px;
 }
 
+.focus-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.focus-toggle {
+  justify-self: start;
+}
+
 .focus-bar {
   display: flex;
   align-items: center;

@@ -9,6 +9,8 @@ export interface PageKeys {
   find(): boolean;
   /** `?`: the sheet of the keys and gestures. */
   keys(): void;
+  /** `F`: the card chosen is pointed at, or no longer (S334). False with no card chosen: the key is the browser's. */
+  focus(): boolean;
   /** `<` and `>`, or `[` and `]`: a side panel folds, or comes back. */
   fold(side: "left" | "right"): void;
   undo(): void;
@@ -30,6 +32,7 @@ function typing(target: EventTarget | null): boolean {
 function plain(key: string, on: PageKeys): (() => unknown) | undefined {
   if (key === "/") return on.find;
   if (key === "?") return on.keys;
+  if (key === "f" || key === "F") return on.focus;
   // < and > a key away on a French keyboard, [ and ] on an American one (T201).
   if (key === "<" || key === "[") return () => on.fold("left");
   if (key === ">" || key === "]") return () => on.fold("right");

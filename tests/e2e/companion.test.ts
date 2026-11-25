@@ -215,9 +215,80 @@ describe("the agent writes, the page follows", () => {
     expect(await card("R1").getAttribute("class")).toContain("is-focus");
     expect(await card("E1").getAttribute("class")).toContain("is-dim");
     await shot("02-agent-wrote");
-    await page.locator(".focus-bar button").click();
+    await page.locator(".focus-bar button", { hasText: "Clear the focus" }).click();
     await page.locator(".focus-bar").waitFor({ state: "hidden" });
     await agent("pass", "commande");
+  });
+
+  test("the reader points too, by F; copies the link; and puts Claude's focus aside without losing it (S334, S335)", async () => {
+    const [a, b, c] = await agent(
+      'board new "Viser" --format kanban --id viser\nadd task "Un" --lane todo\nadd task "Deux" --lane todo\nadd task "Trois" --lane todo',
+    );
+    await page.locator(".board-picker select").selectOption("viser");
+    const bar = page.locator(".focus-bar");
+    const focus = async () => (await workspace()).boards.find((x) => x.id === "viser")?.focus ?? null;
+    const has = (id: string, name: string) => card(id).evaluate((g, cls) => g.classList.contains(cls), name);
+    // F on a card with no focus yet points at it.
+    await card(c).click();
+    await page.keyboard.press("f");
+    await until("the card in focus", async () => (await focus())?.ids.join() === c);
+    await bar.waitFor({ state: "visible" });
+    await until("the bar says the card", async () =>
+      ((await bar.textContent()) ?? "").includes(`Focus: ${c}`),
+    );
+    await bar.locator("button", { hasText: "Clear the focus" }).click();
+    await bar.waitFor({ state: "hidden" });
+    // Claude points, with its reason; F adds the card chosen to what is pointed at, and the reason stays.
+    await agent(`focus ${a} --why "À trancher" --board viser`);
+    await bar.waitFor({ state: "visible" });
+    await card(b).click();
+    await page.keyboard.press("f");
+    await until("two cards in focus", async () => (await focus())?.ids.join() === `${a},${b}`);
+    expect((await focus())?.reason).toBe("À trancher");
+    await until("the bar says both", async () =>
+      ((await bar.textContent()) ?? "").includes(`Focus: ${a}, ${b} — À trancher`),
+    );
+    await until(
+      "the card added is lit, not dimmed",
+      async () => (await has(b, "is-focus")) && !(await has(b, "is-dim")),
+    );
+    await shot("72-focus-bar");
+    // The Detail tab says it with a button, for who has no keyboard at hand: pressed, the card leaves the focus.
+    await page.getByRole("tab", { name: "Detail" }).click();
+    const detail = page.locator(".card-panel");
+    await detail.getByRole("button", { name: "Take out of the focus (F)" }).click();
+    await until("one card in focus again", async () => (await focus())?.ids.join() === a);
+    await detail.getByRole("button", { name: "Put in the focus (F)" }).waitFor();
+    // The link of the focus: the card pointed at, when it is one.
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: async (text: string) => void document.body.setAttribute("data-copied", text) },
+      });
+    });
+    await bar.locator("button", { hasText: "Copy the link" }).click();
+    await until("the link copied", async () =>
+      ((await page.locator("body").getAttribute("data-copied")) ?? "").endsWith(`#/b/viser/${a}`),
+    );
+    // Put aside, the focus leaves the board of this reader and stays Claude's: nothing is dimmed, a word recalls it.
+    expect(await has(c, "is-dim")).toBe(true);
+    await bar.locator("button", { hasText: "Put aside" }).click();
+    await until("nothing dimmed", async () => !(await has(c, "is-dim")) && !(await has(a, "is-focus")));
+    expect(await bar.textContent()).toContain("Focus put aside: 1 card");
+    expect((await focus())?.ids).toEqual([a]);
+    await shot("71-focus-aside");
+    await bar.locator("button", { hasText: "Show it" }).click();
+    await until("the focus back", async () => (await has(c, "is-dim")) && (await has(a, "is-focus")));
+    // A focus Claude sets anew is shown, whatever was put aside.
+    await bar.locator("button", { hasText: "Put aside" }).click();
+    await agent(`focus ${b} --why "Autre" --board viser`);
+    await until("the new focus shown", async () => has(b, "is-focus"));
+    await agent("focus --board viser");
+    await bar.waitFor({ state: "hidden" });
+    // Back where the tests that follow are.
+    await page.locator(".board-picker select").selectOption("commande");
+    await card("R1").waitFor();
+    await agent("board rm viser");
   });
 });
 
