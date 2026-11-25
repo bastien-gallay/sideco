@@ -26,3 +26,13 @@ export function tabIcon(id: Tab): HTMLSpanElement {
 export function tabName(id: Tab): string {
   return id === "notices" ? { en: "Notifications", fr: "Notifications" }[locale] : t.tabs[id];
 }
+
+/**
+ * Each tab is its icon, and the chosen one says its name beside it (S330).
+ * Measured: where even that name does not fit, the icons stand alone, as in the folded rail.
+ */
+export function fitTabsIn(tabList: HTMLElement, folded: boolean): void {
+  tabList.classList.remove("tabs-icons");
+  if (folded) return;
+  if (tabList.scrollWidth > tabList.clientWidth) tabList.classList.add("tabs-icons");
+}

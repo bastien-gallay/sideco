@@ -78,7 +78,7 @@ import {
   state,
   travelTo,
 } from "./store.ts";
-import { TABS, type Tab, tabIcon, tabName } from "./tabs.ts";
+import { fitTabsIn, TABS, type Tab, tabIcon, tabName } from "./tabs.ts";
 import { askBeforeUndo, lastGesture } from "./undo-ask.ts";
 import {
   agentStatus,
@@ -236,15 +236,7 @@ function paintTabs(): void {
   notices.paint();
 }
 
-/**
- * Each tab is its icon, and the chosen one says its name beside it (S330).
- * Measured: where even that name does not fit, the icons stand alone, as in the rail.
- */
-function fitTabs(): void {
-  tabList.classList.remove("tabs-icons");
-  if (isFolded("right")) return;
-  if (tabList.scrollWidth > tabList.clientWidth) tabList.classList.add("tabs-icons");
-}
+const fitTabs = (): void => fitTabsIn(tabList, isFolded("right"));
 new ResizeObserver(() => fitTabs()).observe(tabList);
 
 // The arrows go from tab to tab, past the one that has nothing to show yet.
