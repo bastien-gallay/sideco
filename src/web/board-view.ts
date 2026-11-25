@@ -3,6 +3,7 @@
  * gestures into commands. It never edits the board itself; a gesture sends a
  * command, and the board changes when the event comes back.
  */
+
 import type { Command } from "../domain/commands.ts";
 import { type Format, findFormat, findType, isDone, lanesOf } from "../domain/formats.ts";
 import {
@@ -21,6 +22,7 @@ import type { BoardHooks, BoardView } from "./board-api.ts";
 import { type CardKey, cardKey, type LaneKey, laneKey } from "./board-keys.ts";
 import * as links from "./board-links.ts";
 import { dropCommand, keyCommand, snapCommand, whereTo } from "./card-drop.ts";
+import { mountEditor } from "./card-editor.ts";
 import { type CardNode, drawCard, newCardNode, sayCard } from "./card-node.ts";
 import { cardButtons, leadButton, type MoreMenu, standBy } from "./card-tools.ts";
 import { h, svg } from "./dom.ts";
@@ -32,16 +34,7 @@ import { linkHandle } from "./link-handle.ts";
 import { locale, t } from "./locale.ts";
 import { arrange } from "./reading-order.ts";
 import { changed, isLive, send, state } from "./store.ts";
-import {
-  addOffers,
-  type Direction,
-  keptLines,
-  keyAdd,
-  laneKeyMove,
-  neighbour,
-  oneLine,
-  readingGroups,
-} from "./view.ts";
+import { addOffers, type Direction, keyAdd, laneKeyMove, neighbour, readingGroups } from "./view.ts";
 
 const DRAG_THRESHOLD = 4;
 /** The offers drawn in the headings: they come down with them when the board scrolls. */
@@ -50,36 +43,6 @@ const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5];
 /** How tall the head of a lane is: its name, or its name and what it stands for. Above the first card, both. */
 /** A card's move on the board, as styles.css times it (`.card` transition), and a little more. */
 const CARD_MOVE_MS = 300;
-/** The editor's least height: room for two lines of words. */
-const EDITOR_MIN_H = 72;
-
-interface Editing {
-  /** The text the editor opened with, as it would be saved: leaving it as it was saves nothing. */
-  initial: string;
-  /** Saves the words; true once the companion took them. Nothing to wait for when it returns nothing. */
-  commit(value: string): Promise<boolean> | undefined;
-  /** The words are on their way: the editor holds them, and nothing closes it meanwhile. */
-  saving: boolean;
-  /** How the words are kept: on one line for a label, line by line for a detail. */
-  tidy(text: string): string;
-  /** A text of several lines: read from the left, Shift+Enter breaks its lines. */
-  lines: boolean;
-  /** The card the keyboard goes back to once the editor closes. */
-  from: string | undefined;
-  /** Emptied, the words are saved too: a name taken off. */
-  blank: boolean;
-}
-
-/** How an editor opens: what it is called, and whether its words are several lines read before they are changed. */
-interface EditorKind {
-  name: string;
-  lines: boolean;
-  from?: string;
-  blank?: boolean;
-  /** One word: the editor is one line tall. */
-  short?: boolean;
-}
-
 export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   const root = svg("svg", { class: "sideco-board", role: "group" });
   root.innerHTML = arrowDefs();
@@ -111,14 +74,14 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     away = !away;
     paintTools();
   });
-  const editor = h("textarea", {
-    class: "card-editor",
-    name: "card-editor",
-    hidden: true,
-    rows: 3,
-    "aria-label": t.cardLabel,
+  const editor = mountEditor(host, {
+    opened() {
+      tools.hidden = true;
+      paintOffers();
+    },
+    back: (id) => nodes.get(id)?.g.focus({ preventScroll: true }),
   });
-  host.append(scroll, tools, editor);
+  host.append(scroll, tools, editor.el);
   // A window resized, or a panel folded or unfolded, shares its new width out over the lanes.
   new ResizeObserver(() => {
     const width = Math.floor(scroll.clientWidth - 16);
@@ -151,7 +114,6 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
    * rather than wider lanes.
    */
   let span: number | undefined;
-  let editing: Editing | undefined;
   /** Where the pointer is, as a place to add to; and what is drawn there, to repaint only on a change. */
   let pointed: Target = { kind: "none" };
   let offered = "";
@@ -217,7 +179,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     if (!laneArriving) return;
     const label = heads.querySelector<SVGTextElement>(`text.lane-label[data-lane="${laneArriving}"]`);
     const at = document.activeElement;
-    if (!label || !(at === null || at === document.body || at === editor || !at.isConnected)) return;
+    if (!label || !(at === null || at === document.body || at === editor.el || !at.isConnected)) return;
     label.focus({ preventScroll: true });
     laneArriving = undefined;
   }
@@ -258,12 +220,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   /** The cards that are gone leave the page; the words being written on one of them are handed back, not dropped. */
   function dropGone(alive: ReadonlySet<string>): void {
-    if (editing?.from && !alive.has(editing.from)) {
-      const words = editing.tidy(editor.value);
-      if (words !== "" && words !== editing.initial) state.notice = t.wordsOrphaned(editing.from, words);
-      editing = undefined;
-      editor.hidden = true;
-    }
+    editor.dropGone(alive);
     for (const [id, node] of nodes) {
       if (alive.has(id)) continue;
       node.g.remove();
@@ -292,7 +249,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const id = arriving;
     arriving = undefined;
     const at = document.activeElement;
-    if (at === null || at === document.body || at === editor) focusCard(id);
+    if (at === null || at === document.body || at === editor.el) focusCard(id);
   }
 
   function paint(
@@ -368,7 +325,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const quiet =
       !board ||
       !isLive() ||
-      editing !== undefined ||
+      editor.writing() ||
       drag?.moving === true ||
       laneDrag?.moving === true ||
       stepDrag?.moving === true;
@@ -432,7 +389,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   /** The spotlight (S325), out while a card is carried, written on or linked. */
   const light = links.watchLight(root, conns, nodes, () => ({
-    edges: board && !editing && !drag?.moving && !state.linking ? board.edges : [],
+    edges: board && !editor.writing() && !drag?.moving && !state.linking ? board.edges : [],
     picked: pickedLink,
     chosen: state.selected ?? undefined,
   }));
@@ -441,7 +398,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   /** The handle of the card chosen, that pulls a link to another card (S326). */
   const paintHandle = linkHandle(root, {
-    chosen: () => (isLive() && !editing ? scene.cards.find((c) => c.id === state.selected) : undefined),
+    chosen: () =>
+      isLive() && !editor.writing() ? scene.cards.find((c) => c.id === state.selected) : undefined,
     toScene,
     linked: (src, dst) => board?.edges.some((e) => e.src === src && e.dst === dst) ?? false,
     pulled: async (src, dst, cut) =>
@@ -451,7 +409,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   /** The ends of the link picked, each pulled to another card (S350). */
   const paintEnds = linkEnds(root, {
-    picked: () => (board && pickedLink && isLive() && !editing ? pickedLink : undefined),
+    picked: () => (board && pickedLink && isLive() && !editor.writing() ? pickedLink : undefined),
     toScene,
     linked: (src, dst) => board?.edges.some((e) => e.src === src && e.dst === dst) ?? false,
     moved: async (link, end, to) => {
@@ -469,7 +427,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const id = state.selected;
     const node = id ? nodes.get(id) : undefined;
     const link = pickedLink;
-    if (board && link && isLive() && !editing && links.stillLinked(board, link)) {
+    if (board && link && isLive() && !editor.writing() && links.stillLinked(board, link)) {
       const dropped = (): void => {
         pickedLink = undefined;
       };
@@ -483,7 +441,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       !node ||
       !isLive() ||
       state.linking ||
-      editing ||
+      editor.writing() ||
       keyboardAway() ||
       outOfSight(node.g)
     ) {
@@ -530,106 +488,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     return document.elementsFromPoint(clientX, clientY).find((el) => !el.closest(".link-ends")) ?? null;
   }
 
-  /**
-   * Opens the editor over a card, or under it. A label is a few words replaced
-   * at once: they come selected, and Enter saves them. A note is a few lines
-   * written at once: Enter saves it and Shift with Enter breaks the line. A
-   * card's detail is not written here but in the page's panel.
-   */
-  function openEditor(
-    box: DOMRect,
-    value: string,
-    placeholder: string,
-    colours: { fill: string; ink: string },
-    commit: (value: string) => Promise<boolean> | undefined,
-    kind: EditorKind = { name: t.cardLabel, lines: false },
-  ): void {
-    const frame = host.getBoundingClientRect();
-    const tidy = kind.lines ? keptLines : oneLine;
-    const width = Math.max(box.width, 152);
-    editor.value = value;
-    editor.placeholder = placeholder;
-    editor.setAttribute("aria-label", kind.name);
-    if (kind.lines) editor.setAttribute("aria-description", t.saveLines);
-    else editor.removeAttribute("aria-description");
-    editor.title = kind.lines ? t.saveLines : "";
-    editor.classList.toggle("is-lines", kind.lines);
-    editor.style.left = `${Math.min(Math.max(0, frame.width - width - 8), box.left - frame.left)}px`;
-    editor.style.top = `${box.top - frame.top}px`;
-    editor.style.width = `${width}px`;
-    editor.style.height = `${kind.short ? box.height : Math.max(box.height, EDITOR_MIN_H)}px`;
-    editor.style.background = colours.fill;
-    editor.style.color = colours.ink;
-    editor.hidden = false;
-    editing = {
-      initial: tidy(value),
-      commit,
-      tidy,
-      lines: kind.lines,
-      from: kind.from,
-      blank: kind.blank ?? false,
-      saving: false,
-    };
-    tools.hidden = true;
-    paintOffers();
-    editor.focus();
-    if (kind.lines) editor.setSelectionRange(value.length, value.length);
-    else editor.select();
-  }
-
-  /** `refocus`: the keyboard goes back to the card the editor was about, rather than to nowhere. */
-  function closeEditor(save: boolean, refocus = true): void {
-    const was = editing;
-    if (!was || was.saving) return;
-    const value = was.tidy(editor.value);
-    const pending =
-      save && (value !== "" || was.blank) && value !== was.initial ? was.commit(value) : undefined;
-    if (pending) {
-      hold(was, pending, refocus);
-      return;
-    }
-    editing = undefined;
-    editor.hidden = true;
-    changed();
-    if (refocus && was.from) nodes.get(was.from)?.g.focus({ preventScroll: true });
-  }
-
-  /**
-   * Keeps the words on screen until the companion has them. Saved, the editor
-   * closes; not saved, the words come back to the human, editable, with the
-   * reason said by the page.
-   */
-  function hold(was: Editing, pending: Promise<boolean>, refocus: boolean): void {
-    was.saving = true;
-    editor.readOnly = true;
-    editor.setAttribute("aria-busy", "true");
-    void pending.then((saved) => {
-      was.saving = false;
-      editor.readOnly = false;
-      editor.removeAttribute("aria-busy");
-      if (editing !== was) return;
-      if (saved) {
-        closeEditor(false, refocus);
-        return;
-      }
-      editor.focus();
-    });
-  }
-
-  editor.addEventListener("keydown", (event) => {
-    // As everywhere on the page: Enter saves, Shift+Enter breaks the line.
-    const saves = event.key === "Enter" && !event.isComposing && !event.shiftKey;
-    if (saves) {
-      event.preventDefault();
-      closeEditor(true);
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      closeEditor(false);
-    }
-    event.stopPropagation();
-  });
-  // Leaving the editor for elsewhere keeps what was typed, and leaves the keyboard where it went.
-  editor.addEventListener("blur", () => closeEditor(true, false));
+  const openEditor = editor.open.bind(editor);
 
   function colours(typeId: string | undefined): { fill: string; ink: string } {
     const f = format();
@@ -735,9 +594,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   function backToAxis(): void {
     const was = axisArriving;
-    if (!was || editing) return;
+    if (!was || editor.writing()) return;
     const at = document.activeElement;
-    if (at !== null && at !== document.body && at !== editor && at.isConnected) {
+    if (at !== null && at !== document.body && at !== editor.el && at.isConnected) {
       axisArriving = undefined;
       return;
     }
@@ -1373,7 +1232,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   });
 
   window.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || editing) return;
+    if (event.key !== "Escape" || editor.writing()) return;
     pickedLink = undefined;
     // The toolbar closes under the keyboard: it goes back to its card, not to the top of the page.
     if (tools.contains(document.activeElement) && current)
@@ -1419,7 +1278,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     },
     renamed(from, to) {
       if (current === from) current = to;
-      if (editing?.from === from) editing.from = to;
+      editor.renumbered(from, to);
       if (document.activeElement === nodes.get(from)?.g) arriving = to;
     },
     letGo() {

@@ -85,7 +85,7 @@
             "noExcessiveLinesPerFile": {
               "level": "error",
               "options": {
-                "maxLines": 1212,
+                "maxLines": 1100,
                 "skipBlankLines": true
               }
             }
