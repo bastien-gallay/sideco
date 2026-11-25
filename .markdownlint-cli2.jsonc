@@ -1,4 +1,6 @@
 {
   "config": { "MD013": false, "MD033": false },
+  // What a .gitignore ignores is not the repo's to lint: notes a tool leaves in the clone made `bun run check` fail there.
+  "gitignore": true,
   "ignores": ["node_modules/**", "dist/**"]
 }
