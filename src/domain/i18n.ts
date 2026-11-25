@@ -40,6 +40,7 @@ export interface Words {
   column: string;
   elements: string;
   noElement: string;
+  title: string;
   label: string;
   detail: string;
   by: string;
@@ -81,6 +82,7 @@ export const WORDS: Record<Locale, Words> = {
     column: "Column",
     elements: "Cards",
     noElement: "No card.",
+    title: "Title",
     label: "Label",
     detail: "Detail",
     by: "By",
@@ -116,6 +118,7 @@ export const WORDS: Record<Locale, Words> = {
     column: "Colonne",
     elements: "Cartes",
     noElement: "Aucune carte.",
+    title: "Titre",
     label: "Libellé",
     detail: "Détail",
     by: "Par",

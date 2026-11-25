@@ -43,7 +43,7 @@ export function toMarkdown(board: Board, meta: ExportMeta): string {
   if (board.elements.length === 0) out.push(w.noElement, "");
   else {
     const where = layout === "timeline" ? w.step : layout === "columns" ? w.column : undefined;
-    out.push(row(["Id", "Type", w.label, ...(where ? [where] : []), w.detail, w.by]));
+    out.push(row(["Id", "Type", w.title, ...(where ? [where] : []), w.detail, w.by]));
     out.push(row(["---", "---", "---", ...(where ? ["---"] : []), "---", "---"]));
     const sorted = [...board.elements].sort((a, b) => a.col - b.col);
     for (const e of sorted) {

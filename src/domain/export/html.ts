@@ -96,7 +96,7 @@ ${sceneToSvg(layoutBoard(board, locale, { colours: meta.colours }), title, diagr
 ${
   board.elements.length === 0
     ? `<p>${w.noElement}</p>`
-    : `<table><thead><tr><th>Id</th><th>Type</th><th>${w.label}</th>${where ? `<th>${where}</th>` : ""}<th>${w.detail}</th><th>${w.by}</th></tr></thead><tbody>\n${rows}\n</tbody></table>`
+    : `<table><thead><tr><th>Id</th><th>Type</th><th>${w.title}</th>${where ? `<th>${where}</th>` : ""}<th>${w.detail}</th><th>${w.by}</th></tr></thead><tbody>\n${rows}\n</tbody></table>`
 }
 ${links ? `<h2>${w.links}</h2>\n<table><thead><tr><th>${w.from}</th><th>${w.to}</th><th>${w.label}</th></tr></thead><tbody>\n${links}\n</tbody></table>` : ""}
 ${notes ? `<h2>${w.openQuestions}</h2>\n<ul>\n${notes}\n</ul>` : ""}

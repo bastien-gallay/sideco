@@ -67,7 +67,7 @@ sideco wait
   made. If you disagree, say why in the terminal or pin a note. They can
   undo their own gestures in the page: you are told the net result, and
   `restored` marks a card or a board they brought back, id unchanged.
-- **Labels are short** (six words or fewer). Rules, examples and sources go
+- **Titles are short** (six words or fewer). Rules, examples and sources go
   in the detail: `sideco detail E1 "…"`.
 - **One question at a time.** A hand-over carries a single question; a
   `hotspot` or a note marks the others.
@@ -110,8 +110,8 @@ sideco wait
 sideco boards      sideco show [BOARD] [--lane L | --col N] [--brief] [--notes]   (a part: its first line says so)
 sideco show ID                      (one card: where it is, its links, its threads)
 sideco board new "Title" [--format F] [--id ID]   sideco board rm ID (removes the board; its history stays)   sideco retitle "Title" (its id stays)
-sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--from ID [--edge "label"]] [--detail "…"]
-sideco rename ID "Label"            sideco detail ID "Text"
+sideco add TYPE "Title" [--col N | --lane L] [--before ID] [--from ID [--edge "label"]] [--detail "…"]
+sideco rename ID "Title"            sideco detail ID "Text"
 sideco move ID --col N | --lane L [--before ID] (--before alone: before that card, in its cell)   sideco place ID X Y   sideco placing hand|auto   # flow, C4: the card at that point, the whole diagram Snap (by hand, links move nothing); auto gives it back to its links, places kept
 sideco rm ID   sideco insert-col N   sideco rm-col N (empty)   sideco move-col FROM TO (with its cards)   sideco renumber ID [NEW] (a new id for a card, the next of its letter by default; its links and notes follow)   sideco renumber --all [--dry-run] (every card under a former letter, or whose id another board keeps)   sideco retype ID TYPE [NEW] (a card takes another kind, and the next id of its letter) · renumber and retype are yours: the page has no gesture for them
 sideco lane L "Name" (names it here) · lane hint L "What it stands for" · purpose "Its own question?" · plan: axis x|y "Name" [Low] [High] ("" gives the workshop's back) · kanban, retro: lane add "Name" [--before L] · lane rm L · lane move L [--before L] · story map: slice add "Lot 1" [--before S] (a line under the stories) · slice rm S

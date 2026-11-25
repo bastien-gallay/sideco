@@ -179,7 +179,7 @@ describe("boardAction", () => {
   });
 
   test.each([
-    ["add event", "`add` needs a label"],
+    ["add event", "`add` needs a title"],
     ["rename", "`rename` needs an id"],
     ["add event A --col deux", '--col takes a whole number, got "deux"'],
     ["insert-col x", 'insert-col takes a whole number, got "x"'],
@@ -215,7 +215,7 @@ describe("parseBatch", () => {
   });
 
   test("an error names its line", () => {
-    expect(() => parseBatch('add event "A"\nadd event\n', "b")).toThrow("line 2: `add` needs a label");
+    expect(() => parseBatch('add event "A"\nadd event\n', "b")).toThrow("line 2: `add` needs a title");
     expect(() => parseBatch('add event "A"\n\nrename E1 "oops', "b")).toThrow('line 3: unclosed " quote');
   });
 });

@@ -22,8 +22,8 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco show [BOARD]                 a board as text; a part of it with --lane L, --col N, --brief (no details),
                                     --notes (the open notes only). The first line names the part.
   sideco show ID                      one card: where it is, its links, its threads
-  sideco add TYPE "Label" [--col N | --lane L] [--before ID] [--id E1] [--from ID [--edge "label"]] [--detail "…"]
-  sideco rename ID "Label"            sideco detail ID "Text"
+  sideco add TYPE "Title" [--col N | --lane L] [--before ID] [--id E1] [--from ID [--edge "label"]] [--detail "…"]
+  sideco rename ID "Title"            sideco detail ID "Text"
   sideco move ID --col N | --lane L [--before ID]   (--before alone: before that card, in its cell)
   sideco place ID X Y                 on a flow or a C4: the card goes to that point, and the whole diagram is
                                     placed by hand, its other cards where they stand; links then move nothing

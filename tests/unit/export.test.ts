@@ -200,7 +200,7 @@ describe("markdown", () => {
     );
     expect(md).toContain("```mermaid\n%% lossy");
     expect(md).toContain(`Source: Sideco journal, board \`commande\`, seq ${t.seq}, exported on 2026-11-17.`);
-    expect(md).toContain("| Id | Type | Label | Step | Detail | By |");
+    expect(md).toContain("| Id | Type | Title | Step | Detail | By |");
     expect(md).toContain("| E1 | Event | Commande passée | 1 |  | agent |");
     expect(md).toContain("## Links\n\n| From | To | Label |");
     expect(md).toContain(
@@ -215,7 +215,7 @@ describe("markdown", () => {
     expect(fr).toContain(
       `Source : journal Sideco, tableau \`commande\`, seq ${t.seq}, exporté le 2026-11-17.`,
     );
-    expect(fr).toContain("| Id | Type | Libellé | Étape | Détail | Par |");
+    expect(fr).toContain("| Id | Type | Titre | Étape | Détail | Par |");
     expect(fr).toContain("| E1 | Événement | Commande passée | 1 |  | agent |");
     expect(fr).toContain("## Liens\n\n| De | Vers | Libellé |");
     expect(fr).toContain(
@@ -255,7 +255,7 @@ describe("html", () => {
     const en = toHtml(board, META);
     expect(en).toContain('<html lang="en">');
     expect(en).toContain("<h2>Cards</h2>");
-    expect(en).toContain("<th>Label</th><th>Step</th><th>Detail</th><th>By</th>");
+    expect(en).toContain("<th>Title</th><th>Step</th><th>Detail</th><th>By</th>");
     expect(en).toContain("Source: Sideco journal, board <code>commande</code>");
     const fr = toHtml(board, { ...META, locale: "fr" });
     expect(fr).toContain('<html lang="fr">');

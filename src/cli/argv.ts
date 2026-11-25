@@ -154,7 +154,7 @@ export function boardAction(tokens: readonly string[], board: string | undefined
             kind: "add",
             board: target(),
             type: need(0, "a type"),
-            label: need(1, "a label"),
+            label: need(1, "a title"),
             id: flags.get("id"),
             col: number("col"),
             lane: flags.get("lane"),
@@ -167,7 +167,7 @@ export function boardAction(tokens: readonly string[], board: string | undefined
         };
       case "rename":
         return {
-          command: { kind: "rename", board: target(), id: need(0, "an id"), label: need(1, "a label") },
+          command: { kind: "rename", board: target(), id: need(0, "an id"), label: need(1, "a title") },
         };
       case "detail":
         return { command: { kind: "annotate", board: target(), id: need(0, "an id"), detail: at(1) ?? "" } };

@@ -463,7 +463,7 @@ const en: Messages = {
   past: "You are looking at the past: the board is read-only.",
   backToLive: "Back to live",
 
-  cardLabel: "Label",
+  cardLabel: "Title",
   laneName: "Column name",
   laneHintName: "Column subtitle (empty: the workshop's)",
   addLaneHint: "Add a subtitle",
@@ -776,7 +776,7 @@ const fr: Messages = {
   past: "Tu regardes le passé : le tableau est en lecture seule.",
   backToLive: "Revenir au direct",
 
-  cardLabel: "Libellé",
+  cardLabel: "Titre",
   laneName: "Nom de la colonne",
   laneHintName: "Sous-titre de la colonne (vide : celui de l'atelier)",
   addLaneHint: "Ajouter un sous-titre",
