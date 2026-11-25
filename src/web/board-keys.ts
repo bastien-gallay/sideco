@@ -24,7 +24,7 @@ export type CardKey =
   /** The detail is read, not written: on the past too. */
   | { ask: "read"; reads: true }
   | Ask<"move" | "beside", { direction: Direction }>
-  | Ask<"rename" | "choose" | "remove" | "done" | "link" | "note" | "detail" | "label">;
+  | Ask<"rename" | "choose" | "remove" | "done" | "link" | "linked" | "note" | "detail" | "label">;
 
 export type LaneKey =
   | { ask: "to-lane"; by: 1 | -1; reads: true }
@@ -48,6 +48,7 @@ const CARD: Record<string, CardKey> = {
   Backspace: { ask: "remove" },
   d: { ask: "done" },
   l: { ask: "link" },
+  a: { ask: "linked" },
   n: { ask: "note" },
   e: { ask: "detail" },
   i: { ask: "read", reads: true },

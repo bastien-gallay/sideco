@@ -3,8 +3,9 @@
  * the list under ⋯, and where it stands beside its card. board-view.ts says
  * when it shows and what each action does.
  */
+import { ADD_LINKED } from "./add-linked.ts";
 import { h } from "./dom.ts";
-import { t } from "./locale.ts";
+import { locale, t } from "./locale.ts";
 import { placeTools, type Rect } from "./tools-place.ts";
 
 /** The ⋯ of the toolbar stays open through repaints while its card stays chosen. */
@@ -18,6 +19,8 @@ export interface CardActions {
   detail(): void;
   note(): void;
   link(): void;
+  /** Adds a card linked from this one. */
+  linked(): void;
   /** Marks the card done, or no longer done. */
   done(): void;
   remove(): void;
@@ -71,6 +74,7 @@ function moreMenu(card: CardShown, menu: MoreMenu, host: HTMLElement, on: CardAc
     act();
   };
   const doneLabel = card.done ? t.notDone : t.done;
+  const linked = ADD_LINKED[locale];
   const more = h(
     "details",
     {
@@ -90,6 +94,7 @@ function moreMenu(card: CardShown, menu: MoreMenu, host: HTMLElement, on: CardAc
       "div",
       { class: "menu-items" },
       h("button", { ...keyed(t.link, "L"), onclick: () => chosen(on.link) }, t.link),
+      h("button", { ...keyed(linked, "A"), onclick: () => chosen(on.linked) }, linked),
       h("button", { ...keyed(doneLabel, "D"), onclick: () => chosen(on.done) }, doneLabel),
       h(
         "button",

@@ -44,6 +44,14 @@ describe("the sheet of keys", () => {
     );
   });
 
+  test("tells A, which adds a linked card, after L which links two (T272)", () => {
+    const en = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([keys]) => keys);
+    expect(en[en.indexOf("L") + 1]).toBe("A");
+    expect(says(withMoreKeys(MESSAGES.fr.shortcutList("graph", true), "fr"))).toContain(
+      "A = Ajouter une carte liée",
+    );
+  });
+
   test("tells Redo beside Undo, with every key that does it", () => {
     expect(says(MESSAGES.en.shortcutList("kanban", true))).toContain(
       "⇧⌘Z / Ctrl+Shift+Z or Ctrl+Y = Redo the change undone",

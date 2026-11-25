@@ -17,6 +17,7 @@ import {
 } from "../domain/layout/index.ts";
 import { arrowDefs, bandMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
+import { linkedAdd } from "./add-linked.ts";
 import { axisEditorBox, dressAxes } from "./axis-words.ts";
 import type { BoardHooks, BoardView } from "./board-api.ts";
 import { type CardKey, cardKey, type LaneKey, laneKey } from "./board-keys.ts";
@@ -442,6 +443,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         detail: () => hooks.editDetail(id),
         note: () => noteOn(id),
         link: () => beginLink(id),
+        linked: () => addLinked(id),
         done: () => markDone(id, !done),
         remove: () => void send({ kind: "remove", board: boardId, id }),
       }),
@@ -692,15 +694,16 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const f = format();
     const next = f && typeId ? findType(f, typeId)?.leadsTo : undefined;
     if (!next) return [];
-    return [leadButton(next.label[locale], () => makeFrom(id, next.type))];
+    return [leadButton(next.label[locale], () => addLinked(id))];
   }
 
-  /** Opens the editor for a card of `typeId`, beside this one, to be linked from it once named. */
-  function makeFrom(id: string, typeId: string): void {
+  /** Opens the editor beside this card for one linked from it: of the kind it leads to, else of its own (T272). */
+  function addLinked(id: string): void {
     const node = nodes.get(id);
-    if (!node) return;
+    const place = board ? linkedAdd(board, id) : undefined;
+    if (!node || !place) return;
     const r = node.g.getBoundingClientRect();
-    beginAdd(typeId, { from: id, x: r.right + 12 * zoom, y: r.top });
+    beginAdd(place.type, { ...place, x: r.right + 12 * zoom, y: r.top });
   }
 
   /** Opens the editor for a card of the focused one's kind, beside it where the arrow points. */
@@ -1106,6 +1109,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     go: (_, id, key) => goFrom(id, key.direction),
     move: (on, id, key) => moveByKey(on, id, key.direction),
     beside: (_, id, key) => addBeside(id, key.direction),
+    linked: (_, id) => addLinked(id),
     rename: (_, id) => rename(id),
     choose: (_, id) => choose(id),
     remove: removeByKey,

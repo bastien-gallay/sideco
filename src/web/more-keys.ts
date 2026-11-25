@@ -12,6 +12,10 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
       columns: true,
       row: ["Page ↑ ↓, Home, End", "Along the column: a page further, its first card, its last"],
     },
+    {
+      after: "L",
+      row: ["A", "Add a card linked from this one: what it leads to, or one of its kind under it"],
+    },
     { after: "E", row: ["I", "Read its detail, in the right panel"] },
     { after: "E", row: ["T", "Add a label, in the right panel"] },
     {
@@ -31,6 +35,10 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
         "Page ↑ ↓, Début, Fin",
         "Le long de la colonne : une page plus loin, sa première carte, sa dernière",
       ],
+    },
+    {
+      after: "L",
+      row: ["A", "Ajouter une carte liée à celle-ci : ce à quoi elle mène, ou une du même type sous elle"],
     },
     { after: "E", row: ["I", "Lire son détail, dans le panneau de droite"] },
     { after: "E", row: ["T", "Ajouter un label, dans le panneau de droite"] },

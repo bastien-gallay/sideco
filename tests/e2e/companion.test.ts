@@ -867,6 +867,37 @@ describe("the human edits, the agent is told", () => {
     await page.keyboard.press("Escape");
   });
 
+  test("A on a card adds a card linked from it, and so does the list under its ⋯ (T272)", async () => {
+    const commande = async () => (await workspace()).boards.find((b) => b.id === "commande");
+    const before = (await commande())?.elements.length ?? 0;
+    await card("E2").focus();
+    await page.keyboard.press("a");
+    await typeInEditor("Stock décompté");
+    await until("the card is added", async () => ((await commande())?.elements.length ?? 0) === before + 1);
+    const board = await commande();
+    const added = board?.elements.find((el) => el.label === "Stock décompté");
+    const from = board?.elements.find((el) => el.id === "E2");
+    // Of the kind of the card it comes from, in its step, and linked from it.
+    expect(added?.type).toBe("event");
+    expect(added?.col).toBe(from?.col);
+    expect(board?.edges.some((e) => e.src === "E2" && e.dst === added?.id)).toBe(true);
+    // It takes the keyboard, as any card added.
+    await until("the card added holds the keyboard", () =>
+      page.evaluate((id) => document.activeElement?.getAttribute("data-id") === id, added?.id ?? ""),
+    );
+    // By the mouse: the list under ⋯ opens the same editor.
+    await card("E2").click();
+    await page.locator(".card-tools .card-more summary").click();
+    await page.locator(".card-tools .card-more .menu-items button", { hasText: "Add a linked card" }).click();
+    const editor = page.locator("textarea.card-editor");
+    await editor.waitFor({ state: "visible" });
+    await editor.press("Escape");
+    await editor.waitFor({ state: "hidden" });
+    expect((await commande())?.elements.length).toBe(before + 1);
+    await agent(`rm ${added?.id}`, "commande");
+    await page.keyboard.press("Escape");
+  });
+
   test("the footer counts what Claude has not read, and says when it will read it", async () => {
     const told = await page.locator(".pending").textContent();
     expect(told).toMatch(/^\d+ changes not read yet · /);
@@ -1142,6 +1173,7 @@ describe("other workshops", () => {
     await tools.locator("summary").click();
     expect(await tools.locator(".menu-items button").allTextContents()).toEqual([
       "Link",
+      "Add a linked card",
       "Mark done",
       "Remove",
     ]);
