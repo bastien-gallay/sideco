@@ -2791,6 +2791,19 @@ button.label-colour[aria-expanded="true"] {
   gap: 4px;
 }
 
+/* The name of the label, under the colours of its key: renamed there on every card. */
+.label-rename {
+  display: flex;
+  flex: 1 1 100%;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.label-rename-to {
+  flex: 1;
+  min-width: 0;
+}
+
 .label-swatch {
   min-width: 24px;
   min-height: 24px;

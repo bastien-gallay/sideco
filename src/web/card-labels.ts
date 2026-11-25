@@ -126,7 +126,7 @@ function labelChips(m: LabelsModel): HTMLElement {
       return h(
         "li",
         { class: "label-chip", style: `background:${fill};color:${ink}` },
-        m.live && colourDot(label, m.colours),
+        m.live && colourDot(label, m.colours, speak),
         h(
           "button",
           {

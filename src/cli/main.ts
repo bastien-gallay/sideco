@@ -44,6 +44,7 @@ import {
 import { exportOne, publish } from "./export.ts";
 import { HELP } from "./help.ts";
 import { hookFromStdin } from "./hook.ts";
+import { relabel } from "./relabel.ts";
 import { renumberAll } from "./renumber-all.ts";
 import { readSetting } from "./setting.ts";
 import { statusText, watchers } from "./status.ts";
@@ -64,6 +65,7 @@ export const CLI_VERBS: ReadonlySet<string> = new Set([
   "status",
   "sessions",
   "labels",
+  "relabel",
   "find",
   "boards",
   "show",
@@ -270,6 +272,11 @@ async function run(verb: string, rest: string[]): Promise<number> {
   if (verb === "renumber" && args.flags.has("all")) {
     const send = (commands: Command[]) => post(server, actor, session, commands);
     console.log(await renumberAll(read(), args.flags.has("dry-run"), send));
+    return 0;
+  }
+  if (verb === "relabel") {
+    const send = (commands: Command[]) => post(server, actor, session, commands, 5000, true);
+    console.log(await relabel(read(), args.positional, send));
     return 0;
   }
   if (!BOARD_VERBS.has(verb)) throw new UsageError(`unknown command "${verb}" (try \`sideco help\`)`);

@@ -38,6 +38,8 @@ Model (BOARD defaults to the only board, or --board ID, or $SIDECO_BOARD)
   sideco lane LANE "Name"             call a lane of this board your own way
   sideco label ID type:bug @name ...  put labels on a card, shared by every board; unlabel ID LABEL... takes them off
   sideco labels [LABEL|KEY]           every label of the project and its cards, across boards (labels type: every type:…)
+  sideco relabel OLD NEW              a label renamed on every card, on every board (a name in use: the two
+                                      become one); one undo a board takes it back
   sideco colour KEY COLOUR|auto       the colour of every label of a key (type, epic, @), on every board:
                                       blue, green, purple, orange, teal, pink, olive or grey; auto leaves it to chance
   sideco find WORDS [--board B]       the cards holding every word, in name, labels, detail or notes, across boards

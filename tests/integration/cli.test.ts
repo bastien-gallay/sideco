@@ -388,6 +388,30 @@ describe("Claude Code hooks, through stdin as Claude Code calls them", () => {
     await sideco(["board", "rm", "second"]);
   });
 
+  test("a label is renamed on every card of every board, and one undo a board takes it back (S328)", async () => {
+    await sideco(["board", "new", "Troisième", "--format", "kanban", "--id", "troisieme"]);
+    const add = async (label: string) =>
+      (await sideco(["add", "task", label, "--lane", "todo", "--board", "troisieme"])).out.trim();
+    const [one, two] = [await add("Un"), await add("Deux")];
+    await sideco(["label", one, "type:bug", "--board", "troisieme"]);
+    await sideco(["label", two, "type:bug", "ui", "--board", "troisieme"]);
+    const renamed = await sideco(["relabel", "type:bug", "type:issue"]);
+    expect(renamed.err).toBe("");
+    expect(renamed.out.trim()).toBe("type:bug is now type:issue on 2 cards of 1 board");
+    const labels = async () => (await sideco(["labels", "type"])).out;
+    expect(await labels()).toContain("type:issue");
+    expect(await labels()).not.toContain("type:bug");
+    // One gesture a board: a single undo brings the old name back on both cards.
+    await sideco(["undo", "--board", "troisieme"]);
+    expect(await labels()).toContain("type:bug");
+    expect(await labels()).not.toContain("type:issue");
+    expect((await sideco(["relabel", "type:none", "type:issue"])).out.trim()).toBe("no card wears type:none");
+    const short = await sideco(["relabel", "type:bug"]);
+    expect(short.code).not.toBe(0);
+    expect(short.err).toContain("sideco relabel OLD NEW");
+    await sideco(["board", "rm", "troisieme"]);
+  });
+
   test("tool calls and the end of the turn land in the session, visible in status", async () => {
     await hook({
       hook_event_name: "PreToolUse",

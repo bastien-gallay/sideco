@@ -4451,6 +4451,53 @@ describe("labels on a card, from the page", () => {
     await page.keyboard.press("Escape");
   });
 
+  test("a label is renamed in the panel, on every card of every board; one Undo takes it back on the board (S328)", async () => {
+    const [fix, also] = await agent(
+      'board new "Noms" --format kanban --id noms-ici\nadd task "Corriger" --lane todo\nadd task "Aussi" --lane todo',
+    );
+    const [far] = await agent(
+      'board new "Ailleurs" --format kanban --id noms-loin\nadd task "Loin" --lane todo',
+    );
+    await agent(`label ${fix} type:bug --board noms-ici\nlabel ${also} type:bug ui --board noms-ici`);
+    await agent(`label ${far} type:bug --board noms-loin`);
+    const worn = async (board: string, id: string) =>
+      (
+        (await workspace()).boards.find((b) => b.id === board)?.elements.find((e) => e.id === id)?.labels ??
+        []
+      ).join();
+    await page.locator(".board-picker select").selectOption("noms-ici");
+    await card(fix).click();
+    await page.getByRole("tab", { name: "Detail" }).click();
+    // The dot of the chip opens what is for every card: the colour of the key, and the name of the label.
+    await page.locator(".card-panel-labels .label-colour").first().click();
+    const field = page.locator(".label-rename-to");
+    expect(await field.inputValue()).toBe("type:bug");
+    await field.fill("type:issue");
+    await field.press("Enter");
+    await until(
+      "renamed on the three cards of the two boards",
+      async () =>
+        (await worn("noms-ici", fix)) === "type:issue" &&
+        (await worn("noms-ici", also)) === "ui,type:issue" &&
+        (await worn("noms-loin", far)) === "type:issue",
+    );
+    await page.locator(".label-colours").waitFor({ state: "hidden" });
+    await until("the chip says the new name", async () =>
+      ((await page.locator(".card-panel-labels").textContent()) ?? "").includes("issue"),
+    );
+    // One Undo on this board takes the name back on its two cards; the other board keeps its own Undo.
+    await page.locator("button", { hasText: "Undo" }).first().click();
+    await until(
+      "back on this board",
+      async () =>
+        (await worn("noms-ici", fix)) === "type:bug" && (await worn("noms-ici", also)).includes("type:bug"),
+    );
+    expect(await worn("noms-loin", far)).toBe("type:issue");
+    await page.keyboard.press("Escape");
+    await agent("board rm noms-ici");
+    await agent("board rm noms-loin");
+  });
+
   test("the colour of a label's key is chosen in the panel, for every card that wears it (S328)", async () => {
     const [fix, feat] = await agent(
       [
@@ -4476,7 +4523,9 @@ describe("labels on a card, from the page", () => {
     const row = page.getByRole("group", { name: "Colour of the “type” labels, on every board" });
     await row.waitFor({ state: "visible" });
     expect(await dot.getAttribute("aria-expanded")).toBe("true");
-    expect(await row.getByRole("button").count()).toBe(9);
+    // The eight colours and Auto, then what renames the label.
+    expect(await row.locator(".label-swatch").count()).toBe(9);
+    expect(await row.getByRole("button", { name: "Rename everywhere" }).count()).toBe(1);
     expect(await row.locator('[aria-pressed="true"]').textContent()).toBe("Auto");
     await row.getByRole("button", { name: "teal" }).click();
     // Every card that wears the key takes the colour, the chip in the panel too; the row is put away.

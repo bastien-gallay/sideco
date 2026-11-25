@@ -139,11 +139,13 @@ export async function post(
   session: string | undefined,
   commands: unknown[],
   timeoutMs = 5000,
+  /** The commands are one gesture, board by board: one undo takes them back together. */
+  together = false,
 ): Promise<Posted> {
   const response = await server.fetch(`${server.url}/api/commands`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ actor, session, commands }),
+    body: JSON.stringify({ actor, session, commands, ...(together ? { together } : {}) }),
     signal: AbortSignal.timeout(timeoutMs),
   });
   const body = await answer<Posted & { error?: string; index?: number }>(response);
