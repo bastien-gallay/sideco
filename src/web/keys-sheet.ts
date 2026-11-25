@@ -5,6 +5,7 @@
 import { findFormat } from "../domain/formats.ts";
 import type { Board } from "../domain/workspace.ts";
 import { h } from "./dom.ts";
+import { keySections } from "./key-sections.ts";
 import { locale, t } from "./locale.ts";
 import type { CardMark, SheetKind } from "./messages.ts";
 import { withMoreKeys } from "./more-keys.ts";
@@ -16,19 +17,31 @@ export const keysSheet = h("dialog", { class: "sheet keys" });
 keysSheet.addEventListener("keydown", (event) => {
   if (event.key !== "?" || event.ctrlKey || event.metaKey || event.altKey) return;
   event.preventDefault();
+  // Held down, the key closes once: it does not open the sheet again.
+  if (event.repeat) return void event.stopPropagation();
   // The page's own `?` would open it again, once closed.
   event.stopPropagation();
   keysSheet.close();
 });
-// A click beside the sheet, on what dims the page, closes it: the click is the dialog's, out of its box.
-keysSheet.addEventListener("click", (event) => {
+/** Whether the pointer is beside the sheet, on what dims the page: the event is the dialog's, out of its box. */
+function beside(event: MouseEvent): boolean {
   const box = keysSheet.getBoundingClientRect();
   const inside =
     event.clientX >= box.left &&
     event.clientX <= box.right &&
     event.clientY >= box.top &&
     event.clientY <= box.bottom;
-  if (event.target === keysSheet && !inside) keysSheet.close();
+  return event.target === keysSheet && !inside;
+}
+// A click beside the sheet closes it: pressed there and released there. Words selected in the sheet, the pointer
+// let go beside it, are no such click.
+let pressedBeside = false;
+keysSheet.addEventListener("pointerdown", (event) => {
+  pressedBeside = beside(event);
+});
+keysSheet.addEventListener("click", (event) => {
+  if (pressedBeside && beside(event)) keysSheet.close();
+  pressedBeside = false;
 });
 
 /** How the board shown is laid out, as far as its keys and gestures go. */
@@ -74,14 +87,15 @@ export function openKeys(board: Board | undefined, axes: { x: string; y: string 
   keysSheet.replaceChildren(
     // The title takes the keyboard: the sheet is read from its top, not from its last button (T283).
     h("h2", { tabindex: -1 }, t.shortcuts),
-    list(
+    ...keySections(
       withMoreKeys(
         t.shortcutList(how, Boolean(findFormat(board?.format ?? "")?.doneLast), axes),
         locale,
         how === "kanban",
       ),
-      true,
-    ),
+      locale,
+      how,
+    ).flatMap((section) => [h("h3", {}, section.title), list(section.rows, true)]),
     h("h3", {}, t.withTheMouse),
     list(t.mouseList(how), false),
     h("h3", {}, t.onACard),

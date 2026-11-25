@@ -10,20 +10,17 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
     {
       after: "← → ↑ ↓",
       columns: true,
-      row: [
-        "Page ↑ ↓, Home, End",
-        "Along the column of the card: a window further, its first card, its last",
-      ],
+      row: ["Page ↑ ↓, Home, End", "Along the column: a page further, its first card, its last"],
     },
-    { after: "E", row: ["T", "Add a label to the card, in the panel on the right"] },
+    { after: "E", row: ["T", "Add a label, in the right panel"] },
     {
       after: "E",
       row: [
         "X",
-        "Keep the card chosen while an arrow goes to the next, chosen in turn (or Shift and a click): D and Delete are then for them all",
+        "Keep this card chosen while the arrows choose another (or Shift and a click): D and Delete are for them all",
       ],
     },
-    { after: "E", row: ["F", "Point at the card chosen as Claude does, or no longer: it joins the focus"] },
+    { after: "E", row: ["F", "Put the card chosen in the focus, or take it out"] },
   ],
   fr: [
     {
@@ -31,20 +28,20 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
       columns: true,
       row: [
         "Page ↑ ↓, Début, Fin",
-        "Le long de la colonne de la carte : une fenêtre plus loin, sa première carte, sa dernière",
+        "Le long de la colonne : une page plus loin, sa première carte, sa dernière",
       ],
     },
-    { after: "E", row: ["T", "Ajouter un label à la carte, dans le panneau de droite"] },
+    { after: "E", row: ["T", "Ajouter un label, dans le panneau de droite"] },
     {
       after: "E",
       row: [
         "X",
-        "Garder la carte choisie pendant qu'une flèche passe à la suivante, choisie à son tour (ou Maj et un clic) : D et Suppr valent alors pour toutes",
+        "Garder cette carte choisie pendant que les flèches en choisissent une autre (ou Maj et un clic) : D et Suppr valent pour toutes",
       ],
     },
     {
       after: "E",
-      row: ["F", "Viser la carte choisie comme le fait Claude, ou ne plus la viser : elle rejoint le focus"],
+      row: ["F", "Mettre la carte choisie au focus, ou l'en sortir"],
     },
   ],
 };

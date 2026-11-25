@@ -962,6 +962,31 @@ input[type="text"] {
   color: var(--muted);
 }
 
+/*
+ * The sheet of keys in sections (T282): each heading as the page names its
+ * panels, and the keys in one column down the sheet, whatever their section.
+ */
+.keys h3 {
+  margin: 18px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.keys .key-list {
+  grid-template-columns: 14.5rem 1fr;
+}
+
+.keys .key-list dd {
+  color: var(--ink);
+}
+
+.keys .mark-list {
+  grid-template-columns: max-content 1fr;
+}
+
 kbd {
   padding: 1px 6px;
   border: 1px solid var(--rule);

@@ -530,47 +530,34 @@ const en: Messages = {
   shortcuts: "Keys and gestures",
   shortcutList: (how, doneLast, axes) => [
     ["Tab", "Into the board, then out of it"],
-    ["← → ↑ ↓", "From a card to the next one; a card chosen goes along"],
+    ["← → ↑ ↓", "To the next card; the card chosen goes along"],
     [
       "Shift + ← → ↑ ↓",
       how === "graph"
-        ? "Move the card a little that way; the diagram goes Snap"
+        ? "Nudge the card; the diagram goes Snap"
         : how === "timeline"
           ? "Move the card: ← → a step, ↑ ↓ its place in its cell"
           : how === "grid"
-            ? `Move the card to the cell that way: ↑ ↓ ${axes?.y ?? "impact"}, ← → ${axes?.x ?? "effort"}`
+            ? `Move the card a cell: ↑ ↓ ${axes?.y ?? "impact"}, ← → ${axes?.x ?? "effort"}`
             : "Move the card: ← → a lane, ↑ ↓ its place in its lane",
     ],
     how === "graph"
       ? ["Alt + → ↓", "Add the next step, linked from the card"]
-      : ["Alt + ← → ↑ ↓", "Add a card of its kind beside it, there"],
+      : ["Alt + ← → ↑ ↓", "Add a card of its kind on that side"],
     ["Enter or F2", "Rename the card"],
-    ["Space", "Select the card and show its actions"],
-    [
-      "D",
-      doneLast
-        ? "Move the card to the last lane, or back to the one before"
-        : "Mark the card done, or not done",
-    ],
-    ["L", "Link from the card: then Space on the other one"],
-    ["E", "Write the card's detail, in the panel on the right"],
-    ["N", "Note for Claude on the card"],
-    ["Delete", "Remove the card (Undo brings it back)"],
-    ["/ or ⌘K / Ctrl+K", "Find a card on any board, by its id or its words"],
+    ["Space", "Choose the card"],
+    ["D", doneLast ? "Move the card to the last lane, or out of it" : "Done, or not done"],
+    ["L", "Link: then Space on the other card"],
+    ["E", "Write its detail, in the right panel"],
+    ["N", "Write a note for Claude on the card"],
+    ["Delete", "Remove the card; Undo brings it back"],
+    ["/ or ⌘K / Ctrl+K", "Find a card, on any board"],
     ["⌘Z / Ctrl+Z", "Undo your last change"],
     ["⇧⌘Z / Ctrl+Shift+Z or Ctrl+Y", "Redo the change undone"],
-    ["⌘↵ / Ctrl+Enter", "Send to Claude, with the word typed for it"],
+    ["⌘↵ / Ctrl+Enter", "Send to Claude"],
     ["Esc", "Close, cancel, deselect"],
-    ["?", "These shortcuts"],
-    ["< and >, or [ and ]", "Fold or show the left panel, the right panel"],
-    ...(how === "kanban"
-      ? ([
-          [
-            "On a lane heading",
-            "Enter renames · Shift + Enter writes its subtitle · Shift + ← → moves · Delete removes it if empty · + or Alt + ← → adds a lane · ↓ goes to its cards",
-          ],
-        ] as [string, string][])
-      : []),
+    ["?", "This sheet, and out of it"],
+    ["< and >, or [ and ]", "Fold the left panel, the right one; or show it"],
   ],
   mouseList: (how) => [
     [
@@ -856,47 +843,34 @@ const fr: Messages = {
   shortcuts: "Touches et gestes",
   shortcutList: (how, doneLast, axes) => [
     ["Tab", "Entrer dans le tableau, puis en sortir"],
-    ["← → ↑ ↓", "D'une carte à la suivante ; une carte choisie suit"],
+    ["← → ↑ ↓", "À la carte suivante ; la carte choisie suit"],
     [
       "Maj + ← → ↑ ↓",
       how === "graph"
-        ? "Déplacer un peu la carte de ce côté ; le diagramme passe en Snap"
+        ? "Pousser un peu la carte ; le diagramme passe en Snap"
         : how === "timeline"
           ? "Déplacer la carte : ← → une étape, ↑ ↓ sa place dans sa case"
           : how === "grid"
-            ? `Déplacer la carte dans la case de ce côté : ↑ ↓ ${axes?.y ?? "l'impact"}, ← → ${axes?.x ?? "l'effort"}`
+            ? `Déplacer la carte d'une case : ↑ ↓ ${axes?.y ?? "l'impact"}, ← → ${axes?.x ?? "l'effort"}`
             : "Déplacer la carte : ← → une colonne, ↑ ↓ sa place dans la colonne",
     ],
     how === "graph"
       ? ["Alt + → ↓", "Ajouter l'étape suivante, reliée depuis la carte"]
-      : ["Alt + ← → ↑ ↓", "Ajouter une carte du même type à côté, de ce côté"],
+      : ["Alt + ← → ↑ ↓", "Ajouter une carte du même type de ce côté"],
     ["Entrée ou F2", "Renommer la carte"],
-    ["Espace", "Sélectionner la carte et montrer ses actions"],
-    [
-      "D",
-      doneLast
-        ? "Envoyer la carte dans la dernière colonne, ou la remettre dans celle d'avant"
-        : "Marquer la carte faite, ou non faite",
-    ],
-    ["L", "Relier depuis la carte : puis Espace sur l'autre"],
-    ["E", "Écrire le détail de la carte, dans le panneau de droite"],
-    ["N", "Note pour Claude sur la carte"],
-    ["Suppr", "Supprimer la carte (Annuler la ramène)"],
-    ["/ ou ⌘K / Ctrl+K", "Trouver une carte sur tous les tableaux, par son id ou ses mots"],
+    ["Espace", "Choisir la carte"],
+    ["D", doneLast ? "Envoyer la carte dans la dernière colonne, ou l'en sortir" : "Faite, ou non faite"],
+    ["L", "Relier : puis Espace sur l'autre carte"],
+    ["E", "Écrire son détail, dans le panneau de droite"],
+    ["N", "Écrire une note pour Claude sur la carte"],
+    ["Suppr", "Supprimer la carte ; Annuler la ramène"],
+    ["/ ou ⌘K / Ctrl+K", "Trouver une carte, sur tous les tableaux"],
     ["⌘Z / Ctrl+Z", "Annuler ton dernier changement"],
     ["⇧⌘Z / Ctrl+Maj+Z ou Ctrl+Y", "Rétablir le changement annulé"],
-    ["⌘↵ / Ctrl+Entrée", "Envoyer à Claude, avec le mot écrit pour lui"],
+    ["⌘↵ / Ctrl+Entrée", "Envoyer à Claude"],
     ["Échap", "Fermer, annuler, désélectionner"],
-    ["?", "Ces raccourcis"],
-    ["< et >, ou [ et ]", "Replier ou afficher le panneau de gauche, celui de droite"],
-    ...(how === "kanban"
-      ? ([
-          [
-            "Sur un en-tête de colonne",
-            "Entrée renomme · Maj + Entrée écrit son sous-titre · Maj + ← → déplace · Suppr la supprime si vide · + ou Alt + ← → ajoute une colonne · ↓ va à ses cartes",
-          ],
-        ] as [string, string][])
-      : []),
+    ["?", "Cette feuille, et en sortir"],
+    ["< et >, ou [ et ]", "Replier le panneau de gauche, celui de droite ; ou le rouvrir"],
   ],
   mouseList: (how) => [
     [

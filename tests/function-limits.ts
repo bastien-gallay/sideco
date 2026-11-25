@@ -50,7 +50,6 @@ export const FUNCTION_LIMITS: Counts = {
   "src/web/event-words.ts": { complexity: 2, lines: 2 },
   "src/web/main.ts": { complexity: 1, lines: 2 },
   "src/web/markdown.ts": { complexity: 2 },
-  "src/web/messages.ts": { lines: 2 },
   "src/web/notices.ts": { lines: 1 },
   "src/web/store.ts": { complexity: 1 },
   "src/web/view.ts": { complexity: 3, lines: 1 },

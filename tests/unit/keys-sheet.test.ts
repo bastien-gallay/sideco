@@ -22,7 +22,7 @@ describe("the sheet of keys", () => {
     const en = withMoreKeys(MESSAGES.en.shortcutList("kanban", true), "en").map(([keys]) => keys);
     expect(en[en.indexOf("E") + 1]).toBe("T");
     expect(says(withMoreKeys(MESSAGES.fr.shortcutList("kanban", true), "fr"))).toContain(
-      "T = Ajouter un label à la carte",
+      "T = Ajouter un label, dans le panneau de droite",
     );
   });
 
@@ -43,11 +43,6 @@ describe("the sheet of keys", () => {
     expect(says(MESSAGES.fr.shortcutList("kanban", true))).toContain(
       "⇧⌘Z / Ctrl+Maj+Z ou Ctrl+Y = Rétablir le changement annulé",
     );
-  });
-
-  test("tells Shift+Enter on a lane heading", () => {
-    expect(says(MESSAGES.en.shortcutList("kanban", true))).toContain("Shift + Enter writes its subtitle");
-    expect(says(MESSAGES.fr.shortcutList("kanban", true))).toContain("Maj + Entrée écrit son sous-titre");
   });
 
   test("tells the double-clicks on a subtitle, and on an axis or its ends", () => {
