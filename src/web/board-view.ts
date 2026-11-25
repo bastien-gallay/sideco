@@ -20,9 +20,11 @@ import { chipText } from "../domain/render/labels.ts";
 import { arrowDefs, bandMarkup, cardMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import type { BoardHooks, BoardView } from "./board-api.ts";
+import { type CardKey, cardKey, type LaneKey, laneKey } from "./board-keys.ts";
 import * as links from "./board-links.ts";
 import { dropCommand, keyCommand, snapCommand, whereTo } from "./card-drop.ts";
 import { changedMark, ringMarkup, unreadMark } from "./card-marks.ts";
+import { cardButtons, type MoreMenu, standBy } from "./card-tools.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
 import { BACKBONE_H, liftHeadings } from "./headings.ts";
@@ -30,7 +32,6 @@ import { mountLaneFold, seen } from "./lane-fold.ts";
 import { linkHandle } from "./link-handle.ts";
 import { locale, t } from "./locale.ts";
 import { changed, isLive, send, state } from "./store.ts";
-import { placeTools, type Rect } from "./tools-place.ts";
 import {
   addOffers,
   cardLinks,
@@ -57,12 +58,6 @@ const CARD_MOVE_MS = 300;
 const EDITOR_MIN_H = 72;
 /** What a lane heading keeps beside its name: the inset on the left and the count on the right. */
 const LANE_COUNT_ROOM = 56;
-const ARROWS: Record<string, Direction> = {
-  ArrowUp: "up",
-  ArrowDown: "down",
-  ArrowLeft: "left",
-  ArrowRight: "right",
-};
 
 interface Editing {
   /** The text the editor opened with, as it would be saved: leaving it as it was saves nothing. */
@@ -109,9 +104,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   const scroll = h("div", { class: "canvas-scroll" });
   scroll.append(root);
   const tools = h("div", { class: "card-tools", hidden: true });
-  /** The ⋯ of the toolbar stays open through repaints while its card stays chosen. */
-  let moreOpen = false;
-  let moreFor: string | undefined;
+  const more: MoreMenu = { open: false };
   /** The keyboard is in the page's panels or header: the toolbar leaves the board to them. */
   const keyboardAway = (): boolean => {
     const active = document.activeElement;
@@ -580,97 +573,23 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       tools.hidden = true;
       return;
     }
-    if (id !== moreFor) moreOpen = false;
-    moreFor = id;
     const boardId = board.id;
     const element = board.elements.find((e) => e.id === id);
-    // Each action says its key too: the shortcuts are learnt where they are used.
-    const keyed = (label: string, key: string): { title: string } => ({ title: t.withKey(label, key) });
     const done = element !== undefined && isDone(board, element);
-    const doneLabel = done ? t.notDone : t.done;
-    // An action chosen in the list closes it: the list does not stay over the board it changed.
-    const chosen = (act: () => void): void => {
-      moreOpen = false;
-      more.open = false;
-      act();
-    };
-    // The actions taken most stay in view; the others wait under ⋯, their keys still at hand.
-    const more = h(
-      "details",
-      {
-        class: "menu card-more",
-        open: moreOpen,
-        ontoggle: () => {
-          moreOpen = more.open;
-          if (!more.open) return;
-          // Low on the board, the list opens upwards rather than under the board's edge.
-          const list = more.querySelector<HTMLElement>(".menu-items");
-          const bottom = host.getBoundingClientRect().bottom;
-          if (list) more.classList.toggle("opens-up", list.getBoundingClientRect().bottom > bottom - 8);
-        },
-      },
-      h("summary", { title: t.moreActions, "aria-label": t.moreActions }, "⋯"),
-      h(
-        "div",
-        { class: "menu-items" },
-        h(
-          "button",
-          { type: "button", ...keyed(t.link, "L"), onclick: () => chosen(() => beginLink(id)) },
-          t.link,
-        ),
-        h(
-          "button",
-          { type: "button", ...keyed(doneLabel, "D"), onclick: () => chosen(() => markDone(id, !done)) },
-          doneLabel,
-        ),
-        h(
-          "button",
-          {
-            type: "button",
-            class: "danger",
-            ...keyed(t.remove, "Delete"),
-            onclick: () => chosen(() => void send({ kind: "remove", board: boardId, id })),
-          },
-          t.remove,
-        ),
-      ),
-    );
+    const shown = { id, hasDetail: !!element?.detail, done, leads: leadsFrom(id, element?.type) };
     tools.replaceChildren(
-      h("button", { type: "button", ...keyed(t.rename, "Enter"), onclick: () => rename(id) }, t.rename),
-      // The ≡ the card wears when it has a detail: seen here too, not heard.
-      h(
-        "button",
-        { type: "button", ...keyed(t.detail, "E"), onclick: () => hooks.editDetail(id) },
-        t.detail,
-        element?.detail ? h("span", { "aria-hidden": "true" }, " ≡") : undefined,
-      ),
-      ...leadsFrom(id, element?.type),
-      h(
-        "button",
-        { type: "button", ...keyed(t.noteForClaude, "N"), onclick: () => noteOn(id) },
-        t.noteForClaude,
-      ),
-      more,
+      ...cardButtons(shown, more, host, {
+        rename: () => rename(id),
+        detail: () => hooks.editDetail(id),
+        note: () => noteOn(id),
+        link: () => beginLink(id),
+        done: () => markDone(id, !done),
+        remove: () => void send({ kind: "remove", board: boardId, id }),
+      }),
     );
     tools.hidden = false;
-    const frame = host.getBoundingClientRect();
-    const inFrame = (r: DOMRect): Rect => ({
-      left: r.left - frame.left,
-      top: r.top - frame.top,
-      right: r.right - frame.left,
-      bottom: r.bottom - frame.top,
-    });
-    const others = [...nodes].flatMap(([other, { g }]) =>
-      other === id ? [] : [inFrame(g.getBoundingClientRect())],
-    );
-    const { left, top } = placeTools(
-      inFrame(node.g.getBoundingClientRect()),
-      others,
-      { w: tools.offsetWidth, h: tools.offsetHeight },
-      frame,
-    );
-    tools.style.left = `${left}px`;
-    tools.style.top = `${top}px`;
+    const others = [...nodes].flatMap(([other, { g }]) => (other === id ? [] : [g]));
+    standBy(tools, node.g, others, host);
   }
 
   function toScene(event: { clientX: number; clientY: number }): { x: number; y: number } {
@@ -1120,30 +1039,26 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   const offerAt = (target: EventTarget | null): SVGGElement | null =>
     (target as Element | null)?.closest?.<SVGGElement>("g.add-here") ?? null;
 
-  root.addEventListener("pointerdown", (event) => {
+  /** A lane taken by its heading: held once the heading moves, so a click or a double click stays the heading's own. */
+  function grabLane(event: PointerEvent): boolean {
     const head = (event.target as Element | null)?.closest?.<SVGGElement>("g.head.band-lane");
     const band = head ? scene.bands[Number(head.dataset.band)] : undefined;
-    if (
-      head &&
-      band?.kind === "lane" &&
-      event.button === 0 &&
-      isLive() &&
-      format()?.ownLanes &&
-      !format()?.grid
-    ) {
-      // The pointer is held once the heading moves: a click or a double click stays the heading's own.
-      laneDrag = { lane: band.id, startX: toScene(event).x, dx: 0, moving: false };
-      return;
-    }
-    const id = cardAt(event.target);
+    const f = format();
+    if (band?.kind !== "lane" || !isLive() || !f?.ownLanes || f.grid) return false;
+    laneDrag = { lane: band.id, startX: toScene(event).x, dx: 0, moving: false };
+    return true;
+  }
+
+  /** As for a lane: a step is held once its number moves, so a click stays a click. */
+  function grabStep(event: PointerEvent): boolean {
     const at = toScene(event);
-    const step = !id && event.button === 0 && isLive() ? inHeadings(at.x, at.y) : undefined;
-    if (step?.kind === "step-head" && !offerAt(event.target)) {
-      // As for a lane: the pointer is held once the number moves, so a click stays a click.
-      stepDrag = { from: step.col, startX: at.x, dx: 0, moving: false };
-      return;
-    }
-    if (!id || event.button !== 0) return;
+    const step = isLive() ? inHeadings(at.x, at.y) : undefined;
+    if (step?.kind !== "step-head" || offerAt(event.target)) return false;
+    stepDrag = { from: step.col, startX: at.x, dx: 0, moving: false };
+    return true;
+  }
+
+  function grabCard(id: string, event: PointerEvent): void {
     const start = toScene(event);
     const card = scene.cards.find((c) => c.id === id);
     if (!card) return;
@@ -1157,6 +1072,14 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       target: { kind: "none" },
     };
     root.setPointerCapture(event.pointerId);
+  }
+
+  root.addEventListener("pointerdown", (event) => {
+    const main = event.button === 0;
+    if (main && grabLane(event)) return;
+    const id = cardAt(event.target);
+    if (!id && main && grabStep(event)) return;
+    if (id && main) grabCard(id, event);
   });
 
   // A mouse or a pen says where it is before it presses: that is where a card can be offered.
@@ -1322,25 +1245,34 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   /** A drop ends with a click on the board; that click is not a new choice. */
   let dropped = false;
 
+  /** A click on what the board offers: a lane, a column or a card to add, a lane or a column to remove. */
+  function takeOffer(offer: SVGGElement): void {
+    const { column, type, lane } = offer.dataset;
+    if (type === "lane") nameNewLane(offer);
+    else if (type === "remove-lane" && lane) removeLane(lane);
+    else if (type === "remove-column" && column !== undefined) removeStep(Number(column));
+    else if (column === undefined) addHere(type ?? "");
+    else if (board && isLive()) void send({ kind: "insert-column", board: board.id, at: Number(column) });
+  }
+
+  /** The ≡ a card wears with a detail leads to it, its note count to its discussions; the rest of the card was handled as it was pressed. */
+  function followMark(target: Element | null): void {
+    const id = cardAt(target);
+    if (!id) return;
+    if (target?.closest(".card-detail, .card-detail-hit")) hooks.showDetail(id);
+    if (target?.closest(".card-notes")) hooks.showNotes(id);
+  }
+
   root.addEventListener("click", (event) => {
     const wasDrop = dropped;
     dropped = false;
+    if (wasDrop) return;
     const target = under(event);
-    // The ≡ a card wears with a detail leads to it; the rest of the card was handled as it was pressed.
-    const marked = target?.closest(".card-detail, .card-detail-hit") ? cardAt(target) : undefined;
-    if (!wasDrop && marked) hooks.showDetail(marked);
-    // Its note count leads to its discussions.
-    const counted = target?.closest(".card-notes") ? cardAt(target) : undefined;
-    if (!wasDrop && counted) hooks.showNotes(counted);
-    if (wasDrop || cardAt(target)) return;
+    followMark(target);
+    if (cardAt(target)) return;
     const offer = offerAt(target);
     if (offer) {
-      const { column, type, lane } = offer.dataset;
-      if (type === "lane") nameNewLane(offer);
-      else if (type === "remove-lane" && lane) removeLane(lane);
-      else if (type === "remove-column" && column !== undefined) removeStep(Number(column));
-      else if (column === undefined) addHere(type ?? "");
-      else if (board && isLive()) void send({ kind: "insert-column", board: board.id, at: Number(column) });
+      takeOffer(offer);
       return;
     }
     pickedLink = isLive() ? links.linkAt(target, event, host.getBoundingClientRect()) : undefined;
@@ -1350,39 +1282,39 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     paintTools();
   });
 
+  /** What a double click writes, by what it lands on: a name, a hint, a word of an axis, a link. False for none of them. */
+  function writeUnder(target: Element | null): boolean {
+    const heading = target?.closest<SVGTextElement>("text.lane-label");
+    const hinted = target?.closest<SVGTextElement>("text.lane-hint, text.lane-hint-blank")?.dataset.lane;
+    const axis = target?.closest<SVGTextElement>("text.axis-label, text.axis-bound");
+    const conn = target?.closest<SVGGElement>("g.conn")?.dataset;
+    if (heading) renameLane(heading);
+    else if (hinted) hintLane(hinted);
+    else if (axis) nameAxis(axis);
+    else if (conn?.src && conn.dst) nameLink(conn.src, conn.dst);
+    else return false;
+    return true;
+  }
+
+  /** A double click on an empty place adds a card there, its editor under the pointer. */
+  function addAt(on: Board, event: MouseEvent): void {
+    const at = toScene(event);
+    const target = locate(on, at.x, at.y, undefined, seen(on, span));
+    const snap = { x: event.clientX - 76 * zoom, y: event.clientY - 44 * zoom };
+    const first = format()?.types[0];
+    if (target.kind === "cell") beginAdd(target.type, { col: target.col, ...snap });
+    else if (target.kind === "slot" && first) beginAdd(first.id, { lane: target.lane, ...snap });
+  }
+
   root.addEventListener("dblclick", (event) => {
-    if (!board || !isLive() || offerAt(under(event))) return;
-    const id = cardAt(under(event));
+    const target = under(event);
+    if (!board || !isLive() || offerAt(target)) return;
+    const id = cardAt(target);
     if (id) {
       rename(id);
       return;
     }
-    const heading = under(event)?.closest<SVGTextElement>("text.lane-label");
-    if (heading) {
-      renameLane(heading);
-      return;
-    }
-    const hint = under(event)?.closest<SVGTextElement>("text.lane-hint, text.lane-hint-blank");
-    if (hint?.dataset.lane) {
-      hintLane(hint.dataset.lane);
-      return;
-    }
-    const axis = under(event)?.closest<SVGTextElement>("text.axis-label, text.axis-bound");
-    if (axis) {
-      nameAxis(axis);
-      return;
-    }
-    const conn = under(event)?.closest<SVGGElement>("g.conn");
-    if (conn?.dataset.src && conn.dataset.dst) {
-      nameLink(conn.dataset.src, conn.dataset.dst);
-      return;
-    }
-    const f = format();
-    const at = toScene(event);
-    const target = locate(board, at.x, at.y, undefined, seen(board, span));
-    const snap = { x: event.clientX - 76 * zoom, y: event.clientY - 44 * zoom };
-    if (target.kind === "cell") beginAdd(target.type, { col: target.col, ...snap });
-    else if (target.kind === "slot" && f?.types[0]) beginAdd(f.types[0].id, { lane: target.lane, ...snap });
+    if (!writeUnder(target)) addAt(board, event);
   });
 
   /** The keyboard is on a card: Tab comes back to that one. */
@@ -1408,63 +1340,67 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     node.g.scrollIntoView({ block: at, inline: at });
   }
 
+  /** The keyboard goes to the next card that way; a card chosen goes along, one card marked, never two. */
+  function goFrom(id: string, direction: Direction): void {
+    const next = neighbour(scene.cards, id, direction);
+    if (!next) return;
+    focusCard(next);
+    // A link being drawn waits for its end.
+    if (state.selected && !state.linking) {
+      state.selected = next;
+      changed();
+    }
+  }
+
+  /** Where it goes, said once it got there: the eye sees the move, the ear hears it. */
+  function moveByKey(on: Board, id: string, direction: Direction): void {
+    const command = keyCommand(on, scene, id, direction, span);
+    if (command?.kind !== "move" && command?.kind !== "place") return;
+    const place = whereTo(command, scene);
+    void send(command).then((done) => {
+      if (done === undefined) return;
+      follow(id);
+      if (place) hooks.announce(t.moved(id, place));
+    });
+  }
+
+  /** The keyboard goes on to the next card, and the page offers to take this one back. */
+  function removeByKey(on: Board, id: string): void {
+    const next = neighbour(scene.cards, id, "down") ?? neighbour(scene.cards, id, "up");
+    void send({ kind: "remove", board: on.id, id }).then((done) => {
+      if (done === undefined) return;
+      hooks.removed(t.cardRemoved(id));
+      if (next) focusCard(next);
+    });
+  }
+
+  function toggleDone(on: Board, id: string): void {
+    const element = on.elements.find((e) => e.id === id);
+    markDone(id, !(element && isDone(on, element)));
+  }
+
+  /** What each key of a card does: which key asks for it is said in board-keys.ts. */
+  const onCard: {
+    [K in CardKey["ask"]]: (on: Board, id: string, key: Extract<CardKey, { ask: K }>) => void;
+  } = {
+    go: (_, id, key) => goFrom(id, key.direction),
+    move: (on, id, key) => moveByKey(on, id, key.direction),
+    beside: (_, id, key) => addBeside(id, key.direction),
+    rename: (_, id) => rename(id),
+    choose: (_, id) => choose(id),
+    remove: removeByKey,
+    done: toggleDone,
+    link: (_, id) => beginLink(id),
+    note: (_, id) => noteOn(id),
+    detail: (_, id) => hooks.editDetail(id),
+  };
+
   root.addEventListener("keydown", (event) => {
     const id = cardAt(event.target);
-    if (!id || !board) return;
-    const direction = ARROWS[event.key];
-    // The arrows read, so they work on the past too; Shift and an arrow move, so only live.
-    if (direction && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
-      event.preventDefault();
-      const next = neighbour(scene.cards, id, direction);
-      if (!next) return;
-      focusCard(next);
-      // A card chosen goes along with the keyboard: one card is marked, never two. A link being drawn waits for its end.
-      if (state.selected && !state.linking) {
-        state.selected = next;
-        changed();
-      }
-      return;
-    }
-    if (!isLive()) return;
-    if (direction && event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
-      event.preventDefault();
-      const command = keyCommand(board, scene, id, direction, span);
-      // Where it goes, said once it got there: the eye sees the move, the ear hears it.
-      if (command?.kind !== "move" && command?.kind !== "place") return;
-      const place = whereTo(command, scene);
-      void send(command).then((done) => {
-        if (done === undefined) return;
-        follow(id);
-        if (place) hooks.announce(t.moved(id, place));
-      });
-      return;
-    }
-    if (direction && event.altKey && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
-      event.preventDefault();
-      addBeside(id, direction);
-      return;
-    }
-    // ⌘↵ or Ctrl+Enter is the page's: it sends to Claude, whatever holds the keyboard.
-    const plainEnter = event.key === "Enter" && !event.metaKey && !event.ctrlKey;
-    if (plainEnter || event.key === "F2") rename(id);
-    else if (event.key === " ") choose(id);
-    else if (event.key === "Delete" || event.key === "Backspace") {
-      // The keyboard goes on to the next card, and the page offers to take this one back.
-      const next = neighbour(scene.cards, id, "down") ?? neighbour(scene.cards, id, "up");
-      const boardId = board.id;
-      void send({ kind: "remove", board: boardId, id }).then((done) => {
-        if (done === undefined) return;
-        hooks.removed(t.cardRemoved(id));
-        if (next) focusCard(next);
-      });
-    } else if (event.key.toLowerCase() === "d") {
-      const element = board.elements.find((e) => e.id === id);
-      markDone(id, !(element && isDone(board, element)));
-    } else if (event.key.toLowerCase() === "l") beginLink(id);
-    else if (event.key.toLowerCase() === "n") noteOn(id);
-    else if (event.key.toLowerCase() === "e") hooks.editDetail(id);
-    else return;
+    const key = id && board ? cardKey(event) : undefined;
+    if (!id || !board || !key || !("reads" in key || isLive())) return;
     event.preventDefault();
+    (onCard[key.ask] as (on: Board, id: string, key: CardKey) => void)(board, id, key);
   });
 
   // A word of an axis: Enter or F2 writes it, as a double-click does.
@@ -1478,55 +1414,78 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     nameAxis(word);
   });
 
+  /** The name of a lane the keyboard is on, among the lanes of its board. */
+  interface OnLane {
+    on: Board;
+    label: SVGTextElement;
+    lane: string;
+    lanes: string[];
+    at: number;
+  }
+
+  const focusLane = (id: string | undefined): void =>
+    heads.querySelector<SVGTextElement>(`text.lane-label[data-lane="${id}"]`)?.focus({ preventScroll: true });
+
+  /** Moves a lane by its keys, and says where it got; false where it cannot go that way. */
+  function moveLaneByKey({ on, label, lane, lanes, at }: OnLane, direction: Direction): boolean {
+    const command = laneKeyMove(on, lane, direction);
+    if (!command) return false;
+    const name = label.textContent ?? lane;
+    laneArriving = lane;
+    void send(command).then((done) => {
+      if (done !== undefined)
+        hooks.announce(t.laneMovedTo(name, at + (direction === "right" ? 2 : 0), lanes.length));
+    });
+    return true;
+  }
+
+  /** Removes a lane by its key: one that holds cards says why not, and the last one stays. */
+  function removeLaneByKey({ on, label, lane, lanes, at }: OnLane): boolean {
+    if (on.elements.some((e) => e.lane === lane)) {
+      hooks.notice(t.laneNotEmpty(label.textContent ?? lane));
+      return true;
+    }
+    if (lanes.length < 2) return false;
+    laneArriving = lanes[at + 1] ?? lanes[at - 1];
+    removeLane(lane);
+    return true;
+  }
+
+  /** What each key of a lane's name does; false for a key that had nothing to do, left to the browser. */
+  const onLane: { [K in LaneKey["ask"]]: (l: OnLane, key: Extract<LaneKey, { ask: K }>) => unknown } = {
+    "to-lane": (l, key) => {
+      const next = l.lanes[l.at + key.by];
+      if (next) focusLane(next);
+    },
+    "to-cards": (l) => {
+      const first = l.on.elements.find((e) => e.lane === l.lane);
+      if (first) focusCard(first.id);
+    },
+    move: (l, key) => moveLaneByKey(l, key.direction),
+    add: (l, key) => {
+      const box = l.label.getBoundingClientRect();
+      nameLaneAt(new DOMRect(box.left - 6, box.bottom + 6, 180, 36), key.after ? l.lanes[l.at + 1] : l.lane);
+    },
+    hint: (l) => {
+      laneArriving = l.lane;
+      hintLane(l.lane);
+    },
+    rename: (l) => {
+      laneArriving = l.lane;
+      renameLane(l.label);
+    },
+    remove: removeLaneByKey,
+  };
+
   root.addEventListener("keydown", (event) => {
     const label = (event.target as Element | null)?.closest?.<SVGTextElement>("text.lane-label");
     const lane = label?.dataset.lane;
     if (!label || !lane || !board) return;
+    const key = laneKey(event);
+    if (!key || !("reads" in key || isLive())) return;
     const lanes = lanesOf(board);
-    const at = lanes.indexOf(lane);
-    const name = label.textContent ?? lane;
-    const direction = ARROWS[event.key];
-    const plain = !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey;
-    const focusLane = (id: string | undefined) =>
-      id &&
-      heads
-        .querySelector<SVGTextElement>(`text.lane-label[data-lane="${id}"]`)
-        ?.focus({ preventScroll: true });
-    if ((direction === "left" || direction === "right") && plain)
-      focusLane(lanes[at + (direction === "right" ? 1 : -1)]);
-    else if (direction === "down" && plain) {
-      const first = board.elements.find((e) => e.lane === lane);
-      if (first) focusCard(first.id);
-    } else if (!isLive()) return;
-    else if (direction && event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
-      const command = laneKeyMove(board, lane, direction);
-      if (!command) return;
-      laneArriving = lane;
-      void send(command).then((done) => {
-        if (done !== undefined)
-          hooks.announce(t.laneMovedTo(name, at + (direction === "right" ? 2 : 0), lanes.length));
-      });
-    } else if ((direction === "left" || direction === "right") && event.altKey) {
-      const box = label.getBoundingClientRect();
-      const before = direction === "right" ? lanes[at + 1] : lane;
-      nameLaneAt(new DOMRect(box.left - 6, box.bottom + 6, 180, 36), before);
-    } else if (event.key === "+") {
-      const box = label.getBoundingClientRect();
-      nameLaneAt(new DOMRect(box.left - 6, box.bottom + 6, 180, 36), lanes[at + 1]);
-    } else if (event.key === "Enter" && event.shiftKey) {
-      laneArriving = lane;
-      hintLane(lane);
-    } else if ((event.key === "Enter" && !event.metaKey && !event.ctrlKey) || event.key === "F2") {
-      laneArriving = lane;
-      renameLane(label);
-    } else if (event.key === "Delete" || event.key === "Backspace") {
-      if (board.elements.some((e) => e.lane === lane)) hooks.notice(t.laneNotEmpty(name));
-      else if (lanes.length < 2) return;
-      else {
-        laneArriving = lanes[at + 1] ?? lanes[at - 1];
-        removeLane(lane);
-      }
-    } else return;
+    const l: OnLane = { on: board, label, lane, lanes, at: lanes.indexOf(lane) };
+    if ((onLane[key.ask] as (l: OnLane, key: LaneKey) => unknown)(l, key) === false) return;
     event.preventDefault();
     event.stopPropagation();
   });
