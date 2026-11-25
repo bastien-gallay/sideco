@@ -13,8 +13,11 @@ import { type Args, UsageError } from "./args.ts";
 import { chooseBoard } from "./choose.ts";
 import { findServer } from "./client.ts";
 
-/** Writes one board in the format asked for, to a file or to the terminal. */
-export function exportOne(ws: Workspace, args: Args, locale: Locale): number {
+/**
+ * Writes one board in the format asked for, to a file or to the terminal. To the terminal it waits until all is
+ * written: a pipe holds 64 KB, and a reader slow to empty it lost the rest when the command left at once (T302).
+ */
+export async function exportOne(ws: Workspace, args: Args, locale: Locale): Promise<number> {
   const board = chooseBoard(ws, args.positional[0] ?? args.flags.get("board"));
   const format = EXPORT_FORMATS.find((f) => f === (args.flags.get("format") ?? "md"));
   if (!format) throw new UsageError(`--format is one of: ${EXPORT_FORMATS.join(", ")}`);
@@ -28,7 +31,7 @@ export function exportOne(ws: Workspace, args: Args, locale: Locale): number {
     writeFileSync(out, text);
     console.log(`wrote ${out}`);
   } else {
-    process.stdout.write(text);
+    await Bun.write(Bun.stdout, text);
   }
   return 0;
 }

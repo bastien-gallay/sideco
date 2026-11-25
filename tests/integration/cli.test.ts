@@ -497,6 +497,28 @@ describe("sharing", () => {
     expect(model.title).toBe("Passage de commande");
   });
 
+  test("an export longer than a pipe holds is whole for a reader that is slow to read it (T302)", async () => {
+    const cwd = realpathSync(mkdtempSync(join(tmpdir(), "sideco-pipe-")));
+    const word = "Une règle de gestion assez longue pour peser. ".repeat(8);
+    const adds = Array.from({ length: 300 }, (_, i) => `add event "Fait ${i}" --col 1 --detail "${word}"`);
+    await sideco(["init"], { cwd });
+    const made = await sideco(["apply"], { cwd, stdin: `board new "Gros" --id gros\n${adds.join("\n")}\n` });
+    expect(made.code).toBe(0);
+    const whole = (await sideco(["export", "gros", "--format", "json"], { cwd })).out.length;
+    expect(whole).toBeGreaterThan(70_000);
+    // The reader waits before it reads: the pipe fills, and what is left must not be dropped as the command ends.
+    const child = Bun.spawn(["/bin/sh", "-c", `"${SIDECO}" export gros --format json | (sleep 1; wc -c)`], {
+      cwd,
+      env: { ...process.env, SIDECO_PORT: "0", SIDECO_SESSION: "", SIDECO_BOARD: "", SIDECO_LANG: "" },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const read = Number((await new Response(child.stdout).text()).trim());
+    await child.exited;
+    expect(read).toBeGreaterThanOrEqual(whole);
+    await sideco(["stop"], { cwd });
+  });
+
   test("exports are in English unless --lang or SIDECO_LANG says otherwise", async () => {
     expect((await sideco(["export"])).out).toContain("## Elements\n");
     expect((await sideco(["export", "--lang", "fr"])).out).toContain("## Éléments\n");
