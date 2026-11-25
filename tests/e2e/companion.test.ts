@@ -3245,7 +3245,9 @@ describe("the spotlight on links (S325)", () => {
 describe("a link drawn from the handle of the card chosen (S326)", () => {
   const conn = (src: string, dst: string) => page.locator(`g.conn[data-src="${src}"][data-dst="${dst}"]`);
   const handle = () => page.locator("g.link-handle circle.link-handle-dot");
+  // The handle is drawn again with its card: between two drawings it has no box, so it is waited for.
   const centre = async (l: Locator) => {
+    await l.waitFor();
     const box = await l.boundingBox();
     if (!box) throw new Error("nothing to point at");
     return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
