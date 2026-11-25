@@ -1234,8 +1234,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   window.addEventListener("keydown", (event) => {
     if (event.key !== "Escape" || editor.writing()) return;
     pickedLink = undefined;
-    // The toolbar closes under the keyboard: it goes back to its card, not to the top of the page.
-    if (tools.contains(document.activeElement) && current)
+    // The toolbar and the panel of the card close under the keyboard: it goes back to the card, not to the top of the page.
+    if (document.activeElement?.closest(".card-tools, .card-panel") && current)
       nodes.get(current)?.g.focus({ preventScroll: true });
     // Repainted, the toolbar closes and the spotlight goes out.
     state.selected = null;

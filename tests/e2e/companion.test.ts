@@ -716,6 +716,47 @@ describe("the human edits, the agent is told", () => {
     await card("H1").waitFor({ state: "detached" });
   });
 
+  test("Escape never leaves the keyboard on the page: it goes back to the card (T277, T280)", async () => {
+    const holds = () =>
+      page.evaluate(() => {
+        const at = document.activeElement;
+        return at?.getAttribute("data-id") ?? `${at?.tagName}.${at?.getAttribute("class") ?? ""}`;
+      });
+    const field = page.locator("textarea.card-panel-editor");
+    // From a card, E writes its detail in the panel; Escape gives the card the keyboard back.
+    await card("E2").focus();
+    await page.keyboard.press("e");
+    await until("the detail is being written", async () => (await holds()).includes("card-panel-editor"));
+    await page.keyboard.press("Escape");
+    await until("the card has the keyboard back", async () => (await holds()) === "E2");
+    // From the button of the panel: Escape gives the button the keyboard back, and Escape again the card.
+    await card("E2").click();
+    await page.locator("button.edit-detail").click();
+    await field.waitFor();
+    await page.keyboard.press("Escape");
+    await until("the button has the keyboard back", async () => (await holds()).includes("edit-detail"));
+    await page.keyboard.press("Escape");
+    await until("then the card", async () => (await holds()) === "E2");
+    // A card chosen is let go by Escape, and keeps the keyboard: the arrows go on from it.
+    await card("E2").click();
+    await page.keyboard.press("Escape");
+    await until("no card chosen", async () => (await page.locator("g.card.is-selected").count()) === 0);
+    expect(await holds()).toBe("E2");
+    // After a link made by the keys, the card reached is chosen; Escape lets it go the same way.
+    await card("E2").focus();
+    await page.keyboard.press("l");
+    await card("E3").focus();
+    await page.keyboard.press("Space");
+    await until(
+      "the card reached is chosen",
+      async () => (await page.locator("g.card.is-selected").count()) === 1,
+    );
+    await page.keyboard.press("Escape");
+    await until("let go", async () => (await page.locator("g.card.is-selected").count()) === 0);
+    expect(await holds()).toBe("E3");
+    await agent("unlink E2 E3", "commande");
+  });
+
   test("the footer counts what Claude has not read, and says when it will read it", async () => {
     const told = await page.locator(".pending").textContent();
     expect(told).toMatch(/^\d+ changes not read yet · /);
