@@ -3,6 +3,9 @@
  * the list under ⋯, and where it stands beside its card. board-view.ts says
  * when it shows and what each action does.
  */
+
+import { findFormat, findType, isDone } from "../domain/formats.ts";
+import { type Board, findElement } from "../domain/workspace.ts";
 import { ADD_LINKED } from "./add-linked.ts";
 import { h } from "./dom.ts";
 import { locale, t } from "./locale.ts";
@@ -33,6 +36,19 @@ export interface CardShown {
   done: boolean;
   /** The buttons that make a card this one leads to, between the detail and the note. */
   leads: HTMLElement[];
+}
+
+/** What the toolbar shows of the card `id`; `lead` makes the card it leads to, where its kind leads to one. */
+export function cardShown(board: Board, id: string, lead: () => void): CardShown {
+  const el = findElement(board, id);
+  const format = findFormat(board.format);
+  const next = format && el ? findType(format, el.type)?.leadsTo : undefined;
+  return {
+    id,
+    hasDetail: !!el?.detail,
+    done: el !== undefined && isDone(board, el),
+    leads: next ? [leadButton(next.label[locale], lead)] : [],
+  };
 }
 
 /** Each action says its key too: the shortcuts are learnt where they are used. */

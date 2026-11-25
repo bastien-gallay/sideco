@@ -7,13 +7,20 @@
 import { findFormat, findType } from "../domain/formats.ts";
 import type { Locale } from "../domain/i18n.ts";
 import { type Board, findElement } from "../domain/workspace.ts";
-import { type AddPlace, keyAdd } from "./view.ts";
+import { type AddPlace, type Direction, keyAdd } from "./view.ts";
 
 /** The name of the gesture, in the list under ⋯ of a card. */
 export const ADD_LINKED: Record<Locale, string> = {
   en: "Add a linked card",
   fr: "Ajouter une carte liée",
 };
+
+/** Where the editor of a card added beside another stands: against its box, on the side the arrow points to. */
+export function besideBox(r: DOMRect, direction: Direction, gap: number): { x: number; y: number } {
+  const x = direction === "right" ? r.right + gap : direction === "left" ? r.left - r.width - gap : r.left;
+  const y = direction === "down" ? r.bottom + gap : direction === "up" ? r.top - r.height - gap : r.top;
+  return { x, y };
+}
 
 /**
  * The `add` that makes a card linked from `id`: of the kind the card leads to where it leads to one (a story to

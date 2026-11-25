@@ -17,7 +17,7 @@ import {
 } from "../domain/layout/index.ts";
 import { arrowDefs, bandMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
-import { linkedAdd } from "./add-linked.ts";
+import { besideBox, linkedAdd } from "./add-linked.ts";
 import { axisEditorBox, dressAxes } from "./axis-words.ts";
 import type { BoardHooks, BoardView } from "./board-api.ts";
 import { type CardKey, cardKey, type LaneKey, laneKey } from "./board-keys.ts";
@@ -26,7 +26,7 @@ import { dropCommand, keyCommand, snapCommand, whereTo } from "./card-drop.ts";
 import { mountEditor } from "./card-editor.ts";
 import { type CardNode, drawCard, dropNodes, keepKeyboard, newCardNode, sayCard } from "./card-node.ts";
 import { readDetail } from "./card-read.ts";
-import { cardButtons, keyboardAway, leadButton, type MoreMenu, noPlace, standBy } from "./card-tools.ts";
+import { cardButtons, cardShown, keyboardAway, type MoreMenu, noPlace, standBy } from "./card-tools.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
 import { type Held, headingsDrop, holdInView, liftHeadings } from "./headings.ts";
@@ -434,9 +434,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       return;
     }
     const boardId = board.id;
-    const element = board.elements.find((e) => e.id === id);
-    const done = element !== undefined && isDone(board, element);
-    const shown = { id, hasDetail: !!element?.detail, done, leads: leadsFrom(id, element?.type) };
+    const shown = cardShown(board, id, () => addLinked(id));
     tools.replaceChildren(
       ...cardButtons(shown, more, host, {
         rename: () => rename(id),
@@ -444,7 +442,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
         note: () => noteOn(id),
         link: () => beginLink(id),
         linked: () => addLinked(id),
-        done: () => markDone(id, !done),
+        done: () => markDone(id, !shown.done),
         remove: () => void send({ kind: "remove", board: boardId, id }),
       }),
     );
@@ -689,33 +687,16 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   const beginLink = (id: string): void => linkFrom(id, nodes.get(id)?.g);
 
-  /** The button that makes, from a card, one of the kind it leads to: a point of a retro, an action. */
-  function leadsFrom(id: string, typeId: string | undefined): HTMLElement[] {
-    const f = format();
-    const next = f && typeId ? findType(f, typeId)?.leadsTo : undefined;
-    if (!next) return [];
-    return [leadButton(next.label[locale], () => addLinked(id))];
-  }
-
   /** Opens the editor beside this card for one linked from it: of the kind it leads to, else of its own (T272). */
-  function addLinked(id: string): void {
-    const node = nodes.get(id);
-    const place = board ? linkedAdd(board, id) : undefined;
-    if (!node || !place) return;
-    const r = node.g.getBoundingClientRect();
-    beginAdd(place.type, { ...place, x: r.right + 12 * zoom, y: r.top });
-  }
+  const addLinked = (id: string): void => addBeside(id, "right", true);
 
-  /** Opens the editor for a card of the focused one's kind, beside it where the arrow points. */
-  function addBeside(id: string, direction: Direction): void {
+  /** Opens the editor for a card beside this one, where the arrow points: of its kind, or `linked` from it. */
+  function addBeside(id: string, direction: Direction, linked = false): void {
     const node = nodes.get(id);
-    const place = board ? keyAdd(board, id, direction) : undefined;
+    const place = board && (linked ? linkedAdd(board, id) : keyAdd(board, id, direction));
     if (!node || !place) return;
     const r = node.g.getBoundingClientRect();
-    const gap = 12 * zoom;
-    const x = direction === "right" ? r.right + gap : direction === "left" ? r.left - r.width - gap : r.left;
-    const y = direction === "down" ? r.bottom + gap : direction === "up" ? r.top - r.height - gap : r.top;
-    beginAdd(place.type, { ...place, x, y });
+    beginAdd(place.type, { ...place, ...besideBox(r, direction, 12 * zoom) });
   }
 
   function beginAdd(
