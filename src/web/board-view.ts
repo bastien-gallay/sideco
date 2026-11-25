@@ -271,6 +271,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     }
     paintFrame(board);
     const switched = paintedBoard !== board.id;
+    // A card added that another board hid before it was drawn is waited for no longer.
+    if (switched) arriving = undefined;
     paintedBoard = board.id;
     const alive = paintCards(board, switched);
     const held = dropGone(alive);
@@ -724,7 +726,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       : new DOMRect(frame.left + 16, frame.top + 16, 168, 88);
     const from = place?.from ?? (f.layout === "graph" ? (state.selected ?? undefined) : undefined);
     // Given up, the words leave the keyboard on the card they were asked from (`back`).
-    const kind = { name: t.cardLabel, lines: false, from: place?.back };
+    const kind = { name: t.cardLabel, lines: false, back: place?.back };
     const typed = type.id;
     openEditor(box, "", t.newCard(type.label[locale], type.hint[locale]), type, added, kind);
     function added(label: string): Promise<boolean> | undefined {
@@ -1074,6 +1076,8 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     void send(command).then((done) => {
       if (done === undefined) return;
       follow(id);
+      // Asked from the list under ⋯, which closes: the card moved has the keyboard, as when a key moved it.
+      nodes.get(id)?.g.focus({ preventScroll: true });
       if (place) hooks.announce(t.moved(id, place));
     });
   }

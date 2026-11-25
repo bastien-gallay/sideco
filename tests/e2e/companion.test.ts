@@ -491,6 +491,9 @@ describe("the agent writes, the page follows", () => {
     );
     await items.filter({ hasText: "Send to top" }).click();
     await until("sent to the top by the list", async () => (await order()) === "Trois Un Deux");
+    await until("the card sent has the keyboard", () =>
+      page.evaluate((id) => document.activeElement?.getAttribute("data-id") === id, third),
+    );
     await page.keyboard.press("Escape");
     await page.locator(".board-picker select").selectOption("commande");
     await card("R1").waitFor();

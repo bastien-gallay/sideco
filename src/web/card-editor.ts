@@ -24,8 +24,10 @@ interface Editing {
   tidy(text: string): string;
   /** A text of several lines: read from the left, Shift+Enter breaks its lines. */
   lines: boolean;
-  /** The card the keyboard goes back to once the editor closes. */
+  /** The card the words are about: the keyboard goes back to it once the editor closes; gone, the words are handed back. */
   from: string | undefined;
+  /** The card the keyboard goes back to when the words are about none yet: a card being added from it. */
+  back: string | undefined;
   /** Emptied, the words are saved too: a name taken off. */
   blank: boolean;
 }
@@ -35,6 +37,7 @@ interface EditorKind {
   name: string;
   lines: boolean;
   from?: string;
+  back?: string;
   blank?: boolean;
   /** One word: the editor is one line tall. */
   short?: boolean;
@@ -132,6 +135,7 @@ class Editor implements CardEditor {
       tidy,
       lines: kind.lines,
       from: kind.from,
+      back: kind.back,
       blank: kind.blank ?? false,
       saving: false,
     };
@@ -155,7 +159,8 @@ class Editor implements CardEditor {
     this.editing = undefined;
     this.el.hidden = true;
     changed();
-    if (refocus && was.from) this.hooks.back(was.from);
+    const to = was.from ?? was.back;
+    if (refocus && to) this.hooks.back(to);
   }
 
   /**

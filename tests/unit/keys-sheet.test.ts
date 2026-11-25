@@ -58,6 +58,10 @@ describe("the sheet of keys", () => {
     expect(says(withMoreKeys(MESSAGES.fr.shortcutList("kanban", true), "fr"))).toContain(
       "Maj + Début, Fin = Envoyer la carte en haut de sa case, ou en bas",
     );
+    // A diagram has no cell: its sheet does not tell a key that does nothing there.
+    expect(says(withMoreKeys(MESSAGES.en.shortcutList("graph", true), "en", false, false))).not.toContain(
+      "Home, End",
+    );
   });
 
   test("tells Redo beside Undo, with every key that does it", () => {

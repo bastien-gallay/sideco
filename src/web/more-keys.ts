@@ -5,7 +5,7 @@
 import type { Locale } from "../domain/i18n.ts";
 
 /** Each key with the key it follows on the sheet. */
-const MORE: Record<Locale, { after: string; row: [string, string]; columns?: true }[]> = {
+const MORE: Record<Locale, { after: string; row: [string, string]; columns?: true; cells?: true }[]> = {
   en: [
     {
       after: "← → ↑ ↓",
@@ -19,6 +19,7 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
     { after: "E", row: ["I", "Read its detail, in the right panel"] },
     {
       after: "Shift + ← → ↑ ↓",
+      cells: true,
       row: ["Shift + Home, End", "Send the card to the top of its cell, or to its foot"],
     },
     { after: "E", row: ["T", "Add a label, in the right panel"] },
@@ -45,7 +46,11 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
       row: ["A", "Ajouter une carte liée à celle-ci : du type auquel elle mène, sinon du sien, sous elle"],
     },
     { after: "E", row: ["I", "Lire son détail, dans le panneau de droite"] },
-    { after: "Maj + ← → ↑ ↓", row: ["Maj + Début, Fin", "Envoyer la carte en haut de sa case, ou en bas"] },
+    {
+      after: "Maj + ← → ↑ ↓",
+      cells: true,
+      row: ["Maj + Début, Fin", "Envoyer la carte en haut de sa case, ou en bas"],
+    },
     { after: "E", row: ["T", "Ajouter un label, dans le panneau de droite"] },
     {
       after: "E",
@@ -63,13 +68,15 @@ const MORE: Record<Locale, { after: string; row: [string, string]; columns?: tru
 
 /**
  * The rows of the sheet with the keys told here, each after the key it follows; left out where that key is not
- * told. A key of the columns is told where the lanes are columns: a kanban, a retro.
+ * told. A key of the columns is told where the lanes are columns: a kanban, a retro; a key of the cells where
+ * the board has cells, which a diagram has not.
  */
 export function withMoreKeys(
   rows: readonly [string, string][],
   locale: Locale,
   columns = false,
+  cells = true,
 ): [string, string][] {
-  const told = MORE[locale].filter((more) => columns || !more.columns);
+  const told = MORE[locale].filter((more) => (columns || !more.columns) && (cells || !more.cells));
   return rows.flatMap((row) => [row, ...told.filter((more) => more.after === row[0]).map((m) => m.row)]);
 }

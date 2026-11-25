@@ -92,6 +92,7 @@ export function openKeys(board: Board | undefined, axes: { x: string; y: string 
         t.shortcutList(how, Boolean(findFormat(board?.format ?? "")?.doneLast), axes),
         locale,
         how === "kanban",
+        how !== "graph",
       ),
       locale,
       how,
