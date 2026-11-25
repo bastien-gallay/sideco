@@ -15,15 +15,13 @@ import {
   type Target,
   vacancy,
 } from "../domain/layout/index.ts";
-import { cardName } from "../domain/layout/scene.ts";
-import { chipText } from "../domain/render/labels.ts";
-import { arrowDefs, bandMarkup, cardMarkup } from "../domain/render/svg.ts";
+import { arrowDefs, bandMarkup } from "../domain/render/svg.ts";
 import type { Board } from "../domain/workspace.ts";
 import type { BoardHooks, BoardView } from "./board-api.ts";
 import { type CardKey, cardKey, type LaneKey, laneKey } from "./board-keys.ts";
 import * as links from "./board-links.ts";
 import { dropCommand, keyCommand, snapCommand, whereTo } from "./card-drop.ts";
-import { changedMark, ringMarkup, unreadMark } from "./card-marks.ts";
+import { type CardNode, drawCard, newCardNode, sayCard } from "./card-node.ts";
 import { cardButtons, type MoreMenu, standBy } from "./card-tools.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
@@ -31,25 +29,22 @@ import { BACKBONE_H, liftHeadings } from "./headings.ts";
 import { mountLaneFold, seen } from "./lane-fold.ts";
 import { linkHandle } from "./link-handle.ts";
 import { locale, t } from "./locale.ts";
+import { arrange } from "./reading-order.ts";
 import { changed, isLive, send, state } from "./store.ts";
 import {
   addOffers,
-  cardLinks,
-  cardPlace,
   type Direction,
   keptLines,
   keyAdd,
   laneKeyMove,
   neighbour,
   oneLine,
-  type ReadingGroup,
   readingGroups,
 } from "./view.ts";
 
 const DRAG_THRESHOLD = 4;
 /** The offers drawn in the headings: they come down with them when the board scrolls. */
 const HEADING_OFFERS: ReadonlySet<string> = new Set(["lane", "remove-lane", "column", "remove-column"]);
-const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5];
 /** How tall the head of a lane is: its name, or its name and what it stands for. Above the first card, both. */
 /** A card's move on the board, as styles.css times it (`.card` transition), and a little more. */
@@ -145,7 +140,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     }, CARD_MOVE_MS);
   }
 
-  const nodes = new Map<string, { g: SVGGElement; signature: string }>();
+  const nodes = new Map<string, CardNode>();
   let board: Board | undefined;
   let unread: readonly string[] = [];
   let missed: readonly string[] = [];
@@ -189,78 +184,16 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   /** The group of each lane or step a screen reader enters, by its name. */
   const groups = new Map<string, SVGGElement>();
 
-  /**
-   * Puts the cards in the order they are read, each in the group of its lane
-   * or step. The eye sees no change: a card moved to another group still
-   * glides from where it was, and the keyboard stays on the card it was on.
-   */
-  function arrange(reading: readonly ReadingGroup[], glide: boolean): void {
-    const wanted: SVGGElement[] = [];
-    const inside = new Map<SVGGElement, SVGGElement[]>();
-    for (const group of reading) {
-      const members = group.ids.flatMap((id) => {
-        const g = nodes.get(id)?.g;
-        return g ? [g] : [];
-      });
-      if (group.label === undefined) {
-        wanted.push(...members);
-        continue;
-      }
-      let g = groups.get(group.label);
-      if (!g) {
-        g = svg("g", { class: "card-group", role: "group", "aria-label": group.label });
-        groups.set(group.label, g);
-      }
-      inside.set(g, members);
-      wanted.push(g);
-    }
-    const same = (parent: Element, children: readonly Element[]): boolean =>
-      parent.children.length === children.length &&
-      children.every((child, i) => parent.children[i] === child);
-    const moving = [...inside].filter(([g, members]) => !same(g, members));
-    if (moving.length === 0 && same(cards, wanted)) return;
-    const focused = document.activeElement;
-    // Where each card is on screen now, mid-glide included, before it changes parent.
-    const from = new Map<SVGGElement, string>();
-    if (glide && !reducedMotion.matches)
-      for (const [, members] of moving)
-        for (const g of members) if (g.parentElement !== null) from.set(g, getComputedStyle(g).transform);
-    for (const [g, members] of moving) g.replaceChildren(...members);
-    if (!same(cards, wanted)) cards.replaceChildren(...wanted);
-    for (const [label, g] of groups) if (!inside.has(g)) groups.delete(label);
-    for (const [g, was] of from) {
-      const to = g.style.transform;
-      if (was !== "none" && was !== getComputedStyle(g).transform)
-        g.animate([{ transform: was }, { transform: to }], {
-          duration: 260,
-          easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
-        });
-    }
-    if (focused instanceof SVGElement && focused !== document.activeElement && focused.isConnected)
-      focused.focus({ preventScroll: true });
-  }
-
   /** The markup of the bands last drawn. */
   let paintedBands = "";
 
   const format = (): Format | undefined => (board ? findFormat(board.format) : undefined);
 
-  function paint(
-    next: Board | undefined,
-    notRead: readonly string[],
-    sinceVisit: readonly string[] = [],
-  ): void {
-    board = next;
-    unread = notRead;
-    missed = sinceVisit;
-    if (!board) {
-      root.setAttribute("visibility", "hidden");
-      tools.hidden = true;
-      return;
-    }
+  /** The board's own size, its rows, steps and lanes, and its links. */
+  function paintFrame(on: Board): void {
     root.removeAttribute("visibility");
-    root.setAttribute("aria-label", t.boardCards(board.title));
-    scene = layoutBoard(board, locale, seen(board, span));
+    root.setAttribute("aria-label", t.boardCards(on.title));
+    scene = layoutBoard(on, locale, seen(on, span));
     const w = Math.max(scene.width, 320);
     const hgt = Math.max(scene.height, 200);
     root.setAttribute("viewBox", `0 0 ${w} ${hgt}`);
@@ -276,72 +209,56 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     }
     backToAxis();
     holdHeadings();
-    if (laneArriving) {
-      const label = heads.querySelector<SVGTextElement>(`text.lane-label[data-lane="${laneArriving}"]`);
-      const at = document.activeElement;
-      if (label && (at === null || at === document.body || at === editor || !at.isConnected)) {
-        label.focus({ preventScroll: true });
-        laneArriving = undefined;
-      }
-    }
+    landOnLane();
     links.drawLinks(conns, scene);
+  }
 
-    const switched = paintedBoard !== board.id;
-    paintedBoard = board.id;
-    const focus = board.focus ? new Set(board.focus.ids) : undefined;
+  /** The lane heading a key moved, named or added takes the keyboard back once drawn, unless the human has gone on elsewhere. */
+  function landOnLane(): void {
+    if (!laneArriving) return;
+    const label = heads.querySelector<SVGTextElement>(`text.lane-label[data-lane="${laneArriving}"]`);
+    const at = document.activeElement;
+    if (!label || !(at === null || at === document.body || at === editor || !at.isConnected)) return;
+    label.focus({ preventScroll: true });
+    laneArriving = undefined;
+  }
+
+  /** How a card stands: where it is, and whether it is chosen, linking, fresh, pointed at. */
+  function standCard(on: Board, g: SVGGElement, card: Scene["cards"][number], isNew: boolean): void {
+    const focus = on.focus?.ids;
+    g.setAttribute("aria-pressed", String(state.selected === card.id));
+    // A card in the human's hand stays there, whatever arrives meanwhile.
+    if (!(drag?.moving && drag.id === card.id)) g.style.transform = `translate(${card.x}px, ${card.y}px)`;
+    g.classList.toggle("is-selected", state.selected === card.id);
+    g.classList.toggle("is-link-source", state.linking === card.id);
+    g.classList.toggle("is-fresh", state.fresh.has(`${on.id}/${card.id}`));
+    g.classList.toggle("is-new", isNew);
+    g.classList.toggle("is-focus", focus?.includes(card.id) ?? false);
+    g.classList.toggle("is-dim", focus !== undefined && !focus.includes(card.id));
+  }
+
+  /** Draws each card of the scene, a new one in a node of its own; gives the cards that are there. */
+  function paintCards(on: Board, switched: boolean): Set<string> {
     const alive = new Set<string>();
     for (const card of scene.cards) {
       alive.add(card.id);
-      const { x, y, ...look } = card;
-      const isUnread = unread.includes(card.id);
-      const isNew = missed.includes(card.id);
-      const signature = JSON.stringify({ ...look, isUnread, isNew });
+      const marks = { isUnread: unread.includes(card.id), isNew: missed.includes(card.id) };
       let node = nodes.get(card.id);
       if (!node) {
-        const g = svg("g", { class: "card", "data-id": card.id, tabindex: -1, role: "button" });
-        if (switched) g.classList.add("no-motion");
-        cards.append(g);
-        node = { g, signature: "" };
+        node = newCardNode(card.id);
+        if (switched) node.g.classList.add("no-motion");
+        cards.append(node.g);
         nodes.set(card.id, node);
       }
-      if (node.signature !== signature) {
-        node.g.innerHTML =
-          ringMarkup(card) +
-          cardMarkup(card) +
-          (isUnread ? unreadMark() : "") +
-          (isNew ? changedMark(card.h) : "");
-        node.signature = signature;
-      }
-      // A screen reader hears a card as one name: its words, where it is, then what its marks show. Its detail stays in the tooltip.
-      const place = cardPlace(board, scene.bands, card.id, locale);
-      const name = [
-        cardName(card),
-        place,
-        card.hasDetail ? t.hasDetail : undefined,
-        card.notes > 0 ? t.openNotesOn(card.notes) : undefined,
-        card.labels?.length ? t.labelledWith(card.labels.map(chipText).join(", ")) : undefined,
-        isUnread ? t.unread : undefined,
-        isNew ? t.changedSinceVisit : undefined,
-      ]
-        .filter(Boolean)
-        .join(" · ");
-      if (node.g.getAttribute("aria-label") !== name) node.g.setAttribute("aria-label", name);
-      // Its links, which the eye follows along the arrows, are told after its name.
-      const links = cardLinks(board, card.id, locale);
-      if (links === undefined) node.g.removeAttribute("aria-description");
-      else if (node.g.getAttribute("aria-description") !== links)
-        node.g.setAttribute("aria-description", links);
-      node.g.setAttribute("aria-pressed", String(state.selected === card.id));
-      // A card in the human's hand stays there, whatever arrives meanwhile.
-      if (!(drag?.moving && drag.id === card.id)) node.g.style.transform = `translate(${x}px, ${y}px)`;
-      node.g.classList.toggle("is-selected", state.selected === card.id);
-      node.g.classList.toggle("is-link-source", state.linking === card.id);
-      node.g.classList.toggle("is-fresh", state.fresh.has(`${board.id}/${card.id}`));
-      node.g.classList.toggle("is-new", isNew);
-      node.g.classList.toggle("is-focus", focus?.has(card.id) ?? false);
-      node.g.classList.toggle("is-dim", focus !== undefined && !focus.has(card.id));
+      drawCard(node, card, marks);
+      sayCard(node.g, on, scene.bands, card, marks);
+      standCard(on, node.g, card, marks.isNew);
     }
-    // The card being written on was removed meanwhile: its words are handed back, not dropped.
+    return alive;
+  }
+
+  /** The cards that are gone leave the page; the words being written on one of them are handed back, not dropped. */
+  function dropGone(alive: ReadonlySet<string>): void {
     if (editing?.from && !alive.has(editing.from)) {
       const words = editing.tidy(editor.value);
       if (words !== "" && words !== editing.initial) state.notice = t.wordsOrphaned(editing.from, words);
@@ -353,9 +270,10 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       node.g.remove();
       nodes.delete(id);
     }
-    const reading = readingGroups(board, scene, locale);
-    arrange(reading, !switched);
-    // The board is one Tab stop: the selected card, else the last one the keyboard was on, else the first one read.
+  }
+
+  /** The board is one Tab stop: the selected card, else the last one the keyboard was on, else the first one read. */
+  function keepTabStop(alive: ReadonlySet<string>, first: string | undefined, switched: boolean): void {
     if (switched) chosen = false;
     if (state.selected && alive.has(state.selected)) {
       current = state.selected;
@@ -363,17 +281,43 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     }
     // A card nobody chose is never kept: the first one read may change as cards come and go.
     if (!chosen || !current || !alive.has(current)) {
-      current = reading[0]?.ids[0];
+      current = first;
       chosen = false;
     }
     for (const [id, node] of nodes) node.g.setAttribute("tabindex", id === current ? "0" : "-1");
-    // The card just added takes the keyboard once drawn, unless the human has gone on elsewhere.
-    if (arriving && alive.has(arriving)) {
-      const id = arriving;
-      arriving = undefined;
-      const at = document.activeElement;
-      if (at === null || at === document.body || at === editor) focusCard(id);
+  }
+
+  /** The card just added takes the keyboard once drawn, unless the human has gone on elsewhere. */
+  function landOnCard(alive: ReadonlySet<string>): void {
+    if (!arriving || !alive.has(arriving)) return;
+    const id = arriving;
+    arriving = undefined;
+    const at = document.activeElement;
+    if (at === null || at === document.body || at === editor) focusCard(id);
+  }
+
+  function paint(
+    next: Board | undefined,
+    notRead: readonly string[],
+    sinceVisit: readonly string[] = [],
+  ): void {
+    board = next;
+    unread = notRead;
+    missed = sinceVisit;
+    if (!board) {
+      root.setAttribute("visibility", "hidden");
+      tools.hidden = true;
+      return;
     }
+    paintFrame(board);
+    const switched = paintedBoard !== board.id;
+    paintedBoard = board.id;
+    const alive = paintCards(board, switched);
+    dropGone(alive);
+    const reading = readingGroups(board, scene, locale);
+    arrange(cards, groups, (id) => nodes.get(id)?.g, reading, !switched);
+    keepTabStop(alive, reading[0]?.ids[0], switched);
+    landOnCard(alive);
     if (switched)
       requestAnimationFrame(() => {
         for (const g of cards.querySelectorAll(".no-motion")) g.classList.remove("no-motion");
@@ -399,37 +343,43 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     // On a story map, once the activities have scrolled under the numbers, each step says its activity and task.
     const backbone = scene.backbone !== undefined && sy > scene.backbone - frozen.top;
     steps?.classList.toggle("shows-backbone", backbone);
-    // The step in the human's hand stays there, its number and its captions, whatever is painted meanwhile.
+    holdSteps();
+    heads.querySelector(".heads-rows")?.setAttribute("transform", `translate(${sx} 0)`);
+    for (const head of heads.querySelectorAll<SVGGElement>("g.head")) {
+      const band = scene.bands[Number(head.dataset.band)];
+      if (band?.kind === "lane") holdLane(head, band, sx);
+    }
+    paintOffers();
+    // A card the keyboard or a search brings into view lands clear of the frozen names, never under them.
+    scroll.style.scrollPaddingTop = `${(frozen.top + (backbone ? BACKBONE_H : 0)) * zoom + 8}px`;
+    scroll.style.scrollPaddingLeft = `${frozen.left * zoom + 8}px`;
+  }
+
+  /** The step in the human's hand stays there, its number and its captions, whatever is painted meanwhile. */
+  function holdSteps(): void {
     for (const label of heads.querySelectorAll<SVGTextElement>(".heads-steps text")) {
       const held = stepDrag?.moving === true && label.dataset.col === String(stepDrag.from);
       label.classList.toggle("is-dragging", held);
       if (held) label.setAttribute("transform", `translate(${stepDrag?.dx ?? 0} 0)`);
       else label.removeAttribute("transform");
     }
-    heads.querySelector(".heads-rows")?.setAttribute("transform", `translate(${sx} 0)`);
-    for (const head of heads.querySelectorAll<SVGGElement>("g.head")) {
-      const band = scene.bands[Number(head.dataset.band)];
-      if (band?.kind !== "lane") continue;
-      // A lane's heading goes down to its last card at most: it never leaves its own lane.
-      // The heading in the human's hand stays there, whatever is painted meanwhile.
-      const held = laneDrag?.moving === true && laneDrag.lane === band.id;
-      head.classList.toggle("is-dragging", held);
-      head.setAttribute("transform", `translate(${held ? laneDrag?.dx : 0} ${headDrop(band)})`);
-      // Its name and what it stands for follow a sideways scroll too, short of the count at its right end.
-      const words = [
-        ...head.querySelectorAll<SVGTextElement>("text.lane-label:not(.is-upright), text.lane-hint"),
-      ];
-      const room = Math.max(0, ...words.map((text) => text.getComputedTextLength())) + LANE_COUNT_ROOM;
-      const slide = headingSlide(band, sx, room);
-      for (const text of words) {
-        if (slide > 0) text.setAttribute("transform", `translate(${slide} 0)`);
-        else text.removeAttribute("transform");
-      }
+  }
+
+  /** A lane's heading goes down to its last card at most; in the human's hand it stays there, whatever is painted meanwhile. */
+  function holdLane(head: SVGGElement, band: Scene["bands"][number], sx: number): void {
+    const held = laneDrag?.moving === true && laneDrag.lane === band.id;
+    head.classList.toggle("is-dragging", held);
+    head.setAttribute("transform", `translate(${held ? laneDrag?.dx : 0} ${headDrop(band)})`);
+    // Its name and what it stands for follow a sideways scroll too, short of the count at its right end.
+    const words = [
+      ...head.querySelectorAll<SVGTextElement>("text.lane-label:not(.is-upright), text.lane-hint"),
+    ];
+    const room = Math.max(0, ...words.map((text) => text.getComputedTextLength())) + LANE_COUNT_ROOM;
+    const slide = headingSlide(band, sx, room);
+    for (const text of words) {
+      if (slide > 0) text.setAttribute("transform", `translate(${slide} 0)`);
+      else text.removeAttribute("transform");
     }
-    paintOffers();
-    // A card the keyboard or a search brings into view lands clear of the frozen names, never under them.
-    scroll.style.scrollPaddingTop = `${(frozen.top + (backbone ? BACKBONE_H : 0)) * zoom + 8}px`;
-    scroll.style.scrollPaddingLeft = `${frozen.left * zoom + 8}px`;
   }
 
   /** How far a lane's heading has come down with the scroll: it never leaves its own lane. */
@@ -835,11 +785,9 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
 
   /** The words of a plan's axes, each a key stop that Enter or F2 writes, as a double-click does. */
   function dressAxes(): void {
-    for (const band of scene.bands) {
-      if (band.kind !== "axis") continue;
+    for (const band of scene.bands.filter((b) => b.kind === "axis")) {
       const group = bands.querySelector(`text.axis-label[data-axis="${CSS.escape(band.id)}"]`)?.parentElement;
-      if (!group) continue;
-      for (const word of group.querySelectorAll<SVGTextElement>("text")) {
+      for (const word of group?.querySelectorAll<SVGTextElement>("text") ?? []) {
         const bound = word.dataset.bound as "low" | "high" | undefined;
         word.setAttribute("tabindex", isLive() ? "0" : "-1");
         word.setAttribute("role", "button");

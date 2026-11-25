@@ -45,7 +45,7 @@ export const FUNCTION_LIMITS: Counts = {
   "src/domain/undo.ts": { lines: 3, complexity: 1 },
   "src/domain/workspace.ts": { complexity: 1, lines: 1 },
   "src/server/http.ts": { complexity: 1 },
-  "src/web/board-view.ts": { lines: 2, complexity: 4 },
+  "src/web/board-view.ts": { lines: 1 },
   "src/web/event-words.ts": { complexity: 2, lines: 2 },
   "src/web/main.ts": { complexity: 1, lines: 2 },
   "src/web/markdown.ts": { complexity: 2 },
