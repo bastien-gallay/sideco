@@ -30,15 +30,38 @@ export function mayListen(): boolean {
 
 /**
  * The nearest directory at or above `from` that holds a `.sideco/`, by its real
- * path: a workspace reached through a symlink is the same workspace.
+ * path: a workspace reached through a symlink is the same workspace. A git
+ * worktree placed outside its clone has none above it: it shares the boards of
+ * the clone, found through the git directory they have in common.
  */
 export function findRoot(from: string): string | undefined {
   let dir = resolve(from);
   for (;;) {
     if (existsSync(dataDir(dir))) return realpathSync(dir);
     const parent = dirname(dir);
-    if (parent === dir) return undefined;
+    if (parent === dir) return cloneRoot(from);
     dir = parent;
+  }
+}
+
+/** The clone a worktree belongs to, when that clone holds boards. Without git, none. */
+function cloneRoot(from: string): string | undefined {
+  if (!existsSync(from)) return undefined;
+  const common = gitCommonDir(from);
+  if (!common?.endsWith("/.git")) return undefined;
+  const clone = dirname(common);
+  return existsSync(dataDir(clone)) ? realpathSync(clone) : undefined;
+}
+
+function gitCommonDir(cwd: string): string | undefined {
+  try {
+    const asked = Bun.spawnSync(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], {
+      cwd,
+      stderr: "ignore",
+    });
+    return asked.success ? asked.stdout.toString().trim() : undefined;
+  } catch {
+    return undefined;
   }
 }
 

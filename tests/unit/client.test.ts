@@ -48,6 +48,37 @@ test("findRoot names the workspace by its real path, so a symlinked cwd finds th
   expect(findRoot(join(dir, "alias", "src"))).toBe(root);
 });
 
+/** Git as a fresh machine has it: no signing, no hooks from the user's configuration. */
+const git = (cwd: string, ...args: string[]) =>
+  Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...args], {
+    cwd,
+    env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" },
+  });
+
+/** A git repository at `path` with one commit, so worktrees can branch from it. */
+function gitRepo(path: string): void {
+  mkdirSync(path, { recursive: true });
+  git(path, "init", "-q");
+  git(path, "commit", "-q", "--allow-empty", "-m", "start");
+}
+
+test("findRoot from a worktree outside the clone finds the boards of the clone", () => {
+  const clone = join(dir, "clone");
+  gitRepo(clone);
+  initRoot(clone);
+  const away = join(dir, "away");
+  git(clone, "worktree", "add", "-q", away);
+  mkdirSync(join(away, "src"));
+  expect(findRoot(join(away, "src"))).toBe(clone);
+});
+
+test("findRoot keeps two clones apart: a clone without boards finds none", () => {
+  gitRepo(join(dir, "first"));
+  initRoot(join(dir, "first"));
+  gitRepo(join(dir, "second"));
+  expect(findRoot(join(dir, "second"))).toBeUndefined();
+});
+
 test("findRoot of a directory that does not exist is undefined, not an exception", () => {
   expect(findRoot(join(dir, "nowhere", "deeper"))).toBeUndefined();
 });
