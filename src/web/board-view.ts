@@ -26,7 +26,7 @@ import { dropCommand, keyCommand, snapCommand, whereTo } from "./card-drop.ts";
 import { mountEditor } from "./card-editor.ts";
 import { type CardNode, drawCard, dropNodes, keepKeyboard, newCardNode, sayCard } from "./card-node.ts";
 import { readDetail } from "./card-read.ts";
-import { cardButtons, cardShown, keyboardAway, type MoreMenu, noPlace, standBy } from "./card-tools.ts";
+import * as cardTools from "./card-tools.ts";
 import { toEnd } from "./cell-ends.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
@@ -52,7 +52,6 @@ const DRAG_THRESHOLD = 4;
 /** The offers drawn in the headings: they come down with them when the board scrolls. */
 const HEADING_OFFERS: ReadonlySet<string> = new Set(["lane", "remove-lane", "column", "remove-column"]);
 const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5];
-/** How tall the head of a lane is: its name, or its name and what it stands for. Above the first card, both. */
 /** A card's move on the board, as styles.css times it (`.card` transition), and a little more. */
 const CARD_MOVE_MS = 300;
 export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
@@ -73,14 +72,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
   const scroll = h("div", { class: "canvas-scroll" });
   scroll.append(root);
   const tools = h("div", { class: "card-tools", hidden: true });
-  const more: MoreMenu = { open: false };
-  // Repainted only as the keyboard leaves the board or comes back: rebuilt on every focus, a button would vanish under its click.
-  let away = false;
-  document.addEventListener("focusin", () => {
-    if (keyboardAway(host) === away) return;
-    away = !away;
-    paintTools();
-  });
+  const more: cardTools.MoreMenu = { open: false };
   const editor = mountEditor(host, {
     opened() {
       tools.hidden = true;
@@ -90,6 +82,12 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     back: (id) => !arriving && nodes.get(id)?.g.focus({ preventScroll: true }),
   });
   host.append(scroll, tools, editor.el);
+  cardTools.wireTools(
+    host,
+    tools,
+    () => (!pickedLink && state.selected ? nodes.get(state.selected)?.g : undefined),
+    paintTools,
+  );
   // A window resized, or a panel folded or unfolded, shares its new width out over the lanes.
   new ResizeObserver(() => {
     const width = Math.floor(scroll.clientWidth - 16);
@@ -440,15 +438,15 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
       !isLive() ||
       state.linking ||
       editor.writing() ||
-      noPlace(host, node.g, scroll)
+      cardTools.noPlace(host, node.g, scroll)
     ) {
       tools.hidden = true;
       return;
     }
     const boardId = board.id;
-    const shown = cardShown(board, id, () => addLinked(id));
+    const shown = cardTools.cardShown(board, id, () => addLinked(id));
     tools.replaceChildren(
-      ...cardButtons(shown, more, host, {
+      ...cardTools.cardButtons(shown, more, host, {
         rename: () => rename(id),
         detail: () => hooks.editDetail(id),
         note: () => noteOn(id),
@@ -461,7 +459,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     );
     tools.hidden = false;
     const others = [...nodes].flatMap(([other, { g }]) => (other === id ? [] : [g]));
-    standBy(tools, node.g, others, host);
+    cardTools.standBy(tools, node.g, others, host);
   }
 
   function toScene(event: { clientX: number; clientY: number }): { x: number; y: number } {

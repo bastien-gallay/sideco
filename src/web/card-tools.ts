@@ -207,3 +207,39 @@ function outOfSight(g: SVGGElement, scroll: HTMLElement): boolean {
   const seen = scroll.getBoundingClientRect();
   return card.right < seen.left || card.left > seen.right || card.bottom < seen.top || card.top > seen.bottom;
 }
+
+/**
+ * Wires the toolbar's keyboard behaviour: repaints when the keyboard leaves or
+ * returns to the board (not on every focus inside, or a button would vanish
+ * under its click), and ties Tab between a chosen card and its toolbar so lane
+ * headings painted after the cards in the SVG do not come first (WCAG 2.4.3).
+ */
+export function wireTools(
+  host: HTMLElement,
+  tools: HTMLElement,
+  chosenCard: () => SVGGElement | undefined,
+  repaint: () => void,
+): void {
+  let away = false;
+  document.addEventListener("focusin", () => {
+    if (keyboardAway(host) === away) return;
+    away = !away;
+    repaint();
+  });
+  host.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab" || event.altKey || event.ctrlKey || event.metaKey || tools.hidden) return;
+    const card = chosenCard();
+    if (!card) return;
+    const first = tools.querySelector<HTMLElement>("button:not(:disabled), summary");
+    if (!first) return;
+    if (!event.shiftKey && event.target === card) {
+      event.preventDefault();
+      first.focus();
+      return;
+    }
+    if (event.shiftKey && event.target === first) {
+      event.preventDefault();
+      card.focus({ preventScroll: true });
+    }
+  });
+}

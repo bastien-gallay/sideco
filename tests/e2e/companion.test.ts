@@ -4389,6 +4389,43 @@ describe("the card toolbar", () => {
       await picker.selectOption(before);
     }
   });
+
+  test("Tab from a chosen card enters its toolbar directly, without walking the lane headings first (T296)", async () => {
+    const picker = page.locator(".board-picker select");
+    const before = (await picker.count()) > 0 ? await picker.inputValue() : "";
+    try {
+      const [task] = await agent(
+        'board new "Tab ordre" --format kanban --id tabordre\nadd task "Choisie" --lane todo',
+      );
+      await page.locator('.board-picker option[value="tabordre"]').waitFor({ state: "attached" });
+      await picker.selectOption("tabordre");
+      await card(task).waitFor();
+      await card(task).click();
+      await page.locator(".card-tools").waitFor();
+
+      await page.keyboard.press("Tab");
+      const inTools = await page.evaluate(() => Boolean(document.activeElement?.closest(".card-tools")));
+      expect(inTools).toBe(true);
+
+      await page.keyboard.press("Shift+Tab");
+      const backOnCard = await page.evaluate(
+        (id) => document.activeElement?.getAttribute("data-id") === id,
+        task,
+      );
+      expect(backOnCard).toBe(true);
+
+      await page.keyboard.press("Escape");
+      await page.locator(".card-tools").waitFor({ state: "hidden" });
+      await page.keyboard.press("Tab");
+      const onHeading = await page.evaluate(() =>
+        Boolean(document.activeElement?.matches("text.lane-label")),
+      );
+      expect(onHeading).toBe(true);
+    } finally {
+      await page.keyboard.press("Escape");
+      if (before) await picker.selectOption(before);
+    }
+  });
 });
 
 describe("what Claude changed while the reader was away", () => {
