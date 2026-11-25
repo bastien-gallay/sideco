@@ -1316,6 +1316,10 @@ kbd {
   margin-right: auto;
 }
 
+.chosen-lane {
+  order: 1;
+}
+
 .chosen-label {
   order: 1;
   width: 22ch;

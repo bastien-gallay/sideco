@@ -437,6 +437,15 @@ describe("the agent writes, the page follows", () => {
     );
     expect(await bar.isVisible()).toBe(true);
     await card(a).focus();
+    // The menu of the bar moves them all to a column, in their order; one Undo brings both back.
+    const toLane = bar.getByRole("combobox", { name: "Move the 2 cards chosen to a column" });
+    await toLane.selectOption({ label: "Doing" });
+    await until("both moved", async () => (await lanes()) === `${a}:doing,${b}:doing,${c}:todo`);
+    expect(await toLane.inputValue()).toBe("");
+    expect(await bar.isVisible()).toBe(true);
+    await page.locator("button", { hasText: "Undo" }).first().click();
+    await until("both back by one undo", async () => (await lanes()) === `${a}:todo,${b}:todo,${c}:todo`);
+    await card(a).focus();
     // D marks them all done: on a kanban they go to the last column; one Undo brings both back.
     await page.keyboard.press("d");
     await until("both done", async () => (await lanes()) === `${a}:done,${b}:done,${c}:todo`);

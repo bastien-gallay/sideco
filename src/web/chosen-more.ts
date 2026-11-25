@@ -7,7 +7,7 @@
  * A card pressed alone, or the choice left, lets them all go.
  */
 import type { Command } from "../domain/commands.ts";
-import { isDone } from "../domain/formats.ts";
+import { findFormat, isDone, laneName, lanesOf } from "../domain/formats.ts";
 import type { Locale } from "../domain/i18n.ts";
 import { hasLabel, normalLabel } from "../domain/labels.ts";
 import type { Board } from "../domain/workspace.ts";
@@ -32,6 +32,9 @@ const WORDS: Record<
     labelHint: string;
     labelled: (labels: string, cards: number) => string;
     worn: (labels: string) => string;
+    lane: (cards: number) => string;
+    laneHint: string;
+    moved: (lane: string, cards: number) => string;
   }
 > = {
   en: {
@@ -41,6 +44,10 @@ const WORDS: Record<
     labelled: (labels, cards) =>
       `${labels} added to ${cards} card${cards > 1 ? "s" : ""}: Undo takes it back at once`,
     worn: (labels) => `The cards chosen all wear ${labels} already`,
+    lane: (cards) => `Move the ${cards} cards chosen to a column`,
+    laneHint: "Move to…",
+    moved: (lane, cards) =>
+      `${cards} card${cards > 1 ? "s" : ""} moved to ${lane}: Undo takes it back at once`,
     done: "Mark done (D)",
     undone: "Mark not done (D)",
     remove: "Remove (Delete)",
@@ -57,6 +64,10 @@ const WORDS: Record<
     labelled: (labels, cards) =>
       `${labels} ajouté à ${cards} carte${cards > 1 ? "s" : ""} : Undo le retire d'un coup`,
     worn: (labels) => `Les cartes choisies portent déjà toutes ${labels}`,
+    lane: (cards) => `Déplacer les ${cards} cartes choisies vers une colonne`,
+    laneHint: "Déplacer vers…",
+    moved: (lane, cards) =>
+      `${cards} carte${cards > 1 ? "s" : ""} déplacée${cards > 1 ? "s" : ""} vers ${lane} : Undo les ramène d'un coup`,
     done: "Marquer faites (D)",
     undone: "Marquer non faites (D)",
     remove: "Supprimer (Suppr)",
@@ -222,6 +233,47 @@ labelField.addEventListener("keydown", (event) => {
   });
 });
 
+/**
+ * The cards chosen go to the column picked here (S333), at its end and in their order, as one gesture. A menu and
+ * not a drag: several cards under one pointer is another gesture, and this one is for the keyboard too.
+ */
+const laneMenu = h("select", { class: "chosen-lane", name: "lane" });
+chosenBar.append(laneMenu);
+/** The columns the menu lists, as last written: it is written again only when they change, never while open. */
+let listed = "";
+
+/** Lists the columns of the board in the menu, or hides it where cards are not placed by column. */
+function paintLanes(board: Board, cards: number): void {
+  const format = findFormat(board.format);
+  const lanes = isLive()
+    ? lanesOf(board).map((id) => [id, laneName(format, board, id, locale)] as const)
+    : [];
+  laneMenu.hidden = lanes.length === 0;
+  laneMenu.setAttribute("aria-label", w.lane(cards));
+  const now = JSON.stringify(lanes);
+  if (now === listed) return;
+  listed = now;
+  laneMenu.replaceChildren(
+    h("option", { value: "" }, w.laneHint),
+    ...lanes.map(([id, name]) => h("option", { value: id }, name)),
+  );
+}
+
+laneMenu.addEventListener("change", () => {
+  const board = currentBoard();
+  const lane = laneMenu.value;
+  const name = laneMenu.selectedOptions[0]?.textContent ?? lane;
+  laneMenu.value = "";
+  if (!board || lane === "" || !isLive()) return;
+  // Only the cards that are elsewhere: what is said and what Undo takes back are the same.
+  const ids = chosen(board).filter((id) => board.elements.find((e) => e.id === id)?.lane !== lane);
+  if (ids.length === 0) return;
+  const commands = ids.map((id): Command => ({ kind: "move", board: board.id, id, lane }));
+  void sendTogether(commands).then((answer) => {
+    if (answer !== undefined) speak(w.moved(name, ids.length));
+  });
+});
+
 /** A button of the bar was pressed and the bar is to be drawn again: the keyboard follows. */
 let moved = false;
 
@@ -234,7 +286,7 @@ const paintBar = region(chosenSays, (m: { ids: string[]; allDone: boolean; live:
     changed();
   };
   // The keyboard follows the button pressed, unless the reader went on to write a label.
-  if (moved && document.activeElement !== labelField)
+  if (moved && document.activeElement !== labelField && document.activeElement !== laneMenu)
     queueMicrotask(() => chosenBar.querySelector("button")?.focus());
   moved = false;
   const all = (what: Act) => (): void => {
@@ -270,5 +322,6 @@ export function paintChosen(canvas: Element, say: (words: string) => void): void
     const element = board.elements.find((e) => e.id === id);
     return element !== undefined && isDone(board, element);
   });
+  paintLanes(board, ids.length);
   paintBar({ ids, allDone, live: isLive() });
 }
