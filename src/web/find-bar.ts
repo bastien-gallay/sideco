@@ -4,9 +4,11 @@
  * choose one, Enter goes to it, wherever it is. main.ts says what opens it and
  * where its bar stands; this module keeps the words, the list and the keys.
  */
+
 import { markWords, queryWords } from "../domain/find.ts";
 import type { BoardView } from "./board-api.ts";
 import { h } from "./dom.ts";
+import { bringCard, isScrolledOut } from "./lane-scroll.ts";
 import { t } from "./locale.ts";
 import { currentBoard, shown } from "./store.ts";
 import { type FindHit, findHits } from "./view.ts";
@@ -176,8 +178,17 @@ function showFound(): void {
       : hit
         ? `${t.findCount(foundAt + 1, found.length)} · ${hit.id}${name}`
         : t.findNone;
-  hooks?.view.point(hit?.here ? hit.id : undefined);
-  if (hit?.here) hooks?.view.reveal(hit.id);
+  const show = (): void => {
+    hooks?.view.point(hit?.here ? hit.id : undefined);
+    if (hit?.here) hooks?.view.reveal(hit.id);
+  };
+  // A hit out of the window of its column (S306) is not drawn: its column comes to it, then it is lit.
+  if (!hit?.here || !isScrolledOut(hit.id)) {
+    show();
+    return;
+  }
+  bringCard(hit.id);
+  requestAnimationFrame(() => requestAnimationFrame(show));
 }
 
 /** Gives the search bar, and what opens it, to the page that says where it stands. */

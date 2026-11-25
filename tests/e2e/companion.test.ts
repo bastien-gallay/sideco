@@ -384,6 +384,31 @@ describe("the agent writes, the page follows", () => {
     });
     expect(await count(above)).toBe(1);
     await page.keyboard.press("Escape");
+    // A card moved under the window by the keyboard stays in sight: its column follows it.
+    const edge = (await drawn()).at(-1) ?? "";
+    const placeOf = async (id: string) =>
+      ((await workspace()).boards.find((b) => b.id === "longue")?.elements ?? [])
+        .filter((e) => e.lane === "todo")
+        .findIndex((e) => e.id === id);
+    const before = await placeOf(edge);
+    await card(edge).click();
+    await page.keyboard.press("Shift+ArrowDown");
+    await until("moved one down", async () => (await placeOf(edge)) === before + 1);
+    await page.waitForTimeout(300);
+    await card(edge).waitFor();
+    await page.keyboard.press("Escape");
+    // A card found far down the column is brought into view and lit, the search still open.
+    const inView = await drawn();
+    await page.keyboard.press("/");
+    await page.keyboard.type("Carte 20");
+    await until("the hit is drawn and lit", async () => {
+      const lit = await page
+        .locator("g.card.is-pointed")
+        .evaluateAll((all) => all.map((g) => g.getAttribute("data-id")));
+      return lit.length === 1 && !inView.includes(lit[0] ?? "");
+    });
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
     // A card Claude puts in the focus, far down the column, comes into view.
     const far = (await workspace()).boards.find((b) => b.id === "longue")?.elements.at(-1)?.id ?? "";
     expect(await card(far).count()).toBe(0);
@@ -4987,6 +5012,7 @@ describe("a long journal", () => {
     // A column scrolls alone (S306): it draws the cards that fit, and its heading counts them all.
     const counted = async () => Number((await page.locator(".lane-count").first().textContent()) ?? 0);
     await until("the long board is drawn", async () => (await counted()) === 1500);
+    expect(await page.locator("g.card").count()).toBeGreaterThan(2);
     // Counts the cards at every frame of the next load; only a page that asks for it is watched.
     await page.evaluate(() => sessionStorage.setItem("sideco.watch-paint", "1"));
     await page.addInitScript(() => {

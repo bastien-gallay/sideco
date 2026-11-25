@@ -1316,7 +1316,8 @@ function select(id: string | undefined): void {
   if (!id) return;
   state.selected = id;
   changed();
-  view.reveal(id);
+  // Once painted: a card out of the window of its column is drawn then.
+  requestAnimationFrame(() => view.reveal(id));
 }
 
 /** A card chosen from its discussion: shown on the board, and the reader stays in the Notes tab. */

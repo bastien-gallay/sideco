@@ -5,7 +5,7 @@
  * above and below. Card by card: no card is cut at an edge.
  */
 
-/** The room kept at the head and at the foot of a windowed column, for what says how many cards are out of view. */
+/** The room kept at the head of a windowed column, for what says how many cards are out of view above. */
 export const CHIP_H = 28;
 
 /** The height of lines `from` to `to` (not included), with the gap between them. */
@@ -40,8 +40,9 @@ export function windowOf(
   gap: number,
 ): { from: number; to: number } | undefined {
   if (span(heights, 0, heights.length, gap) <= room) return undefined;
-  const inner = room - 2 * CHIP_H;
-  const from = Math.min(Math.max(0, Math.round(skip)), last(heights, inner, gap));
+  // The count of the cards above has its room at the head; the one of those below is in the free slot at the foot.
+  const inner = room - CHIP_H;
+  const from = Math.min(Math.max(0, Math.round(Number.isFinite(skip) ? skip : 0)), last(heights, inner, gap));
   return { from, to: from + fits(heights, from, inner, gap) };
 }
 
@@ -58,6 +59,6 @@ export function reveal(
   if (at < cut.from) return at;
   // Below the window: the first skip whose window reaches the line.
   let from = cut.from;
-  while (from < at && from + fits(heights, from, room - 2 * CHIP_H, gap) <= at) from++;
+  while (from < at && from + fits(heights, from, room - CHIP_H, gap) <= at) from++;
   return from;
 }

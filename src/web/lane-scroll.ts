@@ -28,6 +28,12 @@ let shownTo: string | undefined;
 let given: number | undefined;
 let stale = 0;
 let pending = 0;
+/** The column the wheel last turned over, and which way. */
+let turning = "";
+/** A card to bring into view at the next painting, whoever holds the keyboard. */
+let wanted: string | undefined;
+/** Per lane, where it was asked to go since the last drawing. */
+const asked = new Map<string, number>();
 
 const scroller = (): HTMLElement | null => document.querySelector<HTMLElement>(".canvas-scroll");
 
@@ -54,25 +60,58 @@ export function windowed(board: Board, view: View, held: readonly (string | null
     const to = card ? skipToSee(board, format, card, seen) : undefined;
     if (to) skip.set(to.lane, to.skip);
   };
-  // What Claude points at first, then the card the reader holds: the reader's own is the last word.
+  // Where a card is, with its name: moved in its lane or to another, it is brought again.
+  const placed = (card: string | null | undefined): string | undefined => {
+    const at = card ? board.elements.findIndex((e) => e.id === card) : -1;
+    return at < 0 ? undefined : `${board.id}|${card}|${board.elements[at]?.lane}|${at}`;
+  };
+  // Words being written on a card stay under the reader's hand: nothing scrolls its column meanwhile.
+  if (writing()) return seen;
+  // What Claude points at first, then the card the reader holds, then the one asked for: the reader has the last word.
   const pointed = board.focus?.ids[0];
-  const pointedKey = pointed ? `${board.id}|${pointed}` : undefined;
-  if (pointedKey !== shownTo) bring(pointed);
-  shownTo = pointedKey;
+  if (placed(pointed) !== shownTo) bring(pointed);
+  shownTo = placed(pointed);
   const card = held.find((id) => typeof id === "string" && id !== "");
-  const key = card ? `${board.id}|${card}` : undefined;
-  if (key !== brought) bring(card);
-  brought = key;
+  if (placed(card) !== brought) bring(card);
+  brought = placed(card);
+  bring(wanted);
+  wanted = undefined;
   return seen;
 }
 
-/** Scrolls a lane of the board shown by so many cards, from where the drawing says it is. */
+/** Whether words are being written on a card of the board. */
+const writing = (): boolean => document.activeElement?.matches("textarea.card-editor") === true;
+
+/** Brings the column of a card to it at the next painting, chosen or not: a card found, or reached by an arrow. */
+export function bringCard(id: string): void {
+  wanted = id;
+  changed();
+}
+
+/**
+ * Whether the card is scrolled out of the window of its column: not drawn, in a column that is open. A card put
+ * away in a folded column is another matter: the fold is the reader's, and opens when the card is chosen.
+ */
+export function isScrolledOut(id: string): boolean {
+  const lane = currentBoard()?.elements.find((e) => e.id === id)?.lane;
+  const column = document.querySelector<SVGRectElement>(
+    `rect.lane-bg[data-lane-box="${CSS.escape(lane ?? "")}"]`,
+  );
+  return cardNode(id) === null && column !== null && column.dataset.fold === undefined;
+}
+
+/**
+ * Scrolls a lane of the board shown by so many cards, from where the drawing says it is, or from where it was
+ * last asked to go if no drawing came since: two turns of the wheel in a frame are two steps.
+ */
 export function scrollLane(lane: string, from: number, by: number): void {
   const board = currentBoard();
-  if (!board) return;
+  if (!board || writing()) return;
   const skip = skips.get(board.id) ?? new Map<string, number>();
   skips.set(board.id, skip);
-  skip.set(lane, Math.max(0, from + by));
+  const to = Math.max(0, (asked.get(lane) ?? from) + by);
+  asked.set(lane, to);
+  skip.set(lane, to);
   changed();
 }
 
@@ -87,7 +126,12 @@ function columnAt(scroll: HTMLElement, x: number, y: number): SVGRectElement | u
 function onWheel(event: WheelEvent): void {
   const scroll = scroller();
   if (!scroll || event.ctrlKey || event.metaKey || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+  // A card in the hand is drawn where it was taken: its column stays under it.
+  if (scroll.querySelector("g.card.is-dragging")) return;
   const column = columnAt(scroll, event.clientX, event.clientY);
+  const way = `${column?.dataset.laneBox}|${event.deltaY > 0}`;
+  if (way !== turning) pending = 0;
+  turning = way;
   const more = Number(column?.dataset[event.deltaY > 0 ? "below" : "above"] ?? 0);
   if (!column || more <= 0) {
     pending = 0;
@@ -95,7 +139,7 @@ function onWheel(event: WheelEvent): void {
   }
   // The column has cards that way: the wheel is for it, not for the board.
   event.preventDefault();
-  pending += event.deltaMode === 1 ? event.deltaY * 40 : event.deltaY;
+  pending += event.deltaMode === 0 ? event.deltaY : event.deltaY * 40;
   const steps = Math.trunc(pending / STEP);
   if (steps === 0) return;
   pending -= steps * STEP;
@@ -122,8 +166,9 @@ function onArrow(event: KeyboardEvent): void {
   if (!next || cardNode(next) || !scrollsAlone(lane)) return;
   event.preventDefault();
   event.stopPropagation();
-  state.selected = next;
-  changed();
+  // As any arrow does: the choice follows the keyboard when there is one, and no link is being drawn.
+  if (state.selected && !state.linking) state.selected = next;
+  bringCard(next);
   requestAnimationFrame(() => requestAnimationFrame(() => cardNode(next)?.focus()));
 }
 
@@ -148,6 +193,7 @@ export function settleWindow(): void {
     listening = scroll;
     scroll.addEventListener("wheel", onWheel, { passive: false });
   }
+  asked.clear();
   const now = tallNow();
   if (given === undefined || now === undefined || Math.abs(now - given) <= 4) {
     stale = 0;
