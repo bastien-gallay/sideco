@@ -618,6 +618,18 @@ describe("other workshops", () => {
       "Detail",
       "Note for Claude",
     ]);
+    // Each is a drawing, not a word: the bar is narrower than its card (S329). The word and its key are
+    // in the tooltip, and the word is what a screen reader hears.
+    const wide = async (locator: ReturnType<typeof page.locator>) =>
+      (await locator.boundingBox())?.width ?? 0;
+    expect(await wide(tools)).toBeLessThan(await wide(card(write)));
+    expect(await tools.locator(":scope > button svg").count()).toBe(3);
+    expect(await tools.getByRole("button", { name: "Rename", exact: true }).getAttribute("title")).toBe(
+      "Rename (Enter)",
+    );
+    expect(await tools.getByRole("button", { name: "Note for Claude" }).getAttribute("title")).toBe(
+      "Note for Claude (N)",
+    );
     expect(await tools.locator("button", { hasText: "Mark done" }).isVisible()).toBe(false);
     await tools.locator("summary").click();
     expect(await tools.locator(".menu-items button").allTextContents()).toEqual([

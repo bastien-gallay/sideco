@@ -38,6 +38,30 @@ const keyed = (label: string, key: string): { type: string; title: string } => (
   title: t.withKey(label, key),
 });
 
+/** One drawing per action in view, on the grid and the stroke of the tabs': a pencil, a page, a plus, a speech bubble. */
+const ICON = {
+  rename:
+    '<path d="M2.5 13.5l.75-3L10.5 3.25a1.4 1.4 0 0 1 2 0l.25.25a1.4 1.4 0 0 1 0 2L5.5 12.75z"/><path d="M9.25 4.5l2.25 2.25"/>',
+  detail: '<rect x="2.5" y="1.5" width="11" height="13" rx="1.5"/><path d="M5 5.5h6M5 8h6M5 10.5h4"/>',
+  lead: '<path d="M8 3v10M3 8h10"/>',
+  note: '<path d="M3 3h10a1.5 1.5 0 0 1 1.5 1.5v6A1.5 1.5 0 0 1 13 12H7l-3 2.5V12H3a1.5 1.5 0 0 1-1.5-1.5v-6A1.5 1.5 0 0 1 3 3z"/>',
+} as const;
+
+/**
+ * What a button of the bar shows (S329): a drawing, so that the bar stays narrower than its card. Its
+ * word is still there for a screen reader, and in the tooltip with its key.
+ */
+function drawn(icon: keyof typeof ICON, word: string): HTMLElement[] {
+  const picture = h("span", { class: "tools-icon", "aria-hidden": "true" });
+  picture.innerHTML = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${ICON[icon]}</svg>`;
+  return [picture, h("span", { class: "tools-word" }, word)];
+}
+
+/** The button that makes, from a card, one of the kind it leads to: a plus, named by what it makes. */
+export function leadButton(label: string, onclick: () => void): HTMLElement {
+  return h("button", { type: "button", title: label, onclick }, ...drawn("lead", label));
+}
+
 /** The actions taken less often wait under ⋯, their keys still at hand. */
 function moreMenu(card: CardShown, menu: MoreMenu, host: HTMLElement, on: CardActions): HTMLElement {
   // An action chosen in the list closes it: the list does not stay over the board it changed.
@@ -87,16 +111,15 @@ export function cardButtons(
   if (card.id !== menu.card) menu.open = false;
   menu.card = card.id;
   return [
-    h("button", { ...keyed(t.rename, "Enter"), onclick: on.rename }, t.rename),
-    // The ≡ the card wears when it has a detail: seen here too, not heard.
+    h("button", { ...keyed(t.rename, "Enter"), onclick: on.rename }, ...drawn("rename", t.rename)),
+    // A card that has a detail says so by its page pressed in: seen here, as the ≡ it wears, not heard.
     h(
       "button",
-      { ...keyed(t.detail, "E"), onclick: on.detail },
-      t.detail,
-      card.hasDetail ? h("span", { "aria-hidden": "true" }, " ≡") : undefined,
+      { ...keyed(t.detail, "E"), class: card.hasDetail ? "has-detail" : undefined, onclick: on.detail },
+      ...drawn("detail", t.detail),
     ),
     ...card.leads,
-    h("button", { ...keyed(t.noteForClaude, "N"), onclick: on.note }, t.noteForClaude),
+    h("button", { ...keyed(t.noteForClaude, "N"), onclick: on.note }, ...drawn("note", t.noteForClaude)),
     moreMenu(card, menu, host, on),
   ];
 }

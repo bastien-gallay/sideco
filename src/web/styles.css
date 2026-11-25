@@ -1856,6 +1856,33 @@ kbd {
   background: var(--bg);
 }
 
+/* Each action in view is a drawing (S329): a square of 28 px, its word kept for a screen reader. */
+.card-tools > button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 3px;
+}
+
+.tools-icon {
+  display: grid;
+}
+
+.tools-word {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The card has a detail: the page is drawn in the accent, as a tab chosen is. */
+.card-tools > button.has-detail {
+  color: var(--accent);
+}
+
 /* Its ⋯: a quiet summary in the bar, its list under it, or above it low on the board. */
 /* biome-ignore lint/style/noDescendingSpecificity: not the board menu's summary, which the rule compares it with */
 .card-more summary {

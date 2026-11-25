@@ -23,7 +23,7 @@ import { type CardKey, cardKey, type LaneKey, laneKey } from "./board-keys.ts";
 import * as links from "./board-links.ts";
 import { dropCommand, keyCommand, snapCommand, whereTo } from "./card-drop.ts";
 import { type CardNode, drawCard, newCardNode, sayCard } from "./card-node.ts";
-import { cardButtons, type MoreMenu, standBy } from "./card-tools.ts";
+import { cardButtons, leadButton, type MoreMenu, standBy } from "./card-tools.ts";
 import { h, svg } from "./dom.ts";
 import { showDrop } from "./drop-hint.ts";
 import { BACKBONE_H, liftHeadings } from "./headings.ts";
@@ -901,7 +901,7 @@ export function mountBoard(host: HTMLElement, hooks: BoardHooks): BoardView {
     const f = format();
     const next = f && typeId ? findType(f, typeId)?.leadsTo : undefined;
     if (!next) return [];
-    return [h("button", { type: "button", onclick: () => makeFrom(id, next.type) }, next.label[locale])];
+    return [leadButton(next.label[locale], () => makeFrom(id, next.type))];
   }
 
   /** Opens the editor for a card of `typeId`, beside this one, to be linked from it once named. */
